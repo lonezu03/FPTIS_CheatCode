@@ -1,0 +1,107 @@
+todo: đổi tên danh gia khoa học HV o Link khách
+- hide thong tin chi tra boi hoàn dao dạo
+- hide ke hoach dao tao trong DV Ca nhan
+- hide xuất báo cáo trong phê duyệt và xác nhận
+pass admin
+d5u8frsCR9
+RLOG: 8349 tao thong tin lop hoc
+
+***************************************************************
+THIẾT LẬP DANH SÁCH CHỨC NĂNG (SYSTEM)
+thông số đào tạo
+song ngữ báo cáo
+CHỌN QUY TRÌNH ONLINE (SYSTEM)
+THIẾT LẬP QUY TRÌNH PHÊ DUYỆT THEO CƠ CẤU PHÒNG BAN
+THIẾT LẬP MÃ SỐ TĂNG TỰ ĐỘNG
+cập nhật dữ liệu
+TRUY VẾT LỖI
+BIỂU MẪU ĐỘNG
+PARAM ĐƯỢC SỬ DỤNG TRONG BIỂU MẪU CAM KẾT
+GÁN CÔNG THỨC DỮ LIỆU
+
+***************************************************************
+link nội bộ: 	http://10.14.138.59/iHRP_V34_IMP
+link khách: http://ihrp-uat.imexpharm.com/Index.aspx
+link pro: http://ihrp.imexpharm.com/Index.aspx
+
+pass remote:
+UAT - WebApp FPT.iHRP
+o RDP: 124.197.22.219:53389
+
+UAT - Database FPT.iHRP
+o RDP: 124.197.22.219:63389
+
+UAT - Mobile App API App Server Database
+o SSH: 124.197.22.219:22020
+
+ 
+
+user: fis.user.1
+
+password: 1s1EApn%DQ4e8^%SjK
+
+sql: sa/mPZGze%fwgVr}!kEc
+
+ 
+
+
+check mẫu cam kết của template
+thông tin GV: 8352
+ tài khoản 
+IMP_Admin
+passwork: 123456A@a
+passwork: Tsminhthong@2021
+passwork: AdminIMP@2025
+
+Pass admin fpt imp
+gEsolIadKc
+
+
++ Link chương trình: https://uat-ihrp.tanlonggroup.com:8990/Index.aspx 
+(TK: admintanlong/Tlg@2023)
+
+	
+
+todo 16: viết log jira người sửa ngày sửa ko có dữ liệu ✅
+log jira nút làm mới bị lỗi
+chỉnh template email ✅
+TR_CONFIRM_LEC_TO_HR: MAIL TEMPLATE
+
+
+rlog bổ sung các trường thông tin bị thiếu
+rlog các chức năng chưa hoạt dộng
+
+THIẾT LẬP MÃ SỐ TĂNG TỰ ĐỘNG
+
+
+IMP_IHRP_2025_PM-119 : chuyển lỗi
+err them giáo viên và lưu thì không có giáo viên
+err input sai type TẠO KHÓA ĐÀO TẠO THỰC TẾ trường Số tháng
+err chuyển o phiếu dao tao
+
+chức năng :25 mh
+danh mục 16 mh
+import: 
+
+Rlog id ******
+Đào tạo: 24964, 24965, 24966, 24967,24958, 24959, 24960
+
+
+
+IMEXPHARM
+
+template mail
+Dear Anh/Chị 
+
+Giảng viên $TenGiangVien$ đã hoàn thành việc giảng dạy cho khóa học: $KhoaDaoTao$
+- Thời gian đào tạo: $ThoiGianDaoTao$  
+- Chương trình đào tạo: $ChuongTrinhDaoTao$  
+Ý kiến đánh giá chung của giảng viên:  
+$YKienDanhGia$
+Đề xuất cải tiến:  
+$DeXuatCaiTien$
+
+Trân trọng,  
+Hệ thống iHRP - Module Đào tạo
+
+Ví dụ: Search tên Ngọc Sang, kết quả hiển thị thấy acx khóa đã đào tạo bên dưới

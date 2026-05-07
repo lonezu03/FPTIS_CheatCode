@@ -1,0 +1,2420 @@
+USE [iHRP_V34_PMC_PRO]
+GO
+/****** Object:  StoredProcedure [dbo].[TER_spfrmThanhToanThoiViec]    Script Date: 3/4/2026 1:56:33 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[TER_spfrmThanhToanThoiViec]
+@Activity					NVARCHAR(50),
+@Account					NVARCHAR(30) = NULL,
+@UserGroupID NVARCHAR(50) = NULL,
+@FunctionID					NVARCHAR(30) = NULL,
+@ReturnMess					NVARCHAR(500) = NULL OUT,
+@LanguageID					NVARCHAR(50) = NULL,
+@FinalPaymentID				NVARCHAR(12) = NULL,
+@EmpID INT = NULL,
+@LastWorkingDate			NVARCHAR(12) = NULL,
+@BasicSalary				MONEY = NULL,
+@AgvSalary					MONEY = NULL,
+@SoNamLV					NUMERIC(4,2) = NULL,
+@FromDate					NVARCHAR(10) = NULL,
+@ToDate						NVARCHAR(10) = NULL,
+@GhiChuTinhTroCapThoiViec	NVARCHAR(1000)=NULL,
+@SeveranceAllownce			MONEY = NULL,
+@KhoanHoTroNghiHuu			MONEY = NULL,
+@Severance_TaxPercent		MONEY = NULL,
+@LeaveSalaryDay				MONEY = NULL,
+@LeaveDays					/*NUMERIC(8,4)*/ NVARCHAR(20) = NULL, -- ThoLD6: Chỉnh sử lại kiểu dữ liệu này để xử lý
+@PaymentLeave				MONEY = NULL,
+@ExchangeRate				NUMERIC(8,2) = NULL,
+@AdditionAmount1			MONEY = NULL,
+@AdditionAmount2			MONEY = NULL,
+@AdditionAmount3			MONEY = NULL,
+@AdditionAmount4			MONEY = NULL,
+@AdditionAmount5			MONEY = NULL,
+@AdditionAmount6			MONEY = NULL,
+@AdditionAmount7			MONEY = NULL,
+@AdditionAmount8			MONEY = NULL,
+@AdditionReason1			NVARCHAR(255) = NULL,
+@AdditionReason2			NVARCHAR(255) = NULL,
+@AdditionReason3			NVARCHAR(255) = NULL,
+@AdditionReason4			NVARCHAR(255) = NULL,
+@AdditionReason5			NVARCHAR(255) = NULL,
+@AdditionReason6			NVARCHAR(255) = NULL,
+@AdditionReason7			NVARCHAR(255) = NULL,
+@AdditionReason8			NVARCHAR(255) = NULL,
+@BHYT						MONEY = NULL,
+@BHYTLyDo					NVARCHAR(255) = NULL,
+@BoiHoanDaoTao				MONEY = NULL,
+@LyDoBoiHoanDT				NVARCHAR(255) = NULL,
+@TruyThu1					MONEY = NULL,
+@TruyThu2					MONEY = NULL,
+@TruyThu3					MONEY = NULL,
+@TruyThu4					MONEY = NULL,
+@TruyThu5					MONEY = NULL,
+@TruyThu6					MONEY = NULL,
+@TruyThu7					MONEY = NULL,
+@TruyThu8					MONEY = NULL,
+@TruyThu9					MONEY = NULL,
+@TruyThu10					MONEY = NULL,
+@TruyThu11					MONEY = NULL,
+@TruyThu12					MONEY = NULL,
+@TruyThu13					MONEY = NULL,
+@TruyThu14					MONEY = NULL,
+@TruyThu15					MONEY = NULL,
+
+@TruyThuLyDo1				NVARCHAR(255) = NULL,
+@TruyThuLyDo2				NVARCHAR(255) = NULL,
+@TruyThuLyDo3				NVARCHAR(255) = NULL,
+@TruyThuLyDo4				NVARCHAR(255) = NULL,
+@TruyThuLyDo5				NVARCHAR(255) = NULL,
+@TruyThuLyDo6				NVARCHAR(255) = NULL,
+@TruyThuLyDo7				NVARCHAR(255) = NULL,
+@TruyThuLyDo8				NVARCHAR(255) = NULL,
+@TruyThuLyDo9				NVARCHAR(255) = NULL,
+@TruyThuLyDo10				NVARCHAR(255) = NULL,
+@TruyThuLyDo11				NVARCHAR(255) = NULL,
+@TruyThuLyDo12				NVARCHAR(255) = NULL,
+@TruyThuLyDo13				NVARCHAR(255) = NULL,
+@TruyThuLyDo14				NVARCHAR(255) = NULL,
+@TruyThuLyDo15				NVARCHAR(255) = NULL,
+	
+@ClearTruyThu1				BIT = NULL,
+@ClearTruyThu2				BIT = NULL,
+@ClearTruyThu3				BIT = NULL,
+@ClearTruyThu4				BIT = NULL,
+@ClearTruyThu5				BIT = NULL,
+@ClearTruyThu6				BIT = NULL,
+@ClearTruyThu7				BIT = NULL,
+@ClearTruyThu8				BIT = NULL,
+@ClearTruyThu9				BIT = NULL,
+@ClearTruyThu10				BIT = NULL,
+@ClearTruyThu11				BIT = NULL,
+@ClearTruyThu12				BIT = NULL,
+@ClearTruyThu13				BIT = NULL,
+@ClearTruyThu14				BIT = NULL,
+@ClearTruyThu15				BIT = NULL,
+
+@TraVaoLuong				BIT = NULL,
+@ThangTraVaoLuong			NVARCHAR(10) = NULL,
+@DaThanhToan				BIT = NULL,--Rlog 19020
+@NgayThanhToan				NVARCHAR(10) = NULL,--Rlog 19020
+@SoTienTCTV					MONEY = NULL,
+@IsLock						BIT = NULL,
+@ThamNienTroCapKhac			MONEY = NULL,
+@TroCapKhac					MONEY = NULL,
+@ThamNienTroCapMatViec		MONEY = NULL,
+@TroCapMatViec				MONEY = NULL,
+@IsRefresh					BIT = 0,
+@SoThangKoBHTN				INT = 0,
+@ThongTinKhac1				NVARCHAR(255) = NULL,
+@ThongTinKhac2				NVARCHAR(255) = NULL,
+@ThongTinKhac3				NVARCHAR(255) = NULL,
+@ThongTinKhac4				NVARCHAR(255) = NULL,
+@ThongTinKhac5				NVARCHAR(255) = NULL,
+@AttachMulti				NVARCHAR(255) = NULL,
+@ThangTraTroCapThoiViec		NVARCHAR(10) = NULL,
+@IsHangLoat					BIT = 0,
+@IsSave						BIT = 0, -- Xu li ben Hang loat
+@SoNgayPhatViPhamHopDong    MONEY = NULL,
+@PhatDoViPhamHopDong		MONEY = NULL,
+@PhatDoViPhamHopDong_LyDo	NVARCHAR(255) = NULL,
+@SoNgayBoiThuongDoViPham	MONEY = NULL,
+@SoTienBoiThuongDoViPham	MONEY = NULL,
+@SoThangDaHuongTroCap		INT = 0,
+@SoNamLVGoc					NUMERIC(4,2) = NULL,
+@SoNgayNghiKhongHuongTroCap	FLOAT = NULL,
+@IsAdd						BIT = 0,
+@SoNgayPhepBuConLai			FLOAT = NULL,
+@TienPhepBu					MONEY = NULL
+AS
+
+-------------------------------------------------------
+DECLARE @NgayQLLam_New DATETIME, @NgayTV_New DATETIME, @NgayTV_GanNhat DATETIME
+DECLARE @dNgayThanhToan DATETIME
+
+SET @dNgayThanhToan = CASE WHEN ISNULL(@NgayThanhToan,'') = '' THEN CONVERT(DATETIME,'01-01-1900',103) ELSE  CONVERT(DATETIME,@NgayThanhToan,103) END
+--Log param
+DECLARE @IDLog NVARCHAR(12)
+SET @IDLog = ''
+
+DECLARE @isCustomer NVARCHAR(50)	SET @isCustomer = dbo.fnGetCustomerCode()
+DECLARE @NgayCC_TinhLuong FLOAT			SET @NgayCC_TinhLuong = 1
+DECLARE @TempNgayCC		FLOAT			SELECT @TempNgayCC = ISNULL(ParamValue,26) FROM SYS_tblParameters WHERE ParamName = 'TMS_WorkDaysStandard'									
+DECLARE @IsPhuCapTheoLuong INT			SELECT @IsPhuCapTheoLuong = ISNULL(ParamValue,0) FROM SYS_tblParameters WHERE ParamName = 'TER_PhuCapTheoLuong'			
+DECLARE @PhuCapTheoLuong MONEY			SET @PhuCapTheoLuong = 0 
+DECLARE @Months			INT				SELECT @Months = ParamValue FROM dbo.SYS_tblParameters WHERE ParamName = 'TER_SoThangTinhTBLuong' -- (1) Quy?t toán thôi vi?c hi?n gi? du?c c?u hình là 6 thánh, nhung có th? thay d?i theo tham s?						
+DECLARE @ApplyTerminationLeave BIT, @IsLeaveDays BIT, @IsPaymentLeave BIT, @UsedTMS_WorkDaysStandard BIT, @LuongTinhTienPhep NVARCHAR(50), @LeaveDayCondition BIT, @SoNgayLamViecHuongPhep FLOAT
+DECLARE @TuDongLoadSoNgayPhepConLai BIT, @PhepToiDa BIT --RLOG 20604
+DECLARE @dLastWorkingDate	DATETIME, @dEffectDate DATETIME
+DECLARE @dNgayTinhCongChuan	DATETIME
+DECLARE @LSWorkPointID NVARCHAR(12)
+DECLARE @SoNgayLamViec FLOAT, @PhepDaNghi FLOAT
+--HOATT81 RLOGID 23377
+DECLARE @TER_ThamNienHuongHoTro INT 
+DECLARE @TER_SoThangLuongHoTro INT
+
+SELECT @TER_ThamNienHuongHoTro = ISNULL(ParamValue,0) 
+FROM SYS_tblParameters(NOLOCK)
+WHERE ParamName = 'TER_ThamNienHuongHoTro'	
+
+SELECT @TER_SoThangLuongHoTro = ISNULL(ParamValue,0) 
+FROM SYS_tblParameters(NOLOCK)
+WHERE ParamName = 'TER_SoThangLuongHoTro'	
+--HOATT81 RLOGID 23377
+--HOATT81 RLLOGID 23854
+DECLARE @TER_TienPhepTinhThueTNCN FLOAT, @CustomerID int
+SELECT @TER_TienPhepTinhThueTNCN = ISNULL(ParamValue,0) 
+FROM SYS_tblParameters(NOLOCK)
+WHERE ParamName = 'TER_TienPhepTinhThueTNCN'	
+
+set @CustomerID = dbo.fnGetCustomerCode()
+--END HOATT81 RLLOGID 23854
+--TrangNT: N?u @Months null ho?c = '' thì gán = 6
+IF @Months = 0 OR @Months IS NULL 
+	SET @Months = 6
+DECLARE @QTTV_AVGSalary_ChiaThangCoLuong	BIT,
+		@QTTV_NgayLamViecCuoiCung			BIT,
+		@QTTV_NgayHieuLuc					BIT,
+		@QTTV_NgayHieuLucTru1				BIT,
+		--@QTTV_NgayHieuLucTru1Thang			BIT,
+		@QTTV_SuDungSoThangKoBHTN			BIT,
+		@IsThayDoiTien_TroCapTV				BIT,
+		@CC_NgayLamViecCuoiCung				BIT,
+		@CC_NgayHieuLuc						BIT,
+		@CC_NgayHieuLucTru1					BIT,
+		@CC_NgayHieuLucTru1Thang			BIT,
+		@CongThoiGianThuViecVaoTroCapThoiViec BIT,
+		@CongThoiGianThuViecVaoTroCapThoiViec_TuNgay DATETIME,
+		@CongThoiGianThuViecVaoTroCapThoiViec_DenNgay DATETIME,
+		@KhongTinhSoThangThuViecKHongThamGiaBHTNTruocVaoLam	BIT,
+		@TinhSoNamLamViec					BIT,
+		@strLSWorkPointTypeID				NVARCHAR(1000),
+		@ProratePhepThamNien				BIT,
+		@QTTV_NgayLVCCTru1Thang				BIT,--Tamnb rlog 22959
+		@CC_NgayLVCCTru1Thang				BIT,	--Tamnb rlog 22959
+		@TinhTroCapNghiHuuTheoThamNien		BIT, --HOATT81 RLOGID 23377
+		@SoThangThuViecKhongTinhBHTN		BIT, --Tamnb 23558
+		@LuongDongBHXH						BIT,
+		@PhuCapDongBHXH						BIT,
+		@NguonTinhBinhQuan					NVARCHAR(50),
+		@TinhQTTVChoSoNgayPhepNghiBuConLai	BIT
+		 
+SELECT	@QTTV_AVGSalary_ChiaThangCoLuong = QTTV_AVGSalary_ChiaThangCoLuong,
+		@QTTV_NgayLamViecCuoiCung = QTTV_NgayLamViecCuoiCung,
+		@QTTV_NgayHieuLuc = QTTV_NgayHieuLuc,
+		@QTTV_NgayHieuLucTru1 = QTTV_NgayHieuLucTru1,
+		--@QTTV_NgayHieuLucTru1Thang = QTTV_NgayHieuLucTru1Thang,
+		@QTTV_SuDungSoThangKoBHTN = SuDungSoThangKoBHTN,
+		@IsThayDoiTien_TroCapTV = IsThayDoiTien_TroCapTV,
+		@CC_NgayLamViecCuoiCung	 = ISNULL(CC_NgayLamViecCuoiCung, 0),
+		@CC_NgayHieuLuc			 = ISNULL(CC_NgayHieuLuc, 0),
+		@CC_NgayHieuLucTru1		 = ISNULL(CC_NgayHieuLucTru1, 0),
+		@CC_NgayHieuLucTru1Thang = ISNULL(CC_NgayHieuLucTru1Thang, 0),
+		@CongThoiGianThuViecVaoTroCapThoiViec = ISNULL(CongThoiGianThuViecVaoTroCapThoiViec,0),
+		@CongThoiGianThuViecVaoTroCapThoiViec_TuNgay = ISNULL(CongThoiGianThuViecVaoTroCapThoiViec_TuNgay,'1900/01/01'),
+		@CongThoiGianThuViecVaoTroCapThoiViec_DenNgay = ISNULL(CongThoiGianThuViecVaoTroCapThoiViec_DenNgay,'2100/12/31'),
+		@KhongTinhSoThangThuViecKHongThamGiaBHTNTruocVaoLam = ISNULL(KhongTinhSoThangThuViecKHongThamGiaBHTNTruocVaoLam,0),
+		@ApplyTerminationLeave = ApplyTerminationLeave,
+		@IsLeaveDays = ISNULL(LeaveDays, 0), 
+		@IsPaymentLeave = ISNULL(PaymentLeave, 0),
+		@UsedTMS_WorkDaysStandard = ISNULL(UsedTMS_WorkDaysStandard, 0),
+		@LuongTinhTienPhep = ISNULL(LuongTinhTienPhep, 'LuongBinhQuanGiaQuyen'),
+		@LeaveDayCondition = ISNULL(LeaveDayCondition,0),
+		@SoNgayLamViecHuongPhep = ISNULL(SoNgayLamViecHuongPhep,0),
+		@TuDongLoadSoNgayPhepConLai = ISNULL(TuDongLoadSoNgayPhepConLai, 0),
+		@PhepToiDa = ISNULL(@PhepToiDa, 0),
+		@TinhSoNamLamViec = ISNULL(TinhSoNamLamViec, 0),
+		@strLSWorkPointTypeID = strLSWorkPointTypeID,
+		@ProratePhepThamNien = ISNULL(ProratePhepThamNien, 0), /*Rlog 22772*/
+		@QTTV_NgayLVCCTru1Thang = QTTV_NgayLVCCTru1Thang,
+		@CC_NgayLVCCTru1Thang = CC_NgayLVCCTru1Thang,
+		@TinhTroCapNghiHuuTheoThamNien = TinhTroCapNghiHuuTheoThamNien, --HOATT81 RLOGID 23377
+		@SoThangThuViecKhongTinhBHTN = ISNULL(SoThangThuViecKhongTinhBHTN,0),
+		@LuongDongBHXH = ISNULL(LuongDongBHXH,0),
+		@PhuCapDongBHXH = ISNULL(PhuCapDongBHXH,0),
+		@NguonTinhBinhQuan = NguonTinhBinhQuan,
+		@TinhQTTVChoSoNgayPhepNghiBuConLai = ISNULL(TinhQTTVChoSoNgayPhepNghiBuConLai,0)
+FROM TER_tblSetupTER (NOLOCK)
+
+IF ISNULL(@QTTV_AVGSalary_ChiaThangCoLuong,0) = 0 SET @QTTV_AVGSalary_ChiaThangCoLuong = 0	
+IF ISNULL(@QTTV_SuDungSoThangKoBHTN,0) = 0 SET @QTTV_SuDungSoThangKoBHTN = 0	
+
+IF(
+	ISNULL(@QTTV_NgayLamViecCuoiCung,0) = 0  AND 
+	ISNULL(@QTTV_NgayHieuLuc,0) = 0 AND 
+	ISNULL(@QTTV_NgayHieuLucTru1,0) = 0 AND --AND ISNULL(@QTTV_NgayHieuLucTru1Thang,0) = 0
+	ISNULL(@QTTV_NgayLVCCTru1Thang,0) = 0 AND
+	ISNULL(@CC_NgayLVCCTru1Thang,0) = 0
+)
+
+DECLARE @StartDate DATETIME
+		
+SELECT @StartDate = StartDate
+FROM dbo.HR_tblEmp (NOLOCK) A
+WHERE A.EmpID = @EmpID
+
+BEGIN 
+	SET @QTTV_NgayHieuLuc = 1
+END 
+
+DECLARE @KoTinhQuyetToan_BoiHoanDaoTao INT
+SELECT @KoTinhQuyetToan_BoiHoanDaoTao = ISNULL(TinhQuyetToan,0) FROM TR_tblSetupBoiHoanDaoTao (NOLOCK)
+SET @KoTinhQuyetToan_BoiHoanDaoTao = 0
+
+IF dbo.fnGetCustomerCode() = '143' SET @KoTinhQuyetToan_BoiHoanDaoTao = 1
+
+DECLARE @TMS_TotalNormal FLOAT
+	SET @TMS_TotalNormal = dbo.[SYS_fnGetParamValue_Parameters]('TMS_TotalNormal')
+	SET @TMS_TotalNormal = ISNULL(@TMS_TotalNormal,8)
+
+--Thi?t l?p thông tin ch?m công
+DECLARE @LamTronSoThapPhan INT
+DECLARE @QuyetToanPhepThoiViecNVThuViec BIT	--TriTV 11-08-2015 RLog 6316
+SELECT TOP 1
+	@LamTronSoThapPhan = ISNULL(LamTronSoThapPhan,2),
+	@QuyetToanPhepThoiViecNVThuViec = ISNULL(QuyetToanPhepThoiViecNVThuViec,0)
+FROM dbo.TMS_tblSetupTMS (NOLOCK)
+SET @LamTronSoThapPhan = ISNULL(@LamTronSoThapPhan,2)
+
+DECLARE @LSLoaiNhanVienCode NVARCHAR(12)
+SET @LSLoaiNhanVienCode =  dbo.HR_fnGetLoaiNhanVien(@EmpID,GETDATE(),1)
+
+DECLARE @SoThangThuViecKHongThamGiaBHTNTruocVaoLam	FLOAT = 0
+-------------------------------------------------------
+
+IF @Activity = 'LoadData' 
+BEGIN
+	SELECT EmpID
+	INTO dbo.[#temp_Permission]
+	FROM dbo.fnGetAllEmp_Permission(@UserGroupID,@FunctionID)
+	IF NOT EXISTS (SELECT TOP 1 1 FROM dbo.[#temp_Permission] WHERE EmpID=@EmpID) RETURN
+	PRINT 'Start'
+	IF @TuDongLoadSoNgayPhepConLai = 1 --RLOG 20604
+	BEGIN
+		SELECT @dLastWorkingDate = CASE	WHEN @QTTV_NgayLamViecCuoiCung = 1 THEN LastWorkingDate
+							WHEN @QTTV_NgayHieuLuc = 1 THEN EffectDate
+							WHEN @QTTV_NgayHieuLucTru1 = 1 THEN DATEADD(DAY, -1, EffectDate)
+							WHEN @QTTV_NgayLVCCTru1Thang = 1 THEN DATEADD(DAY, -1, LastWorkingDate)
+						END
+		FROM dbo.TER_tblTermination (NOLOCK) 
+		WHERE EmpID = @EmpID 
+
+		SELECT TOP 1 @LSWorkPointID = W.LSWorkPointID  
+		FROM dbo.LS_tblWorkPoint (NOLOCK) W
+		LEFT JOIN dbo.LS_tblWorkPointType (NOLOCK) T ON W.LSWorkPointTypeID=T.LSWorkPointTypeID
+		WHERE T.LSWorkPointTypeCode = '0001'
+
+		IF ISNULL(@ApplyTerminationLeave,1) = 1 --Mặc đnh là có tính phép thôi việc
+		BEGIN
+			SELECT TOP 1 @SoNgayLamViec = DATEDIFF(DAY, @StartDate, @dLastWorkingDate) + 1
+			IF (@LeaveDayCondition = 1 AND @SoNgayLamViecHuongPhep <> 0 AND @SoNgayLamViec < @SoNgayLamViecHuongPhep)
+			BEGIN						
+				SET @PhepDaNghi = dbo.TS_fnTinhPhepDaNghi_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate,@LSWorkPointID)						
+				SET @LeaveDays = 0 - @PhepDaNghi
+			END
+			ELSE
+			BEGIN
+				--Quanbm2 : neu hok cho nhap thi moi tu dong tinh So ngay phep 20110914 --hoac lan dau tien hok nhap ma nhan tinh lun
+				IF (@IsLeaveDays = 0 OR (@IsLeaveDays = 1 AND ISNULL(@LeaveDays, 0) = 0 AND NOT EXISTS (SELECT TOP 1 1 FROM TER_TBLFINALPAYMENT (NOLOCK) WHERE EmpID = @EmpID)))	
+				BEGIN							
+					IF EXISTS (SELECT TOP 1 1 FROM TS_tblLeaveRecordHour (NOLOCK)) --Neu la nghi phep theo gio thi ap dung cach nay 
+					BEGIN
+						PRINT N'Nghỉ phép theo giờ'
+						IF(@QuyetToanPhepThoiViecNVThuViec = 1 AND ISNULL(@LSLoaiNhanVienCode,'') = 'NVTVI') --Nhân viên thử việc					
+							SET @LeaveDays =	dbo.TS_fnTinhPhepConLai_TT_ThuViec(@EmpID, @StartDate, @dLastWorkingDate, NULL, NULL, NULL, NULL, NULL) - 
+												dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+						ELSE
+							SET @LeaveDays =	dbo.TS_fnTinhPhepConLai_TheoGio(@EmpID, @dLastWorkingDate, @dLastWorkingDate, @LSWorkPointID) - 
+												dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+					
+						SET @LeaveDays = (CONVERT(FLOAT,@LeaveDays) / 60.00) / @TMS_TotalNormal
+					END
+					ELSE --Neu la nghi phep theo ngay thi ap dung cach nay
+					BEGIN
+						PRINT N'Nghỉ phép theo ngày'
+						IF @ProratePhepThamNien = 1
+						BEGIN
+							SET @LeaveDays = dbo.[TS_fnTinhPhepConLai_Prorate](@EmpID, @dLastWorkingDate, @dLastWorkingDate, @LSWorkPointID) - 
+											 dbo.[TS_fnLayPhepTamUng_TT](@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+						END
+						ELSE IF @PhepToiDa = 1
+							SET @LeaveDays = dbo.TS_fnTinhPhepConLai_QuyetToanThoiViec(@EmpID, @dLastWorkingDate, @dLastWorkingDate, @LSWorkPointID) - dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+						ELSE
+						BEGIN
+							IF (@QuyetToanPhepThoiViecNVThuViec = 1 AND ISNULL(@LSLoaiNhanVienCode,'') = 'NVTVI') --Nhân viên thử việc
+								SET @LeaveDays =	dbo.TS_fnTinhPhepConLai_TT_ThuViec(@EmpID, @StartDate, @dLastWorkingDate, NULL, NULL, NULL, NULL, NULL) - 
+													dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+							ELSE
+								SET @LeaveDays =	dbo.TS_fnTinhPhepConLai_TT(@EmpID, @dLastWorkingDate, @dLastWorkingDate, @LSWorkPointID) - 
+													dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+						END
+					END 
+				END
+			END
+		END
+
+		SET @LeaveDays = dbo.TS_fnConvertDecimalAllowTMS(@LeaveDays,@LamTronSoThapPhan,0)	
+	END
+
+	-- N?u dã t?n t?i nhân viên trong Quy?t toán thôi vi?c
+	IF EXISTS(SELECT TOP 1 1 FROM TER_tblFinalPayment (NOLOCK) WHERE EmpID = @EmpID AND ISNULL(@IsRefresh, 0) = 0)
+		BEGIN
+			/*Start  Coding RlogID: 15686 - PNJ - NhanHM4 - 02/12/2020*/
+			DECLARE @CongNoKeToan NUMERIC(18, 2), @CongNoNhanSu NUMERIC(18, 2), @CongNoHanhChinh NUMERIC(18, 2), @CongNoCNTT NUMERIC(18, 2), @CongNoTV NUMERIC(18, 2), @CongNoLAB NUMERIC(18, 2), @CongNoBGH NUMERIC(18, 2)
+
+			--===****KeToan****===--
+			IF EXISTS (SELECT TOP 1 1 FROM dbo.HR_tblQTBanGiao_KeToan(NOLOCK) WHERE EmpID = @EmpID )
+			BEGIN
+				SELECT @CongNoKeToan = SUM(CONVERT(NUMERIC(18, 2), ISNULL(REPLACE(dbo.sys_fnGetD(CongNoConLai), ',', ''), 0)))
+				FROM dbo.HR_tblQTBanGiao_KeToan(NOLOCK)
+				WHERE EmpID = @EmpID
+				GROUP BY EmpID
+			END
+			ELSE
+			BEGIN
+				SET @CongNoKeToan = 0
+			END
+			--===****NhanSu****===--
+			IF EXISTS (SELECT TOP 1 1 FROM dbo.HR_tblQTBanGiao_NhanSu(NOLOCK) WHERE EmpID = @EmpID )
+			BEGIN
+				SELECT @CongNoNhanSu = SUM(CONVERT(NUMERIC(18, 2), ISNULL(REPLACE(dbo.sys_fnGetD(CongNo), ',', ''), 0)))
+				FROM dbo.HR_tblQTBanGiao_NhanSu(NOLOCK)
+				WHERE EmpID = @EmpID
+				GROUP BY EmpID
+			END
+			ELSE
+			BEGIN
+				SET @CongNoNhanSu = 0
+			END
+			--===****HanhChinh****===--
+			IF EXISTS (SELECT TOP 1 1 FROM dbo.HR_tblQTBanGiao_HanhChinh(NOLOCK) WHERE EmpID = @EmpID )
+			BEGIN
+				SELECT @CongNoHanhChinh = SUM(CONVERT(NUMERIC(18, 2), ISNULL(REPLACE(dbo.sys_fnGetD(CongNo), ',', ''), 0)))
+				FROM dbo.HR_tblQTBanGiao_HanhChinh(NOLOCK)
+				WHERE EmpID = @EmpID
+				GROUP BY EmpID
+			END
+			ELSE
+			BEGIN
+				SET @CongNoHanhChinh = 0
+			END
+			--===****CNTT****===--
+			IF EXISTS (SELECT TOP 1 1 FROM dbo.HR_tblQTBanGiao_CNTT(NOLOCK) WHERE EmpID = @EmpID )
+			BEGIN
+				SELECT @CongNoCNTT = SUM(CONVERT(NUMERIC(18, 2), ISNULL(REPLACE(dbo.sys_fnGetD(CongNo), ',', ''), 0)))
+				FROM dbo.HR_tblQTBanGiao_CNTT(NOLOCK)
+				WHERE EmpID = @EmpID
+				GROUP BY EmpID
+			END
+			ELSE
+			BEGIN
+				SET @CongNoCNTT = 0
+			END
+			--===****TV****===--
+			IF EXISTS (SELECT TOP 1 1 FROM dbo.HR_tblQTBanGiao_TV(NOLOCK) WHERE EmpID = @EmpID )
+			BEGIN
+				SELECT @CongNoTV = SUM(CONVERT(NUMERIC(18, 2), ISNULL(REPLACE(dbo.sys_fnGetD(CongNo), ',', ''), 0)))
+				FROM dbo.HR_tblQTBanGiao_TV(NOLOCK)
+				WHERE EmpID = @EmpID
+				GROUP BY EmpID
+			END
+			ELSE
+			BEGIN
+				SET @CongNoTV = 0
+			END
+			--===****LAB****===--
+			IF EXISTS (SELECT TOP 1 1 FROM dbo.HR_tblQTBanGiao_LAB(NOLOCK) WHERE EmpID = @EmpID )
+			BEGIN
+				SELECT @CongNoLAB = SUM(CONVERT(NUMERIC(18, 2), ISNULL(REPLACE(dbo.sys_fnGetD(CongNo), ',', ''), 0)))
+				FROM dbo.HR_tblQTBanGiao_LAB(NOLOCK)
+				WHERE EmpID = @EmpID
+				GROUP BY EmpID
+			END
+			ELSE
+			BEGIN
+				SET @CongNoLAB = 0
+			END
+			--===****BGH****===--
+			IF EXISTS (SELECT TOP 1 1 FROM dbo.HR_tblQTBanGiao_BGH(NOLOCK) WHERE EmpID = @EmpID )
+			BEGIN
+				SELECT @CongNoBGH = SUM(CONVERT(NUMERIC(18, 2), ISNULL(REPLACE(dbo.sys_fnGetD(CongNo), ',', ''), 0)))
+				FROM dbo.HR_tblQTBanGiao_BGH(NOLOCK)
+				WHERE EmpID = @EmpID
+				GROUP BY EmpID
+			END
+			ELSE
+			BEGIN
+				SET @CongNoBGH = 0
+			END
+			/*End    Coding RlogID: 15686 - PNJ - NhanHM4 - 02/12/2020*/
+			SELECT	
+				b.FinalPaymentID, b.EmpID,  
+				dbo.fnconvertnumber(b.BasicSalary) BasicSalary, 
+				dbo.fnconvertnumber(ROUND(b.AgvSalary, 0)) AgvSalary, b.SoNamLV, b.SoNamTinhTroCap,
+				CONVERT(NVARCHAR(10), a.EffectDate, 103) AS LastWorkingDate,
+				CONVERT(NVARCHAR(10), b.FromDate, 103) AS FromDate, 
+				CONVERT(NVARCHAR(10), b.ToDate, 103) AS ToDate,
+				b.GhiChuTinhTroCapThoiViec,
+				dbo.fnconvertnumber(b.SeveranceAllownce) SeveranceAllownce, dbo.fnConvertnumber(b.KhoanHoTroNghiHuu) KhoanHoTroNghiHuu,
+				dbo.fnconvertnumber(b.ThamNienTroCapMatViec) ThamNienTroCapMatViec, 
+				dbo.fnconvertnumber(b.TroCapMatViec) TroCapMatViec,
+				dbo.fnconvertnumber(b.Severance_TaxPercent) Severance_TaxPercent, 				
+				dbo.fnconvertnumber(b.LeaveSalaryDay) LeaveSalaryDay,
+				CASE WHEN @TuDongLoadSoNgayPhepConLai = 1 AND b.LeaveDays IS NULL
+					THEN dbo.TS_fnConvertNumberDecimal(@LeaveDays,@LamTronSoThapPhan,1) 
+					ELSE dbo.TS_fnConvertNumberDecimal(b.LeaveDays,@LamTronSoThapPhan,0)
+				END AS LeaveDays,
+				dbo.fnconvertnumber(b.PaymentLeave) PaymentLeave, 
+				dbo.fnconvertnumber(b.ThamNienTroCapKhac) ThamNienTroCapKhac, 
+				dbo.fnconvertnumber(b.TroCapKhac) TroCapKhac, 
+				dbo.fnconvertnumber(b.SoThangKoBHTN) SoThangKoBHTN, 				
+				b.ExchangeRate, 
+				dbo.fnconvertnumber(b.AdditionAmount1) AdditionAmount1, 
+				dbo.fnconvertnumber(b.AdditionAmount2) AdditionAmount2, 
+				dbo.fnconvertnumber(b.AdditionAmount3) AdditionAmount3, 
+				dbo.fnconvertnumber(b.AdditionAmount4) AdditionAmount4, 
+				dbo.fnconvertnumber(b.AdditionAmount5) AdditionAmount5, 
+				dbo.fnconvertnumber(b.AdditionAmount6) AdditionAmount6, 
+				dbo.fnconvertnumber(b.AdditionAmount7) AdditionAmount7, 
+				dbo.fnconvertnumber(b.AdditionAmount8) AdditionAmount8, 
+				b.AdditionReason1, b.AdditionReason2, b.AdditionReason3, b.AdditionReason4, 
+				b.AdditionReason5, b.AdditionReason6, b.AdditionReason7, b.AdditionReason8, 
+				dbo.fnconvertnumber(b.BHYT) BHYT, b.BHYTLyDo, 
+				dbo.fnconvertnumber(b.BoiHoanDaoTao) BoiHoanDaoTao, b.LyDoBoiHoanDT, 
+				dbo.fnconvertnumber(b.TruyThu1) TruyThu1, 
+				dbo.fnconvertnumber(b.TruyThu2) TruyThu2, 
+				dbo.fnconvertnumber(b.TruyThu3) TruyThu3, 
+				dbo.fnconvertnumber(b.TruyThu4) TruyThu4, 
+				dbo.fnconvertnumber(b.TruyThu5) TruyThu5, 
+				dbo.fnconvertnumber(b.TruyThu6) TruyThu6, 
+				dbo.fnconvertnumber(b.TruyThu7) TruyThu7, 
+				dbo.fnconvertnumber(b.TruyThu8) TruyThu8, 
+				dbo.fnconvertnumber(b.TruyThu9) TruyThu9, 
+				dbo.fnconvertnumber(b.TruyThu10) TruyThu10, 
+				dbo.fnconvertnumber(b.TruyThu11) TruyThu11, 
+				dbo.fnconvertnumber(b.TruyThu12) TruyThu12, 
+				dbo.fnconvertnumber(b.TruyThu13) TruyThu13, 
+				dbo.fnconvertnumber(b.TruyThu14) TruyThu14, 
+				dbo.fnconvertnumber(b.TruyThu15) TruyThu15,
+				CASE WHEN ISNULL(b.ClearTruyThu1,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu1,
+				CASE WHEN ISNULL(b.ClearTruyThu2,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu2,
+				CASE WHEN ISNULL(b.ClearTruyThu3,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu3,
+				CASE WHEN ISNULL(b.ClearTruyThu4,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu4,
+				CASE WHEN ISNULL(b.ClearTruyThu5,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu5,
+				CASE WHEN ISNULL(b.ClearTruyThu6,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu6,
+				CASE WHEN ISNULL(b.ClearTruyThu7,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu7,
+				CASE WHEN ISNULL(b.ClearTruyThu8,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu8,
+				CASE WHEN ISNULL(b.ClearTruyThu9,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu9,
+				CASE WHEN ISNULL(b.ClearTruyThu10,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu10,
+				CASE WHEN ISNULL(b.ClearTruyThu11,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu11,
+				CASE WHEN ISNULL(b.ClearTruyThu12,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu12,
+				CASE WHEN ISNULL(b.ClearTruyThu13,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu13,
+				CASE WHEN ISNULL(b.ClearTruyThu14,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu14,
+				CASE WHEN ISNULL(b.ClearTruyThu15,0) = 0 THEN 'False' ELSE 'True' END AS ClearTruyThu15,
+				b.TruyThuLyDo1, 
+				b.TruyThuLyDo2, 
+				b.TruyThuLyDo3, 
+				b.TruyThuLyDo4, 
+				b.TruyThuLyDo5, 
+				b.TruyThuLyDo6, 
+				b.TruyThuLyDo7, 
+				b.TruyThuLyDo8, 
+				b.TruyThuLyDo9, 
+				b.TruyThuLyDo10, 
+				b.TruyThuLyDo11, 
+				b.TruyThuLyDo12, 
+				b.TruyThuLyDo13, 
+				b.TruyThuLyDo14, 
+				b.TruyThuLyDo15, 
+				CASE WHEN ISNULL(b.TraVaoLuong,0) = 0 THEN '0' ELSE '1' END TraVaoLuong, 
+				SUBSTRING(CONVERT(NVARCHAR(10), b.ThangTraVaoLuong, 103), 4, 7) ThangTraVaoLuong, 
+				--Rlog 19020
+				CASE WHEN ISNULL(b.DaThanhToan,0) = 0 THEN '0' ELSE '1' END DaThanhToan,
+				CASE WHEN CONVERT(DATETIME,ISNULL(b.NgayThanhToan,'01-01-1900'),103) = CONVERT(DATETIME,'01-01-1900',103) THEN '' ELSE CONVERT(NVARCHAR(10),b.NgayThanhToan,103) END AS NgayThanhToan,
+				dbo.fnconvertnumber(b.SoTienTCTV) SoTienTCTV, 
+				CASE WHEN ISNULL(b.IsLock,0) = 0 THEN '0' ELSE '1' END IsLock,
+				CASE WHEN ISNULL(A.TerCalculate,0) = 1 AND ISNULL(@IsThayDoiTien_TroCapTV,0) = 1 THEN CONVERT(BIT,1) ELSE CONVERT(BIT,0) END Editable,
+				ThongTinKhac1,ThongTinKhac2, ThongTinKhac3, ThongTinKhac4, ThongTinKhac5,
+				b.AttachMulti, 
+				SUBSTRING(CONVERT(NVARCHAR(10), b.ThangTraTroCapThoiViec, 103), 4, 7) ThangTraTroCapThoiViec,
+				dbo.fnconvertnumber(b.SoNgayPhatViPhamHopDong) SoNgayPhatViPhamHopDong,
+				dbo.fnconvertnumber(b.PhatDoViPhamHopDong) PhatDoViPhamHopDong, b.PhatDoViPhamHopDong_LyDo,
+				ISNULL(B.SoNgayBoiThuongDoViPham,0) AS SoNgayBoiThuongDoViPham,
+				dbo.fnconvertnumber(B.SoTienBoiThuongDoViPham) SoTienBoiThuongDoViPham, b.SoThangDaHuongTroCap,
+				/*Start  Coding RlogID: 15686 - PNJ - NhanHM4 - 02/12/2020*/
+				[dbo].[fnConvertNumber](@CongNoKeToan) AS CongNoKeToan, 
+				[dbo].[fnConvertNumber](@CongNoNhanSu) AS CongNoNhanSu, 
+				[dbo].[fnConvertNumber](@CongNoHanhChinh) AS CongNoHanhChinh, 
+				[dbo].[fnConvertNumber](@CongNoCNTT) AS CongNoCNTT, 
+				[dbo].[fnConvertNumber](@CongNoTV) AS CongNoTV, 
+				[dbo].[fnConvertNumber](@CongNoLAB) AS CongNoLAB, 
+				[dbo].[fnConvertNumber](@CongNoBGH) AS CongNoBGH
+				/*End    Coding RlogID: 15686 - PNJ - NhanHM4 - 02/12/2020*/
+				,b.SoNamLVGoc
+				,b.SoNgayNghiKhongHuongTroCap
+				,b.SoNgayPhepBuConLai	
+				,[dbo].[fnConvertNumber](b.TienPhepBu) AS TienPhepBu			
+			FROM Ter_tblTermination (NOLOCK) a 
+			RIGHT JOIN TER_tblFinalPayment (NOLOCK) b ON a.EmpID = b.EmpID
+			WHERE a.EmpID = @EmpID
+		END			
+	ELSE
+		BEGIN	
+			DECLARE @dFromDate		DATETIME
+			DECLARE @dToDate		DATETIME
+			DECLARE @MMYYYYBefore1	NVARCHAR(7)
+			DECLARE @MMYYYYBefore	NVARCHAR(7)
+			DECLARE @MMYYYY			NVARCHAR(7), @TER_LayCuoiThangTinhTBLuong INT
+			
+
+			SELECT @TER_LayCuoiThangTinhTBLuong = ISNULL(ParamValue, 0) 
+			FROM SYS_tblParameters WHERE ParamName = 'TER_LayCuoiThangTinhTBLuong'
+			
+			SET @TER_LayCuoiThangTinhTBLuong = ISNULL(@TER_LayCuoiThangTinhTBLuong, 0)
+			DECLARE @QTTV_TuNgay_NgayVaoLam BIT, @QTTV_TuNgay_NgayVaoChinhThuc BIT, @QTTV_TuNgay_Date1 BIT
+			
+			SELECT 
+				TOP(1) 
+				@QTTV_TuNgay_NgayVaoLam = QTTV_TuNgay_NgayVaoLam, 
+				@QTTV_TuNgay_NgayVaoChinhThuc = QTTV_TuNgay_NgayVaoChinhThuc,
+				@QTTV_TuNgay_Date1 = QTTV_TuNgay_Date1
+			FROM TER_tblSetupTER (NOLOCK)
+			
+			IF ISNULL(@QTTV_TuNgay_NgayVaoLam,0) = 0 AND ISNULL(@QTTV_TuNgay_NgayVaoChinhThuc,0)=0 AND ISNULL(@QTTV_TuNgay_Date1, 0) = 0
+				SET @QTTV_TuNgay_NgayVaoLam = 1
+			
+			IF NOT EXISTS(SELECT TOP 1 1 FROM [dbo].[TER_tblFinalPaymentRecord](NOLOCK) WHERE EmpID = @EmpID)
+			BEGIN
+				SELECT @dFromDate = ISNULL(NgayTinhTroCap, CASE WHEN @QTTV_TuNgay_NgayVaoLam = 1 THEN StartDate
+																WHEN @QTTV_TuNgay_NgayVaoChinhThuc = 1 THEN StartDateCompany 
+																--BaoNTQ ngày 18/07/2013
+																WHEN @QTTV_TuNgay_Date1 = 1 THEN 															
+																								CASE WHEN ISNULL(C.Date1, '') = '' THEN StartDate ELSE C.Date1 END
+																							END 
+																--End
+											)
+				FROM dbo.HR_tblEmp (NOLOCK) A
+					LEFT JOIN HR_tblEmpOther(NOLOCK) B ON A.EmpID = B.EmpID
+					LEFT JOIN HR_TBLEMPCV(NOLOCK) C ON A.EmpID = C.EmpID
+				WHERE A.EmpID = @EmpID
+			END
+			ELSE
+			BEGIN
+				SET @NgayQLLam_New = NULL
+				SET @NgayTV_New = NULL
+				SET @NgayTV_GanNhat = NULL
+
+				--Lay ra ngay thoi viec
+				SELECT @NgayTV_New = EffectDate
+				FROM TER_tblTermination(NOLOCK)
+				WHERE EmpID = @EmpID
+				--Khong quan tam hinh` thuc la` gi`
+				--Lay ngay thoi viec gan nhat
+				SELECT @NgayTV_GanNhat = max(FromDate)
+				FROM HR_tblWorkingRecord(NOLOCK) A
+				LEFT JOIN [dbo].[LS_tblStatusChange](NOLOCK) B ON A.LSStatusChangeID= B.LSStatusChangeID
+				WHERE EmpID = @EmpID AND B.LSStatusChangeCode = 'RES' AND FromDate < @NgayTV_New 
+				
+				IF @NgayTV_GanNhat IS NOT NULL
+				BEGIN
+					--Lay ngay lam viec lien ke
+					SELECT TOP 1 @NgayQLLam_New = FromDate
+					FROM HR_tblWorkingRecord(NOLOCK) A
+					WHERE FromDate >= @NgayTV_GanNhat
+					ORDER BY FromDate ASC
+
+					SELECT @dFromDate = @NgayQLLam_New
+				END
+				ELSE
+				BEGIN
+					SELECT @dFromDate = ISNULL(NgayTinhTroCap, CASE WHEN @QTTV_TuNgay_NgayVaoLam = 1 THEN StartDate
+																WHEN @QTTV_TuNgay_NgayVaoChinhThuc = 1 THEN StartDateCompany 
+																--BaoNTQ ngày 18/07/2013
+																WHEN @QTTV_TuNgay_Date1 = 1 THEN 															
+																								CASE WHEN ISNULL(C.Date1, '') = '' THEN StartDate ELSE C.Date1 END
+																							END 
+																--End
+											)
+					FROM dbo.HR_tblEmp (NOLOCK) A
+						LEFT JOIN HR_tblEmpOther(NOLOCK) B ON A.EmpID = B.EmpID
+						LEFT JOIN HR_TBLEMPCV(NOLOCK) C ON A.EmpID = C.EmpID
+					WHERE A.EmpID = @EmpID
+				END
+			END
+			-----------------------------------------------------------------------------------------------------------------------------
+			DECLARE @dInformDate DATETIME
+			SELECT @dLastWorkingDate = LastWorkingDate,@dEffectDate = EffectDate, @dInformDate = InformDate FROM Ter_tblTermination(NOLOCK) WHERE EmpID = @EmpID
+			SET @LastWorkingDate = CONVERT(NVARCHAR, @dLastWorkingDate, 103)
+			--Set @NgayCC_TinhLuong = case when dbo.fnGetInfoDonViTinhLuong(@EmpID,@dLastWorkingDate) = 1 then @TempNgayCC else 1 end
+			
+			/*Tính số năm làm việc*/
+			SET @SoNamLV = ROUND( DATEDIFF(DAY, @dFromDate, @dLastWorkingDate)/ 365.0, 2)
+			/*
+				Thông số “Cho phép cộng thêm số tháng không tham gia BHTN vào số năm tính trợ cấp thôi việc (Mặc định không Checked)” khi có check thì sẽ tính như sau:
+				-	@SoThangKoBHTN = dbo.SI_fnSoThangKhongThamGiaUIDoMTLUP(@EmpID,@dLastWorkingDate) + dbo.SI_fnSoThangKhongThamGiaUIDoUI(@EmpID,@dLastWorkingDate)
+				-	Số tháng không tham gia BHTN = Số tháng không tham gia BHTN do Thai Sản, Nghỉ Không Lương + số tháng không tham gia BHTN do BH Tăng mới (ko tăng BHTN), Tăng BHTN,Giảm BHTN, Thôi Việc (không tính trường hợp Tăng Mới, Thôi Việc do hợp đồng lao động)
+			*/
+
+			SET @SoNamLVGoc = @SoNamLV;
+			SET @SoNgayNghiKhongHuongTroCap = 0;
+			
+			IF(@TinhSoNamLamViec = 1)
+			BEGIN
+				print(1)
+				SELECT	@SoNgayNghiKhongHuongTroCap = SUM(LeaveTaKen)
+				FROM	dbo.TS_tblLeaveRecord (NoLock) L
+						LEFT JOIN dbo.LS_tblWorkPoint (NOLOCK) W ON L.LSWorkPointID = W.LSWorkPointID
+						LEFT JOIN dbo.LS_tblWorkPointType (NOLOCK) T ON T.LSWorkPointTypeID = W.LSWorkPointTypeID
+				WHERE	L.EmpID=@EmpID
+						AND L.ApprovedStatus=4
+						AND ( 
+							L.FromDate BETWEEN convert(nvarchar(10),@StartDate,23) AND convert(nvarchar(10),@dLastWorkingDate,23)
+							OR convert(nvarchar(10),@StartDate,23) BETWEEN L.FromDate AND L.ToDate
+							)
+						AND T.LSWorkPointTypeID IN (select items from dbo.split(@strLSWorkPointTypeID, '@'))
+
+				DECLARE @SoNgayNghiKhongHuongTroCapTinhTheoNam FLOAT;
+				SET @SoNgayNghiKhongHuongTroCapTinhTheoNam = 0;
+				SET @SoNgayNghiKhongHuongTroCap = ISNULL(@SoNgayNghiKhongHuongTroCap, 0)
+				IF(ISNULL(@SoNgayNghiKhongHuongTroCap, 0) <> 0)
+				BEGIN
+					SET @SoNgayNghiKhongHuongTroCapTinhTheoNam = ROUND(@SoNgayNghiKhongHuongTroCap /365, 2)
+				END
+				SET @SoNamLV = ROUND(@SoNamLV - @SoNgayNghiKhongHuongTroCapTinhTheoNam, 2) 
+				Print(@SoNgayNghiKhongHuongTroCap)
+				Print(@SoNgayNghiKhongHuongTroCapTinhTheoNam)
+				Print(@SoNamLV)
+			END
+
+			IF(@QTTV_SuDungSoThangKoBHTN = 1)
+				SET @SoThangKoBHTN = dbo.SI_fnSoThangKhongThamGiaUIDoMTLUP(@EmpID,@dLastWorkingDate) + dbo.SI_fnSoThangKhongThamGiaUIDoUI(@EmpID,@dLastWorkingDate)
+															
+			IF (@dFromDate > CONVERT(DATETIME, '31/12/2008', 103))
+				SET @dFromDate = CONVERT(DATETIME, '31/12/2008', 103)
+			IF (@dLastWorkingDate > CONVERT(DATETIME, '31/12/2008', 103))
+				SET @dToDate = CONVERT(DATETIME, '31/12/2008', 103)
+			ELSE 
+				SET @dToDate = @dLastWorkingDate
+			
+			--QuangPNV: 12-06-2018, RlogID = 13255
+			if(@CongThoiGianThuViecVaoTroCapThoiViec = 1) and @StartDate between @CongThoiGianThuViecVaoTroCapThoiViec_TuNgay and @CongThoiGianThuViecVaoTroCapThoiViec_DenNgay/*13877*/
+			BEGIN
+				--Nếu thời gian thử việc và thời gian chính thức <= @dToDate => Không tính				
+				Declare @ProbationFrom date, @ProbationTo date, @ToDate_ThangThuViec date,
+						@SoThangThuViec int
+				DECLARE @FromDate_Contract date
+
+				--Select	@ProbationFrom = C.EffectiveDate, --Từ Ngày thử việc
+				--		@ProbationTo = C.ToDate --Đến Ngày thử việc
+				--RlogID: 14428
+				Select	@FromDate_Contract = C.EffectiveDate,
+						@ProbationFrom = case when isnull(C.ProbationFrom, '') = '' AND CTG.LSContractTypeGroupCode = N'HDTV' then C.EffectiveDate else C.ProbationFrom end, --Từ Ngày thử việc
+						@ProbationTo = case when isnull(C.ProbationTo, '') = '' AND CTG.LSContractTypeGroupCode = N'HDTV' then C.ToDate else C.ProbationTo end --Đến Ngày thử việc
+				from HR_tblContract (Nolock) C
+				inner join LS_tblContractType (Nolock) CT on CT.LSContractTypeID = C.LSContractTypeID
+				inner join LS_tblContractTypeGroup (Nolock) CTG on CTG.ContractTypeGroupID = CT.[Type]
+				inner join HR_tblEmp (nolock) E on E.EmpID = C.EmpID and E.StartDate <= C.EffectiveDate	--TriTV 16-06-2025: NghialT37 yeu cau chi dem nhom hd thu viec >= ngay vao lam
+				where C.EmpID = @EmpID 
+					  and	(
+							/*CTG.LSContractTypeGroupCode = N'HDTV' */
+							CTG.IsProbationContract = 1
+							OR 
+							(ISNULL(CT.IsTinhTGThuViecKhiQuyetToanThoiViec, 0) = 1 AND isnull(C.ProbationFrom, '') <> '')
+							) /*Fix jira HLV_IHRP_2023_PM-951*/				
+									
+				--			F_TV							 T_TV		
+				--			|---------------------------------| 
+				--	F					T
+				--	|-------------------|
+
+				--						   F_TV								 T_TV	
+				--							|---------------------------------| 
+				--	F					T
+				--	|-------------------|
+				
+																				
+				IF(@ProbationFrom IS NOT NULL AND @ProbationTo IS NOT NULL)
+				BEGIN
+					--Nếu thời gian thử việc <= @dToDate và thời gian chính thức > dToDate => Tính khoảng thời gian [@dToDate + 1, Thời gian chính thức]
+					IF(@ProbationFrom <= @dToDate AND @ProbationTo >= @dToDate)
+					begin
+						SET @ToDate_ThangThuViec = case		when @ProbationTo > @dLastWorkingDate 
+															then @dLastWorkingDate 
+															else @ProbationTo
+												   end
+						if @isCustomer = 148
+						BEGIN
+							SET @SoThangThuViec = DATEDIFF(MONTH, DateAdd(day,1,@dToDate), @ToDate_ThangThuViec) /*HLV_IHRP_2023_PM-459*/
+						end
+						else
+						begin
+							SET @SoThangThuViec = convert(numeric(10,1),isnull(dbo.fnTinhNgayThangNam(convert(varchar(10),DateAdd(day,1,@dToDate),103),convert(varchar(10),@ToDate_ThangThuViec,103),'y'),0)) * 12
+							SET @SoThangThuViec = ISNULL(@SoThangThuViec,0) + CONVERT(NUMERIC(10,1),ISNULL(dbo.fnTinhNgayThangNam(CONVERT(VARCHAR(10),DATEADD(DAY,1,@dToDate),103),CONVERT(VARCHAR(10),@ToDate_ThangThuViec,103),'m'),0))																														
+						end
+					END
+
+					--Nếu thời gian thử việc > @dToDate và thời gian chính thức > dToDate => Tính khoảng thời gian [Thời gian thử việc, Thời gian chính thức]
+					ELSE IF(@ProbationFrom > @dToDate)
+					begin
+						SET @ToDate_ThangThuViec = case		when @ProbationTo > @dLastWorkingDate 
+															then @dLastWorkingDate 
+															else @ProbationTo
+												   end
+						if @isCustomer = 148
+						BEGIN
+							SET @SoThangThuViec = DATEDIFF(MONTH, @ProbationFrom, @ToDate_ThangThuViec) /*HLV_IHRP_2023_PM-459*/
+						end
+						else
+						begin
+							SET @SoThangThuViec = convert(numeric(10,1),isnull(dbo.fnTinhNgayThangNam(convert(varchar(10),@ProbationFrom,103),convert(varchar(10),@ToDate_ThangThuViec,103),'y'),0)) * 12
+							SET @SoThangThuViec = ISNULL(@SoThangThuViec,0) + CONVERT(NUMERIC(10,1),ISNULL(dbo.fnTinhNgayThangNam(CONVERT(VARCHAR(10),@ProbationFrom,103),CONVERT(VARCHAR(10),@ToDate_ThangThuViec,103),'m'),0))
+						end
+					END
+					ELSE 
+						SET @SoThangThuViec = 0 
+
+					IF @SoThangThuViecKhongTinhBHTN = 1
+					BEGIN
+						SET @SoThangThuViec = ROUND((DATEDIFF(day, @ProbationFrom, @ProbationTo) +1) / 30.0, 0.5) /*Tamnb rlog 23558 - GS*/
+					END
+					--TriTV 30-05-2025 RLog 23498
+					IF (@KhongTinhSoThangThuViecKHongThamGiaBHTNTruocVaoLam = 1)
+					BEGIN
+									SELECT @SoThangThuViecKHongThamGiaBHTNTruocVaoLam = DATEDIFF(MONTH, @FromDate_Contract, StartDate) 
+									FROM HR_vEmp (NOLOCK) 
+									WHERE EmpID = @EmpID
+					END
+					ELSE
+					BEGIN
+									SET @SoThangThuViecKHongThamGiaBHTNTruocVaoLam = 0
+					END
+
+					SET @SoThangThuViec = CASE WHEN @SoThangThuViec < @SoThangThuViecKHongThamGiaBHTNTruocVaoLam THEN 0 ELSE @SoThangThuViec - @SoThangThuViecKHongThamGiaBHTNTruocVaoLam END
+					--End TriTV 30-05-2025 RLog 23498
+				END
+			END
+
+			if @StartDate between @CongThoiGianThuViecVaoTroCapThoiViec_TuNgay and @CongThoiGianThuViecVaoTroCapThoiViec_DenNgay/*13877*/
+				set @SoThangKoBHTN = isnull(@SoThangKoBHTN,0) + isnull(@SoThangThuViec,0) - isnull(@SoThangDaHuongTroCap,0)
+
+			/*RL 15256 cộng thêm giá trị định mức*/
+			Declare @GiaTriLoaiDinhMuc int
+			Declare @QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc bit 
+			Declare @LSLoaiDinhMucCode nvarchar(50) /*End - RL 15256 cộng thêm giá trị định mức*/												
+			Declare @QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc_Thang varchar(7)
+			Select  top(1) 
+					@QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc = QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc,
+					@LSLoaiDinhMucCode = LSLoaiDinhMucCode,
+					@QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc_Thang = QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc_Thang
+			From TER_tblSetupTer(nolock)
+			IF	@QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc = 1 and @LSLoaiDinhMucCode <> '' and @LSLoaiDinhMucCode is not null 
+				and @QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc_Thang <> '' and @QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc_Thang is not null
+			Begin
+				Declare @dQTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc_Thang date
+				Set @dQTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc_Thang= Convert(date,'01/'+@QTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc_Thang,103)
+				Select top(1) @GiaTriLoaiDinhMuc = A.Amount
+				From PR_tblLoaiDinhMucEmp(nolock) A
+				Left join LS_tblLoaiDinhMuc(nolock) B on A.LSLoaiDinhMucID = B.LSLoaiDinhMucID
+				Where A.EmpID = @EmpID
+				and B.LSLoaiDinhMucCode = @LSLoaiDinhMucCode
+				and @dQTTV_CongThemThoiGianKhongThamGiaBHTNTheoDinhMuc_Thang between A.EffMonth and case when A.EndMonth is null then '2030-01-01' else A.EndMonth end
+
+				Set @SoThangKoBHTN = isnull(@SoThangKoBHTN,0) + isnull(@GiaTriLoaiDinhMuc,0)
+				SET @SeveranceAllownce = CASE WHEN @QTTV_SuDungSoThangKoBHTN = 1 THEN ISNULL(@SeveranceAllownce ,0) + ISNULL(@GiaTriLoaiDinhMuc,0) ELSE @SeveranceAllownce END
+			END
+			
+			/*End 15256*/
+			-- L?y tham s? quy?t toán thôi vi?c 6 tháng li?n k? tru?c tháng dã ngh?		
+			SET @MMYYYY = SUBSTRING(CONVERT(NVARCHAR(10), @dEffectDate, 103), 4, 7) -- Tháng ngh?		
+			--lay theo chu ky cong
+			if (@TER_LayCuoiThangTinhTBLuong = 0)
+			Begin
+				SET @MMYYYYBefore1 = dbo.PR_fnGetSalPeriodByDate(dateadd(month, -1, @dEffectDate)) -- Tru?c tháng dã ngh? 1 tháng
+				SET @MMYYYYBefore = dbo.PR_fnGetSalPeriodByDate(DATEADD(MONTH, -@Months, @dEffectDate)) -- Tru?c tháng dã ngh? @Month
+			END
+			ELSE
+			BEGIN
+				SET @MMYYYYBefore1 = SUBSTRING(CONVERT(NVARCHAR(10), dateadd(month, -1, @dEffectDate), 103), 4, 7) -- Tru?c tháng dã ngh? 1 tháng
+				SET @MMYYYYBefore = SUBSTRING(CONVERT(NVARCHAR(10), DATEADD(MONTH, -@Months, @dEffectDate), 103), 4, 7) -- Tru?c tháng dã ngh? @Month
+			END
+           /*Tamnb rlog 22959*/
+			DECLARE @NgayChotLuongBinhQuan NVARCHAR(10),@dMaxformDate DATETIME
+			SELECT @NgayChotLuongBinhQuan =  isnull(ParamValue, '') 
+			from SYS_tblParameters (NOLOCK) where ParamName = 'TER_NgayChotLuongBinhQuan'
+			IF @QTTV_NgayLVCCTru1Thang = 1
+			BEGIN
+				select EmpID, max(FromDate) FromDate INTO #dataMaxFD
+				from PR_tblSalary(NoLock)
+				where EmpID = @EmpID
+				Group by EmpID
+
+				SELECT @dMaxformDate =	 FromDate FROM #dataMaxFD (nolock)
+			
+				SET @MMYYYYBefore1 = dbo.PR_fnGetSalPeriodByDate(dateadd(month, -1, @dLastWorkingDate)) 
+				SET @MMYYYYBefore = dbo.PR_fnGetSalPeriodByDate(DATEADD(MONTH, -@Months, @dLastWorkingDate)) 
+				--IF ISNULL(@NgayChotLuongBinhQuan,'')<>''
+				--BEGIN
+				--	SET	@dEffectDate = DATEFROMPARTS(YEAR(DATEADD(MONTH, -1, @dLastWorkingDate)), MONTH(DATEADD(MONTH, -1, @dLastWorkingDate)), @NgayChotLuongBinhQuan) 
+				--	SET @MMYYYYBefore1 = dbo.PR_fnGetSalPeriodByDate(@dEffectDate) 
+				--	SET @MMYYYYBefore = dbo.PR_fnGetSalPeriodByDate(DATEADD(MONTH, -@Months, @dEffectDate)) 
+				--END
+				--IF @dMaxformDate > @dEffectDate
+				--BEGIN 
+				--	SET @dEffectDate = Case When @CC_NgayLVCCTru1Thang = 1 THEN DATEADD(MONTH, -1, @dLastWorkingDate) ELSE @dEffectDate END /*Tamnb*/
+				--END 
+			END
+			
+			/*Tamnb rlog 22959*/
+			-- L?y luong co b?n	c?a tháng dã ngh?			
+			--SET @BasicSalary = dbo.fnGetBasicSalary(@EmpID, @MMYYYY) + dbo.fnGetBasicSalaryRate(@EmpID, @MMYYYY)									
+			--sua lai : lay luong co ban la luong moi nhat cua nhan vien dua vao ngay lam viec cuoi cung!
+			SET @BasicSalary = dbo.fnGetBasicSalary_MoiNhat(@EmpID, @dEffectDate)
+			--cong them vao he so khac cua Luong He So
+			if exists( Select top 1 1 from SYS_tblParameters where ParamName = 'TER_UseOtherSalary' and ParamValue = '1')
+				SET @BasicSalary = @BasicSalary + dbo.fnGetSalaryCoef_MoiNhat_Other(@EmpID, @dEffectDate)
+				
+			-- Ph? c?p theo luong du?c c?u hình theo tham s? chung			
+			if(@IsPhuCapTheoLuong = 1)
+			BEGIN											
+				-- Tính ph? c?p theo luong c?a t? tháng - d?n tháng li?n k? 																				
+				Set @PhuCapTheoLuong = dbo.[PR_fnPCTheoLuong_Thang_ChiaTheoThamSo](@EmpID, @MMYYYYBefore,@MMYYYYBefore1,@QTTV_AVGSalary_ChiaThangCoLuong)
+			end			
+			ELSE 
+				SET @PhuCapTheoLuong = 0		
+				
+			Declare @ThietLap BIT
+			set @ThietLap = (Select top 1 1 LayLuongThang01 From TER_tblSetupTER(NoLock))
+
+			--QuangPNV : B? sung : N?u s? tháng làm vi?c nh? hon 6 tháng (@Month) thì chia cho kho?ng th?i gian dã làm
+			Declare @MMCurrent int
+			Select @MMCurrent = DateDiff(mm,StartDate,@dLastWorkingDate) from HR_vEmp(nolock) WHERE EmpID = @EmpID 
+			If(@ThietLap = 0)
+			Begin
+				if(@MMCurrent < @Months)
+					SET @MMYYYYBefore = SUBSTRING(CONVERT(NVARCHAR(10), dateadd(month, -@MMCurrent, @dLastWorkingDate), 103), 4, 7) -- Tru?c tháng dã ngh? @Month
+			End
+			--QuangPNV : Luong trung bình c?a t? tháng - d?n tháng li?n k?
+			--Luong trung binh cung tinh luong binh quan									
+			if exists(select top 1 1 from TER_tblSetupTER(nolock) where isnull(NguonTinhBinhQuan, 'QuaTrinhLuong') = 'QuaTrinhLuong')
+			Begin
+				if exists(	select top 1 1 from SYS_tblParameters
+							where ParamName = 'TER_IsTinhLuongBinhQuan' and ParamValue = 1)
+					BEGIN
+						--BaoNTQ
+						if
+						(
+							@MMCurrent < @Months and @ThietLap = 1 
+							and (Select CopyFrom_EmpID From HR_tblEmp(NoLock) Where EmpID = @EmpID) is not null
+						)
+						Begin
+							SET @AgvSalary = dbo.PR_fnGetAvgSalary_BinhQuanGiaQuyen_1_QTTV(@EmpID, 4, @MMYYYYBefore, @MMYYYYBefore1, @QTTV_AVGSalary_ChiaThangCoLuong)
+						End
+						else
+						Begin
+							SET @AgvSalary = dbo.PR_fnGetAvgSalary_BinhQuanGiaQuyen_QTTV(@EmpID, 4, @MMYYYYBefore, @MMYYYYBefore1, @QTTV_AVGSalary_ChiaThangCoLuong)
+						End
+						--End BaoNTQ
+					END
+				else--k tinh luong binh quan
+					BEGIN						
+						--BaoNTQ
+						if
+						(
+							@MMCurrent < @Months and @ThietLap = 1 
+							and (Select CopyFrom_EmpID From HR_tblEmp(NoLock) Where EmpID = @EmpID) is not null
+						)
+						Begin
+							SET @AgvSalary = dbo.PR_fnGetAvgSalary_Thang2_QTTV(@EmpID, 4, 'Luong', @MMYYYYBefore, @MMYYYYBefore1, @QTTV_AVGSalary_ChiaThangCoLuong)	
+						End
+						Else
+						Begin
+							SET @AgvSalary = dbo.PR_fnGetAvgSalary_Thang_QTTV(@EmpID, 4, 'Luong', @MMYYYYBefore, @MMYYYYBefore1, @QTTV_AVGSalary_ChiaThangCoLuong)	
+						End
+					END
+					
+				--neu tinh nguyen te thi nhan voi ty gia thang tinh luong
+				if exists(select top 1 1 from TER_tblSetupTER(nolock) where IsTinhNguyenTe_TroCapTV = 1)
+				Begin
+					print('IsNguyenTe')
+					declare @LSCurrencyTypeID int
+					select top 1 @LSCurrencyTypeID = LSCurrencyTypeID
+					from PR_tblSalary(nolock)
+					where EmpID = @EmpID and FromDate <= @dLastWorkingDate
+					set @AgvSalary = round(@AgvSalary * dbo.fnCurrencyCom_EffDate(@EmpID, @LSCurrencyTypeID, @dLastWorkingDate), 0)
+				End
+				
+			End
+			else
+				SET @AgvSalary = dbo.PR_fnGetAvgSalarySI_Thang(@EmpID, @MMYYYYBefore, @MMYYYYBefore1, @QTTV_AVGSalary_ChiaThangCoLuong)	
+			
+			--quanbm2 : 2012-05-28
+		
+	
+			--neu luong binh quan = 0 thi lay luong hien tai de tinh binh quan 
+			if (isnull(@AgvSalary, 0) = 0)
+				set @AgvSalary = dbo.fnGetBasicSalary_MoiNhat(@EmpID, @dEffectDate)
+				
+			--QuangPNV : N?u là Duy Tân thì ph?i nhân thêm ngày công. Vì là luong ngày
+			Declare @TotalAgvSalary MONEY					set @TotalAgvSalary = 0										
+			set @TotalAgvSalary =  @AgvSalary 	+ @PhuCapTheoLuong	
+			
+			--tinh toan tro cap khac
+			if exists(select top 1 1 from TER_tblTermination (nolock) where EmpID = @EmpID and TinhTroCapKhac = 1)
+			Begin
+				--select @ThamNienTroCapKhac = isnull(datediff(dd, Date2, @dLastWorkingDate)/365.0, 0)
+				--20120702:Chỉnh sửa lại tính theo ngày vào ngày bên màn hình lý lịch cá nhân chứ ko lấy theo Date2 của tt khác nữa.
+				select @ThamNienTroCapKhac = dbo.TER_fnTinhSoNamTroCapThoiViec(convert(NVARCHAR(10), NgayVaoNganh, 103),@LastWorkingDate,@LastWorkingDate,'SoThangHuongTroCap',@SoThangKoBHTN)
+				from HR_tblEmpCV(nolock)
+				where EmpID = @EmpID
+				
+				--tro cap khac = số nam thâm niên ngành dầu khí * Luong tháng thôi vi?c
+				if exists(select top 1 1 from TER_tblSetupTER(nolock) where CachTinhTroCapKhac = '1')
+					set @TroCapKhac = @ThamNienTroCapKhac * @BasicSalary
+			End
+			
+			-- QuangPNV : 03/12/2010 - B? sung thêm tham s? ti?n còn n? công ty
+			Declare @TienConNoCongTy MONEY	
+				--Select @TienConNoCongTy = sum(Balance) from PR_tblLoan(nolock) where EmpID = @EmpID
+				--TriTV 13-07-2015 RLog 6150, ThanhNV11: nếu không có đủ thông tin “từ tháng, kỳ hạn” thì số tiền hoàn lại = 0.
+				Select @TienConNoCongTy = sum(case when isnull(FromMonth,'') = '' or isnull(NoOfMonth,-1) = -1 then  0 else Balance end) from PR_tblLoan(nolock) where EmpID = @EmpID
+
+			-- QuangPNV : 03/12/2010 - Ki?m tra xem khách hàng dang s? d?ng		
+			Declare @TienDongPhuc MONEY					set @TienDongPhuc = 0
+			Declare @TienBoiHoan	MONEY				set @TienBoiHoan = 0	
+			declare @ContractDate	datetime 
+			Declare @EffectDate_Ter	datetime
+			Declare @Luong money
+
+			if exists(select top 1 1 from TER_tblTermination(nolock) where EmpID = @EmpID and PhatViPhamHopDong = 1)
+			Begin
+				select @ContractDate = ContractDate from TER_tblTermination(nolock) where EmpID = @EmpID 
+
+				if isnull(@SoNgayPhatViPhamHopDong,0) = 0
+				begin
+					declare	@TheoLichNam	bit,		@TheoLichLV		bit,
+							@TinhT7			bit,		@TinhCN			bit,
+							@TinhNgayLe		bit
+	
+					select	@dFromDate	= convert(datetime,@FromDate,103),
+							@dToDate	= convert(datetime,'31/12/'+right(@FromDate,4),103)	
+	
+					select	@TheoLichNam= isnull(TheoLichNam_NgayTVHD,0),
+							@TheoLichLV	= isnull(TheoLichLV_NgayTVHD,0),
+							@TinhT7		= isnull(TinhT7_NgayTVHD,0),
+							@TinhCN		= isnull(TinhCN_NgayTVHD,0),
+							@TinhNgayLe = isnull(NgayLeLaNgayLamViec,0)
+					from TER_tblSetupTER(NoLock)
+					
+					if @TheoLichNam = 1
+					BEGIN
+							Select @SoNgayPhatViPhamHopDong = Count(*) 
+							From [dbo].[fn_GetListDate_BetweenFromTo](convert(nvarchar, @dInformDate, 103), convert(nvarchar, @ContractDate, 103)) A
+							Left join TS_tblWorkday(nolock) w on convert(datetime,A.DateID,103) = convert(datetime,W.DateID,103)
+							and
+							(
+								@TinhT7 = 1
+								or
+								(
+									@TinhT7 = 0 and datepart(dw,A.DateID) <> 7
+								)
+							)
+							and
+							(
+								@TinhCN = 1
+								or
+								(
+									@TinhCN = 0 and datepart(dw,A.DateID) <> 1
+								)
+							)
+							and
+							(
+								@TinhNgayLe = 1
+								or
+								(
+									@TinhNgayLe = 0 and (case when w.TypeDate is null then '' else w.TypeDate END <> 3) ---
+								)
+							)
+					END
+					else if @TheoLichLV = 1
+					BEGIN
+						select	@SoNgayPhatViPhamHopDong = count(DateID)
+						from
+						(
+							select DateID
+							from TS_tblAssignEmpWorkDetails(NoLock)
+							where EmpID = @EmpID
+								and LSShiftID is not null
+								and DateID between @dInformDate and @ContractDate
+						)A
+					END
+				end
+				-- Thay đôi Encrypt-Decrypt - NhanHM4 - 31/01/2019	
+				select top 1 @Luong = 
+				convert(float,isnull(dbo.sys_fnGetD(BasicSalary),0))
+				+ convert(float,isnull(dbo.sys_fnGetD(OtherSalary1),0))
+				+ convert(float,isnull(dbo.sys_fnGetD(OtherSalary2),0))
+				from PR_tblSalary (Nolock)
+				where EmpID = @EmpID
+						and FromDate <= @dEffectDate
+					order by FromDate desc
+
+				set @PhatDoViPhamHopDong = @SoNgayPhatViPhamHopDong*@Luong/26
+			end
+
+			set @SoTienBoiThuongDoViPham = round(@LeaveSalaryDay,0) * @SoNgayBoiThuongDoViPham
+						
+			set @TruyThu1 = @TienDongPhuc
+			set @TruyThu2 = @TienConNoCongTy
+			set @TruyThu3 = @TienBoiHoan
+			----------------------------------------------------------------------------------------------------
+			----------------------------------------------------------------------------------------------------
+			if (@IsHangLoat = 1)
+			begin
+				Insert into TER_tblFinalPayment_HangLoat
+				(
+					EmpID,BasicSalary,AgvSalary,SoNamLV,SoThangKoBHTN,LastWorkingDate,
+					FromDate,ToDate,ThamNienTroCapKhac,TroCapKhac,TruyThu1,TruyThu2,TruyThu3,TruyThu4,UserGroupID,FunctionID,
+					SoNgayPhatViPhamHopDong,PhatDoViPhamHopDong,SoNgayBoiThuongDoViPham,SoTienBoiThuongDoViPham,SoThangDaHuongTroCap,
+					SoNamLVGoc, SoNgayNghiKhongHuongTroCap
+
+				)
+				select	@EmpID as EmpID 
+					,dbo.fnconvertnumber(@BasicSalary) as BasicSalary
+					,dbo.fnconvertnumber(round(@TotalAgvSalary, 0)) as AgvSalary
+					,@SoNamLV AS SoNamLV
+					,@SoThangKoBHTN AS SoThangKoBHTN
+					,@dEffectDate AS LastWorkingDate
+					,@dFromDate AS FromDate
+					,@dToDate AS ToDate					
+					,dbo.fnconvertnumber(@ThamNienTroCapKhac) as ThamNienTroCapKhac
+					,dbo.fnconvertnumber(@TroCapKhac) as TroCapKhac					
+					,dbo.fnconvertnumber(@TruyThu1) as TruyThu1
+					,dbo.fnconvertnumber(@TruyThu2) as TruyThu2
+					,dbo.fnconvertnumber(@TruyThu3) as TruyThu3 
+					,dbo.fnconvertnumber(@TruyThu4) as TruyThu4	
+					,@UserGroupID
+					,@FunctionID		
+					,@SoNgayPhatViPhamHopDong	
+					,@PhatDoViPhamHopDong
+					,@SoNgayBoiThuongDoViPham
+					,@SoTienBoiThuongDoViPham
+					,@SoThangDaHuongTroCap
+					,@SoNamLVGoc
+					,@SoNgayNghiKhongHuongTroCap
+				FROM Ter_tblTermination(NoLock)
+				WHERE EmpID = @EmpID
+			End
+			else
+			begin
+				select	
+					'' FinalPaymentID, @EmpID EmpID,  
+					dbo.fnconvertnumber(@BasicSalary) BasicSalary,					
+					dbo.fnconvertnumber(round(@TotalAgvSalary, 0)) AgvSalary, @SoNamLV AS SoNamLV, '' AS SoNamTinhTroCap,
+					@SoThangKoBHTN AS SoThangKoBHTN,
+					CASE WHEN @QTTV_NgayLVCCTru1Thang =1 Then CONVERT(NVARCHAR(10), @dLastWorkingDate, 103) ELSE CONVERT(NVARCHAR(10), @dEffectDate, 103) END AS LastWorkingDate,/*Tamnb*/
+					CONVERT(NVARCHAR(10),@dFromDate, 103) AS FromDate, 
+					CONVERT(NVARCHAR(10), @dToDate, 103) AS ToDate
+					, '' GhiChuTinhTroCapThoiViec
+					, case when @QTTV_SuDungSoThangKoBHTN = 1 then dbo.fnconvertnumber(@SeveranceAllownce) else '' end SeveranceAllownce
+					, '' KhoanHoTroNghiHuu
+					, '' ThamNienTroCapMatViec
+					, '' TroCapMatViec
+					, '' Severance_TaxPercent
+					, '' LeaveSalaryDay
+					, CASE WHEN @TuDongLoadSoNgayPhepConLai = 1 THEN dbo.TS_fnConvertNumberDecimal(@LeaveDays,@LamTronSoThapPhan,1) ELSE '' END AS LeaveDays
+					, '' PaymentLeave
+					, '' ExchangeRate
+					, dbo.fnconvertnumber(@ThamNienTroCapKhac) ThamNienTroCapKhac
+					, dbo.fnconvertnumber(@TroCapKhac) TroCapKhac					
+					, '' as AdditionAmount1					
+					, '' as AdditionAmount2					
+					, '' as AdditionAmount3					
+					, '' as AdditionAmount4
+					, '' AdditionAmount5
+					, '' AdditionAmount6
+					, '' AdditionAmount7
+					, '' AdditionAmount8
+					, '' AdditionReason1
+					, '' AdditionReason2
+					, '' AdditionReason3
+					, '' AdditionReason4
+					, '' AdditionReason5
+					, '' AdditionReason6
+					, '' AdditionReason7
+					, '' AdditionReason8
+					, '' BHYT
+					, '' BHYTLyDo
+					, dbo.fnconvertnumber(@TruyThu1) TruyThu1
+					, dbo.fnconvertnumber(@TruyThu2) TruyThu2
+					, dbo.fnconvertnumber(@TruyThu3) TruyThu3 
+					, dbo.fnconvertnumber(@TruyThu4) TruyThu4
+					, '' TruyThu5
+					, '' TruyThu6
+					, '' TruyThu7
+					, '' TruyThu8
+					, '' TruyThu9
+					, '' TruyThu10
+					, '' TruyThu11
+					, '' TruyThu12
+					, '' TruyThu13
+					, '' TruyThu14
+					, '' TruyThu15
+					, 'False' ClearTruyThu1
+					, 'False' ClearTruyThu2
+					, 'False' ClearTruyThu3
+					, 'False' ClearTruyThu4
+					, 'False' ClearTruyThu5
+					, 'False' ClearTruyThu6
+					, 'False' ClearTruyThu7
+					, 'False' ClearTruyThu8
+					, 'False' ClearTruyThu9
+					, 'False' ClearTruyThu10
+					, 'False' ClearTruyThu11
+					, 'False' ClearTruyThu12
+					, 'False' ClearTruyThu13
+					, 'False' ClearTruyThu14
+					, 'False' ClearTruyThu15
+					, '' TruyThuLyDo1
+					, '' TruyThuLyDo2
+					, '' TruyThuLyDo3
+					, '' TruyThuLyDo4
+					, '' TruyThuLyDo5
+					, '' TruyThuLyDo6
+					, '' TruyThuLyDo7
+					, '' TruyThuLyDo8
+					, '' TruyThuLyDo9
+					, '' TruyThuLyDo10
+					, '' TruyThuLyDo11
+					, '' TruyThuLyDo12
+					, '' TruyThuLyDo13
+					, '' TruyThuLyDo14
+					, '' TruyThuLyDo15
+					, '' BoiHoanDaoTao
+					, '' LyDoBoiHoanDT
+					, '0' TraVaoLuong
+					, '' ThangTraVaoLuong
+					--Rlog 19020
+					, '0' DaThanhToan
+					, '' AS NgayThanhToan
+					, '' SoTienTCTV
+					, '0' IsLock
+					, '' AttachMulti
+					,case when isnull(TerCalculate,0) = 1 and isnull(@IsThayDoiTien_TroCapTV,0)=1 then convert(BIT,1) else convert(BIT,0) end Editable,
+					'' ThongTinKhac1,
+					'' ThongTinKhac2,
+					'' ThongTinKhac3,
+					'' ThongTinKhac4,
+					'' ThongTinKhac5,
+					'' ThangTraTroCapThoiViec,					
+					dbo.fnconvertnumber(@SoNgayPhatViPhamHopDong) SoNgayPhatViPhamHopDong,	
+					dbo.fnconvertnumber(@PhatDoViPhamHopDong) PhatDoViPhamHopDong,
+					@PhatDoViPhamHopDong_LyDo PhatDoViPhamHopDong_LyDo,
+					@SoNgayBoiThuongDoViPham as SoNgayBoiThuongDoViPham,
+					dbo.fnconvertnumber(@SoTienBoiThuongDoViPham) as SoTienBoiThuongDoViPham,
+					@SoThangDaHuongTroCap as SoThangDaHuongTroCap,
+					/*Start  Coding RlogID: 15686 - PNJ - NhanHM4 - 02/12/2020*/
+					0 AS CongNoKeToan, 
+					0 AS CongNoNhanSu, 
+					0 AS CongNoHanhChinh, 
+					0 AS CongNoCNTT, 
+					0 AS CongNoTV, 
+					0 AS CongNoLAB, 
+					0 AS CongNoBGH
+					/*End    Coding RlogID: 15686 - PNJ - NhanHM4 - 02/12/2020*/
+					,@SoNamLVGoc as SoNamLVGoc
+					,@SoNgayNghiKhongHuongTroCap as SoNgayNghiKhongHuongTroCap
+					,'' SoNgayPhepBuConLai	
+					,'' TienPhepBu			
+				FROM Ter_tblTermination(NoLock)
+				WHERE EmpID = @EmpID
+			end
+		END	
+	
+END
+-------------------------------------------------------------------
+ELSE IF @Activity = 'Save'
+BEGIN
+
+	if(isnull(@FinalPaymentID,'') = '')
+	BEGIN
+		Select @FinalPaymentID = FinalPaymentID
+		from TER_tblFinalPayment (Nolock) 
+		where EmpID = @EmpID
+	END
+
+	--Tính toán tru?c khi luu xu?ng nè
+	DECLARE @SoThangTroCap		NUMERIC(5,2)
+	DECLARE	@SoThangTroCap_Nhan	NUMERIC(5,2)
+	DECLARE @PhanTramTinhThue	NUMERIC(5,2)
+	DECLARE @LuongCoDinh		MONEY
+	DECLARE @dThangTraVaoLuong	DATETIME
+	DECLARE @dThangTraTroCapThoiViec	DATETIME
+	DECLARE @NgayCongChuan		NUMERIC(8,2)
+	DECLARE @TiLeDongBHYT		FLOAT							
+	DECLARE @ThangTinh			NVARCHAR(10)
+	DECLARE @ThangTinh_CC		NVARCHAR(10)	
+	DECLARE @RankCapBacNV		INT
+	DECLARE @PhuCapKhoanThemLuong	NUMERIC(18,2)
+							
+	SET @dFromDate = CONVERT(DATETIME, @FromDate, 103)
+	SET @dToDate = CONVERT(DATETIME, @ToDate, 103)	
+	SET @dThangTraVaoLuong = CONVERT(DATETIME, '01/' + @ThangTraVaoLuong, 103)
+	set @dThangTraTroCapThoiViec = case when isnull(@ThangTraTroCapThoiViec, '') = '' then null else CONVERT(DATETIME, '01/' + @ThangTraTroCapThoiViec, 103) end
+	
+
+	--BaoNTQ: Nếu có check chọn thông số trên thì ở màn hình quyết toán thôi việc, 
+	--kiểm tra nếu có nhập thông tin "Tháng trả lương" và bảng lương tháng của nhân viên đã khóa hay chưa, 
+	--nếu đã khóa thì không cho tính quyết toán thôi việc
+	Declare @EditInfoTer BIT
+	set @EditInfoTer = (Select Top 1 isnull(EditInfoTer,0) From TER_tblSetupTER(nolock))
+	If(@EditInfoTer = 1)
+	Begin
+		If exists
+		(
+			Select top 1 1 
+			from dbo.PR_tblLockPayrollEmp(NoLock) A
+			Where A.EmpID = @EmpID 
+			And convert(datetime, '01/' + A.Month, 103) = @dThangTraVaoLuong
+			And A.IsLock = 1
+		)
+		Begin
+			Set @ReturnMess = case when @LanguageID = 'VN' then N'Không được tính khi kỳ lương trả quyết toán thôi việc đã khóa' else N'Do not count as wages any severance pay settlement Locked' end 
+			Return
+		End
+	End
+	--End
+	SELECT @dLastWorkingDate = CASE	WHEN @QTTV_NgayLamViecCuoiCung = 1 THEN LastWorkingDate
+									WHEN @QTTV_NgayHieuLuc = 1 THEN EffectDate
+									WHEN @QTTV_NgayHieuLucTru1 = 1 THEN DATEADD(DAY, -1, EffectDate)
+									WHEN @QTTV_NgayLVCCTru1Thang = 1 THEN DATEADD(MONTH,-1,LastWorkingDate) /*Tamnb rlog 22959*/
+									--WHEN @QTTV_NgayHieuLucTru1Thang = 1 THEN DATEADD(MONTH, -1, EffectDate)		--TriTV 21-01-2016 RLog 7494
+							   END,
+			@dNgayTinhCongChuan = CASE	WHEN @CC_NgayLamViecCuoiCung = 1 THEN LastWorkingDate
+										WHEN @CC_NgayHieuLuc = 1 THEN EffectDate
+										WHEN @CC_NgayHieuLucTru1 = 1 THEN DATEADD(DAY, -1, EffectDate)
+										WHEN @CC_NgayHieuLucTru1Thang = 1 THEN DATEADD(MONTH, -1, EffectDate)		--TriTV 21-01-2016 RLog 7494
+										When @CC_NgayLVCCTru1Thang = 1 THEN DATEADD(MONTH, -1, LastWorkingDate) /*Tamnb rlog 22959*/
+								  END
+	FROM dbo.TER_tblTermination (Nolock) 
+	WHERE EmpID = @EmpID 
+		
+	Select	@ThangTinh = dbo.PR_fnGetSalPeriodByDate(@dLastWorkingDate),
+			@ThangTinh_CC = dbo.PR_fnGetSalPeriodByDate(@dNgayTinhCongChuan)
+	
+	--QuangPNV: 18-12-2017, Ràng buộc không cho phép nhập quyết toán thôi việc trước tháng thôi việc
+	/*
+	if(@TraVaoLuong = 1)
+	BEGIN
+		Declare @dThangTinh date	
+		set @dThangTinh = convert(date,'01/' + @ThangTinh,103)	
+		if(@dThangTinh > @dThangTraVaoLuong)
+		begin
+			set @ReturnMess = case	when @LanguageID = 'VN' 
+									then N'Tháng trả vào lương phải lớn hơn hoặc bằng tháng thôi việc.'
+									else N'The payroll period must be greater than or equal to the month of termination'
+							  end
+			Return		 
+		end
+	END
+	*/
+	
+	Set @NgayCC_TinhLuong = case when dbo.fnGetInfoDonViTinhLuong(@EmpID,@dNgayTinhCongChuan) = 1 then @TempNgayCC else 1 END
+	DECLARE @CachTinh_TroCapThoiViec INT 
+	SET @CachTinh_TroCapThoiViec = (SELECT TOP(1) CachTinh_TroCapThoiViec FROM dbo.TER_tblSetupTER(nolock))	
+	-- Tính s? nam tính tr? c?p thôi vi?c
+	SET @SoThangTroCap = dbo.TER_fnTinhSoNamTroCapThoiViec(@FromDate,@Todate,@LastWorkingDate,'SoThangHuongTroCap',@SoThangKoBHTN)
+	
+	IF(@CachTinh_TroCapThoiViec =1)
+	Begin
+		SET @PhanTramTinhThue = dbo.TER_fnTinhSoNamTroCapThoiViec(@FromDate,@Todate,@LastWorkingDate,'PhanTramTinhThue',@SoThangKoBHTN)
+		Set @SoThangTroCap_Nhan = dbo.TER_fnTinhSoNamTroCapThoiViec(@FromDate,@Todate,@LastWorkingDate,'SoThangHuongTroCap_Nhan',@SoThangKoBHTN)
+	End
+	ELSE 
+	Begin
+		SET @PhanTramTinhThue = 0
+		Set @SoThangTroCap_Nhan = 1
+	End
+						
+	SET @ExchangeRate = dbo.fnCurrencyComCode('VND', @EmpID)
+	SET @ExchangeRate = ISNULL(@ExchangeRate, 1)
+			
+	if not exists(select top 1 1 from TER_tblSetupTER(NoLock) where IsThayDoiTien_TroCapTV = 1) or isnull(@SeveranceAllownce,0) = 0 -- or @SeveranceAllownce is null
+	begin
+		--quanbm2 20111216 : neu cho check vao Tinh tro cap thoi viec thi moi tinh nha
+		SET @SeveranceAllownce = 0
+		set @TroCapMatViec = 0
+		if exists(select top 1 1 from dbo.TER_tblTermination(NoLock) where EmpID = @EmpID and TerCalculate = 1)
+		begin
+			--Theo RLog Yusen_10022014_NhienTBS: Bổ sung xử lý cho trường hợp thâm niên dưới 1 năm. Nếu thâm niên dưới 1 năm thì trợ cấp thôi việc bằng 0.
+			--Điều 48. Trợ cấp thôi việc
+			print @ExchangeRate
+			SET @SeveranceAllownce = case when isnull(@SoNamLV, 0) >= 1 then 
+																				Round((@AgvSalary * @SoThangTroCap * @ExchangeRate*@SoThangTroCap_Nhan)
+																				/(CASE isnull(@CachTinh_TroCapThoiViec,0) WHEN 0 THEN 2.0
+																												WHEN 1 THEN 1.0 
+																					END)
+																				,0)
+																		else 0 end
+		end
+	end
+	
+	if exists(select top 1 1 from dbo.TER_tblTermination(NoLock) where EmpID = @EmpID and TinhHoTroNghiHuu = 1)
+	begin/*Tinh giong Tro cap thoi viec*/
+		SET @KhoanHoTroNghiHuu = case when isnull(@SoNamLV, 0) >= 1 then 
+																			Round((@AgvSalary * @SoThangTroCap * @ExchangeRate*@SoThangTroCap_Nhan)
+																			/(CASE isnull(@CachTinh_TroCapThoiViec,0) WHEN 0 THEN 2.0
+																											WHEN 1 THEN 1.0 
+																				END)
+																			,0)
+																	else 0 end
+	end
+	
+	if exists(select top 1 1 from dbo.TER_tblTermination(NoLock) where EmpID = @EmpID and TinhTroCapMatViec = 1)
+	begin
+		--S? nam thâm niên * Luong co b?n
+		if exists(select top 1 1 from dbo.TER_tblSetupTER(NoLock) where TinhTroCapMatViec = 1 and CachTinhTroCapMatViec = '2')
+			set @TroCapMatViec = @AgvSalary * @SoThangTroCap * @ExchangeRate
+		--S? nam thâm niên * Luong co b?n BHXH
+
+		else if exists(select top 1 1 from dbo.TER_tblSetupTER(NoLock) where TinhTroCapMatViec = 1 and CachTinhTroCapMatViec = '3')
+		Begin
+			declare @Luong6Thang MONEY, @SoThang int
+			set @Luong6Thang = 
+					dbo.SI_fnGetBasicSalaryBH_New(dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-1,@dLastWorkingDate),103),7)),dateadd(mm,-1,@dLastWorkingDate),@EmpID,'','','','','','')
+				+ dbo.SI_fnGetBasicSalaryBH_New(dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-2,@dLastWorkingDate),103),7)),dateadd(mm,-2,@dLastWorkingDate),@EmpID,'','','','','','') 
+				+ dbo.SI_fnGetBasicSalaryBH_New(dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-3,@dLastWorkingDate),103),7)),dateadd(mm,-3,@dLastWorkingDate),@EmpID,'','','','','','') 
+				+ dbo.SI_fnGetBasicSalaryBH_New(dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-4,@dLastWorkingDate),103),7)),dateadd(mm,-4,@dLastWorkingDate),@EmpID,'','','','','','') 
+				+ dbo.SI_fnGetBasicSalaryBH_New(dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-5,@dLastWorkingDate),103),7)),dateadd(mm,-5,@dLastWorkingDate),@EmpID,'','','','','','') 
+				+ dbo.SI_fnGetBasicSalaryBH_New(dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-6,@dLastWorkingDate),103),7)),dateadd(mm,-6,@dLastWorkingDate),@EmpID,'','','','','','') 
+			
+			set @SoThang = 
+				  case  when dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-1,@dLastWorkingDate),103),7) )>0  then 1 else 0 end
+				+ case  when dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-2,@dLastWorkingDate),103),7) )>0  then 1 else 0 end
+				+ case  when dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-3,@dLastWorkingDate),103),7) )>0  then 1 else 0 end
+				+ case  when dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-4,@dLastWorkingDate),103),7) )>0  then 1 else 0 end
+				+ case  when dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-5,@dLastWorkingDate),103),7) )>0  then 1 else 0 end
+				+ case  when dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-6,@dLastWorkingDate),103),7) )>0  then 1 else 0 end
+		
+			set @AgvSalary = case when @SoThang > 0 then @Luong6Thang / @SoThang else 0 end
+			set @TroCapMatViec = @AgvSalary * @SoThangTroCap * @ExchangeRate
+			
+		End
+
+		--Min( Số nam thâm niên * Luong co b?n; 2 * Luong co b?n)
+		else if exists(select top 1 1 from dbo.TER_tblSetupTER(nolock) where TinhTroCapMatViec = 1 and CachTinhTroCapMatViec = '4')
+		Begin
+			set @TroCapMatViec = dbo.Max(@AgvSalary * @SoThangTroCap * @ExchangeRate, @AgvSalary * @ExchangeRate * 2)
+		End
+		else if  exists(select top 1 1 from dbo.TER_tblSetupTER(nolock) where TinhTroCapMatViec = 1 and CachTinhTroCapMatViec = '5')
+		Begin
+			declare @TongLuong6Thang MONEY, @TongSoThang int, @HeSoTroCapMatViec int
+			select top 1 @HeSoTroCapMatViec = ParamValue from SYS_tblParameters(nolock) where ParamName = 'TER_HeSoTroCapMatViec'
+			--set @TongLuong6Thang = 
+			--		dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-1,@dLastWorkingDate),103),7))
+			--	+ dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-2,@dLastWorkingDate),103),7))
+			--	+ dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-3,@dLastWorkingDate),103),7))
+			--	+ dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-4,@dLastWorkingDate),103),7))
+			--	+ dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-5,@dLastWorkingDate),103),7)) 
+			--	+ dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-6,@dLastWorkingDate),103),7))
+			
+			--set @TongSoThang = 
+			--	  case  when dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-1,@dLastWorkingDate),103),7))>0  then 1 else 0 end
+			--	+ case  when dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-2,@dLastWorkingDate),103),7))>0  then 1 else 0 end
+			--	+ case  when dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-3,@dLastWorkingDate),103),7))>0  then 1 else 0 end
+			--	+ case  when dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-4,@dLastWorkingDate),103),7))>0  then 1 else 0 end
+			--	+ case  when dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-5,@dLastWorkingDate),103),7))>0  then 1 else 0 end
+			--	+ case  when dbo.[fnGetBasicSalary_QTTV](@EmpID,right(convert(NVARCHAR(10),dateadd(mm,-6,@dLastWorkingDate),103),7))>0  then 1 else 0 end
+		
+			set @AgvSalary = dbo.PR_fnGetAvgSalary_Thang_QTTV(@EmpID, 4, 'Luong', right(convert(NVARCHAR(10),dateadd(mm,-6,@dLastWorkingDate),103),7), right(convert(NVARCHAR(10),dateadd(mm,-1,@dLastWorkingDate),103),7),@QTTV_AVGSalary_ChiaThangCoLuong)         
+			set @TroCapMatViec = @HeSoTroCapMatViec * @AgvSalary
+			
+		end
+	End
+
+	
+	SET @Severance_TaxPercent = @SeveranceAllownce * @PhanTramTinhThue/100
+	--DanL : 28/07/2011 ==>L?y thông s? "Có tính phép thôi vi?c hay không"
+
+	--QuangPNV :08/03/2011: Fix cung LSWorkPointTypeCode = '0001' 
+	Select Top 1 @LSWorkPointID = W.LSWorkPointID  
+	From dbo.LS_tblWorkPoint (Nolock) W
+	left join dbo.LS_tblWorkPointType (Nolock) T on W.LSWorkPointTypeID=T.LSWorkPointTypeID
+	where T.LSWorkPointTypeCode = '0001'			
+
+	--DanL : 28/07/2011 ==> D?a vào thông s? "Có tính phép thôi vi?c hay không" d? tính phép thôi vi?c hay không
+	if isnull(@ApplyTerminationLeave,1)=1 --M?c d?nh là có tính phép thôi vi?c
+	begin
+		select top 1 @SoNgayLamViec = DATEDIFF(day, @StartDate, @dLastWorkingDate) + 1
+
+		--TriTV RLog 7924
+		if(@LeaveDayCondition = 1 and @SoNgayLamViecHuongPhep <> 0 and @SoNgayLamViec < @SoNgayLamViecHuongPhep)
+		begin						
+			set @PhepDaNghi = dbo.TS_fnTinhPhepDaNghi_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate,@LSWorkPointID)						
+			SET @LeaveDays = 0 - @PhepDaNghi
+		end
+		--End TriTV RLog 7924
+		else
+		BEGIN
+		--Quanbm2 : neu hok cho nhap thi moi tu dong tinh So ngay phep 20110914 
+		--hoac lan dau tien hok nhap ma nhan tinh lun
+			if (	@IsLeaveDays = 0 
+					or (@IsLeaveDays = 1 and @LeaveDays IS NULL --isnull(@LeaveDays, 0) = 0 ThoLD6: Chỉnh sửa lại điệu kiện này để cho phép lưu 0
+							and not exists (select top 1 1 from TER_TBLFINALPAYMENT (Nolock) WHERE EmpID = @EmpID and IsLock = 1)
+							and (isnull(@IsSave,0) = 0 or (@IsSave = 1 and @IsHangLoat = 1 and @IsAdd = 1))
+						)
+				)	
+			Begin							
+				--Neu la nghi phep theo gio thi ap dung cach nay 
+				if exists (select top 1 1 from TS_tblLeaveRecordHour (Nolock))
+				begin
+					Print N'Nghỉ phép theo giờ'
+					--Dang tinh theo phut
+					--TriTV 11-08-2015 RLog 6316
+					if(@QuyetToanPhepThoiViecNVThuViec = 1 and isnull(@LSLoaiNhanVienCode,'') = 'NVTVI') --Nhân viên thử việc					
+						SET @LeaveDays =	dbo.TS_fnTinhPhepConLai_TT_ThuViec(@EmpID, @StartDate, @dLastWorkingDate, null, null, null, null, null) - 
+											dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+					else
+						SET @LeaveDays =	dbo.TS_fnTinhPhepConLai_TheoGio(@EmpID, @dLastWorkingDate, @dLastWorkingDate, @LSWorkPointID) - 
+											dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+					
+					set @LeaveDays = (CONVERT(FLOAT,@LeaveDays) / 60.00) / @TMS_TotalNormal
+				end
+				--Neu la nghi phep theo ngay thi ap dung cach nay
+				else
+				begin
+					Print N'Nghỉ phép theo ngày'
+					IF @ProratePhepThamNien = 1
+					BEGIN
+						SET @LeaveDays = dbo.[TS_fnTinhPhepConLai_Prorate](@EmpID, @dLastWorkingDate, @dLastWorkingDate, @LSWorkPointID) - 
+										 dbo.[TS_fnLayPhepTamUng_TT](@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+					END
+					--TriTV 11-08-2015 RLog 6316
+					ELSE IF Exists(Select top 1 1 From [dbo].[TER_tblSetupTER](nolock) where PhepToiDa = 1)
+						SET @LeaveDays = dbo.TS_fnTinhPhepConLai_QuyetToanThoiViec(@EmpID, @dLastWorkingDate, @dLastWorkingDate, @LSWorkPointID) - dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+					else
+					begin
+						/*	Rlog ID : 5332*/
+						if(@QuyetToanPhepThoiViecNVThuViec = 1 and isnull(@LSLoaiNhanVienCode,'') = 'NVTVI') --Nhân viên thử việc
+							SET @LeaveDays =	dbo.TS_fnTinhPhepConLai_TT_ThuViec(@EmpID, @StartDate, @dLastWorkingDate, null, null, null, null, null) - 
+												dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+						else
+							SET @LeaveDays =	dbo.TS_fnTinhPhepConLai_TT(@EmpID, @dLastWorkingDate, @dLastWorkingDate, @LSWorkPointID) - 
+												dbo.TS_fnLayPhepTamUng_TT(@EmpID,@dLastWorkingDate,@dLastWorkingDate)
+					end
+				end 
+			end
+			--else if (@IsSave = 1) /* QuangPNV: Lấy lại những gì đã mất */
+			--BEGIN
+			--	Select	@LeaveDays = LeaveDays					
+			--	from TER_TBLFINALPAYMENT (Nolock) where FinalPaymentID = @FinalPaymentID
+			--END
+		end
+	End
+
+	if @LeaveDays is null set @LeaveDays = 0
+
+	set @LeaveDays = dbo.TS_fnConvertDecimalAllowTMS(@LeaveDays,@LamTronSoThapPhan,0)						
+	
+	--Quanbm 20111018 : neu co thiet lap theo ngay cong chuan chung thi lay cong chuan chung, nguoc lai lay ngay cong theo thang
+	if (isnull(@UsedTMS_WorkDaysStandard, 0) = 1)
+		set @NgayCongChuan = @TempNgayCC
+	else
+	begin
+		set @NgayCongChuan = [dbo].[TS_fnLayCongChuan](@EmpID, Right(@ThangTinh_CC,4), Left(@ThangTinh_CC,2), 1)
+	end
+
+	if (isnull(@NgayCongChuan, 0) = 0)
+	begin
+		--set @ReturnMess = N'Chua thi?t l?p ngày công chu?n cho tháng ngh? vi?c!'
+		set @ReturnMess = dbo.SYS_fnGetMess('Ter_0014',@LanguageID)
+		Return
+	End
+	
+	--PRINT 'SAVE TER_TBLFINALPAYMENT'
+	--SET  @dLastWorkingDate = CONVERT(DATETIME,'15/12/2024',103)
+	
+	--QuangPNV: Luong co dinh theo ngay or theo thang
+	if (isnull(@LuongTinhTienPhep, 'LuongBinhQuanGiaQuyen') = 'LuongBinhQuanGiaQuyen')
+	BEGIN
+	SET @LuongCoDinh = 
+		(
+			dbo.fnGetBasicSalary_Termination(@EmpID,@ThangTinh) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,@ThangTinh)
+		) * @NgayCC_TinhLuong
+
+	   
+	END
+	
+	else if(@LuongTinhTienPhep = 'LuongBinhQuanGiaQuyen6Thang' /*or @LuongTinhTienPhep = 'LuongBinhQuanGiaQuyen6ThangTheoNgayThucTe'*/)
+	BEGIN
+   
+			declare @LuongBQ6Thang MONEY, @CountThang int
+			set @LuongBQ6Thang = 
+			(dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-1,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-1,@dLastWorkingDate)))) * @NgayCC_TinhLuong
+			+(dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-2,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-2,@dLastWorkingDate)))) * @NgayCC_TinhLuong
+			+(dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-3,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-3,@dLastWorkingDate)))) * @NgayCC_TinhLuong
+			+(dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-4,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-4,@dLastWorkingDate)))) * @NgayCC_TinhLuong
+			+(dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-5,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-5,@dLastWorkingDate)))) * @NgayCC_TinhLuong
+			+(dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-6,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-6,@dLastWorkingDate)))) * @NgayCC_TinhLuong
+
+			set @CountThang = 
+				case  when (dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-1,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-1,@dLastWorkingDate))))>0  then 1 else 0 end
+				+ case  when (dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-2,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-2,@dLastWorkingDate))))>0  then 1 else 0 end
+				+ case  when (dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-3,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-3,@dLastWorkingDate))))>0  then 1 else 0 end
+				+ case  when (dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-4,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-4,@dLastWorkingDate))))>0  then 1 else 0 end
+				+ case  when (dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-5,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-5,@dLastWorkingDate))))>0  then 1 else 0 end
+				+ case  when (dbo.fnGetBasicSalary_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-6,@dLastWorkingDate))) + dbo.fnGetBasicSalaryRate_Termination(@EmpID,dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-6,@dLastWorkingDate))))>0  then 1 else 0 end
+		
+			set @LuongCoDinh = case when @CountThang > 0 then @LuongBQ6Thang / @CountThang else 0 end
+			
+		END
+       
+    else if(@LuongTinhTienPhep = 'LuongBinhQuanGiaQuyen6ThangTheoNgayThucTe')
+	BEGIN
+		--TriTV 24-04-2019 Doi theo yeu cau TiepDK, RLog 8649
+		SET @LuongCoDinh = dbo.PR_fnGetAvgSalary_Thang_QTTV(@EmpID, 4, 'Luong', dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-6,@dLastWorkingDate)), dbo.PR_fnGetSalPeriodByDate(dateadd(mm,-1,@dLastWorkingDate)), @QTTV_AVGSalary_ChiaThangCoLuong)	
+		
+	END
+	else if @LuongTinhTienPhep ='LuongLienKeThangThoiViec'
+	begin
+		--Bomnv RlogID:16217 -CALOFIC - 19/04/2021
+		Declare @ThangThoiViec date = (select top 1 EffectDate from TER_tblTermination (Nolock) where EmpID = @EmpID order by EffectDate desc)
+		if @ThangThoiViec is not null
+		begin
+			set @LuongCoDinh = dbo.fnGetBasicSalary_MoiNhat_Termination(@EmpID, dateadd(month, -1, @ThangThoiViec))
+		end	
+		
+	end
+	ELSE
+    
+	BEGIN
+	    SET @LuongCoDinh = dbo.fnGetBasicSalary_MoiNhat_Termination(@EmpID, @dLastWorkingDate)
+	END
+	
+	--end quanbm s?a
+	
+	--Quanbm2 : neu hok cho nhap thi moi tu dong tinh Tien phep 20110914
+	if (@IsPaymentLeave = 0
+			or (@IsPaymentLeave = 1 and isnull(@PaymentLeave, 0) = 0
+					and not exists (select top 1 1 from TER_TBLFINALPAYMENT(NoLock) WHERE EmpID = @EmpID and IsLock = 1)
+				)
+		) and ((@IsHangLoat = 0 /*and @FinalPaymentID is NULL --fix issue PHYTO_IHRP_2025_PM-250*/) or (@IsHangLoat = 1 and @IsAdd = 1))
+	Begin
+		-- Ti?n phép : 
+		--1 : Luong theo ngày : (LuongCanBan theo ngay  + Phu cap theo ngay) * Ngayphepdu 
+		--2 : Luong theo tháng: (LuongCanBan theo thang + Phu cap theo thang) * Ngayphepdu / NgayCongChuan	
+		Declare @LuongNgayPhep BIT,@PR_fnPCTheoLuong_Thang MONEY
+
+		set @LuongNgayPhep = isnull((Select LuongNgayPhep From TER_tblSetupTER(NoLock)), 0)
+		
+		if(@IsPhuCapTheoLuong = 0)	
+		begin			
+			--BaoNTQ
+			if(@LuongNgayPhep = 0)
+				set @LeaveSalaryDay = case when isnull(@NgayCongChuan, 0) = 0 then 0 else @LuongCoDinh * 1.0 /@NgayCongChuan end
+			else
+				set @LeaveSalaryDay = case when isnull(@NgayCongChuan, 0) = 0 then 0 else @LuongCoDinh * 1.0 * 12 / 52 / 5 end
+			--End BaoNTQ
+			SET @PaymentLeave = @LeaveDays * @LeaveSalaryDay			
+		END
+		else	
+		begin
+			SET @PR_fnPCTheoLuong_Thang = dbo.[PR_fnPCTheoLuong_Thang](@EmpID, @ThangTinh,@ThangTinh)
+			
+			--BaoNTQ
+			if @LuongNgayPhep = 0
+				set @LeaveSalaryDay = case when isnull(@NgayCongChuan, 0) = 0 then 0 else (@LuongCoDinh + @PR_fnPCTheoLuong_Thang) * 1.0 /@NgayCongChuan end
+			else
+				set @LeaveSalaryDay = case when isnull(@NgayCongChuan, 0) = 0 then 0 else (@LuongCoDinh + @PR_fnPCTheoLuong_Thang) * 1.0 *12 / 52 / 5 end
+			--End BaoNTQ
+			SET @PaymentLeave = @LeaveDays * @LeaveSalaryDay
+		end	
+	End
+	
+	if @IsPaymentLeave = 0 and ((@IsHangLoat = 0 and @FinalPaymentID is null) or (@IsHangLoat = 1 and @IsAdd = 1))
+	Begin
+		if exists(select top 1 1 from TER_TBLFINALPAYMENT where EmpID = @EmpID)
+		begin
+			set @LuongNgayPhep = isnull((Select LuongNgayPhep From TER_tblSetupTER(NoLock)), 0)
+			
+			if(@IsPhuCapTheoLuong = 0)	
+			begin
+				--BaoNTQ
+				if(@LuongNgayPhep = 0)
+					set @LeaveSalaryDay = case when isnull(@NgayCongChuan, 0) = 0 then 0 else @LuongCoDinh * 1.0 /@NgayCongChuan end
+				else
+					set @LeaveSalaryDay = case when isnull(@NgayCongChuan, 0) = 0 then 0 else @LuongCoDinh * 1.0 * 12 / 52 / 5 end
+				--End BaoNTQ
+				SET @PaymentLeave = @LeaveDays * @LeaveSalaryDay
+			END
+			else	
+			begin
+				SET @PR_fnPCTheoLuong_Thang = dbo.[PR_fnPCTheoLuong_Thang](@EmpID, @ThangTinh,@ThangTinh)
+				--BaoNTQ
+				if @LuongNgayPhep = 0
+					set @LeaveSalaryDay = case when isnull(@NgayCongChuan, 0) = 0 then 0 else (@LuongCoDinh + @PR_fnPCTheoLuong_Thang) * 1.0 /@NgayCongChuan end
+				else
+					set @LeaveSalaryDay = case when isnull(@NgayCongChuan, 0) = 0 then 0 else (@LuongCoDinh + @PR_fnPCTheoLuong_Thang) * 1.0 *12 / 52 / 5 end
+				--End BaoNTQ
+				SET @PaymentLeave = @LeaveDays * @LeaveSalaryDay
+			end	
+		end
+	End
+	/*Rlog 24374*/
+	DECLARE 
+		@LuongBHXH NUMERIC(18,2) = 0,
+        @PhuCapBHXH NUMERIC(18,2) = 0
+	
+	SELECT TOP 1 
+		@LuongBHXH = ISNULL(dbo.sys_fnGetD(Salary),0)
+	from SI_tblSalarySI(NoLock)
+	where EmpID = @EmpID
+	and FromDate <= @dLastWorkingDate
+	Order by FromDate DESC
+
+	SELECT @PhuCapBHXH = SUM(CONVERT(NUMERIC(18, 2), ISNULL(REPLACE(dbo.sys_fnGetD(Amount), ',', ''), 0)))
+	from SI_tblSalarySI_Add(NoLock)
+	where EmpID = @EmpID
+	AND (
+		(ToDate IS NULL AND CONVERT(DATE,@dLastWorkingDate,103) >= FromDate) OR 
+		(ToDate IS NOT NULL AND CONVERT(DATE,@dLastWorkingDate,103) BETWEEN FromDate AND ToDate)
+	)
+
+	IF @LuongDongBHXH = 1
+	BEGIN
+		SET @LeaveSalaryDay = @LuongBHXH
+		SET @PaymentLeave = @LeaveDays * @LeaveSalaryDay
+	END
+
+	IF @PhuCapDongBHXH = 1
+	BEGIN
+		SET @LeaveSalaryDay = ISNULL(@LuongBHXH,0) + ISNULL(@PhuCapBHXH,0)
+		SET @PaymentLeave = @LeaveDays * @LeaveSalaryDay
+	END
+
+	IF @NguonTinhBinhQuan = N'LuongVaCacPhuCapDongBaoHiem'
+	BEGIN
+		SET @AgvSalary = ISNULL(@LuongBHXH,0) + ISNULL(@PhuCapBHXH,0)
+	END
+	/*End Rlog 24374*/
+	--0.45 se lam tham so thiet lap sau
+	select @BHYT = ISNULL(a.SoThangTraThe,0) * (/*rlogID:14021*/isnull([dbo].[SI_fngetInsRate](a.EmpID,@dLastWorkingDate,1,2,null,null,null),0) + isnull([dbo].[SI_fngetInsRate](a.EmpID,@dLastWorkingDate,2,2,null,null,null),0)) * ISNULL(b.Salary,0) / 100
+	from TER_tblTermination(NoLock) a
+		left join 
+		(	
+			select top 1 EmpID, --Salary
+				--them muc vuot tran
+				dbo.SI_fnGetBasicSalaryBH_New(dbo.SI_fnGetBasicSalarySI_ThamSo(@EmpID,right(convert(NVARCHAR(10), @dLastWorkingDate,103),7)),@dLastWorkingDate,@EmpID,'','','','','','') Salary
+			from SI_tblSalarySI(NoLock)
+			where EmpID = @EmpID
+			      and FromDate <= @dLastWorkingDate
+			Order by FromDate desc
+		)b on a.EmpID = b.EmpID
+		where a.EmpID = @EmpID
+		
+	--QuangPNV: Cho phép chỉnh sửa truy thu tiền bồi hoàn đào tạo => Không có liên qua gì đến việc tự động tính hoặc lấy tiền bồi hoàn => QuangPNV sẽ bỏ đoạn code kiểm tra này ra
+	---TruyenNG:14/09/2011
+	--If Exists(Select top 1 1 from TER_tblSetupTER(nolock) Where TruyThuBoiHoanDaoTao = 0)
+	--Begin
+	if(isnull(@KoTinhQuyetToan_BoiHoanDaoTao,0)=0)
+	begin
+		select @BoiHoanDaoTao = sum(Amount)
+		from TR_tblBoiHoanDaoTao(NoLock)
+		where EmpID = @EmpID
+	end
+	--End
+	
+	--End tính toán
+	
+	----------------
+	Declare @LuongCB money
+	-- Thay đôi Encrypt-Decrypt - NhanHM4 - 31/01/2019	
+	select top 1 @LuongCB = 
+				convert(float,isnull(dbo.sys_fnGetD(BasicSalary),0))
+				+ convert(float,isnull(dbo.sys_fnGetD(OtherSalary1),0))
+				+ convert(float,isnull(dbo.sys_fnGetD(OtherSalary2),0))
+	from PR_tblSalary (Nolock)
+	where EmpID = @EmpID and FromDate <= @dLastWorkingDate
+	order by FromDate desc
+
+	set @PhatDoViPhamHopDong = @SoNgayPhatViPhamHopDong*@LuongCB/26
+	
+	--QuangPNV, RlogID = 14171
+	set @SoTienBoiThuongDoViPham = @SoNgayBoiThuongDoViPham * round(@LeaveSalaryDay,0)
+		
+		/*Tammb rlog 22959*/
+	DECLARE @CongPhuCapCach2 BIT,@dKhoanThemNV NUMERIC(18,2), @dKhoanThemDV NUMERIC(18,2),@dLSAddSalaryIDNV NVARCHAR(MAX),@dLSAddSalaryIDDV int, @KhongCongPhuCapCach2VaoLuongBinhQuan BIT
+	Select  @CongPhuCapCach2=ISNULL(CongPhuCapCach2,0),
+			@KhongCongPhuCapCach2VaoLuongBinhQuan = ISNULL(KhongCongPhuCapCach2VaoLuongBinhQuan,0) --HOATT81 RLOGID 23853
+	From TER_tblSetupTER(nolock)
+	DECLARE @TER_NgayChotLuongBinhQuan NVARCHAR(10),@TER_NgayChotLuongTinhTienPhep INT /*Tamnb rlog 22959*/
+	SELECT @TER_NgayChotLuongBinhQuan =  isnull(ParamValue, '') 
+	from SYS_tblParameters (NOLOCK) where ParamName = 'TER_NgayChotLuongBinhQuan'
+	
+	IF @CongPhuCapCach2 = 1 or ((@IsHangLoat = 0 and @FinalPaymentID is null) or (@IsHangLoat = 1 and @IsAdd = 1))
+	BEGIN
+		--select @dNgayTinhCongChuan, @TER_NgayChotLuongBinhQuan
+		IF ISNULL(@TER_NgayChotLuongBinhQuan,'') <> ''
+		BEGIN
+			SET	@dNgayTinhCongChuan = DATEFROMPARTS(YEAR(@dNgayTinhCongChuan), MONTH(@dNgayTinhCongChuan), @TER_NgayChotLuongBinhQuan) /*Dựa vào ngày thôi việc để tính lương*/
+		END
+		
+		IF OBJECT_ID('tempdb..#tmp_TblMonthFT') IS NOT NULL DROP TABLE #tmp_TblMonthFT
+		CREATE TABLE #tmp_TblMonthFT (FromDate datetime, ToDate DATETIME)
+		
+		declare @FDate datetime set @FDate = dateadd(day, 1, DATEADD(month,-1,@dNgayTinhCongChuan))
+		declare @TDate datetime set @TDate = @dNgayTinhCongChuan
+		while @FDate > DATEADD(month,-6,@dNgayTinhCongChuan)
+		begin
+			insert into #tmp_TblMonthFT (FromDate, ToDate) values (@FDate, @TDate)
+			set @TDate = dateadd(day,-1,@FDate)
+			set @FDate = dateadd(day, 1, DATEADD(month,-1,@TDate))
+		end
+
+		--select * from #tmp_TblMonthFT
+		SELECT 
+		        A.LSAddSalaryID,
+		         SUM(CAST(dbo.SYS_fnGetD(A.Amount) AS DECIMAL(18,2))) AS AmountNV
+		into #tmpempaddsalary1
+		FROM PR_tblAddSalaryEmp A WITH (NOLOCK)
+		left join #tmp_TblMonthFT(nolock) FT on (A.FromDate between FT.FromDate and FT.ToDate) or (FT.FromDate between A.FromDate and isnull(A.ToDate,'2100-01-01'))
+		LEFT JOIN LS_tblAdd_Salary  L WITH (NOLOCK) ON A.LSAddSalaryID = L.LSAddSalaryID
+		WHERE A.EmpID = @EmpID
+		    --AND A.FromDate < @dNgayTinhCongChuan
+		    --AND (A.ToDate IS NULL OR A.ToDate >= @dNgayTinhCongChuan)
+		    AND L.AllowancePR = 1
+		GROUP BY A.LSAddSalaryID
+
+		set @dLSAddSalaryIDNV = ''
+		SELECT top 1000 @dLSAddSalaryIDNV =  @dLSAddSalaryIDNV + '$' + convert(nvarchar(12),LSAddSalaryID)
+		from  #tmpempaddsalary1(NoLock) A 
+
+		select A.LSAddSalaryID, ROW_NUMBER() over(order by A.LSAddSalaryID) as STT, case when A.ToDate is null then FT.ToDate else A.ToDate end ToDate
+		into #tmporgaddsalary1
+		from PR_tblAddSalaryOrg(NoLock) A 
+		left join dbo.split(@dLSAddSalaryIDNV,'$') B on A.LSAddSalaryID = B.items
+		left join #tmp_TblMonthFT(nolock) FT on (A.FromDate between FT.FromDate and FT.ToDate) or (FT.FromDate between A.FromDate and isnull(A.ToDate,'2100-01-01'))
+		left join LS_tblAdd_Salary (NOLOCK) L on A.LSAddSalaryID = L.LSAddSalaryID
+		where 1=1
+		AND  L.AllowancePR=1 and B.items is null
+
+		declare @AddSalaryOrg1 nvarchar(1000) set @AddSalaryOrg1 = ''
+		declare @i1 int set @i1 = 1
+		declare @max1 int select @max1 = count(*) from #tmporgaddsalary1(nolock)
+
+		while @i1 <= isnull(@max1,0)
+		begin
+			declare @dDate datetime
+			select @dLSAddSalaryIDDV = LSAddSalaryID, @dDate = ToDate from #tmporgaddsalary1(nolock) where STT = @i1
+			--select @EmpID, @dDate, @dLSAddSalaryIDDV
+			DECLARE @AddSalaryOrgID1	INT
+			SET @AddSalaryOrgID1 = [dbo].[PR_fnAddSalaryOrg_New](@EmpID, @dDate, @dLSAddSalaryIDDV)
+
+			if isnull(@AddSalaryOrgID1,'') <> ''
+				set @AddSalaryOrg1 =  @AddSalaryOrg1 + '$' + convert(nvarchar(12),@AddSalaryOrgID1)
+
+			set @i1 = @i1 + 1
+		end
+		--code cũ
+		--select * from #tmporgaddsalary1
+		--select @AddSalaryOrg1
+
+		;WITH NV AS
+		(
+		    SELECT 
+		        A.LSAddSalaryID, A.AmountNV
+		    FROM #tmpempaddsalary1 A WITH (NOLOCK)
+		),
+		DV AS
+		(
+		    SELECT 
+		        A.LSAddSalaryID,
+		        SUM(CAST(dbo.SYS_fnGetD(A.Amount) AS DECIMAL(18,2))) AS AmountDV
+		    FROM PR_tblAddSalaryOrg A WITH (NOLOCK)
+			left join #tmp_TblMonthFT(nolock) FT on (A.FromDate between FT.FromDate and FT.ToDate) or (FT.FromDate between A.FromDate and isnull(A.ToDate,'2100-01-01'))
+			inner join (
+				select items
+				from dbo.split(@AddSalaryOrg1,'$') 
+				group by items
+		    )B on A.AddSalaryOrgID = B.items
+		    GROUP BY A.LSAddSalaryID
+		)
+		SELECT @PhuCapKhoanThemLuong = (ISNULL(SUM(COALESCE(NV.AmountNV, DV.AmountDV)), 0)/6.00)
+		FROM NV
+		FULL OUTER JOIN DV
+		ON NV.LSAddSalaryID = DV.LSAddSalaryID;
+		
+		--HOATT81 RLOGID 23853
+		IF @KhongCongPhuCapCach2VaoLuongBinhQuan = 0 
+		BEGIN
+			SET @AgvSalary = @AgvSalary + @PhuCapKhoanThemLuong
+		END
+		
+		SET @SeveranceAllownce = case when isnull(@SoNamLV, 0) >= 1 then 
+																				Round((@AgvSalary * @SoThangTroCap * @ExchangeRate*@SoThangTroCap_Nhan)
+																				/(CASE isnull(@CachTinh_TroCapThoiViec,0) WHEN 0 THEN 2.0
+																												WHEN 1 THEN 1.0 
+																					END)
+																				,0)
+																		else 0 end
+		--HOATT81 RLOGID 23853
+		SET @BasicSalary = @BasicSalary
+		
+		IF EXISTS (SELECT TOP 1 1 FROM  PR_tblAddSalaryEmp(NoLock) A left join LS_tblAdd_Salary (NOLOCK) L on A.LSAddSalaryID = L.LSAddSalaryID
+		where A.EmpID = @EmpID AND A.FromDate < @dNgayTinhCongChuan
+		AND  L.AllowancePR=1  )
+		BEGIN
+			SELECT CONVERT(FLOAT,dbo.SYS_fnGetD(A.Amount)) as Amount,A.LSAddSalaryID
+			into #tmpempaddsalary
+			from  PR_tblAddSalaryEmp(NoLock) A 
+			left join LS_tblAdd_Salary (NOLOCK) L on A.LSAddSalaryID = L.LSAddSalaryID
+			--where A.EmpID = @EmpID AND (A.FromDate < @dNgayTinhCongChuan AND A.ToDate >= @dNgayTinhCongChuan)
+			where A.EmpID = @EmpID AND (A.FromDate < @dNgayTinhCongChuan AND (A.ToDate is null or A.ToDate >= @dNgayTinhCongChuan))
+			AND  L.AllowancePR=1
+
+			SELECT @dKhoanThemNV =  ISNULL(CONVERT(NUMERIC(18,2),SUM(Amount),2),0)
+			from  #tmpempaddsalary(NoLock) A
+			
+			set @dLSAddSalaryIDNV = ''
+			SELECT top 1000 @dLSAddSalaryIDNV =  @dLSAddSalaryIDNV + '$' + convert(nvarchar(12),LSAddSalaryID)
+			from  #tmpempaddsalary(NoLock) A 
+		END
+	
+		IF EXISTS (SELECT TOP 1 1 FROM  PR_tblAddSalaryOrg(NoLock) A left join LS_tblAdd_Salary (NOLOCK) L on A.LSAddSalaryID = L.LSAddSalaryID
+		WHERE  A.FromDate < @dNgayTinhCongChuan
+		AND  L.AllowancePR=1 )
+		BEGIN
+			
+			select A.LSAddSalaryID, ROW_NUMBER() over(order by A.LSAddSalaryID) as STT
+			into #tmporgaddsalary
+			from PR_tblAddSalaryOrg(NoLock) A 
+			left join dbo.split(@dLSAddSalaryIDNV,'$') B on A.LSAddSalaryID = B.items
+			left join LS_tblAdd_Salary (NOLOCK) L on A.LSAddSalaryID = L.LSAddSalaryID
+			--where ( A.FromDate < @dNgayTinhCongChuan AND A.ToDate >=@dNgayTinhCongChuan)
+			where ( A.FromDate < @dNgayTinhCongChuan AND (A.ToDate is null or A.ToDate >= @dNgayTinhCongChuan))
+			AND  L.AllowancePR=1 and B.items is null
+
+			declare @AddSalaryOrg nvarchar(1000) set @AddSalaryOrg = ''
+			declare @i int set @i = 1
+			declare @max int select @max = count(*) from #tmporgaddsalary(nolock)
+
+			while @i <= isnull(@max,0)
+			begin
+				select @dLSAddSalaryIDDV = LSAddSalaryID from #tmporgaddsalary(nolock) where STT = @i
+				
+				DECLARE @AddSalaryOrgID	INT
+				SET @AddSalaryOrgID = [dbo].[PR_fnAddSalaryOrg_New](@EmpID, @dNgayTinhCongChuan, @dLSAddSalaryIDDV)
+
+				if isnull(@AddSalaryOrgID,'') <> ''
+					set @AddSalaryOrg =  @AddSalaryOrg + '$' + convert(nvarchar(12),@AddSalaryOrgID)
+
+				set @i = @i + 1
+				--select @AddSalaryOrg
+			end
+			
+			SELECT @dKhoanThemDV =  ISNULL(CONVERT(NUMERIC(18,2),SUM(CONVERT(FLOAT,dbo.SYS_fnGetD(A.Amount))),2),0)
+			from  PR_tblAddSalaryOrg(NoLock) A 
+			inner join (
+				select items
+				from dbo.split(@AddSalaryOrg,'$') 
+				group by items
+		    ) B on A.AddSalaryOrgID = B.items
+		END
+		
+		DECLARE @PhuCapKhoanThemLuong1	NUMERIC(18,2)
+		SET @PhuCapKhoanThemLuong1 = ISNULL(@dKhoanThemNV,0) + ISNULL(@dKhoanThemDV,0)
+		
+		--select @PhuCapKhoanThemLuong
+		SET @LeaveSalaryDay =((@BasicSalary+@PhuCapKhoanThemLuong1)/@NgayCongChuan)
+		SET @PaymentLeave = @LeaveDays * @LeaveSalaryDay
+	END
+	/*Tamnb rlog 22959*/
+	/*Rlog 24440*/
+	IF @TinhQTTVChoSoNgayPhepNghiBuConLai = 1
+	BEGIN
+		DECLARE @LSWorkPointID_NghiBu NVARCHAR(12)
+		Select Top 1 @LSWorkPointID_NghiBu = W.LSWorkPointID  
+		From dbo.LS_tblWorkPoint (Nolock) W
+		left join dbo.LS_tblWorkPointType (Nolock) T on W.LSWorkPointTypeID=T.LSWorkPointTypeID
+		where T.LSWorkPointTypeCode = '0018'
+
+		SET @SoNgayPhepBuConLai	= dbo.TS_fnTinhPhepConLai(@EmpID,@dLastWorkingDate,@dLastWorkingDate,@LSWorkPointID_NghiBu)
+		SET @TienPhepBu	= ROUND(ISNULL(@SoNgayPhepBuConLai,0)*@LeaveSalaryDay,0)	
+	END
+	/*End Rlog 24440*/
+	--HOATT81 RLOGID 23854
+	IF @CustomerID = 145
+	BEGIN
+		IF @PaymentLeave >= @TER_TienPhepTinhThueTNCN
+		BEGIN
+			SET @TruyThu5 = ISNULL(@PaymentLeave,0)*0.1
+		END
+	END
+	--END HOATT81 RLOGID 23854
+	SET @SoTienTCTV = Round((	ISNULL(@SeveranceAllownce,0) + isnull(@TroCapMatViec, 0) + ISNULL(@PaymentLeave,0) +  ISNULL(@TroCapKhac,0)
+						+ ISNULL(@AdditionAmount1,0) + ISNULL(@AdditionAmount2,0) + ISNULL(@AdditionAmount3,0) + ISNULL(@AdditionAmount4,0)
+						+ ISNULL(@AdditionAmount5,0) + ISNULL(@AdditionAmount6,0) + ISNULL(@AdditionAmount7,0) + ISNULL(@AdditionAmount8,0)
+						+ ISNULL(@TienPhepBu,0)
+						) 
+						- 
+						(	ISNULL(@BHYT,0) + 
+							ISNULL(@TruyThu1,0) + ISNULL(@TruyThu2,0) + ISNULL(@TruyThu3,0) + ISNULL(@TruyThu4,0) + ISNULL(@TruyThu5,0) + 
+							ISNULL(@TruyThu6,0) + ISNULL(@TruyThu7,0) + ISNULL(@TruyThu8,0) + ISNULL(@TruyThu9,0) + ISNULL(@TruyThu10,0) +
+							ISNULL(@TruyThu11,0) + ISNULL(@TruyThu12,0) + ISNULL(@TruyThu13,0) + ISNULL(@TruyThu14,0) + ISNULL(@TruyThu15,0) + 
+							ISNULL(@BoiHoanDaoTao,0) + 
+							--isnull(@SoTienBoiThuongDoViPham,0) /*QuangPNV 09.12.2023 new*/
+							ISNULL(@PhatDoViPhamHopDong,0) /*HOATT81 09122023*/
+						),0)
+
+	--QuangPNV : Kiểm tra lại : Vì quyết toán thôi việc chỉ tồn tại duy nhất 1 record cho 1 nhân viên	
+	
+
+	If(@IsHangLoat = 1 AND isnull(@IsSave,0) = 0)
+	BEGIN
+		/*Fix jira GS_IHRP_2024_PM-232 Chot Round 0 AgvSalary theo yeu cau cua chi HangTK 20.05.2025*/
+		UPDATE TER_tblFinalPayment_HangLoat
+			SET 	BasicSalary		= @BasicSalary,
+					AgvSalary		= ROUND(@AgvSalary,0),
+					FromDate		= CONVERT(DATETIME, @FromDate, 103), 
+					ToDate			= CONVERT(DATETIME, @ToDate, 103), 
+					GhiChuTinhTroCapThoiViec = @GhiChuTinhTroCapThoiViec,
+					SoNamLV			= @SoNamLV,
+					SoNamTinhTroCap = @SoThangTroCap,
+					SeveranceAllownce = @SeveranceAllownce,
+					KhoanHoTroNghiHuu = @KhoanHoTroNghiHuu,
+					ThamNienTroCapMatViec = @ThamNienTroCapMatViec,
+					TroCapMatViec	= @TroCapMatViec,
+					Severance_TaxPercent = @Severance_TaxPercent, 
+					LeaveSalaryDay	= round(@LeaveSalaryDay,0), 
+					LeaveDays		= @LeaveDays, 
+					PaymentLeave	= round(@PaymentLeave, 0), 
+					ThamNienTroCapKhac = @ThamNienTroCapKhac,
+					TroCapKhac		= @TroCapKhac,
+					AdditionAmount1 = @AdditionAmount1, 
+					AdditionAmount2 = @AdditionAmount2, 
+					AdditionAmount3 = @AdditionAmount3, 
+					AdditionAmount4 = @AdditionAmount4, 
+					AdditionAmount5 = @AdditionAmount5, 
+					AdditionAmount6 = @AdditionAmount6, 
+					AdditionAmount7 = @AdditionAmount7, 
+					AdditionAmount8 = @AdditionAmount8, 
+					AdditionReason1 = @AdditionReason1, 
+					AdditionReason2 = @AdditionReason2, 
+					AdditionReason3 = @AdditionReason3, 
+					AdditionReason4 = @AdditionReason4, 
+					AdditionReason5 = @AdditionReason5, 
+					AdditionReason6 = @AdditionReason6, 
+					AdditionReason7 = @AdditionReason7, 
+					AdditionReason8 = @AdditionReason8, 
+					BHYT			= @BHYT, 
+					BHYTLyDo		= @BHYTLyDo, 
+					TruyThu1		= @TruyThu1, 
+					TruyThu2		= @TruyThu2, 
+					TruyThu3		= @TruyThu3, 
+					TruyThu4		= @TruyThu4, 
+					TruyThu5		= @TruyThu5, 
+					TruyThu6		= @TruyThu6, 
+					TruyThu7		= @TruyThu7, 
+					TruyThu8		= @TruyThu8, 
+					TruyThu9		= @TruyThu9, 
+					TruyThu10		= @TruyThu10, 
+					TruyThu11		= @TruyThu11, 
+					TruyThu12		= @TruyThu12, 
+					TruyThu13		= @TruyThu13, 
+					TruyThu14		= @TruyThu14, 
+					TruyThu15		= @TruyThu15,
+					AttachMulti		= @AttachMulti,
+					ClearTruyThu1	= isnull(@ClearTruyThu1, 0),
+					ClearTruyThu2	= isnull(@ClearTruyThu2, 0),
+					ClearTruyThu3	= isnull(@ClearTruyThu3, 0),
+					ClearTruyThu4	= isnull(@ClearTruyThu4, 0),
+					ClearTruyThu5	= isnull(@ClearTruyThu5, 0),
+					ClearTruyThu6	= isnull(@ClearTruyThu6, 0),
+					ClearTruyThu7	= isnull(@ClearTruyThu7, 0),
+					ClearTruyThu8	= isnull(@ClearTruyThu8, 0),
+					ClearTruyThu9	= isnull(@ClearTruyThu9, 0),
+					ClearTruyThu10	= isnull(@ClearTruyThu10, 0),
+					ClearTruyThu11	= isnull(@ClearTruyThu11, 0),
+					ClearTruyThu12	= isnull(@ClearTruyThu12, 0),
+					ClearTruyThu13	= isnull(@ClearTruyThu13, 0),
+					ClearTruyThu14	= isnull(@ClearTruyThu14, 0),
+					ClearTruyThu15	= isnull(@ClearTruyThu15, 0),
+					BoiHoanDaoTao	= @BoiHoanDaoTao, 
+					LyDoBoiHoanDT	= @LyDoBoiHoanDT,
+					TruyThuLyDo1	= @TruyThuLyDo1, 
+					TruyThuLyDo2	= @TruyThuLyDo2, 
+					TruyThuLyDo3	= @TruyThuLyDo3, 
+					TruyThuLyDo4	= @TruyThuLyDo4, 
+					TruyThuLyDo5	= @TruyThuLyDo5,
+					TruyThuLyDo6	= @TruyThuLyDo6,
+					TruyThuLyDo7	= @TruyThuLyDo7,
+					TruyThuLyDo8	= @TruyThuLyDo8,
+					TruyThuLyDo9	= @TruyThuLyDo9,
+					TruyThuLyDo10	= @TruyThuLyDo10,
+					TruyThuLyDo11	= @TruyThuLyDo11,
+					TruyThuLyDo12	= @TruyThuLyDo12,
+					TruyThuLyDo13	= @TruyThuLyDo13,
+					TruyThuLyDo14	= @TruyThuLyDo14,
+					TruyThuLyDo15	= @TruyThuLyDo15, 
+					TraVaoLuong		= @TraVaoLuong, 
+					ThangTraVaoLuong = @dThangTraVaoLuong, 
+					--Rlog 19020
+					DaThanhToan		= @DaThanhToan, 
+					NgayThanhToan	= (CASE WHEN ISNULL(@DaThanhToan,0) = 0 THEN null ELSE @dNgayThanhToan END) ,
+					SoTienTCTV		= @SoTienTCTV,
+					LuongCoDinh		= @LuongCoDinh,
+					SoThangKoBHTN	= @SoThangKoBHTN,
+					ThongTinKhac1	= @ThongTinKhac1,
+					ThongTinKhac2	= @ThongTinKhac2, 
+					ThongTinKhac3	= @ThongTinKhac3, 
+					ThongTinKhac4	= @ThongTinKhac4, 
+					ThongTinKhac5	= @ThongTinKhac5,
+					ThangTraTroCapThoiViec = @dThangTraTroCapThoiViec,
+					UserGroupID		= @UserGroupID,
+					FunctionID		= @FunctionID,
+					SoNgayPhatViPhamHopDong = @SoNgayPhatViPhamHopDong,
+					PhatDoViPhamHopDong = @PhatDoViPhamHopDong,
+					PhatDoViPhamHopDong_LyDo = @PhatDoViPhamHopDong_LyDo,
+					SoNgayBoiThuongDoViPham = @SoNgayBoiThuongDoViPham,
+					SoTienBoiThuongDoViPham = @SoTienBoiThuongDoViPham,
+					SoNamLVGoc = @SoNamLVGoc,
+					SoNgayNghiKhongHuongTroCap = @SoNgayNghiKhongHuongTroCap,
+					SoNgayPhepBuConLai = @SoNgayPhepBuConLai,
+					TienPhepBu = @TienPhepBu
+			WHERE EmpID = @EmpID
+			AND UserGroupID	= @UserGroupID
+			AND FunctionID	= @FunctionID
+	END
+	ELSE
+	BEGIN
+		--HuyenHB : Ghi log ------------------------------------------------------------
+		Declare @IsWriteLog_ bit		
+		Declare @XML nvarchar(max) = ''
+		
+		if exists(select top 1 1 from SYS_tblLogDataTableName(NoLock) where TableName='TER_TBLFINALPAYMENT' and IsWriteLog=1)
+			set @IsWriteLog_ = 1
+
+		--##### End HuyenHB------------------------------------------
+		IF NOT EXISTS (SELECT Top 1 1 FROM TER_TBLFINALPAYMENT (Nolock) WHERE EmpID = @EmpID)
+		BEGIN
+			PRINT 'SAVE TER_TBLFINALPAYMENT'
+			--QuyenPV9 update seq
+			exec [dbo].[SYS_spGetAutoID_UpdateSeq] @TableName='TER_TBLFINALPAYMENT', @ColumnName='FinalPaymentID', @Seq=@FinalPaymentID OUTPUT
+						
+			Insert TER_TBLFINALPAYMENT
+			(
+				FinalPaymentID, EmpID, LastWorkingDate, BasicSalary, AgvSalary, SoNamLV,SoNamTinhTroCap, FromDate, ToDate, 
+				GhiChuTinhTroCapThoiViec,
+				SeveranceAllownce, KhoanHoTroNghiHuu, 
+				ThamNienTroCapMatViec, TroCapMatViec, Severance_TaxPercent, 
+				LeaveSalaryDay, LeaveDays, PaymentLeave, 
+				ExchangeRate, ThamNienTroCapKhac, TroCapKhac,
+				AdditionAmount1, AdditionAmount2, AdditionAmount3, AdditionAmount4, 
+				AdditionAmount5, AdditionAmount6, AdditionAmount7, AdditionAmount8, 
+				AdditionReason1, AdditionReason2, AdditionReason3, AdditionReason4, 
+				AdditionReason5, AdditionReason6, AdditionReason7, AdditionReason8, 
+				BHYT, BHYTLyDo, TruyThu1, TruyThu2, TruyThu3, TruyThu4, TruyThu5, TruyThu6, TruyThu7, TruyThu8
+				, TruyThu9, TruyThu10, TruyThu11, TruyThu12, TruyThu13, TruyThu14, TruyThu15, ClearTruyThu1
+				, ClearTruyThu2, ClearTruyThu3, ClearTruyThu4, ClearTruyThu5, ClearTruyThu6, ClearTruyThu7, ClearTruyThu8, ClearTruyThu9
+				, ClearTruyThu10, ClearTruyThu11, ClearTruyThu12, ClearTruyThu13, ClearTruyThu14, ClearTruyThu15, TruyThuLyDo1, TruyThuLyDo2
+				, TruyThuLyDo3, TruyThuLyDo4, TruyThuLyDo5, TruyThuLyDo6, TruyThuLyDo7, TruyThuLyDo8, TruyThuLyDo9, TruyThuLyDo10, TruyThuLyDo11
+				, TruyThuLyDo12, TruyThuLyDo13, TruyThuLyDo14, TruyThuLyDo15, BoiHoanDaoTao, LyDoBoiHoanDT,TraVaoLuong, ThangTraVaoLuong, SoTienTCTV, IsLock, LuongCoDinh
+				, SoThangKoBHTN,ThongTinKhac1,ThongTinKhac2, ThongTinKhac3, ThongTinKhac4, ThongTinKhac5, AttachMulti, ThangTraTroCapThoiViec
+				, SoNgayPhatViPhamHopDong, PhatDoViPhamHopDong, PhatDoViPhamHopDong_LyDo, SoNgayBoiThuongDoViPham, SoTienBoiThuongDoViPham
+				, SoThangDaHuongTroCap
+				--Rlog 19020
+				,DaThanhToan,NgayThanhToan
+				,SoNamLVGoc
+				,SoNgayNghiKhongHuongTroCap
+				,SoNgayPhepBuConLai ,TienPhepBu
+			)
+			values
+			(
+				@FinalPaymentID, @EmpID, @dLastWorkingDate, @BasicSalary, @AgvSalary, @SoNamLV,@SoThangTroCap, @dFromDate, @dToDate, 
+				@GhiChuTinhTroCapThoiViec,
+				@SeveranceAllownce, @KhoanHoTroNghiHuu,
+				@ThamNienTroCapMatViec, @TroCapMatViec, @Severance_TaxPercent, 
+				Round(@LeaveSalaryDay,0), @LeaveDays, round(@PaymentLeave, 0), 
+				@ExchangeRate, @ThamNienTroCapKhac, @TroCapKhac,
+					
+				@AdditionAmount1, @AdditionAmount2, @AdditionAmount3, @AdditionAmount4, 
+				@AdditionAmount5, @AdditionAmount6, @AdditionAmount7, @AdditionAmount8, 
+				@AdditionReason1, @AdditionReason2, @AdditionReason3, @AdditionReason4, 
+				@AdditionReason5, @AdditionReason6, @AdditionReason7, @AdditionReason8, 
+				@BHYT, @BHYTLyDo, @TruyThu1 , @TruyThu2, @TruyThu3, @TruyThu4, @TruyThu5, @TruyThu6, @TruyThu7, @TruyThu8, @TruyThu9, @TruyThu10, @TruyThu11
+				, @TruyThu12, @TruyThu13, @TruyThu14, @TruyThu15, isnull(@ClearTruyThu1, 0), isnull(@ClearTruyThu2, 0), isnull(@ClearTruyThu3, 0)
+				, isnull(@ClearTruyThu4, 0), isnull(@ClearTruyThu5, 0), isnull(@ClearTruyThu6, 0), isnull(@ClearTruyThu7, 0), isnull(@ClearTruyThu8, 0)
+				, isnull(@ClearTruyThu9, 0), isnull(@ClearTruyThu10, 0), isnull(@ClearTruyThu11, 0), isnull(@ClearTruyThu12, 0), isnull(@ClearTruyThu13, 0)
+				, isnull(@ClearTruyThu14, 0), isnull(@ClearTruyThu15, 0), @TruyThuLyDo1, @TruyThuLyDo2, @TruyThuLyDo3, @TruyThuLyDo4, @TruyThuLyDo5, @TruyThuLyDo6
+				, @TruyThuLyDo7, @TruyThuLyDo8, @TruyThuLyDo9, @TruyThuLyDo10, @TruyThuLyDo11, @TruyThuLyDo12, @TruyThuLyDo13, @TruyThuLyDo14, @TruyThuLyDo15
+				, @BoiHoanDaoTao, @LyDoBoiHoanDT,@TraVaoLuong, @dThangTraVaoLuong, @SoTienTCTV , 0, @LuongCoDinh,@SoThangKoBHTN,@ThongTinKhac1
+				, @ThongTinKhac2, @ThongTinKhac3, @ThongTinKhac4, @ThongTinKhac5, @AttachMulti, @dThangTraTroCapThoiViec
+				, @SoNgayPhatViPhamHopDong, @PhatDoViPhamHopDong, @PhatDoViPhamHopDong_LyDo, @SoNgayBoiThuongDoViPham, @SoTienBoiThuongDoViPham
+				, @SoThangDaHuongTroCap
+				--Rlog 19020
+				,@DaThanhToan,(CASE WHEN ISNULL(@DaThanhToan,0) = 0 THEN null ELSE @dNgayThanhToan END)
+				,@SoNamLVGoc
+				,@SoNgayNghiKhongHuongTroCap
+				,@SoNgayPhepBuConLai ,@TienPhepBu
+			)
+			---------------------------------------------------------------------------------------------------
+			--HuyenHB: ghi Log 
+			if (@IsWriteLog_ = 1)
+			begin
+				Set @Xml = convert(varchar(12),@FinalPaymentID) + ','			
+				exec [dbo].[TS_spfrmLogData_Save] @UserID=@UserGroupID,@TableName='TER_TBLFINALPAYMENTLog',@Action='Save',@IsLogNew=0,@Xml=@Xml,@IDLog=@IDLog OUTPUT
+				exec [dbo].[TS_spfrmLogData_Save] @UserID=@UserGroupID,@TableName='TER_TBLFINALPAYMENTLog',@Action='Save',@IsLogNew=1,@Xml=@Xml,@IDLog=@IDLog									 
+			end												
+		END
+		ELSE
+		BEGIN	
+			--HuyenHB: Ghi log		
+			if (@IsWriteLog_ = 1)
+			begin
+				Set @Xml = convert(varchar(12),@FinalPaymentID) + ','
+				exec [dbo].[TS_spfrmLogData_Save] @UserID=@UserGroupID,@TableName='TER_TBLFINALPAYMENTLog',@Action='Update',@IsLogNew=0,@Xml=@Xml,@IDLog=@IDLog OUTPUT			
+			end
+			
+			---------------------------------------------------------------------------------------------------
+			UPDATE TER_TBLFINALPAYMENT
+			SET 	BasicSalary = @BasicSalary,
+					AgvSalary = @AgvSalary,
+					FromDate = CONVERT(DATETIME, @FromDate, 103), 
+					ToDate = CONVERT(DATETIME, @ToDate, 103), 
+					GhiChuTinhTroCapThoiViec = @GhiChuTinhTroCapThoiViec,
+					SoNamLV = @SoNamLV,
+					SoNamTinhTroCap = @SoThangTroCap,
+					SeveranceAllownce = @SeveranceAllownce,
+					KhoanHoTroNghiHuu = @KhoanHoTroNghiHuu,
+					ThamNienTroCapMatViec = @ThamNienTroCapMatViec,
+					TroCapMatViec = @TroCapMatViec,
+					Severance_TaxPercent = @Severance_TaxPercent, 
+					LeaveSalaryDay = round(@LeaveSalaryDay,0), 
+					LeaveDays = @LeaveDays, 
+					PaymentLeave = round(@PaymentLeave, 0), 
+					ThamNienTroCapKhac = @ThamNienTroCapKhac,
+					TroCapKhac = @TroCapKhac,
+--					ExchangeRate = @ExchangeRate, 
+					AdditionAmount1 = @AdditionAmount1, 
+					AdditionAmount2 = @AdditionAmount2, 
+					AdditionAmount3 = @AdditionAmount3, 
+					AdditionAmount4 = @AdditionAmount4, 
+					AdditionAmount5 = @AdditionAmount5, 
+					AdditionAmount6 = @AdditionAmount6, 
+					AdditionAmount7 = @AdditionAmount7, 
+					AdditionAmount8 = @AdditionAmount8, 
+					AdditionReason1 = @AdditionReason1, 
+					AdditionReason2 = @AdditionReason2, 
+					AdditionReason3 = @AdditionReason3, 
+					AdditionReason4 = @AdditionReason4, 
+					AdditionReason5 = @AdditionReason5, 
+					AdditionReason6 = @AdditionReason6, 
+					AdditionReason7 = @AdditionReason7, 
+					AdditionReason8 = @AdditionReason8, 
+					BHYT = @BHYT, 
+					BHYTLyDo = @BHYTLyDo, 
+					TruyThu1		= @TruyThu1, 
+					TruyThu2		= @TruyThu2, 
+					TruyThu3		= @TruyThu3, 
+					TruyThu4		= @TruyThu4, 
+					TruyThu5		= @TruyThu5, 
+					TruyThu6		= @TruyThu6, 
+					TruyThu7		= @TruyThu7, 
+					TruyThu8		= @TruyThu8, 
+					TruyThu9		= @TruyThu9, 
+					TruyThu10		= @TruyThu10, 
+					TruyThu11		= @TruyThu11, 
+					TruyThu12		= @TruyThu12, 
+					TruyThu13		= @TruyThu13, 
+					TruyThu14		= @TruyThu14, 
+					TruyThu15		= @TruyThu15,
+					AttachMulti	= @AttachMulti,
+					ClearTruyThu1	= isnull(@ClearTruyThu1, 0),
+					ClearTruyThu2	= isnull(@ClearTruyThu2, 0),
+					ClearTruyThu3	= isnull(@ClearTruyThu3, 0),
+					ClearTruyThu4	= isnull(@ClearTruyThu4, 0),
+					ClearTruyThu5	= isnull(@ClearTruyThu5, 0),
+					ClearTruyThu6	= isnull(@ClearTruyThu6, 0),
+					ClearTruyThu7	= isnull(@ClearTruyThu7, 0),
+					ClearTruyThu8	= isnull(@ClearTruyThu8, 0),
+					ClearTruyThu9	= isnull(@ClearTruyThu9, 0),
+					ClearTruyThu10	= isnull(@ClearTruyThu10, 0),
+					ClearTruyThu11	= isnull(@ClearTruyThu11, 0),
+					ClearTruyThu12	= isnull(@ClearTruyThu12, 0),
+					ClearTruyThu13	= isnull(@ClearTruyThu13, 0),
+					ClearTruyThu14	= isnull(@ClearTruyThu14, 0),
+					ClearTruyThu15	= isnull(@ClearTruyThu15, 0),
+					BoiHoanDaoTao = @BoiHoanDaoTao, 
+					LyDoBoiHoanDT = @LyDoBoiHoanDT,
+					TruyThuLyDo1	= @TruyThuLyDo1, 
+					TruyThuLyDo2	= @TruyThuLyDo2, 
+					TruyThuLyDo3	= @TruyThuLyDo3, 
+					TruyThuLyDo4	= @TruyThuLyDo4, 
+					TruyThuLyDo5	= @TruyThuLyDo5,
+					TruyThuLyDo6	= @TruyThuLyDo6,
+					TruyThuLyDo7	= @TruyThuLyDo7,
+					TruyThuLyDo8	= @TruyThuLyDo8,
+					TruyThuLyDo9	= @TruyThuLyDo9,
+					TruyThuLyDo10	= @TruyThuLyDo10,
+					TruyThuLyDo11	= @TruyThuLyDo11,
+					TruyThuLyDo12	= @TruyThuLyDo12,
+					TruyThuLyDo13	= @TruyThuLyDo13,
+					TruyThuLyDo14	= @TruyThuLyDo14,
+					TruyThuLyDo15	= @TruyThuLyDo15, 
+					TraVaoLuong = @TraVaoLuong, 
+					ThangTraVaoLuong = @dThangTraVaoLuong, 
+					--Rlog 19020
+					DaThanhToan = @DaThanhToan, 
+					NgayThanhToan = (CASE WHEN ISNULL(@DaThanhToan,0) = 0 THEN null ELSE @dNgayThanhToan END),
+					SoTienTCTV = @SoTienTCTV,
+					LuongCoDinh = @LuongCoDinh,
+					SoThangKoBHTN = @SoThangKoBHTN,
+					ThongTinKhac1 = @ThongTinKhac1,
+					ThongTinKhac2 = @ThongTinKhac2, 
+					ThongTinKhac3 = @ThongTinKhac3, 
+					ThongTinKhac4 = @ThongTinKhac4, 
+					ThongTinKhac5 = @ThongTinKhac5,
+					ThangTraTroCapThoiViec = @dThangTraTroCapThoiViec,
+					SoNgayPhatViPhamHopDong = @SoNgayPhatViPhamHopDong,
+					PhatDoViPhamHopDong = @PhatDoViPhamHopDong,
+					PhatDoViPhamHopDong_LyDo = @PhatDoViPhamHopDong_LyDo,
+					SoNgayBoiThuongDoViPham = @SoNgayBoiThuongDoViPham, 
+					SoTienBoiThuongDoViPham = @SoTienBoiThuongDoViPham,
+					SoThangDaHuongTroCap = @SoThangDaHuongTroCap,
+					SoNamLVGoc = @SoNamLVGoc,
+					SoNgayNghiKhongHuongTroCap = @SoNgayNghiKhongHuongTroCap,
+					SoNgayPhepBuConLai = @SoNgayPhepBuConLai,
+					TienPhepBu = @TienPhepBu
+			WHERE FinalPaymentID = @FinalPaymentID
+			---------------------------------------------------------------------------------------------------
+			--HuyenHB: Ghi log
+			if (@IsWriteLog_ = 1 and isnull(@Xml,'') <> '')
+			begin
+				exec [dbo].[TS_spfrmLogData_Save] @UserID=@UserGroupID,@TableName='TER_TBLFINALPAYMENTLog',@Action='Update',@IsLogNew=1,@Xml=@Xml,@IDLog=@IDLog
+			end
+		END	
+	END
+END
+--------------------------------------------------------------------------
+ELSE IF @Activity = 'LoadNgayHopLe' 
+BEGIN		
+	Select top(1) 
+		@QTTV_TuNgay_NgayVaoLam = QTTV_TuNgay_NgayVaoLam, 
+		@QTTV_TuNgay_NgayVaoChinhThuc = QTTV_TuNgay_NgayVaoChinhThuc,
+		@QTTV_TuNgay_Date1 = QTTV_TuNgay_Date1
+	From TER_tblSetupTER (NoLock)
+		
+	If isnull(@QTTV_TuNgay_NgayVaoLam,0) = 0 and isnull(@QTTV_TuNgay_NgayVaoChinhThuc,0)=0 and isnull(@QTTV_TuNgay_Date1, 0) = 0
+	Begin
+		Set @QTTV_TuNgay_NgayVaoLam = 1
+	End
+				
+		if not exists(Select top 1 1 From [dbo].[TER_tblFinalPaymentRecord](nolock) Where EmpID = @EmpID)
+		Begin
+			SELECT @dFromDate = isnull(NgayTinhTroCap, Case when @QTTV_TuNgay_NgayVaoLam = 1 then StartDate
+															when @QTTV_TuNgay_NgayVaoChinhThuc = 1 then StartDateCompany 
+															--BaoNTQ ngày 18/07/2013
+															when @QTTV_TuNgay_Date1 = 1 then 															
+																							case when isnull(C.Date1, '') = '' then StartDate else C.Date1 end
+																						end 
+															--End
+										)
+			FROM dbo.HR_tblEmp (Nolock) A
+				left join HR_tblEmpOther(nolock) B on A.EmpID = B.EmpID
+				left join HR_TBLEMPCV(nolock) C on A.EmpID = C.EmpID
+			WHERE A.EmpID = @EmpID
+		End
+		Else
+		Begin
+			--Declare @NgayQLLam_New datetime, @NgayTV_New datetime, @NgayTV_GanNhat datetime
+			set @NgayQLLam_New = null
+			set @NgayTV_New = null
+			set @NgayTV_GanNhat = null
+
+			--Lay ra ngay thoi viec
+			Select @NgayTV_New = EffectDate
+			From TER_tblTermination(nolock)
+			Where EmpID = @EmpID
+			--Khong quan tam hinh` thuc la` gi`
+			--Lay ngay thoi viec gan nhat
+			Select @NgayTV_GanNhat = max(FromDate)
+			From HR_tblWorkingRecord(nolock) A
+			left join [dbo].[LS_tblStatusChange](nolock) B on A.LSStatusChangeID= B.LSStatusChangeID
+			Where EmpID = @EmpID And FromDate < @NgayTV_New And B.LSStatusChangeCode = 'RES'
+				
+			If @NgayTV_GanNhat is not null
+			Begin
+				--Lay ngay lam viec lien ke
+				Select Top 1 @NgayQLLam_New = FromDate
+				From HR_tblWorkingRecord(nolock) A
+				Where FromDate >= @NgayTV_GanNhat
+				Order by FromDate Asc
+
+				Select @dFromDate = @NgayQLLam_New
+			End
+			Else
+			Begin
+				SELECT @dFromDate = isnull(NgayTinhTroCap, Case when @QTTV_TuNgay_NgayVaoLam = 1 then StartDate
+															when @QTTV_TuNgay_NgayVaoChinhThuc = 1 then StartDateCompany 
+															--BaoNTQ ngày 18/07/2013
+															when @QTTV_TuNgay_Date1 = 1 then 															
+																							case when isnull(C.Date1, '') = '' then StartDate else C.Date1 end
+																						end 
+															--End
+										)
+				FROM dbo.HR_tblEmp (Nolock) A
+					left join HR_tblEmpOther(nolock) B on A.EmpID = B.EmpID
+					left join HR_TBLEMPCV(nolock) C on A.EmpID = C.EmpID
+				WHERE A.EmpID = @EmpID
+			End
+		End
+		
+		SELECT @dLastWorkingDate = LastWorkingDate FROM Ter_tblTermination WHERE EmpID = @EmpID
+		IF (@dFromDate > CONVERT(DATETIME, '31/12/2008', 103))
+			SET @dFromDate = CONVERT(DATETIME, '31/12/2008', 103)
+		IF (@dLastWorkingDate > CONVERT(DATETIME, '31/12/2008', 103))
+			SET @dToDate = CONVERT(DATETIME, '31/12/2008', 103)
+		ELSE 
+			SET @dToDate = @dLastWorkingDate
+			
+		SELECT CONVERT(NVARCHAR(10), @dFromDate, 103) AS FromDate,
+				CONVERT(NVARCHAR(10), @dToDate, 103) AS ToDate
+END
+--------------------------------------------------------------------------
+ELSE IF @Activity = 'Close' 
+BEGIN
+	UPDATE TER_TBLFINALPAYMENT
+	SET IsLock = 1
+	WHERE FinalPaymentID = @FinalPaymentID
+END
+--------------------------------------------------------------------------
+ELSE IF @Activity = 'Open' 
+BEGIN
+	UPDATE TER_TBLFINALPAYMENT
+	SET IsLock = 0
+	WHERE FinalPaymentID = @FinalPaymentID
+END
+--------------------------------------------------------------------------
+ELSE IF @Activity = 'Delete' 
+BEGIN
+	--HuyenHB: Ghi log
+	if exists(select top 1 1 from SYS_tblLogDataTableName (NoLock) where TableName='TER_TBLFINALPAYMENT' and IsWriteLog=1)
+	begin
+		Set @Xml = 
+			(
+				select convert(varchar(12),B.FinalPaymentID) + ','
+				from dbo.TER_TBLFINALPAYMENT (Nolock) B
+				where B.FinalPaymentID = @FinalPaymentID
+				For XML Path('')
+			)						
+			
+		if(isnull(@Xml,'') <> '')
+		begin
+			exec [dbo].[TS_spfrmLogData_Save] @UserID=@UserGroupID,@TableName='TER_TBLFINALPAYMENTLog',@Action='Delete',@IsLogNew=0,@Xml=@Xml,@IDLog=@IDLog OUTPUT
+			exec [dbo].[TS_spfrmLogData_Save] @UserID=@UserGroupID,@TableName='TER_TBLFINALPAYMENTLog',@Action='Delete',@IsLogNew=1,@Xml=@Xml,@IDLog=@IDLog		
+		end
+	end		
+			
+	Delete TER_TBLFINALPAYMENT where FinalPaymentID = @FinalPaymentID
+END

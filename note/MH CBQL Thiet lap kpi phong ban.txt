@@ -1,0 +1,1178 @@
+USE [iHRP_TanLong_PRO2]
+GO
+/****** Object:  StoredProcedure [dbo].[PM_spfrmPhongBanThietLapMucTieu_TBP]    Script Date: 1/14/2026 3:39:31 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[PM_spfrmPhongBanThietLapMucTieu_TBP]
+@Activity			VARCHAR(50),
+@LanguageID			NCHAR(2) = 'VN',
+@FunctionID			nvarchar(12) = null,
+@UserGroupID		NVARCHAR(50) = NULL,
+@ReturnMessCode		NVARCHAR(500) = NULL OUT,
+@ReturnMess			NVARCHAR(500) = NULL OUT,
+@ReturnID			NVARCHAR(MAX) = NULL OUT,
+----------------------------------------------------
+@TypePopup				INT = NULL,
+@MasterID				INT = NULL,
+@Year					INT = NULL,
+@GoalPeriodID			INT = NULL,
+@ApprovedStatusID		nvarchar(max) = null,
+@LSCompanyID			INT = NULL,
+@LSLevel1ID				INT = NULL,
+@LSLevel2ID				INT = NULL,
+@LSLevel3ID				INT = NULL,
+@LSLevel4ID				INT = NULL,
+@LSLevel5ID				INT = NULL,
+@LSLevel6ID				INT = NULL,
+@LSLevel7ID				INT = NULL,
+@LSLevel8ID				INT = NULL,
+@LSLevel9ID				INT = NULL,
+@LSTrackingMethodID		INT = NULL,
+@JsonTyTrongLoaiMucTieu	NVARCHAR(MAX) = NULL,
+@strXML					NVARCHAR(MAX) = NULL,
+@XacNhanCuaTruongBoPhan NVARCHAR(MAX) = NULL,
+@TrangThaiPhanBoID		NVARCHAR(MAX) = NULL,
+@AttachFileID		INT = NULL -- AnCQ6 Rlog 23549
+AS
+DECLARE @EmpID			INT
+DECLARE @Return_ID		NVARCHAR(MAX)
+DECLARE @Return_EmpID	NVARCHAR(MAX)
+DECLARE @Return_Cap		NVARCHAR(MAX)
+DECLARE @Return_Action	NVARCHAR(MAX)
+declare @ReturmMess_Emp nvarchar(MAX) = ''
+declare @dGetDateTime	DATETIME = getdate()
+DECLARE @handle			INT
+DECLARE @Approver NVARCHAR(MAX)
+DECLARE @Cur_ThietLapMucTieuCoCauID INT
+DECLARE @LoadMucTieuCongTy INT
+DECLARE @ThietLapMucTieuCoCauID_PhongBan nvarchar(12)
+BEGIN
+
+IF(ISNULL(@ApprovedStatusID, '') = '')
+BEGIN
+	SET @ApprovedStatusID = '72@73@74@76@77@78@79@80@'
+END
+
+SELECT	@EmpID = EmpID
+FROM	UMS_tblUserAccount (NOLOCK)
+WHERE	UserGroupID = @UserGroupID
+
+IF @Activity = 'GetYearComBo'
+BEGIN
+	SELECT [Year] AS ID, [Year] AS Name, [Year]
+	FROM
+	(
+		SELECT	PM_GoalPeriodYear AS [Year]
+		FROM	dbo.PM_tblGoalPeriod (NOLOCK)
+	) A
+	GROUP BY A.Year
+	ORDER BY A.Year DESC
+END
+ELSE IF @Activity = 'GetYear'
+BEGIN
+	SELECT YEAR(@dGetDateTime) as [Year]
+END
+ELSE IF @Activity = 'GetDataComboByYear'
+BEGIN
+	SELECT	A.ID, A.Name
+	FROM	(
+			SELECT	A.PM_GoalPeriodID as ID, 
+					case when @LanguageID = 'VN' then A.PM_GoalPeriodVNName else A.PM_GoalPeriodName end as Name, 
+					A.PM_GoalPeriodYear as Nam,
+					CASE WHEN Convert(date,@dGetDateTime, 103) BETWEEN A.StartDate_PhongBan AND A.EndDate_PhongBan THEN 1 ELSE 0 END as isHieuLuc,
+					EndDate_PhongBan
+			FROM	dbo.PM_tblGoalPeriod (Nolock) A
+			WHERE	A.PM_GoalPeriodYear = @Year
+					and (A.GoalPeriodStatus is null or A.GoalPeriodStatus = 0)
+			--UNION
+			--SELECT '' as ID, '' Name, @Year Nam,1 isHieuLuc, GETDATE() as EndDate_CongTy
+			) as A
+	ORDER BY A.isHieuLuc desc, EndDate_PhongBan desc
+END
+ELSE IF @Activity = 'LoadComboApprovedStatus'
+BEGIN
+	select	A.PM_ApprovedStatusID as ID, 
+			case when @LanguageID = 'VN' then A.VNName else A.Name end as Name
+	from	PM_tblApprovedStatus (Nolock) A
+	where A.Type = 9 AND Used = 1
+			AND A.PM_ApprovedStatusID IN (72, 73, 74, 76, 77, 78, 79, 80)
+	order by [Rank]
+END
+ELSE IF @Activity = 'Search'
+BEGIN
+	DECLARE @IsAdjustment BIT,
+			@IsHieuLuc	BIT
+
+	SELECT	@IsHieuLuc = case when (A.GoalPeriodStatus is null or A.GoalPeriodStatus = 0) 
+			AND Convert(date,@dGetDateTime, 103) between A.StartDate_PhongBan and A.EndDate_PhongBan 
+			then 1 else 0 end 
+	FROM	PM_tblGoalPeriod (NOLOCK) A
+	WHERE	A.PM_GoalPeriodID = @GoalPeriodID
+
+	IF(@IsHieuLuc = 1)
+	BEGIN
+		if object_id('tempdb..#tmpTaoPhongBan') is not null
+		drop table #tmpTaoPhongBan
+	
+		if object_id('tempdb..#tmpThietLapMucTieuPhongBan') is not null
+			drop table #tmpThietLapMucTieuPhongBan
+
+		SELECT	A.ID
+				,A.LSCompanyID
+				,A.LSLevel1ID
+				,A.LSLevel2ID
+				,A.LSLevel3ID
+				,A.LSLevel4ID
+				,A.LSLevel5ID
+				,A.LSLevel6ID
+				,A.LSLevel7ID
+				,A.LSLevel8ID
+				,A.LSLevel9ID
+				,A.LSTrackingMethodID
+		INTO	#tmpThietLapMucTieuPhongBan
+		FROM	PM_tblSetupManagerAndCEO (NOLOCK) A
+				INNER JOIN 
+				(
+					SELECT	LSCompanyID, LSLevel1ID, LSLevel2ID, LSLevel3ID, LSLevel4ID, 
+							LSLevel5ID, LSLevel6ID, LSLevel7ID, LSLevel8ID, LSLevel9ID, MAX(EffectiveDate) AS MaxDate
+					FROM	PM_tblSetupManagerAndCEO (NOLOCK)
+					WHERE	Type = 2
+							AND EffectiveDate <= GetDate()
+					GROUP BY LSCompanyID, LSLevel1ID, LSLevel2ID, LSLevel3ID, LSLevel4ID,
+								LSLevel5ID, LSLevel6ID, LSLevel7ID, LSLevel8ID, LSLevel9ID
+				) AS B ON B.LSCompanyID = A.LSCompanyID
+					AND	CASE WHEN B.LSLevel1ID IS NULL THEN -1 ELSE B.LSLevel1ID END = CASE WHEN A.LSLevel1ID IS NULL THEN -1 ELSE A.LSLevel1ID END
+					AND	CASE WHEN B.LSLevel2ID IS NULL THEN -1 ELSE B.LSLevel2ID END = CASE WHEN A.LSLevel2ID IS NULL THEN -1 ELSE A.LSLevel2ID END
+					AND	CASE WHEN B.LSLevel3ID IS NULL THEN -1 ELSE B.LSLevel3ID END = CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END
+					AND	CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+					AND	CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+					AND	CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+					AND	CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+					AND	CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+					AND	CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+					AND B.MaxDate = A.EffectiveDate
+				LEFT JOIN PM_tblThietLapMucTieuCoCau (NOLOCK) D ON D.GoalPeriodID = @GoalPeriodID 
+					AND D.LSCompanyID = A.LSCompanyID 
+					AND D.LSLevel1ID = A.LSLevel1ID
+					AND D.LSLevel2ID = A.LSLevel2ID
+					AND D.LSLevel3ID = A.LSLevel3ID
+					AND	CASE WHEN D.LSLevel4ID IS NULL THEN -1 ELSE D.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+					AND	CASE WHEN D.LSLevel5ID IS NULL THEN -1 ELSE D.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+					AND	CASE WHEN D.LSLevel6ID IS NULL THEN -1 ELSE D.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+					AND	CASE WHEN D.LSLevel7ID IS NULL THEN -1 ELSE D.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+					AND	CASE WHEN D.LSLevel8ID IS NULL THEN -1 ELSE D.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+					AND	CASE WHEN D.LSLevel9ID IS NULL THEN -1 ELSE D.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+					AND D.Type = 2
+		WHERE	(@LSCompanyID IS NULL OR A.LSCompanyID = @LSCompanyID)
+				AND (@LSLevel1ID IS NULL OR A.LSLevel1ID = @LSLevel1ID)
+				AND (@LSLevel2ID IS NULL OR A.LSLevel2ID = @LSLevel2ID)
+				AND (@LSLevel3ID IS NULL OR A.LSLevel3ID = @LSLevel3ID)
+				AND (@LSLevel4ID IS NULL OR A.LSLevel4ID = @LSLevel4ID)
+				AND (@LSLevel5ID IS NULL OR A.LSLevel5ID = @LSLevel5ID)
+				AND (@LSLevel6ID IS NULL OR A.LSLevel6ID = @LSLevel6ID)
+				AND (@LSLevel7ID IS NULL OR A.LSLevel7ID = @LSLevel7ID)
+				AND (@LSLevel8ID IS NULL OR A.LSLevel8ID = @LSLevel8ID)
+				AND (@LSLevel9ID IS NULL OR A.LSLevel9ID = @LSLevel9ID)
+				AND (A.EmpID = @EmpID OR A.NguoiNhapHo_EmpID = @EmpID)	
+				AND D.ThietLapMucTieuCoCauID IS NULL
+		
+		--SELECT  A.ID, A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID
+		--		, A.LSLevel4ID, A.LSLevel5ID, A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID, A.LSTrackingMethodID
+		--		,dbo.PM_fnGetIDAdjustmentKPI(1, @Year, @GoalPeriodID, A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID, A.LSLevel4ID, A.LSLevel5ID, A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID, A.LSTrackingMethodID, @LanguageID, '2') as ThietLapMucTieuCoCauID
+		--		,@Year as [Year], @GoalPeriodID as GoalPeriodID
+		--FROM	#tmpThietLapMucTieuPhongBan (NOLOCK) A
+
+		SELECT	A.ThietLapMucTieuCoCauID, A.[Year], A.GoalPeriodID
+				, A.ID, A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID
+				, A.LSLevel4ID, A.LSLevel5ID, A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID, A.LSTrackingMethodID
+		INTO	#tmpTaoPhongBan
+		FROM	(
+				SELECT  A.ID, A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID
+						, A.LSLevel4ID, A.LSLevel5ID, A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID, A.LSTrackingMethodID
+						,dbo.PM_fnGetIDAdjustmentKPI(1, @Year, @GoalPeriodID, A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID, A.LSLevel4ID, A.LSLevel5ID, A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID, A.LSTrackingMethodID, @LanguageID, '2') as ThietLapMucTieuCoCauID
+						,@Year as [Year], @GoalPeriodID as GoalPeriodID
+				FROM	#tmpThietLapMucTieuPhongBan (NOLOCK) A
+				) as A
+		WHERE	ThietLapMucTieuCoCauID <> ''
+
+		IF EXISTS (SELECT TOP 1 1 FROM #tmpTaoPhongBan (NOLOCK))
+		BEGIN
+			INSERT INTO PM_tblThietLapMucTieuCoCau([Year], GoalPeriodID, ApprovedStatusID,
+						LSCompanyID, LSLevel1ID, LSLevel2ID, LSLevel3ID, LSLevel4ID,
+						LSLevel5ID, LSLevel6ID, LSLevel7ID, LSLevel8ID, LSLevel9ID,
+						LSTrackingMethodID,Type, Creator, CreateTime)
+			SELECT	A.[Year], A.GoalPeriodID, 72, 
+					A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID, A.LSLevel4ID, 
+					A.LSLevel5ID, A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID,  A.LSLevel9ID,
+					A.LSTrackingMethodID, 2, @UserGroupID, @dGetDateTime
+			FROM	#tmpTaoPhongBan (NOLOCK) A
+
+			INSERT INTO PM_tblThietLapMucTieuCoCau_GoalCategory(ThietLapMucTieuCoCauID, GoalCategoryID, TyTrong, TyTrongCongTy)
+			SELECT  D.ThietLapMucTieuCoCauID, B.GoalCategoryID, B.TyTrong, B.TyTrong
+			FROM	#tmpTaoPhongBan (NOLOCK) A
+					INNER JOIN PM_tblThietLapMucTieuCoCau (NOLOCK) D ON D.GoalPeriodID = A.GoalPeriodID 
+						AND D.LSCompanyID = A.LSCompanyID 
+						AND D.LSLevel1ID = A.LSLevel1ID
+						AND D.LSLevel2ID = A.LSLevel2ID
+						AND D.LSLevel3ID = A.LSLevel3ID
+						AND	CASE WHEN D.LSLevel4ID IS NULL THEN -1 ELSE D.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+						AND	CASE WHEN D.LSLevel5ID IS NULL THEN -1 ELSE D.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+						AND	CASE WHEN D.LSLevel6ID IS NULL THEN -1 ELSE D.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+						AND	CASE WHEN D.LSLevel7ID IS NULL THEN -1 ELSE D.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+						AND	CASE WHEN D.LSLevel8ID IS NULL THEN -1 ELSE D.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+						AND	CASE WHEN D.LSLevel9ID IS NULL THEN -1 ELSE D.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+						AND	CASE WHEN D.LSTrackingMethodID IS NULL THEN -1 ELSE D.LSTrackingMethodID END = CASE WHEN A.LSTrackingMethodID IS NULL THEN -1 ELSE A.LSTrackingMethodID END
+						AND D.Type = 2 
+						AND D.Year = A.Year
+					INNER JOIN PM_tblThietLapMucTieuCoCau_GoalCategory (NOLOCK) B ON B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+					left join dbo.PM_tblGoalCategory (Nolock) GC on GC.PM_GoalCategoryID = B.GoalCategoryID
+			WHERE	B.TyTrong > 0
+			ORDER BY D.ThietLapMucTieuCoCauID, GC.Rank
+		END
+	END
+
+	
+
+	SELECT  'ThietLapMucTieuCoCauID'= ISNULL(A.ThietLapMucTieuCoCauID,-1),
+			'SetupManagerAndCEOID'  = B.ID,
+			'GoalPeriodID'			= C.PM_GoalPeriodID,
+			'GoalPeriodCode'		= C.PM_GoalPeriodCode, 
+			'GoalPeriodName'		= CASE WHEN @LanguageID = 'VN' THEN C.PM_GoalPeriodVNName ELSE C.PM_GoalPeriodName END,
+			'GoalPeriodYear'		= C.PM_GoalPeriodYear,
+			'StartDatePhongBan'		= C.StartDate_PhongBan,
+			'EndDatePhongBan'		= C.EndDate_PhongBan,
+			'ApprovedStatus'        = CASE WHEN @LanguageID = 'VN' THEN TT.VNName ELSE TT.Name END,
+			'StatusColor'			= SC.StatusColor,
+			'CompanyID'				= A.LSCompanyID,
+			'Level1ID'				= A.LSLevel1ID,
+			'Level2ID'				= A.LSLevel2ID,
+			'Level3ID'				= A.LSLevel3ID,
+			'Level4ID'				= A.LSLevel4ID,
+			'Level5ID'				= A.LSLevel5ID,
+			'Level6ID'				= A.LSLevel6ID,
+			'Level7ID'				= A.LSLevel7ID,
+			'Level8ID'				= A.LSLevel8ID,
+			'Level9ID'				= A.LSLevel9ID,
+			'CompanyName'			= CASE WHEN @LanguageID = 'VN' THEN Com.VNName ELSE Com.Name END, 
+			'Level1Name'			= CASE WHEN @LanguageID = 'VN' THEN LV1.VNName ELSE LV1.Name END,
+			'Level2Name'			= CASE WHEN @LanguageID = 'VN' THEN LV2.VNName ELSE LV2.Name END,
+			'Level3Name'			= CASE WHEN @LanguageID = 'VN' THEN LV3.VNName ELSE LV3.Name END,
+			'Level4Name'			= CASE WHEN @LanguageID = 'VN' THEN LV4.VNName ELSE LV4.Name END,
+			'Level5Name'			= CASE WHEN @LanguageID = 'VN' THEN LV5.VNName ELSE LV5.Name END,
+			'Level6Name'			= CASE WHEN @LanguageID = 'VN' THEN LV6.VNName ELSE LV6.Name END,
+			'Level7Name'			= CASE WHEN @LanguageID = 'VN' THEN LV7.VNName ELSE LV7.Name END,
+			'Level8Name'			= CASE WHEN @LanguageID = 'VN' THEN LV8.VNName ELSE LV8.Name END,
+			'Level9Name'			= CASE WHEN @LanguageID = 'VN' THEN LV9.VNName ELSE LV9.Name END,
+			'LSTrackingMethodID'	= A.LSTrackingMethodID,
+			'TrackingMethod'		= CASE WHEN @LanguageID = 'VN' THEN O.VNName ELSE O.Name END,
+			'TyTrongLoaiMucTieu'    = REPLACE(STUFF(
+									   (
+										   SELECT  ',' +  ISNULL(case when @LanguageID = 'VN' then GC.VNName else GC.Name end, '')  
+													   + ' - ' + GC.PM_GoalCategoryCode + ': '
+													   + dbo.fnConvertNumber(t1.TyTrong) + '%'
+										   FROM		[dbo].[PM_tblThietLapMucTieuCoCau_GoalCategory] t1
+													left join dbo.PM_tblGoalCategory (Nolock) GC on GC.PM_GoalCategoryID = t1.GoalCategoryID
+										   WHERE	t1.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+													and t1.TyTrong > 0
+											ORDER BY GC.Rank
+										  FOR XML PATH('')
+										), 1, 1, ''),',',CHAR(13) + CHAR(10)),
+			'SoLuongLoaiMucTieu'    = REPLACE(STUFF(
+									   (
+										   SELECT  ',' +  ISNULL(case when @LanguageID = 'VN' then GC.VNName else GC.Name end, '')  
+													   + ' - ' + GC.PM_GoalCategoryCode + ': '
+													   + dbo.fnConvertNumber(t1.SoLuongMucTieu) 
+										   FROM		[dbo].[PM_tblThietLapMucTieuCoCau_GoalCategory] t1
+													left join dbo.PM_tblGoalCategory (Nolock) GC on GC.PM_GoalCategoryID = t1.GoalCategoryID
+										   WHERE	t1.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+													and t1.SoLuongMucTieu > 0
+											ORDER BY GC.Rank
+										  FOR XML PATH('')
+										), 1, 1, ''),',',CHAR(13) + CHAR(10)),
+			'TruongBoPhan'			= E.EmpName,
+			'NguoiNhapHo'			= E1.EmpName,
+			'Creater'				= A.Creator,
+			'CreateTime'			= CONVERT(NVARCHAR(10),A.CreateTime,103) + ' ' + CONVERT(NVARCHAR(10),A.CreateTime,108),
+			'Editer'				= A.Editor,
+			'EditTime'				= CONVERT(NVARCHAR(10),A.EditTime,103) + ' ' + CONVERT(NVARCHAR(10),A.EditTime,108),
+			'IsEnable'				= dbo.PM_fnCheckLockThietLapMucTieuCoCau(A.ThietLapMucTieuCoCauID, 2),
+			'ApprovedStatusID'		= A.ApprovedStatusID,
+			--'IsEnablePhanBo'		= CASE WHEN A.ApprovedStatusID IN (78, 80) 
+			--									then 1 ELSE 0 END,
+			'IsEnablePhanBo'		= 1,
+			'NguoiPheDuyet_Cap1'	= ISNULL(dbo.Common_fnLayNguoiPheDuyet_PassOrg(A.LSCompanyID,A.LSLevel1ID,A.LSLevel2ID,A.LSLevel3ID,A.LSLevel4ID,A.LSLevel5ID,A.LSLevel6ID,A.LSLevel7ID,A.LSLevel8ID,A.LSLevel9ID,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,1,112),''),
+			'TinhTrangPhanBo'       = CASE WHEN @LanguageID = 'VN' THEN TTPB.VNName ELSE TTPB.Name END,
+			'StartDatePhanBoMucTieuPhongBan'		= C.StartDate_PhanBoMucTieuPhongBan,
+			'EndDatePhanBoMucTieuPhongBan'			= C.EndDate_PhanBoMucTieuPhongBan,
+			'DuLieuPhanBo'			= CASE WHEN PB.ThietLapMucTieuCoCau_PhanBoMucTieuID IS NULL THEN 0 ELSE 1 END
+	FROM	PM_tblThietLapMucTieuCoCau (NOLOCK) A
+			OUTER APPLY  
+			(
+				SELECT	Top 1 B.ID, B.EmpID, B.NguoiNhapHo_EmpID
+				FROM	PM_tblSetupManagerAndCEO (NOLOCK) B
+				WHERE	B.Type = 2
+						AND B.EffectiveDate <= GetDate()
+						AND YEAR(B.EffectiveDate) = A.Year
+						AND B.LSCompanyID = A.LSCompanyID
+						AND B.LSLevel1ID = A.LSLevel1ID
+						AND B.LSLevel2ID = A.LSLevel2ID
+						AND B.LSLevel3ID = A.LSLevel3ID
+						AND	CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+						AND	CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+						AND	CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+						AND	CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+						AND	CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+						AND	CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+				ORDER BY B.EffectiveDate desc
+			) AS B 
+			LEFT JOIN PM_tblGoalPeriod (NOLOCK) C ON C.PM_GoalPeriodID  = A.GoalPeriodID
+			LEFT JOIN dbo.LS_tblCompany (NOLOCK) Com ON Com.LSCompanyID = A.LSCompanyID
+			LEFT JOIN dbo.LS_tblLevel1 (NOLOCK) LV1 ON LV1.LSLevel1ID = A.LSLevel1ID
+			LEFT JOIN dbo.LS_tblLevel2 (NOLOCK) LV2 ON LV2.LSLevel2ID = A.LSLevel2ID
+			LEFT JOIN dbo.LS_tblLevel3 (NOLOCK) LV3 ON LV3.LSLevel3ID = A.LSLevel3ID
+			LEFT JOIN dbo.LS_tblLevel4 (NOLOCK) LV4 ON LV4.LSLevel4ID = A.LSLevel4ID
+			LEFT JOIN dbo.LS_tblLevel5 (NOLOCK) LV5 ON LV5.LSLevel5ID = A.LSLevel5ID
+			LEFT JOIN dbo.LS_tblLevel6 (NOLOCK) LV6 ON LV6.LSLevel6ID = A.LSLevel6ID
+			LEFT JOIN dbo.LS_tblLevel7 (NOLOCK) LV7 ON LV7.LSLevel7ID = A.LSLevel7ID
+			LEFT JOIN dbo.LS_tblLevel8 (NOLOCK) LV8 ON LV8.LSLevel8ID = A.LSLevel8ID
+			LEFT JOIN dbo.LS_tblLevel9 (NOLOCK) LV9 ON LV9.LSLevel9ID = A.LSLevel9ID
+			LEFT JOIN dbo.PM_tblApprovedStatus (Nolock) TT on TT.PM_ApprovedStatusID = CASE WHEN A.ApprovedStatusID is null THEN 72 ELSE A.ApprovedStatusID END
+			LEFT JOIN dbo.LS_tblStatusColor (Nolock) SC on SC.StatusColorID = TT.StatusColorID
+			LEFT JOIN dbo.HR_vEmp (NOLOCK) E ON E.EmpID = B.EmpID
+			LEFT JOIN dbo.HR_vEmp (NOLOCK) E1 ON E1.EmpID = B.NguoiNhapHo_EmpID
+			LEFT JOIN dbo.LS_tblTrackingMethod (NOLOCK) O ON O.LSTrackingMethodID = A.LSTrackingMethodID
+			--left join dbo.fnGetAllLevel_Permission(@UserGroupID,@FunctionID,'Comp') Co on A.LSCompanyID = Co.strValue
+			--left join dbo.fnGetAllLevel_Permission(@UserGroupID,@FunctionID,'Level1') L1 on A.LSLevel1ID = L1.strValue
+			--left join dbo.fnGetAllLevel_Permission(@UserGroupID,@FunctionID,'Level2') L2 on A.LSLevel2ID = L2.strValue
+			--left join dbo.fnGetAllLevel_Permission(@UserGroupID,@FunctionID,'Level3') L3 on A.LSLevel3ID = L3.strValue
+			--left join dbo.fnGetAllLevel_Permission(@UserGroupID,@FunctionID,'Level4') L4 on A.LSLevel4ID = L4.strValue
+			LEFT JOIN dbo.PM_tblApprovedStatus (Nolock) TTPB on TTPB.PM_ApprovedStatusID = CASE WHEN A.TrangThaiPhanBo is null THEN 90 ELSE A.TrangThaiPhanBo END
+			OUTER APPLY  
+			(
+				SELECT  TOP 1 PB.ThietLapMucTieuCoCau_PhanBoMucTieuID
+				FROM	PM_tblThietLapMucTieuCoCau_PhanBoMucTieu (NOLOCK) PB
+				WHERE	PB.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+			) AS PB 
+	WHERE	A.Type = @TypePopup
+			AND A.Year = @Year
+			AND (@LSCompanyID IS NULL OR A.LSCompanyID = @LSCompanyID)
+			AND (@LSLevel1ID IS NULL OR A.LSLevel1ID = @LSLevel1ID)
+			AND (@LSLevel2ID IS NULL OR A.LSLevel2ID = @LSLevel2ID)
+			AND (@LSLevel3ID IS NULL OR A.LSLevel3ID = @LSLevel3ID)
+			AND (@LSLevel4ID IS NULL OR A.LSLevel4ID = @LSLevel4ID)
+			AND (@LSLevel5ID IS NULL OR A.LSLevel5ID = @LSLevel5ID)
+			AND (@LSLevel6ID IS NULL OR A.LSLevel6ID = @LSLevel6ID)
+			AND (@LSLevel7ID IS NULL OR A.LSLevel7ID = @LSLevel7ID)
+			AND (@LSLevel8ID IS NULL OR A.LSLevel8ID = @LSLevel8ID)
+			AND (@LSLevel9ID IS NULL OR A.LSLevel9ID = @LSLevel9ID)
+			AND (B.EmpID = @EmpID OR B.NguoiNhapHo_EmpID = @EmpID)
+			AND
+			(
+				(case when @ApprovedStatusID is null then '' else @ApprovedStatusID end = '') or 
+				(charindex( '@'+ convert(nvarchar(12), case when A.ApprovedStatusID is null then 72 else A.ApprovedStatusID end) +'@', '@'+@ApprovedStatusID + '@') != 0)
+			)
+			AND
+			(
+				(case when @TrangThaiPhanBoID is null then '' else @TrangThaiPhanBoID end = '') or 
+				(charindex( '@'+ convert(nvarchar(12), case when A.TrangThaiPhanBo is null then 90 else A.TrangThaiPhanBo end) +'@', '@'+@TrangThaiPhanBoID + '@') != 0)
+			)
+			AND (@GoalPeriodID IS NULL OR @GoalPeriodID = 0 OR C.PM_GoalPeriodID = @GoalPeriodID)
+			--and (A.LSCompanyID is null or @UserGroupID = 'admin' OR Co.strValue is not null)
+			--and (A.LSLevel1ID is null or @UserGroupID = 'admin' or L1.strValue is not null)
+			--and (A.LSLevel2ID is null or @UserGroupID = 'admin' or L2.strValue is not null)
+			--and (A.LSLevel3ID is null or @UserGroupID = 'admin' or L3.strValue is not null)
+			--and (A.LSLevel4ID is null or @UserGroupID = 'admin' or L4.strValue is not null)
+END
+ELSE IF @Activity = 'LoadPopup'
+BEGIN
+	SELECT	C.PM_GoalPeriodID AS GoalPeriodID, 
+			C.PM_GoalPeriodYear AS GoalPeriodYear, 
+			C.PM_GoalPeriodCode AS GoalPeriodCode, 
+			case when @LanguageID = N'VN' then C.PM_GoalPeriodVNName else C.PM_GoalPeriodName end as GoalPeriodName,
+			A.LSCompanyID,
+			A.LSLevel1ID,
+			A.LSLevel2ID,
+			A.LSLevel3ID,
+			A.LSLevel4ID,
+			A.LSLevel5ID,
+			A.LSLevel6ID,
+			A.LSLevel7ID,
+			A.LSLevel8ID,
+			A.LSLevel9ID,
+			A.LSTrackingMethodID,
+			CASE WHEN @LanguageID = 'VN' THEN Com.VNName ELSE Com.Name END as CompanyName, 
+			CASE WHEN @LanguageID = 'VN' THEN LV1.VNName ELSE LV1.Name END as Level1Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV2.VNName ELSE LV2.Name END as Level2Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV3.VNName ELSE LV3.Name END as Level3Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV4.VNName ELSE LV4.Name END as Level4Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV5.VNName ELSE LV5.Name END as Level5Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV6.VNName ELSE LV6.Name END as Level6Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV7.VNName ELSE LV7.Name END as Level7Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV8.VNName ELSE LV8.Name END as Level8Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV9.VNName ELSE LV9.Name END as Level9Name,
+			CASE WHEN @LanguageID = 'VN' THEN O.VNName ELSE O.Name END as TrackingMethod,
+			CONVERT(nvarchar(10),C.StartDate_PhongBan,103) as StartDateCongTy,
+			CONVERT(nvarchar(10),C.EndDate_PhongBan,103) as EndDateCongTy,
+			A.ThietLapMucTieuCoCauID as MasterID,
+			A.ApprovedStatusID as ApprovedStatusID,
+			A.ApprovedLevelID as ApprovedLevel,
+			case when (C.GoalPeriodStatus is null or C.GoalPeriodStatus = 0) and Convert(date,@dGetDateTime, 103) 
+					between C.StartDate_PhongBan and C.EndDate_PhongBan
+					then '1' 
+					else '0' 
+			end as IsEnableBtn,
+			A.XacNhanCuaTruongBoPhan,
+			A.LyDoTraVePhongBan
+			--TanND35 rlogid 22775
+			,E.F_EmpName + ' - ' + E.EmpCode AS Employee
+			,case when @LanguageID = 'VN' then jt.VNName else jt.Name end as JobTitle
+			,A.XacNhanCuaTruongBoPhan  
+			--
+			,C.AttachFileID AS AttachFileID_GoalPeriod
+			,A.AttachFileID_PB AS AttachFileID
+	FROM	PM_tblThietLapMucTieuCoCau (NOLOCK) A
+			--TanND35 rlogid 22775
+			OUTER APPLY  
+			(
+				SELECT	Top 1 B.EmpID
+				FROM	PM_tblSetupManagerAndCEO (NOLOCK) B
+				WHERE	B.Type = 2
+						AND B.EffectiveDate <= GetDate()
+						AND YEAR(B.EffectiveDate) = A.Year
+						AND B.LSCompanyID = A.LSCompanyID
+						AND B.LSLevel1ID = A.LSLevel1ID
+						AND B.LSLevel2ID = A.LSLevel2ID
+						AND B.LSLevel3ID = A.LSLevel3ID
+						AND	CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+						AND	CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+						AND	CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+						AND	CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+						AND	CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+						AND	CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+						AND	CASE WHEN B.LSTrackingMethodID IS NULL THEN -1 ELSE B.LSTrackingMethodID END = CASE WHEN A.LSTrackingMethodID IS NULL THEN -1 ELSE A.LSTrackingMethodID END
+				ORDER BY EffectiveDate desc
+			) AS B 
+			LEFT JOIN dbo.HR_tblEmp (NOLOCK) E ON E.EmpID = B.EmpID
+			LEFT JOIN ls_tblJobTitle(NoLock) jt on E.LSJobTitleID=jt.LSJobTitleID
+			--
+			LEFT JOIN PM_tblGoalPeriod (NOLOCK) C ON C.PM_GoalPeriodID = A.GoalPeriodID
+			LEFT JOIN dbo.LS_tblCompany (NOLOCK) Com ON Com.LSCompanyID = A.LSCompanyID
+			LEFT JOIN dbo.LS_tblLevel1 (NOLOCK) LV1 ON LV1.LSLevel1ID = A.LSLevel1ID
+			LEFT JOIN dbo.LS_tblLevel2 (NOLOCK) LV2 ON LV2.LSLevel2ID = A.LSLevel2ID
+			LEFT JOIN dbo.LS_tblLevel3 (NOLOCK) LV3 ON LV3.LSLevel3ID = A.LSLevel3ID
+			LEFT JOIN dbo.LS_tblLevel4 (NOLOCK) LV4 ON LV4.LSLevel4ID = A.LSLevel4ID
+			LEFT JOIN dbo.LS_tblLevel5 (NOLOCK) LV5 ON LV5.LSLevel5ID = A.LSLevel5ID
+			LEFT JOIN dbo.LS_tblLevel6 (NOLOCK) LV6 ON LV6.LSLevel6ID = A.LSLevel6ID
+			LEFT JOIN dbo.LS_tblLevel7 (NOLOCK) LV7 ON LV7.LSLevel7ID = A.LSLevel7ID
+			LEFT JOIN dbo.LS_tblLevel8 (NOLOCK) LV8 ON LV8.LSLevel8ID = A.LSLevel8ID
+			LEFT JOIN dbo.LS_tblLevel9 (NOLOCK) LV9 ON LV9.LSLevel9ID = A.LSLevel9ID
+			LEFT JOIN dbo.LS_tblTrackingMethod (NOLOCK) O ON O.LSTrackingMethodID = A.LSTrackingMethodID
+	WHERE	A.Type = @TypePopup
+			AND A.ThietLapMucTieuCoCauID =  @MasterID
+
+	SELECT  A.GoalCategoryID as ID, 
+			case when @LanguageID = 'VN' then GC.VNName else GC.Name end + ' - ' + GC.PM_GoalCategoryCode  as Name,
+			A.TyTrongCongTy,
+			A.TyTrong,
+			A.SoLuongMucTieu
+	FROM	dbo.PM_tblThietLapMucTieuCoCau_GoalCategory (Nolock) A
+			left join dbo.PM_tblGoalCategory (Nolock) GC on GC.PM_GoalCategoryID = A.GoalCategoryID
+	WHERE	A.ThietLapMucTieuCoCauID = @MasterID
+	ORDER BY GC.Rank
+
+	--IF EXISTS (SELECT	TOP 1 1 
+	--			FROM	PM_tblThietLapMucTieuCoCau (NOLOCK) 
+	--			WHERE	ThietLapMucTieuCoCauID=@MasterID AND ApprovedStatusID = 72)
+	--BEGIN
+	--	SET  @LoadMucTieuCongTy = 1
+	--END
+
+	--Fix Jira TANLONG_IHRP_2022_PM-3946
+	--IF EXISTS (SELECT	TOP 1 1 
+	--			FROM	PM_tblThietLapMucTieuCoCau (NOLOCK) 
+	--			WHERE	ThietLapMucTieuCoCauID=@MasterID AND ApprovedStatusID = 74)
+	--BEGIN
+	--	IF NOT EXISTS (
+	--					SELECT	TOP 1 1 
+	--					FROM	PM_tblThietLapMucTieuCoCau_GoalPeriod (NOLOCK) 
+	--					WHERE	ThietLapMucTieuCoCauID=@MasterID
+	--					)
+	--	BEGIN
+	--		SET  @LoadMucTieuCongTy = 1
+	--	END
+	
+	--END
+
+	IF @LoadMucTieuCongTy = 1
+	BEGIN
+		SELECT  ROW_NUMBER() OVER( ORDER BY C.ThietLapMucTieuCoCau_GoalPeriodID DESC) AS TempID,
+				C.ThietLapMucTieuCoCau_GoalPeriodID as DetailID,
+				C.GoalCategoryID, 
+				case when @LanguageID = 'VN' then GC.VNName else GC.Name end as LoaiMucTieu, 
+				C.MucTieu, 
+				C.TrongSo,
+				C.TieuChiDanhGia,
+				C.LSTaoPhuongPhapDoID,
+				convert(nvarchar(10),C.ThoiDiemGhiNhan,103) AS ThoiDiemGhiNhan,
+				C.OtherCatalog1,
+				C.LSUnitOfMeasurementID, 
+				C.KeHoach,
+				C.KeHoachDen,
+				CASE WHEN U.LSCachTinhID IN (1, 2) AND A.LSTrackingMethodID=2 THEN dbo.fnConvertNumber(ROUND(CONVERT(float, Replace(C.KeHoach,',','')) / 4, 2)) ELSE C.Quy1 END AS Quy1,
+				CASE WHEN U.LSCachTinhID IN (1, 2) AND A.LSTrackingMethodID=2 THEN dbo.fnConvertNumber(ROUND(CONVERT(float, Replace(C.KeHoach,',','')) / 4, 2)) ELSE C.Quy2 END AS Quy2,
+				CASE WHEN U.LSCachTinhID IN (1, 2) AND A.LSTrackingMethodID=2 THEN dbo.fnConvertNumber(ROUND(CONVERT(float, Replace(C.KeHoach,',','')) / 4, 2)) ELSE C.Quy3 END AS Quy3,
+				CASE WHEN U.LSCachTinhID IN (1, 2) AND A.LSTrackingMethodID=2 THEN dbo.fnConvertNumber(ROUND(CONVERT(float, Replace(C.KeHoach,',','')) / 4, 2)) ELSE C.Quy4 END AS Quy4,
+				CASE WHEN U.LSCachTinhID IN (1, 2) AND A.LSTrackingMethodID=3 THEN dbo.fnConvertNumber(ROUND(CONVERT(float, Replace(C.KeHoach,',','')) / 2, 2)) ELSE C.SauThangDauNam END AS [SauThangDauNam],
+				CASE WHEN U.LSCachTinhID IN (1, 2) AND A.LSTrackingMethodID=3 THEN dbo.fnConvertNumber(ROUND(CONVERT(float, Replace(C.KeHoach,',','')) / 2, 2)) ELSE C.SauThangCuoiNam END AS [SauThangCuoiNam],
+				C.LSDanhMucHinhThucMucTieuID,
+				REPLACE(PP.VNName, 'KH', C.KeHoach) as DienGiaiPhuongPhapDo,
+				PP.VNName as CongThuc,
+				C.MucTieu as MucTieuCongTy,
+				U.LSCachTinhID as CachTinh,
+				C.Quy1Den,
+				C.Quy2Den,
+				C.Quy3Den,
+				C.Quy4Den,
+				C.[SauThangDauNamDen],
+				C.[SauThangCuoiNamDen]
+		FROM	PM_tblThietLapMucTieuCoCau (NOLOCK) A 
+				INNER JOIN PM_tblThietLapMucTieuCoCau (NOLOCK) B ON B.Type = 1
+																	AND B.Year = A.Year
+																	AND B.GoalPeriodID = A.GoalPeriodID 
+																	AND B.LSCompanyID = A.LSCompanyID 
+																	AND B.LSLevel1ID = A.LSLevel1ID
+																	AND (A.LSLevel2ID IS NULL OR A.LSLevel2ID = B.LSLevel2ID)--ThanhNP24 Rlog 23057
+				INNER JOIN dbo.PM_tblThietLapMucTieuCoCau_GoalPeriod (Nolock) C ON C.ThietLapMucTieuCoCauID = B.ThietLapMucTieuCoCauID
+				LEFT JOIN PM_tblGoalCategory (Nolock) GC on  GC.PM_GoalCategoryID = C.GoalCategoryID
+				LEFT JOIN LS_tblTaoPhuongPhapDo (Nolock) PP on PP.LSTaoPhuongPhapDoID = C.LSTaoPhuongPhapDoID
+				LEFT JOIN PM_tblUnitOfMeasurement (Nolock) U on U.PM_UnitOfMeasurementID = C.LSUnitOfMeasurementID
+		WHERE	A.ThietLapMucTieuCoCauID = @MasterID
+		ORDER BY C.ThietLapMucTieuCoCau_GoalPeriodID DESC
+	END
+	ELSE 
+	BEGIN
+		IF NOT EXISTS (
+						SELECT	TOP 1 1 
+						FROM	PM_tblThietLapMucTieuCoCau_GoalPeriod (NOLOCK) 
+						WHERE	ThietLapMucTieuCoCauID=@MasterID
+						)
+		BEGIN
+			SET	@ThietLapMucTieuCoCauID_PhongBan ='';
+			SELECT	@ThietLapMucTieuCoCauID_PhongBan = dbo.PM_fnGetIDAdjustmentKPI(1, A.Year, A.GoalPeriodID, A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID, A.LSLevel4ID, A.LSLevel5ID, A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID, A.LSTrackingMethodID, @LanguageID, '2')
+			FROM	PM_tblThietLapMucTieuCoCau (NOLOCK) A
+			WHERE	A.ThietLapMucTieuCoCauID = @MasterID
+
+			--select @ThietLapMucTieuCoCauID_StatusID78
+
+			SELECT  ROW_NUMBER() OVER( ORDER BY A.ThietLapMucTieuCoCau_GoalPeriodID DESC) AS TempID,
+					A.ThietLapMucTieuCoCau_GoalPeriodID as DetailID,
+					A.GoalCategoryID, 
+					case when @LanguageID = 'VN' then GC.VNName else GC.Name end as LoaiMucTieu, 
+					A.MucTieu, 
+					A.TrongSo,
+					A.TieuChiDanhGia,
+					A.LSTaoPhuongPhapDoID,
+					convert(nvarchar(10),A.ThoiDiemGhiNhan,103) AS ThoiDiemGhiNhan,
+					A.OtherCatalog1,
+					A.LSUnitOfMeasurementID, 
+					A.KeHoach,
+					A.KeHoachDen,
+					A.Quy1,
+					A.Quy2,
+					A.Quy3,
+					A.Quy4,
+					A.[SauThangDauNam],
+					A.[SauThangCuoiNam],
+					A.LSDanhMucHinhThucMucTieuID,
+					REPLACE(PP.VNName, 'KH', A.KeHoach) as DienGiaiPhuongPhapDo,
+					PP.VNName as CongThuc,
+					A.MucTieuCongTy as MucTieuCongTy,
+					U.LSCachTinhID as CachTinh,
+					A.Quy1Den,
+					A.Quy2Den,
+					A.Quy3Den,
+					A.Quy4Den,
+					A.[SauThangDauNamDen],
+					A.[SauThangCuoiNamDen]
+			FROM	dbo.PM_tblThietLapMucTieuCoCau_GoalPeriod (Nolock) A
+					INNER JOIN PM_tblThietLapMucTieuCoCau (NOLOCK) B ON B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+					LEFT JOIN PM_tblGoalCategory (Nolock) GC on A.GoalCategoryID = GC.PM_GoalCategoryID
+					LEFT JOIN LS_tblTaoPhuongPhapDo (Nolock) PP on PP.LSTaoPhuongPhapDoID = A.LSTaoPhuongPhapDoID
+					LEFT JOIN PM_tblUnitOfMeasurement (Nolock) U on U.PM_UnitOfMeasurementID = A.LSUnitOfMeasurementID
+			WHERE	A.ThietLapMucTieuCoCauID = @ThietLapMucTieuCoCauID_PhongBan
+			ORDER BY A.ThietLapMucTieuCoCau_GoalPeriodID DESC
+		END
+		ELSE 
+		BEGIN
+			SELECT  ROW_NUMBER() OVER( ORDER BY A.ThietLapMucTieuCoCau_GoalPeriodID DESC) AS TempID,
+					A.ThietLapMucTieuCoCau_GoalPeriodID as DetailID,
+					A.GoalCategoryID, 
+					case when @LanguageID = 'VN' then GC.VNName else GC.Name end as LoaiMucTieu, 
+					A.MucTieu, 
+					A.TrongSo,
+					A.TieuChiDanhGia,
+					A.LSTaoPhuongPhapDoID,
+					convert(nvarchar(10),A.ThoiDiemGhiNhan,103) AS ThoiDiemGhiNhan,
+					A.OtherCatalog1,
+					A.LSUnitOfMeasurementID, 
+					A.KeHoach,
+					A.KeHoachDen,
+					A.Quy1,
+					A.Quy2,
+					A.Quy3,
+					A.Quy4,
+					A.[SauThangDauNam],
+					A.[SauThangCuoiNam],
+					A.LSDanhMucHinhThucMucTieuID,
+					REPLACE(PP.VNName, 'KH', A.KeHoach) as DienGiaiPhuongPhapDo,
+					PP.VNName as CongThuc,
+					A.MucTieuCongTy as MucTieuCongTy,
+					U.LSCachTinhID as CachTinh,
+					A.Quy1Den,
+					A.Quy2Den,
+					A.Quy3Den,
+					A.Quy4Den,
+					A.[SauThangDauNamDen],
+					A.[SauThangCuoiNamDen]
+			FROM	dbo.PM_tblThietLapMucTieuCoCau_GoalPeriod (Nolock) A
+					INNER JOIN PM_tblThietLapMucTieuCoCau (NOLOCK) B ON B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+					LEFT JOIN PM_tblGoalCategory (Nolock) GC on A.GoalCategoryID = GC.PM_GoalCategoryID
+					LEFT JOIN LS_tblTaoPhuongPhapDo (Nolock) PP on PP.LSTaoPhuongPhapDoID = A.LSTaoPhuongPhapDoID
+					LEFT JOIN PM_tblUnitOfMeasurement (Nolock) U on U.PM_UnitOfMeasurementID = A.LSUnitOfMeasurementID
+			WHERE	A.ThietLapMucTieuCoCauID = @MasterID
+			ORDER BY A.ThietLapMucTieuCoCau_GoalPeriodID DESC
+		END
+	END
+	-- xử lý load hết các cấp phê duyệt
+	IF OBJECT_ID('tempdb..#tmpThietLapMucTieuCoCauTTCapPheDuyetTT') IS NOT NULL
+		DROP TABLE #tmpThietLapMucTieuCoCauTTCapPheDuyetTT
+	CREATE TABLE #tmpThietLapMucTieuCoCauTTCapPheDuyetTT(MasterID NVARCHAR(100), Approver NVARCHAR(100), ApproveLevel NVARCHAR(100))
+		
+	Declare @CapCuoi int ,@CapHienTai int,@dApprover nvarchar(100)
+	SELECT	 @CapCuoi = ISNULL(dbo.Common_fnLayNguoiPheDuyet_PassOrg(A.LSCompanyID,A.LSLevel1ID,A.LSLevel2ID,A.LSLevel3ID,A.LSLevel4ID,A.LSLevel5ID,A.LSLevel6ID,A.LSLevel7ID,A.LSLevel8ID,A.LSLevel9ID,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,null,22,112),'')
+			,@CapHienTai = ISNULL(A.ApprovedLevelID, 0) + 1
+	FROM	dbo.PM_tblThietLapMucTieuCoCau (NOLOCK) A
+	WHERE	A.ThietLapMucTieuCoCauID = @MasterID	
+
+	IF @MasterID is not null
+	BEGIN
+		WHILE @CapHienTai <= @CapCuoi
+		BEGIN
+			SELECT	@LSCompanyID = LSCompanyID,
+					@LSLevel1ID	 = LSLevel1ID,
+					@LSLevel2ID	 = LSLevel2ID,
+					@LSLevel3ID	 = LSLevel3ID,
+					@LSLevel4ID	 = LSLevel4ID,
+					@LSLevel5ID	 = LSLevel5ID,
+					@LSLevel6ID	 = LSLevel6ID,
+					@LSLevel7ID	 = LSLevel7ID,
+					@LSLevel8ID	 = LSLevel8ID,
+					@LSLevel9ID	 = LSLevel9ID
+			FROM	dbo.PM_tblThietLapMucTieuCoCau(NoLock) 
+			WHERE	ThietLapMucTieuCoCauID = @MasterID
+
+			SET @dApprover = ISNULL(dbo.Common_fnLayNguoiPheDuyet_PassOrg(@LSCompanyID,@LSLevel1ID,@LSLevel2ID,@LSLevel3ID,@LSLevel4ID,@LSLevel5ID,@LSLevel6ID,@LSLevel7ID,@LSLevel8ID,@LSLevel9ID,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,@CapHienTai,1,113),'')
+
+			insert into #tmpThietLapMucTieuCoCauTTCapPheDuyetTT(MasterID,Approver,ApproveLevel)
+			Values(@MasterID,@dApprover,@CapHienTai)
+
+			SET @CapHienTai = @CapHienTai + 1
+		END
+	END
+
+	SELECT	vE.EmpCode, vE.EmpName,
+			Case when @LanguageID = 'EN' then vE.CompanyEN else vE.CompanyVN end as CompanyName, 
+			Case when @LanguageID = 'EN' then vE.Level1EN else vE.Level1VN   end as Level1Name,
+			Case when @LanguageID = 'EN' then vE.Level2EN else vE.Level2VN   end as Level2Name,
+			Case when @LanguageID = 'EN' then vE.Level3EN else vE.Level3VN   end as Level3Name,
+			Case when @LanguageID = 'EN' then vE.Level4EN else vE.Level4VN   end as Level4Name,
+			Case when @LanguageID = 'EN' then vE.Level5EN else vE.Level5VN   end as Level5Name,
+			Case when @LanguageID = 'EN' then vE.Level6EN else vE.Level6VN   end as Level6Name,
+			Case when @LanguageID = 'EN' then vE.Level7EN else vE.Level7VN   end as Level7Name,
+			Case when @LanguageID = 'EN' then vE.Level8EN else vE.Level8VN   end as Level8Name,
+			Case when @LanguageID = 'EN' then vE.Level9EN else vE.Level9VN   end as Level9Name,
+			Case when @LanguageID = 'EN' then vE.JobTitleEN else vE.JobTitleVN end as JobtitleName,
+			Case when @LanguageID = 'EN' then CBNV.Name else CBNV.VNName end as CBNV,
+			case when @LanguageID = 'VN' then TT.VNName else TT.Name end ApprovedStatus, 
+			SC.StatusColor,
+			A.Creater, A.CreateTime, A.Editer, A.EditTime, A.LyDoTraVe
+	--from	dbo.PM_tblThietLapMucTieuCoCauProcess (Nolock) A
+	--		INNER JOIN dbo.PM_tblThietLapMucTieuCoCau (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+	FROM	(
+				SELECT	A.ThietLapMucTieuCoCauID, A.CurApprover, A.ApprovedStatusID, A.LyDoTraVe,
+						A.Creater, A.CreateTime, A.Editer, A.EditTime
+				FROM	dbo.PM_tblThietLapMucTieuCoCauProcess (NOLOCK) A
+						INNER JOIN PM_tblThietLapMucTieuCoCau (NOLOCK) B ON B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+				WHERE	A.ThietLapMucTieuCoCauID = @MasterID
+				UNION ALL
+				SELECT	NULL, B.Approver AS CurApprover , NULL AS ApprovedStatusID, NULL AS LyDoTraVe,
+						NULL Creater, NULL CreateTime, NULL Editer, NULL EditTime
+				FROM	#tmpThietLapMucTieuCoCauTTCapPheDuyetTT (NOLOCK) B
+			) AS A
+			LEFT JOIN dbo.UMS_tblUserAccount (Nolock) UA on UA.UserGroupID = A.CurApprover
+			LEFT JOIN dbo.HR_vEmp(NOLOCK) vE on vE.EmpID = UA.EmpID
+			LEFT JOIN LS_tblCapBacNhanVien(nolock) CBNV on CBNV.LSCapBacNhanVienID = vE.LSCapBacNhanVienID
+			LEFT JOIN dbo.PM_tblApprovedStatus (Nolock) TT on TT.PM_ApprovedStatusID = A.ApprovedStatusID
+			LEFT JOIN dbo.LS_tblStatusColor (Nolock) SC on SC.StatusColorID = TT.StatusColorID
+	--where	A.ThietLapMucTieuCoCauID = @MasterID
+	ORDER BY ISNULL(A.CreateTime, '2300-01-01')
+END
+ELSE IF @Activity = 'Save'
+BEGIN
+	SELECT	Seq,
+			CASE WHEN ISNULL(ID, '') = '' THEN NULL ELSE ID END AS GoalCategoryID,
+			CASE WHEN ISNULL(TyTrongCongTy, '') = '' THEN NULL ELSE TyTrongCongTy END AS TyTrongCongTy,
+			CASE WHEN ISNULL(TyTrong, '') = '' THEN NULL ELSE TyTrong END AS TyTrong,
+			CASE WHEN ISNULL(SoLuongMucTieu, '') = '' THEN NULL ELSE SoLuongMucTieu END AS SoLuongMucTieu
+	INTO	#temp_tblGoalCategory
+	FROM	OPENJSON(@JsonTyTrongLoaiMucTieu)
+	WITH 
+	(   
+		Seq						NVARCHAR(50),
+		ID						NVARCHAR(50),
+		TyTrongCongTy			NVARCHAR(50),
+		TyTrong					NVARCHAR(50),
+		SoLuongMucTieu			NVARCHAR(50)
+	) 
+
+	SET @strXML = [dbo].[fnConvertToStringParseXML](@strXML,1)
+	EXEC sp_xml_preparedocument @handle OUTPUT, @strXML
+
+	IF OBJECT_ID('tempdb..#Table_GoalPeriod') is not null DROP TABLE dbo.[#Table_GoalPeriod]
+		
+	select	TempID,
+			case when GoalCategoryID = '' then null else GoalCategoryID end as GoalCategoryID,
+			case when MucTieu = '' then null else dbo.fnConvertToStringParseXML(MucTieu,2) end as MucTieu,
+			case when TrongSo = '' then null else TrongSo end as TrongSo,
+			case when TieuChiDanhGia = '' then null else dbo.fnConvertToStringParseXML(TieuChiDanhGia,2) end as TieuChiDanhGia,
+			case when LSTaoPhuongPhapDoID = '' then null else LSTaoPhuongPhapDoID end as LSTaoPhuongPhapDoID,
+			case when ThoiDiemGhiNhan = '' then null else convert(date,ThoiDiemGhiNhan,103) end as ThoiDiemGhiNhan,
+			case when OtherCatalog1ID = '' then null else OtherCatalog1ID end as OtherCatalog1ID,
+			case when LSUnitOfMeasurementID = '' then null else LSUnitOfMeasurementID end as LSUnitOfMeasurementID,
+			case when KeHoach = '' then null else KeHoach end as KeHoach,
+			case when Quy1 = '' then null else Quy1 end as Quy1,
+			case when Quy2 = '' then null else Quy2 end as Quy2,
+			case when Quy3 = '' then null else Quy3 end as Quy3,
+			case when Quy4 = '' then null else Quy4 end as Quy4,
+			case when [SauThangDauNam] = '' then null else [SauThangDauNam] end as [SauThangDauNam],
+			case when [SauThangCuoiNam] = '' then null else [SauThangCuoiNam] end as [SauThangCuoiNam],
+			case when LSDanhMucHinhThucMucTieuID = '' then null else LSDanhMucHinhThucMucTieuID end as LSDanhMucHinhThucMucTieuID,
+			case when MucTieuCongTy = '' then null else dbo.fnConvertToStringParseXML(MucTieuCongTy, 2) end as MucTieuCongTy,
+			case when KeHoachDen = '' then null else KeHoachDen end as KeHoachDen,
+			case when Quy1Den = '' then null else Quy1Den end as Quy1Den,
+			case when Quy2Den = '' then null else Quy2Den end as Quy2Den,
+			case when Quy3Den = '' then null else Quy3Den end as Quy3Den,
+			case when Quy4Den = '' then null else Quy4Den end as Quy4Den,
+			case when [SauThangDauNamDen] = '' then null else [SauThangDauNamDen] end as [SauThangDauNamDen],
+			case when [SauThangCuoiNamDen] = '' then null else [SauThangCuoiNamDen] end as [SauThangCuoiNamDen]
+	INTO	#Table_GoalPeriod
+	from openxml(@handle,'/Root/Record', 2) with
+	(
+		GoalCategoryID				nvarchar(50),
+		MucTieu						nvarchar(MAX),
+		TrongSo						nvarchar(50),
+		TieuChiDanhGia				nvarchar(MAX),
+		LSTaoPhuongPhapDoID			nvarchar(50),
+		ThoiDiemGhiNhan				nvarchar(10),
+		OtherCatalog1ID				nvarchar(50),
+		LSUnitOfMeasurementID		nvarchar(50),
+		KeHoach						nvarchar(50),
+		Quy1						nvarchar(50),
+		Quy2						nvarchar(50),
+		Quy3						nvarchar(50),
+		Quy4						nvarchar(50),
+		[SauThangDauNam]			nvarchar(50),
+		[SauThangCuoiNam]			nvarchar(50),
+		LSDanhMucHinhThucMucTieuID	nvarchar(50),
+		TempID						int,
+		MucTieuCongTy				nvarchar(MAX),
+		KeHoachDen					nvarchar(50),
+		Quy1Den						nvarchar(50),
+		Quy2Den						nvarchar(50),
+		Quy3Den						nvarchar(50),
+		Quy4Den						nvarchar(50),
+		[SauThangDauNamDen]			nvarchar(50),
+		[SauThangCuoiNamDen]		nvarchar(50)
+	) A
+	EXEC sp_xml_removedocument @handle
+
+	---------------------------------------------------------
+	SET @dGetDateTime = GETDATE()
+
+	IF EXISTS (SELECT TOP 1 1 FROM PM_tblThietLapMucTieuCoCau (NOLOCK) WHERE  ThietLapMucTieuCoCauID=@MasterID AND ApprovedStatusID IN (77, 79))
+	BEGIN
+		UPDATE	A
+		SET		A.ApprovedStatusID	= 74
+				,A.Editor			= @UserGroupID
+				,A.EditTime			= @dGetDateTime
+		FROM	dbo.PM_tblThietLapMucTieuCoCau (Nolock) A
+		WHERE	A.ThietLapMucTieuCoCauID=@MasterID
+
+		INSERT INTO dbo.PM_tblThietLapMucTieuCoCauProcess
+		(
+			ThietLapMucTieuCoCauID, CurApprover, ApprovedStatusID,  Creater, CreateTime
+		)
+		VALUES(@MasterID, @UserGroupID, 74, @UserGroupID, @dGetDateTime)
+
+	END
+
+	UPDATE	A
+	SET		A.Editer				= @UserGroupID,
+			A.EditTime				= @dGetDateTime
+	FROM	dbo.PM_tblThietLapMucTieuCoCauProcess (Nolock) A
+			INNER JOIN
+			(
+				SELECT	A.ThietLapMucTieuCoCauID, MAX(A.ThietLapMucTieuCoCauProcess_ID) as ThietLapMucTieuCoCauProcess_ID
+				FROM	dbo.PM_tblThietLapMucTieuCoCauProcess (Nolock) A
+				WHERE	A.ThietLapMucTieuCoCauID = @MasterID
+				GROUP BY A.ThietLapMucTieuCoCauID
+			) C ON C.ThietLapMucTieuCoCauProcess_ID = A.ThietLapMucTieuCoCauProcess_ID
+	WHERE	A.ApprovedStatusID = 74
+
+	INSERT INTO dbo.PM_tblThietLapMucTieuCoCauProcess
+	(
+		ThietLapMucTieuCoCauID, CurApprover, ApprovedStatusID,  Creater, CreateTime
+	)
+	SELECT	A.ThietLapMucTieuCoCauID,@UserGroupID, 74, @UserGroupID, @dGetDateTime
+	FROM	dbo.PM_tblThietLapMucTieuCoCau (Nolock) A
+	WHERE	A.ApprovedStatusID = 72 AND A.ThietLapMucTieuCoCauID=@MasterID
+
+	UPDATE	A
+	SET		A.ApprovedStatusID	= CASE WHEN A.ApprovedStatusID = 72 THEN 74 ELSE ApprovedStatusID END
+			,XacNhanCuaTruongBoPhan = @XacNhanCuaTruongBoPhan
+			,A.Editor			= @UserGroupID
+			,A.EditTime			= @dGetDateTime
+			,AttachFileID_PB	= @AttachFileID
+	FROM	dbo.PM_tblThietLapMucTieuCoCau (Nolock) A
+	WHERE	A.ThietLapMucTieuCoCauID=@MasterID
+	
+
+	DELETE [dbo].[PM_tblThietLapMucTieuCoCau_GoalPeriod] WHERE ThietLapMucTieuCoCauID = @MasterID
+	--Insert Detail.
+	INSERT INTO dbo.PM_tblThietLapMucTieuCoCau_GoalPeriod
+	(
+		ThietLapMucTieuCoCauID,
+		GoalCategoryID,			
+		MucTieu,					
+		TrongSo,					
+		TieuChiDanhGia,			
+		LSTaoPhuongPhapDoID,	
+		ThoiDiemGhiNhan,			
+		OtherCatalog1,			
+		LSUnitOfMeasurementID,	
+		KeHoach,
+		Quy1,						
+		Quy2,						
+		Quy3,						
+		Quy4,						
+		SauThangDauNam,				
+		SauThangCuoiNam,				
+		LSDanhMucHinhThucMucTieuID,
+		MucTieuCongTy,
+		KeHoachDen,
+		Quy1Den,						
+		Quy2Den,						
+		Quy3Den,						
+		Quy4Den,						
+		SauThangDauNamDen,				
+		SauThangCuoiNamDen,	
+		Creater, CreateTime
+	)
+	SELECT	@MasterID,
+			GoalCategoryID,			
+			MucTieu,					
+			TrongSo,					
+			TieuChiDanhGia,			
+			LSTaoPhuongPhapDoID,	
+			ThoiDiemGhiNhan,			
+			OtherCatalog1ID,			
+			LSUnitOfMeasurementID,	
+			KeHoach,
+			Quy1,						
+			Quy2,						
+			Quy3,						
+			Quy4,						
+			[SauThangDauNam],				
+			[SauThangCuoiNam],				
+			LSDanhMucHinhThucMucTieuID,
+			MucTieuCongTy,
+			KeHoachDen,
+			Quy1Den,						
+			Quy2Den,						
+			Quy3Den,						
+			Quy4Den,						
+			SauThangDauNamDen,				
+			SauThangCuoiNamDen,	
+			@UserGroupID, @dGetDateTime
+	FROM	dbo.[#Table_GoalPeriod] (Nolock) A
+	ORDER BY A.TempID desc
+
+	DELETE [dbo].[PM_tblThietLapMucTieuCoCau_GoalCategory] WHERE ThietLapMucTieuCoCauID = @MasterID
+
+	INSERT INTO PM_tblThietLapMucTieuCoCau_GoalCategory
+	(
+		ThietLapMucTieuCoCauID,
+		GoalCategoryID,
+		TyTrongCongTy,
+		TyTrong,
+		SoLuongMucTieu,
+		Creater, CreateTime
+	)
+	SELECT	@MasterID, 
+			GoalCategoryID,	
+			TyTrongCongTy,
+			TyTrong,
+			SoLuongMucTieu,
+			@UserGroupID, @dGetDateTime
+	FROM	#temp_tblGoalCategory (Nolock) A
+	ORDER BY A.Seq desc	
+
+	--select @Master_ID
+
+	SET @ReturnMess = dbo.SYS_fnGetMess('0046', @LanguageID)
+	SET @ReturnMessCode = '1'
+	SET @ReturnID = @MasterID
+END
+ELSE IF @Activity = 'Transfer'
+BEGIN
+	SET @strXML =[dbo].[fnConvertToStringParseXML](@strXML,1)
+	EXEC sp_xml_preparedocument @handle OUTPUT, @strXML
+
+	if object_id('tempdb..#ThietLapMucTieuCoCau_Transfer') is not null 
+		drop table dbo.[#ThietLapMucTieuCoCau_Transfer]
+
+	Create table dbo.[#ThietLapMucTieuCoCau_Transfer]
+	(
+		ThietLapMucTieuCoCauID	int null
+	) 	
+	
+	INSERT INTO dbo.[#ThietLapMucTieuCoCau_Transfer]
+	(
+		ThietLapMucTieuCoCauID
+	)
+	SELECT	A.ThietLapMucTieuCoCauID	
+	FROM   
+	(
+		SELECT case when MasterID = '' then null else MasterID end as ThietLapMucTieuCoCauID
+		FROM OPENXML(@handle, '/Root/Record', 2) WITH 
+		( 
+			MasterID nvarchar(12)
+		)
+	) A
+
+	EXEC sp_xml_removedocument @handle
+	
+	SET @dGetDateTime = GETDATE()
+
+	IF EXISTS (SELECT TOP 1 1 FROM #ThietLapMucTieuCoCau_Transfer(NOLOCK))
+	BEGIN
+		DECLARE ChuyenThietLap CURSOR
+		FOR 
+			SELECT	A.ThietLapMucTieuCoCauID
+			FROM	#ThietLapMucTieuCoCau_Transfer(NOLOCK) A
+		OPEN ChuyenThietLap
+		FETCH NEXT FROM ChuyenThietLap INTO @Cur_ThietLapMucTieuCoCauID
+		WHILE @@FETCH_STATUS = 0 
+		BEGIN
+			SELECT	@LSCompanyID = LSCompanyID,
+					@LSLevel1ID	 = LSLevel1ID,
+					@LSLevel2ID	 = LSLevel2ID,
+					@LSLevel3ID	 = LSLevel3ID,
+					@LSLevel4ID	 = LSLevel4ID,
+					@LSLevel5ID	 = LSLevel5ID,
+					@LSLevel6ID	 = LSLevel6ID,
+					@LSLevel7ID	 = LSLevel7ID,
+					@LSLevel8ID	 = LSLevel8ID,
+					@LSLevel9ID	 = LSLevel9ID
+			FROM	dbo.PM_tblThietLapMucTieuCoCau(NoLock) 
+			WHERE	ThietLapMucTieuCoCauID = @Cur_ThietLapMucTieuCoCauID
+
+			SET @Approver = ISNULL(dbo.Common_fnLayNguoiPheDuyet_PassOrg(@LSCompanyID,@LSLevel1ID,@LSLevel2ID,@LSLevel3ID,@LSLevel4ID,@LSLevel5ID,@LSLevel6ID,@LSLevel7ID,@LSLevel8ID,@LSLevel9ID,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,1,112),'')
+
+			IF(ISNULL(@Approver, '') = '')
+			BEGIN
+				SET @ReturnMess = dbo.SYS_fnGetMess('1119', @LanguageID)
+				SET @ReturnMessCode = '0'
+				RETURN
+			END
+
+			UPDATE	dbo.PM_tblThietLapMucTieuCoCau
+			SET		EmpID = @EmpID,
+					ApprovedLevelID = 1,
+					CurApprover = @Approver,
+					ApprovedStatusID = 76,
+					LyDoTraVePhongBan = NULL,
+					Editor = @UserGroupID,
+					EditTime = @dGetDateTime
+			WHERE	ThietLapMucTieuCoCauID = @Cur_ThietLapMucTieuCoCauID
+
+			INSERT INTO dbo.PM_tblThietLapMucTieuCoCauProcess(ThietLapMucTieuCoCauID, ApprovedLevelID, CurApprover, ApprovedStatusID, Creater, CreateTime)
+			VALUES  (@Cur_ThietLapMucTieuCoCauID, 1, @Approver, 76, @UserGroupID, @dGetDateTime)
+            
+			FETCH NEXT FROM ChuyenThietLap INTO @Cur_ThietLapMucTieuCoCauID
+		END
+		CLOSE ChuyenThietLap
+		DEALLOCATE ChuyenThietLap
+	END
+
+	SELECT	@Return_ID		= ISNULL(@Return_ID,'')			+ CONVERT(nvarchar(12),A.ThietLapMucTieuCoCauID)	+ '$',
+			@Return_EmpID	= ISNULL(@Return_EmpID,'')		+ CONVERT(nvarchar(12),B.EmpID)						+ '$',
+			@Return_Cap		= ISNULL(@Return_Cap,'')		+ CONVERT(nvarchar(12),0)							+ '$',
+			@Return_Action	= ISNULL(@Return_Action,'')		+ 'CHUYEN'											+ '$'
+	FROM	dbo.[#ThietLapMucTieuCoCau_Transfer] (Nolock) A
+			LEFT JOIN dbo.PM_tblThietLapMucTieuCoCau (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+	
+	SET @ReturnID = @Return_ID + '#' + @Return_EmpID + '#' + @Return_Cap + '#' + @Return_Action	
+	SET @ReturnMess = '0046'
+	SET @ReturnMessCode = '1'
+END
+ELSE IF @Activity = 'Rollback'
+BEGIN
+	SET @strXML =[dbo].[fnConvertToStringParseXML](@strXML,1)
+	EXEC sp_xml_preparedocument @handle OUTPUT, @strXML
+
+	if object_id('tempdb..#ThietLapMucTieuCoCau_Rollback') is not null 
+		drop table dbo.[#ThietLapMucTieuCoCau_Rollback]
+
+	Create table dbo.[#ThietLapMucTieuCoCau_Rollback]
+	(
+		ThietLapMucTieuCoCauID		int null,
+		ApprovedLevelID				int null
+	) 	
+	
+	INSERT INTO dbo.[#ThietLapMucTieuCoCau_Rollback]
+	(
+		ThietLapMucTieuCoCauID, ApprovedLevelID
+	)
+	SELECT	A.ThietLapMucTieuCoCauID, B.ApprovedLevelID
+	FROM   
+	(
+		SELECT	case when MasterID = '' then null else MasterID end as ThietLapMucTieuCoCauID
+		FROM OPENXML(@handle, '/Root/Record', 2) WITH 
+		( 
+			MasterID	nvarchar(12)
+		)
+	) A
+	LEFT JOIN dbo.PM_tblThietLapMucTieuCoCau (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+	
+	EXEC sp_xml_removedocument @handle
+
+	SET @dGetDateTime = GETDATE()
+
+
+	UPDATE	A
+	SET		EmpID = @EmpID,
+			ApprovedStatusID = 74,
+			CurApprover = NULL,
+			ApprovedLevelID = 0,
+			Editor = @UserGroupID,
+			EditTime = @dGetDateTime
+	FROM	PM_tblThietLapMucTieuCoCau (NOLOCK) A
+			INNER JOIN [#ThietLapMucTieuCoCau_Rollback] (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+
+	INSERT INTO dbo.PM_tblThietLapMucTieuCoCauProcess
+	(
+		ThietLapMucTieuCoCauID, CurApprover, ApprovedStatusID,  Creater, CreateTime
+	)
+	SELECT	A.ThietLapMucTieuCoCauID, @UserGroupID, 74, @UserGroupID ,@dGetDateTime
+	FROM	dbo.PM_tblThietLapMucTieuCoCau (Nolock) A
+			INNER JOIN [#ThietLapMucTieuCoCau_Rollback] (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+
+	SELECT	@Return_ID		= ISNULL(@Return_ID,'')			+ CONVERT(nvarchar(12),A.ThietLapMucTieuCoCauID)	+ '$',
+			@Return_EmpID	= ISNULL(@Return_EmpID,'')		+ CONVERT(nvarchar(12),B.EmpID)						+ '$',
+			@Return_Cap		= ISNULL(@Return_Cap,'')		+ CONVERT(nvarchar(12),A.ApprovedLevelID)			+ '$',
+			@Return_Action	= ISNULL(@Return_Action,'')		+ 'ROLLBACK'										+ '$'
+	FROM	dbo.[#ThietLapMucTieuCoCau_Rollback] (Nolock) A
+			LEFT JOIN dbo.PM_tblThietLapMucTieuCoCau (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+			
+	SET @ReturnID = @Return_ID + '#' + @Return_EmpID + '#' + @Return_Cap + '#' + @Return_Action	
+	SET @ReturnMess = '0046'
+	SET @ReturnMessCode = '1'
+END
+ELSE IF @Activity = 'Delete'
+BEGIN
+	SET @strXML =[dbo].[fnConvertToStringParseXML](@strXML,1)
+	EXEC sp_xml_preparedocument @handle OUTPUT, @strXML
+
+	if object_id('tempdb..#ThietLapMucTieuCoCau_Delete') is not null 
+		drop table dbo.[#ThietLapMucTieuCoCau_Delete]
+
+	Create table dbo.[#ThietLapMucTieuCoCau_Delete]
+	(
+		ThietLapMucTieuCoCauID	int null
+	) 	
+	
+	INSERT INTO dbo.[#ThietLapMucTieuCoCau_Delete]
+	(
+		ThietLapMucTieuCoCauID
+	)
+	SELECT	A.ThietLapMucTieuCoCauID	
+	FROM   
+	(
+		SELECT case when MasterID = '' then null else MasterID end as ThietLapMucTieuCoCauID
+		FROM OPENXML(@handle, '/Root/Record', 2) WITH 
+		( 
+			MasterID nvarchar(12)
+		)
+	) A
+		
+	EXEC sp_xml_removedocument @handle
+
+	DELETE	A
+	FROM	[dbo].[PM_tblThietLapMucTieuCoCauProcess] (Nolock) A
+			INNER JOIN [#ThietLapMucTieuCoCau_Delete] (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+
+	DELETE	A
+	FROM	[dbo].[PM_tblThietLapMucTieuCoCau_PhanBoMucTieu] (Nolock) A
+			INNER JOIN [#ThietLapMucTieuCoCau_Delete] (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+
+	DELETE	A
+	FROM	[dbo].[PM_tblThietLapMucTieuCoCau_GoalPeriod] (Nolock) A
+			INNER JOIN [#ThietLapMucTieuCoCau_Delete] (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+
+	DELETE	A
+	FROM	[dbo].[PM_tblThietLapMucTieuCoCau_GoalCategory] (Nolock) A
+			INNER JOIN [#ThietLapMucTieuCoCau_Delete] (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+
+	DELETE	A
+	FROM	PM_tblThietLapMucTieuCoCau (Nolock) A
+			INNER JOIN [#ThietLapMucTieuCoCau_Delete] (Nolock) B on B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+			
+	SET @ReturnID = @Return_ID
+	SET @ReturnMess = dbo.SYS_fnGetMess('0046', @LanguageID)
+	SET @ReturnMessCode = '1'
+	
+END
+ELSE IF @Activity='GetListMail'
+BEGIN
+	SELECT		'; ' + ISNULL(CEO.Email, '') + '; ' + ISNULL(CEONhapHo.Email, '') as Mail
+	FROM		PM_tblThietLapMucTieuCoCau (NOLOCK) A
+				OUTER APPLY  
+				(
+					SELECT	Top 1 B.ID, B.EmpID, B.NguoiNhapHo_EmpID
+					FROM	PM_tblSetupManagerAndCEO (NOLOCK) B
+					WHERE	Type = 2
+							AND EffectiveDate <= GetDate()
+							AND YEAR(EffectiveDate) = A.Year
+							AND B.LSCompanyID = A.LSCompanyID
+							AND B.LSLevel1ID = A.LSLevel1ID
+							AND B.LSLevel2ID = A.LSLevel2ID
+							AND B.LSLevel3ID = A.LSLevel3ID
+							AND	CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+							AND	CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+							AND	CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+							AND	CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+							AND	CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+							AND	CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+							AND	CASE WHEN B.LSTrackingMethodID IS NULL THEN -1 ELSE B.LSTrackingMethodID END = CASE WHEN A.LSTrackingMethodID IS NULL THEN -1 ELSE A.LSTrackingMethodID END
+					ORDER BY EffectiveDate desc
+				) AS B 
+				left join dbo.HR_vEmp (Nolock) CEO on CEO.EmpID = B.EmpID	
+				left join dbo.HR_vEmp (Nolock) CEONhapHo on CEONhapHo.EmpID = B.NguoiNhapHo_EmpID	
+	WHERE		A.ThietLapMucTieuCoCauID = @MasterID
+	
+END
+END
+ 

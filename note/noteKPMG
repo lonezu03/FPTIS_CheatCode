@@ -1,0 +1,55 @@
+
+
+Mọi người ơi cho em hỏi có dự án nào dùng import Chức vụ cho 2 màn này không ạ
+IMPORT DỮ LIỆU QUÁ TRÌNH LÀM VIỆC_FID 447
+IMPORT DỮ LIỆU NHÂN VIÊN_FID 452 
+
+thêm/ bỏ ghép chuỗi cho empheader
+from SYS_tblParamEmpHeader
+update SYS_tblParamEmpHeader set IsLocationCode = 0
+
+
+25450, 25451, 25452, 25453, 25454, 25455, 25460, 25461
+
+
+hợp đồng khoán, Cộng tác viên
+
++ NV thử việc vào Nv chính thức
+
+
+
+Anh ơi check dùm em case 00047 ngày 27-02 Nhân viên Chấm công 1 lần 
+
+
+Hợp đồng dịch vụ đagn lệch 1 
+
+Báo cáo giải quyết chế độ Cột sôs con
+
+
+
+
+exec HR_spfrmThongTinDangVien @Activity=N'LoadDataByEmpID',@EmpID=N'60231'
+
+19/08/1997
+
+E.NgayNghiViec
+
+Mô tả: Trên lưới dữ liệu Cột NgayGuiDon bị rỗng dữ liệu
+
+Profiler: exec HR_spfrmNews_Approve @FromDate=N'01/01/2026',@ToDate=N'13/03/2026',@LoaiThongTinThayDoiID=N'',@LSCompanyID=N'101',@Status=N'1',@LanguageID=N'VN',@UserGroupID=N'fptadmin',@FunctionID=N'1561134'
+
+Link:http://10.14.138.59/iHRP_V34_KPMG/Index.aspx
+Tài khoản: fptadmin/P@ssword123
+
+DB/SQL 10.14.138.61\sql2022
+Username/Pass: sa/ Sql!@#2022
+DB: iHRP_V34_KPMG
+
+
+
+xắp xếp theo rank -> chức vụ -> tên
+
+nhientbs
+123456
+
+https://docs.google.com/spreadsheets/d/1D7ZTFDyVXReAH4GfYTysL6VWzZSaNsqtEl76p0uELrk/edit?gid=1664701332#gid=1664701332

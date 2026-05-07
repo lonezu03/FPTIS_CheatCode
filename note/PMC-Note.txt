@@ -1,0 +1,248 @@
+
+Link: 
+http://hris.pharmedic.com.vn/Index.aspx
+fptadmin
+!@#123A@a
+
+
+nhientbs
+123456
+
+25167
+remote
+109.237.68.54
+user: administrator
+Pass: Pmc@admin2025
+
+
+Mã nhân viên
+00164
+Họ và tên
+FPT Test
+Công ty
+Công Ty Cổ Phần Dược Phẩm Dược Liệu Pharmedic
+Bộ phận
+Phòng Nhân sự
+Tổ nhóm
+Tổ Tiền lương
+Ngày vào làm
+15/12/2025
+Chức danh
+Nhân viên Bảo trì Thiết bị tin học (Nhà máy+VP)
+
+ẩn đã checkin sau khi check in/check out
+
+
+vlookup tháng cũ , mới 
+danh sách khoảng thêm lương cho nv
+
+thông tin nv theo thời gian
+thêm group cấp 1 theo  chi bộ
+
+thêm 2 param chi bộ và chức danh đảng
+
+thôi việc 
+
+------Server UAT -------
+
+109.237.68.54
+user: administrator
+Pass: Pmc@admin2025
+
+
+-----Server APP --------
+109.237.68.125
+User: chưa biết
+
+
++Trường hợp 1: Checkbox "Tháng sau" KHÔNG ĐƯỢC CHỌN
+Điều kiện: Ngày hiện tại phải >= Ngày thiết lập của tháng đang thực hiện tổng hợp.Trường hợp thiết lập cuối tháng mà rơi vào TH Thiết lập ngày 31 nhưng tháng có 28, 30 ngày thì hệ thống tự động hiểu là Ngày cuối cùng của tháng.
+Kết quả:
++ Nếu Ngày hiện tại < Ngày thiết lập: Báo lỗi "Chưa đến thời gian tổng hợp công".
++ Nếu Ngày hiện tại >=  Ngày thiết lập: Thực hiện tổng hợp bình thường.
+Trường hợp 2: Checkbox "Tháng sau" ĐƯỢC CHỌN
+Điều kiện: Ngày hiện tại (System Date) phải >= Ngày thiết lập của tháng kế tiếp so với tháng đang thực hiện tổng hợp.
+Kết quả:
+Ví dụ: Tổng hợp công tháng 01/2024. Thiết lập "Ngày tổng hợp" là 01 và tick "Tháng sau".
+Nếu thực hiện tổng hợp vào bất kỳ ngày nào trong tháng 01: Báo lỗi "Chưa đến thời gian tổng hợp công".
+Phải từ ngày 01/02/2024 trở đi mới cho phép thực hiện tổng hợp.
+
+enNam_NgayVaoCty IN (10, 20, 30, 35) THEN E.ThamNienNam_NgayVaoCty ELSE NULL END
+
+
+*Note chị Bình
+@Thanh Vũ Sổ quản lý lao động là báo cáo theo năm, nên khi xuất báo cáo dữ liệu sẽ lấy từ đầu năm cho đến khi báo cáo, cho nên phải còn người đã nghỉ việc của năm đó.
+Trong báo cáo Sổ quản lý lao động còn thiếu dữ liệu số giờ làm thêm, hưởng chế độ BHXH (số tiền được hưởng), 02 dữ liệu này em lấy trên phần mềm có
+
+
+
+
+
+FID 98 Mh xem Tên table các parram
+fid 1013 :xem từng cột 
+FID 1126 Mh setup điều kiện lọc mặc định
+Công cụ file
+
+
+Lê văn lưỡng
+
+33-> 10
+
+
+25544, 25537, 25538, 25539, 25540, 25541, 25542, 25543
+
+
+
+PMC/BavmVOCqMX
+PMC_PRO/LzveJutfvf
+TLG/MLxbceJS1M
+
+109.237.68.180
+
+FPT.DEV
+
+cNXBhr!PQC[,]f(ePE48
+
+FPT.TrienKhai
+
+gFg#+;C&moYAA&V9_NhC
+SI_spfrmExportColumn_QuyLuongNhanVienThang_PMC
+	
+
+
+UAT: SERVER=iHRP-UAT\SQL2022;DATABASE=iHRP_V34_PMC;UID=PMCiHRP;PWD=PMC!@#$%2025;Min Pool Size=2;Max Pool Size=500;Connect Timeout=200
+
+
+Note Rlog Chuc Mung SN
+Chúc mừng sinh nhật [Tên]! Cảm ơn bạn đã là một phần của PHARMEDIC. Tuổi mới rực rỡ nhé! 🥳
+
+
+Cho phép gắn param theo từng chức vụ
+quét random 1 trong các câu chúc có chức vụ theo thiết lập, sau đó chuyển api lên âpp để noti
+
+exec PR_spfrmLayBaoHiemBoSung @Activity=N'LoadData',@Month=N'03/2026',@FromMonth=N'03/2026',@ToMonth=N'03/2026',@NguonBHIDlist=N'',@LSLocationGroupID=N'1',@IsSave=N'0',@DaTraVaoLuong=N'2',@EmpCode=N'00143',@LSCompanyID=N'0',@Status=N'2',@LanguageID=N'VN',@UserGroupID=N'fptadmin',@FunctionID=N'255'
+
+
+exec SI_spfrmExportColumn_QuyLuongNhanVienThang @Activity=N'GetDataExport',@TuNgayVaoCty=N'',@DenNgayVaoCty=N'',@Export_TemplateID=N'113',@LSCompanyID=N'0',@Status=N'2',@LanguageID=N'VN',@UserGroupID=N'fptadmin',@FunctionID=N'1563002646',@ThamGiaBH=N'1',@SIMonth=N'01/2026'
+
+Em có dựng Case trên link UAT rồi á anh ơi
+Link UAT: https://hris-uat.pharmedic.com.vn/Editpage.aspx?FTU=k1SXnb2t6oUDzfEh57ExFQAa1aAAa1aA
+Tài khoản gửi đơn: fptadmin/!@#123A@a
+Tài khoản duyệt đơn: 00487/!@#123A@a
+Thông tin server:
+SERVER=iHRP–UAT\SQL2022;DATABASE=iHRP_V34_PMC_PRO UID=PMCiHRP PWD=PMC!@#$%2025
+Thông tin remote: 109.237.68.54 user: administrator Pass: Pmc@admin2025
+
+
+
+
+
+
+25611, 25612
+
+
+https://hris.pharmedic.com.vn/Editpage.aspx?FTU=IszpRvIuq8qEWNSfbJPCAgAa1aAAa1aA
+
+
+HR_sprptThongKeNhanSuThang
+
+
+PMC-RlogBoSungCotNgayNghiHuu-ThemDieuKienBaoCao-ThongSoLoadGioGiaiTrinhCong-BoSungXuLyLayNgayNghiQuaBaoHiem
+
+3 task
+1. import dl nv chuyển quốc gia pass => mã
+2. tất cả template nhân sự
+3. ds thôi việc đổi thứ tự cột => lỗi hay không
+
+quan hệ gia đình những cột ẩn đang bị hiện và bị mã hóa
+
+25620
+
+
+
+
+
+
+note RLog : 25698, 25699, 25700, 25701, 25702, 25703
+
+
+Bỏ: 25702, 25699, 25698, 25703, 25701
+
+List Rlog mới: 25707, 25708, 25709, 25710, 25711, 25700
+
+
+Lỗi load dơn OT 
+exec MESS_spIOApp_CancelOverTime @LanguageID=N'vi',@UserGroupID=N'00283',@Action=N'1',@Emps=N'',@LSLevel2ID=N'',@FromDate=N'01/03/2026',@ToDate=N'31/05/2026'	
+
+!@#123A@a
+
+
+Profiler: declare @p108 nvarchar(4000)
+set @p108=''
+declare @p109 nvarchar(4000)
+set @p109=''
+exec MOBI_spfrmSetupMOBI 
+@UserGroupID=N'admin',@FunctionID=N'4686',@LanguageID=N'VN',@Activity=N'Save',@BBChupHinhKhiCheckInWFH=N'0',@BBChupHinhKhiCheckOutWFH=N'0',@BBChupHinhKhiCheckInWifi=N'1',@BBChupHinhKhiCheckOutWifi=N'1',@BBChupHinhKhiCheckInInternet=N'0',@BBChupHinhKhiCheckOutInternet=N'0',@BBChupHinhKhiCheckInGPS=N'0',@BBChupHinhKhiCheckOutGPS=N'0',@WFHApprovalNotRequired=N'1',@IsChoPhepTrienKhaiDieuChinhThoiGianCanhBao=N'1',@ThoiGianCanhBao=N'00:05',@GanGiaTriMacDinhChoLoaiNghi=N'0',@TuDongCapNhatToDate=N'0',@VerifyWifiByIPWan=N'0',@Canhbaochuacocaptrentt=N'0',@ChoPhepNhanVienXemDonNhanSuNhapOffline=N'0',@ApproveChangeSuperior=N'0',@LeaveHour_IsShowLeaveDayInfo=N'0',@NgayCongChuanThang=N'SoNgayCongChuan',@GioCongChuanThang=N'SoGioCongChuan',@NgayCongThucTe=N'SoNgayLamViecTT',@GioCongThucTe=N'SoGioLamViecTT',@Use_NgayCongChuanThang=N'1',@Use_GioCongChuanThang=N'0',@Use_NgayCongThucTe=N'1',@Use_GioCongThucTe=N'0',@Use_Info1=N'0',@Use_Info2=N'0',@Use_Info3=N'0',@Use_Info4=N'0',@Use_Info5=N'0',@Use_Info6=N'0',@Use_Info7=N'0',@Use_Info8=N'0',@Use_Info9=N'0',@Use_Info10=N'0',@Use_Info11=N'0',@Use_Info12=N'0',@Use_Info13=N'0',@Use_Info14=N'0',@Use_Info1DS=N'0',@Use_Info2DS=N'0',@Use_Info3DS=N'0',@Use_Info4DS=N'0',@Use_Info5DS=N'0',@Use_Info6DS=N'0',@Use_Info7DS=N'0',@Use_Info8DS=N'0',@Use_Info9DS=N'0',@Use_Info10DS=N'0',@Use_Info11DS=N'0',@Use_Info12DS=N'0',@Use_Info13DS=N'0',@Use_Info14DS=N'0',@BBDoiMKLanDau=N'1',@ChoPhepDoiMatKhauTrenAppDoiVoiTKLDAP=N'0',@ChoPhepLuuPhienDangNhap=N'1',@CanhBaoNopHoSoLuuTru=N'0',@DKP_KhongHienThiNVThoiViecKhiThongBao=N'1',@IsNotifyPreviousApproversOnHourlyLeaveWithdrawal=N'0',@IsNotifyPreviousApproversOnOvertimeWithdrawal=N'0',@IsHiddenApprovedOTCancellation=N'0',@SignUpOT_RequiredNote=N'0',@IsHiddenOTBeforeShiftType=N'0',@IsHiddenOTEndShiftType=N'0',@KhongHienThiLoaiNghiDangKyCongTac=N'0',@DefaultFilterByWorkCycle=N'0',@PersonalInfo_NotAllowUpdate=N'0',@ChoPhepNotiToApp=N'1',@WFHAddressApprovalRequired=N'0',@ChoPhepGuiMailChuyenDuyetThongTinNhanSu=N'1',@BottomTab_IsShowBadgeCountWaitApprove=N'0',@IsHideExplainReasonStopWork=N'0',@IsHideAttachFileStopWork=N'0',@IsNotifiedToDelegator=N'1',@IsShowNoteSystem=N'0',@ShowResignationHandoverLink=N'0',@OnsiteApprovalNotRequired=N'0',@BBDinhKemFileThoiViec=N'0',@AnNutRutDon=N'0',@NoTiMailChuyenDuyetPheDuyet=N'0',@BatBuocChonNhomTinTucKhiThemMoi=N'0',@MB_SendMailThoiViecCapCuoi=N'0',@MB_SendMailGHHDCapCuoi=N'0',@MB_SendMailDGTVCapCuoi=N'0',@MB_SendMailBangCongCapCuoi=N'0',@MB_SendMailPhepGio=N'0',@MB_SendMailOT=N'1',@MB_SendMailBoSungCong=N'1',@MB_SendMailPhepNgay=N'1',@MB_SendMailCongTac2=N'0',@MB_NotiThoiViec=N'0',@MB_NotiGHHD=N'0',@MB_NotiDGTV=N'0',@MB_NotiBangCong=N'0',@IsSuDungPhanQuyenWebiHRP=N'0',@PersonalInfo_IsHighLightChange=N'1',@Approve_FilterWithPeriodFromDate=N'0',@MB_NotiThongTinNS=N'1',@MB_HienThiHDLDVoiTinhTrangDaKy=N'0',@MB_NotiGHHD_Reject=N'0',@IsNotifyCCOnLeaveRecordApproved=N'1',@IsNotifyCCDuringLeaveRecordApproval=N'1',@ReturnMess=@p108 output,@ReturnMessCode=@p109 output
+select @p108, @p109
+
+13/03/2026
+00005/!@#123A@a
+
+
+
+Lỗi: 
+-Reload trang ĐƠn của tôi bị lỗi mất kết nối
+-ĐÍnh kèm file CCCD mặt trước & sau bị lỗi
+-Chuông noti bị lỗi reset đơn mỗi khi vào
+-Lỗi mất danh sách đơn OT 
+-Lỗi mất noti khi chuyển đơn cho các cấp duyệt và người làm đơn
+Rlog: 
+-Thông số cho phép noti đến đối tượng ccmail khi duyệt đơn trung gian quy trình nghỉ phép, hủy nghỉ phép
+-Thông số cho phép noti đến đối tường ccmail khi duyệt đơn cấp cuối: quy trình nghỉ phép, hủy nghỉ phép, làm ngoài giờ
+-Service chúc mừng sinh nhật
+-Ẩn file đính kèm(Chạy json)
+
+
+
+
+update SYS_tblParameters set ParamValue = 1 where  ParamName = N'IsWriteLogToFile'
+
+
+
+
+Chị ơi cho em xin nghỉ thứ 6 tuần sau (ngày 8/5) nghỉ không lương được không ạ. Em bận việc gia đình ạ
+
+thuy.nn@pharmedic.com.vn;trang.nnt@pharmedic.com.vn;
+
+
+Chúc mừng sinh nhật nhân viên:
+1.	Chúc mừng sinh nhật <tên>! Chúc bạn luôn vui vẻ, tràn đầy năng lượng và đạt nhiều thành công nhé 
+2.	Happy Birthday <tên>! Chúc bạn một ngày thật rực rỡ và một năm thật thành công
+3.	Happy Birthday <tên>! Chúc bạn thêm tuổi mới – thêm niềm vui – thêm thành công! Chúc bạn luôn tuyệt vời như hiện tại. 
+4.	Hi! <tên> . Sinh nhật vui vẻ! Chúc bạn luôn giữ vững niềm tin vào bản thân và vượt qua mọi thách thức trong công việc.
+5.	Chúc mừng Sinh nhật <tên>!. Chúc bạn không chỉ trưởng thành hơn về bản lĩnh mà còn bứt phá mạnh mẽ hơn nữa trong công việc.
+
+Chúc mừng sinh nhật Trưởng, phó 
+6.	Chúc mừng sinh nhật Anh/Chị <tên> - <chức vụ>. Chúc Anh/Chị luôn mạnh khỏe, thành công và tiếp tục dẫn dắt đội ngũ phát triển vững mạnh. 
+7.	Nhân dịp sinh nhật, chúc Anh/Chị <tên> - <chức vụ> nhiều sức khỏe, hạnh phúc và đạt được nhiều thành tựu mới trong công việc.
+8.	Tuổi mới, chúc [Anh/Chị] <chức vụ> luôn giữ vững phong độ, tràn đầy năng lượng để tiếp tục đưa <bộ phận> chinh phục những cột mốc mới. Chúc [Anh/Chị] có một ngày sinh nhật thật ý nghĩa và trọn vẹn bên gia đình và đồng nghiệp!
+
+Chúc mừng sinh nhật Ban TGĐ
+1.	Kính chúc [Anh/Chị] - <chức vụ> tuổi mới dồi dào sức khỏe, hạnh phúc viên mãn và tiếp tục gặt hái được nhiều thành công rực rỡ trên cương vị lãnh đạo. Cảm ơn [Anh/Chị] - <chức vụ> đã luôn là người cầm lái bản lĩnh, dẫn dắt đội ngũ vượt qua mọi thử thách để đưa công ty ngày càng phát triển vững mạnh.
+2.	Nhân ngày đặc biệt này, Công ty xin gửi lời chúc sức khỏe, niềm vui và sự thịnh vượng đến [Anh/Chị] - <chức vụ>. Chúc [Anh/Chị] luôn giữ vững phong độ, tâm thế vững vàng và tràn đầy năng lượng để tiếp tục đưa con thuyền Pharmedic vươn tới những tầm cao mới.
+3.	Kính chúc [Anh/Chị] - <chức vụ> tuổi mới luôn mạnh khỏe, hạnh phúc và gặt hái được nhiều thắng lợi mới trong sự nghiệp cũng như cuộc sống. Mong rằng dưới sự dẫn dắt sáng suốt của [Anh/Chị], tập thể chúng ta sẽ ngày càng gắn kết và phát triển lớn mạnh hơn nữa.
+
+10.14.138.59 TrienKhai_159 0Hg7Y4%$hH$S0SLL+XB2igiffd 10.14.138.61 - User: TrienKhai261 - Password: mLvFVzB3r6!@#61
+ (BE)
+161: 
+yBSXuu85vU!@#61
+
+59 là sẽ chứa source chỗ này sẽ up DLL hoặc Ascx
+
+61 là mở SQL để chạy chỗ Db
+
+IHRP_DB_TEST\SQL2022 Login: sa pass: Sql!@#2022
+
+Sql!@#2019
+
+**Cách 1: Dùng query Bước 1: Lấy ra fuctionID của form ' Bước 2: Query ra bảng để kiểm tra có được check vào issystem không, nếu có thì form sẽ hiển thị, nếu không thì làm bước 3 để hiển thị form ra Select display,issystem,* from sys_tblfunctionlist where functionid='781' and parent='6 Bước 3: Update ẩn hiện ra form update sys_tblfunctionlist set display =1, issystem = 0 where functionid= '781' * issystem = 1 => Ẩn form issystem = 0 => Hiển thị form **Cách 2 : Dùng giao diện B1: Truy cập đường dẫn:Hệ thống => Tham số (system) => Thiết lập danh sách chức năng (system) B2: Cột hệ thống bỏ check thì sẽ hiển thị, check vô thì sẽ ẩn form

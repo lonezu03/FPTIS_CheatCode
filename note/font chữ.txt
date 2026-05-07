@@ -1,0 +1,5 @@
+Các font chữ phổ biến gồm Serif (Times New Roman, Georgia - trang trọng, cổ điển) 
+Sans-serif (Arial, Helvetica, Roboto, Open Sans - hiện đại, rõ ràng), 
+dùng cho các trường hợp từ soạn thảo văn bản (Times New Roman, Calibri), 
+website (Roboto, Open Sans, Arial), thiết kế đồ họa (Montserrat, Playfair Display) 
+đến lập trình (Courier New)

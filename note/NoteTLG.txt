@@ -1,0 +1,229 @@
+Thống kê tính trạng UAT:  
+
++ Link chương trình: https://uat-ihrp.tanlonggroup.com:8990/Index.aspx 
+(TK: admintanlong/Tlg@2023)
+
+*Thông tin db Prod* 
+Thông tin Remote: 103.174.212.220:1000 – TLG / uat@Tanl0ng2025 
+Db Prod name: iHRP_TanLong_PRO (10.10.10.89) 
+Link: https://hr.tanlonggroup.com/Editpage.aspx?FTU=mu3hGLH0X91ZYk0Pp1pPLgaY9gAa1aAAa1aA
+cuul0ngtranhba
+Nam
+Mã nhân viên 10900478 
+Họ và tên Nguyễn Chí Hưng
+Ngày sinh01/02/1997 
+Email Nguyen_Chi_Hung@gmail.test.com
+Số điện thoại 0398460461
+Chức danh Kỹ sư cơ khí 
+Ngày vào công ty 18/09/2024
+
+TLG
+Admin: 
+
+
+
+
+issue 289
+trường hợp chưa đánh giá thì hướng dẫn user mục tiêu và tạo bộ mục tiêu mới
+trường hợp đã đánh giá 2 quý còn 2 quý thì chuyển cơ cấu : Chưa biết xử lý
+
+
+case đánh giá phòng ban: Cuối năm: Kỳ đánh giá Kỳ đánh giá cuối năm 2025
+TK test: admintanlong/Tlg@2023
+TK duyệt cấp 1: dungnt/Tlg@2023
+TK duyệt cấp 2: thuannt/Tlg@2023
+Do hiện tại xử lý đánh giá cá nhân kỳ cuối năm đang xử lý giống với kỳ Giữa năm nên anh test tạm kỳ cuối năm nha nếu ok thì 
+dev sẽ mang xử lý qua kỳ cuối năm ạ 
+kỳ đánh giá giữa năm
+case đánh giá cá nhân kỳ giữa năm là CBQL: Tài khoản : admintanlong/Tlg@2023
+Kỳ đánh giá: Kỳ đánh giá giữa năm
+TK cấp trên : giangbui/Tlg@2023
+TK cấp 1: admintanlong/Tlg@2023
+TK cấp 2: thuannt/Tlg@2023
+case đánh giá cá nhân kỳ giữa năm là CBNV: Tài khoản : Baf.nmna/Tlg@2023
+TK cấp trên: hungnx/Tlg@2023
+TK cấp duyệt 1:admintanlong/Tlg@2023
+TK duyệt cấp 2:thuannt/Tlg@2023
+
+
+
+note các phòng ban của user Nguyễn Phước Lâm: admintanlong/Tlg@2023
+nông sản cam
+chăn nuôi công nghệ cao
+mảng cơ khí 
+siba food miền bắc
+
+
+MT001
+
+table ds nhan vien: HR_tblEmp
+
+note profiler tìm kiếm màn DANH SÁCH NHÂN VIÊN ĐỦ ĐIỀU KIỆN THIẾT LẬP ĐÁNH GIÁ
+
+
+Rlog Đánh giá năng lực: 25081, 25089, 25090, 25091, 25092, 25093, 25094, 25095, 25096, 25097
+Rlog Đánh giá KPI: 25103
+
+mailtemplate: "thông báo nhân viên đánh giá mục tiêu": PM_0024
+
+
+note jira lỗi gửi mail thông báo:
+Mô tả: Sau khi sử dụng nút gửi mail (_ctl0_btnTransfer) Hiện thông báo :"Thao tác thành công" nhưng không có email nào được gửi 
+
+nhờ anh kiểmtra giúp em 
+mã service: AutoSendMail_EvaluationPeriod/Thông báo nhân viên đánh giá mục tiêu
+Kham khảo rlog: 19642
+
+Thông tin kết nối: Tên server: 10.10.10.2 Tên DB: iHRP_TanLong_PRO2
+
+Thông tin remote 103.174.212.220:1000 TLG / uat@Tanl0ng2025 Tài khoàn test: TK: admintanlong/Tlg@2023
+
+NOTE: Kỳ đánh giá giữa năm Mã "Ngocly2 – TestKyGiuaNam" password: 1s1EApn%DQ4e8^%SjK sql: sa/mPZGze%fwgVr}!kEc
+tài khoản : IMP_Admin AdminIMP@2025
+
+
+
+
+Qui trình nghỉ phép online: Đã có
+Qui trình ngoài giờ online: Đã có
+Qui trình đánh giá thử việc online: Đãcó
+Qui trình đánh giá tái ký hợp đồng online: Đã có
+Qui trình phê duyệt bảng công online :Đã có
+Qui trình phê duyệt bảng lương online: Chưa có
+Qui trình nghỉ việc online: Đã có
+Qui trình bàn giao nghỉ việc online Đã có check box nhưng chưa thấy hoạt động (thiếu cây test||Chưa hiểu luồng)
+Qui trình thay đổi tình trạng online: Đã có 
+Qui trình đăng ký KPI phòng ban online: Chưa có
+Qui trình đăng ký KPI cá nhân online: Chưa có
+Qui trình đánh giá kết quả KPI phòng ban online: Chưa có
+Qui trình đánh giá kết quả KPI nhân viên Quý/ năm online: Chưa có
+Qui trình kết quả đánh giá năng lực online: Chưa có
+
+
+test xong được 4 rlog 25019, 25020, 25022, 25028 rồi ạ
+
+
+
+
+Mục đích của Rlog 25089 do Hồi trước chưa bắt buộc nhập ở file import năng lực 2 trường mức độ và yêu cầu năng lực => sinh ra case import trống mức độ nhưng vẫn xác nhận được làm thiếu lúc ráp công thức tính ra điểm nên ra issue này, Rồi sau đó có bạn viết rlog bổ xung xử lý cho nút xác nhận, em tiếp nhận lại và uptool nên gây ra em chưa hiểu lắm. Nhưng qua nãy giờ em kiểm tra rlog và xử lý đang có thì đã ràng buộc ở nút lưu và cả file import rồi ạ 
+
+Còn Rlog 25091 thì này em tính thêm cột "xóa" giống Rlog 25021 nhưng chỉ xét điều kiện  trạng thái đơn thôi không xét theo checkbox ở màn danh mục loại danh mục. Do màn này lấy từ import để trường hợp import sai cho phép xóa vài cái. Còn rlog 25093 thì 
+
+
+TLG
+Họ và tên           | Tài khoản    | Mật khẩu
+--------------------|--------------|----------------
+Phan Thanh Vũ       | Vune         | 123456A@a
+Nguyễn Văn Hùng     | hungnv       | 123456A@a
+Lê Quỳnh Trang      | tranglq      | 123456A@a
+Hoàng Văn Cường     | Cuonghv      | 123456A@a
+Phạm Vi Phong       | Phongpham    | 123456A@a
+Hoàng Anh Tuấn      | Tuanha       | 123456A@a
+Phan Ny             | Phanny       | TanLong123!@#
+Neàng Sao Nane      | nanens       | TanLong123!@#
+Nguyễn Chí Hưng     | hungnc       | TanLong123!@#
+Hoàng Văn Phương    | phuonghv     | TanLong123!@#
+Hoàng Huy Bình      | Binhhh       | TanLong123!@#
+(Trống)             | admintanlong | Tlg@2023
+(Trống)             | dungnt       | Tlg@2023
+(Trống)             | thuannt      | Tlg@2023
+Nguyễn Thị Thiệu    | Baf.nmna     | Tlg@2023
+Nguyễn Xuân Hùng    | Hungnx       | 
+					  hungnb		 TanLong123!@#
+hungnb
+
+NOTE lỗi nội bộ:
+
+LỖi mất tên chỉ hiện mã: 
+Mh thiết lập hội đồng
+Mh xác định CEO
+Mh HỘI ĐỒNG ĐÁNH GIÁ NĂNG LỰC: trường hội đồng đánh giá 
+
+Mh Danh sách DANH SÁCH NHÂN VIÊN ĐỦ ĐIỀU KIỆN THIẾT LẬP ĐÁNH GIÁ 6142: LỖI double nhân viên (Test nút tạo kỳ)
+Thông báo sai đơn cấp trên chưa đánh giá nhưng lại báo "Không thể xóa đánh giá đã được tổng hợp"
+
+
+
+exec CMS_frmDanhGiaNangLuc @Activity='DSCapTren_Search',@EvaluationPeriodID=25,@EvaluationPeriodYear=2026,@LSCompanyID=0,@Status=N'1',@UserGroupID=N'admintanlong',@FunctionID=6145,@LanguageID=N'VN'
+
+
+
+Gửi em lại các remind or service nha
+Service tận dụng lại được (mail template nếu thiếu param hoặc lấy sai thì phải làm rlog bổ sung)
+I. Thiết lập mục tiêu:
+- Remind nhân viên: NhacNhoThietLapMucTieu
+- Remind phê duyệt: NhacNhoNhanSuPheDuyetThietLapMucTieu
+-> Phần thiết lập sử dụng lại, không bổ sung rlog mới  
+
+II. Đánh giá giữa năm:
+- Remind nhân viên: Remind_Emp_EVAL_MidYear_1 (Hiện chỉ lấy giữa năm Type = 1, tình trạng đúng giữa năm) 
+ -> Bổ sung tháng/6 tháng/quý
+- Remind cấp trên: Remind_Manager_EVAL_MidYear_1 (Gửi được cho tháng, quý, 6 tháng, giữa năm)
+ -> sử dụng lại
+III. Đánh giá cuối năm:
+- Remind nhân viên: Remind_Emp_EVAL_EndYear_1 (tình trạng tách, tình trạng cuối năm)
+- Remind cấp trên: Remind_Manager_EVAL_EndYear_1  (tình trạng tách, tình trạng cuối năm)
+- Remind phê duyệt: Remind_Indirect_EVAL_EndYear_1  (tình trạng tách, tình trạng cuối năm)
+ -> Rlog thông số bổ sung tình trạng
+ 
+ 
+ 
+ Rlog 19542
+ + Service thông báo nhân viên thiết lập mục tiêu _ Mail template PM_0023
+ + Service thông báo nhân viên đánh giá mục tiêu _ Mail template PM_0024
+ -> MH dsnv đủ điều kiện thiết lập và MH đủ điều kiện đánh giá mục tiêu 
+ Mô tả: các nhân viên sẽ có sendmail:
+ 0 : không thao tác
+ 1 : Thực hiện gửi mail exec PM_spfrm_EVAL_MidYear_Remind @Activity=N'Remind_Emp',@LanguageID=N'VN'
+ 2 : Đã gửi 
+ 
+- Thông Báo CBNV vào thiết lập KPIs => Service thông báo nhân viên thiết lập mục tiêu _ Mail template PM_0023
+- Thông báo CBNV vào đánh giá KPIs => Service thông báo nhân viên đánh giá mục tiêu _ Mail template PM_0024
+- Nhắc nhở CBNV thiết lập KPIs => NhacNhoThietLapMucTieu_Mail template_Remind_TLMucTieu1
+- Nhắc nhở CBNV đánh giá KPIs => Remind_Emp_EVAL_EndYear_1 Mail template_ PM_0042(Bổ sung thêm tháng/6 tháng/ quý, hiện tại chỉ đang có giữa năm)
+- Nhắc nhở CBQL đánh giá KPIs => Remind_Manager_EVAL_EndYear_1_Mail template_PM_0040
+- Nhắc nhở cấp phê duyệt, duyệt KPIs -> NhacNhoNhanSuPheDuyetThietLapMucTieu_Mail template PM_0051
+- Nhắc nhở cấp phê duyệt đánh giá KPIs -> Remind_Indirect_EVAL_EndYear_1
+
+
+11201549	Đặng Minh Đặng Minh		(Đặng minh duy)
+11205715	Nguyễn Thị Nguyễn Thị	(Nguyễn thị Dung)
+11205153	(Nguyen thi thuannt
+
+Note lỗi double nhân viên trên danh sách đủ điều kiện do đổi cơ cấu cấp trên 
+các bước thao tác add nv vào mh ds => đổi quá trình làm việc (cấp trên) => xóa nv khỏi ds => add lại nhân vien => lỗi double NV
+Profiler:
+
+exec CMS_spfrmEvaluationPeriod_Emp @Activity='Search',@EvaluationPeriodID=25,@EvaluationPeriodYear=2026,@AppraisaledStatus=2,@LSCompanyID=0,@Status=N'2',@UserGroupID=N'admintanlong',@FunctionID=6142,@LanguageID=N'VN'
+
+Lỗi ko select NV lúc vào màn hình làm lỗi => ko chuyển trạng thái sau khi đánh giá
+
+
+Ưu tiên KPi
+
+profiler chạy service nhắc nhở 	Nhắc nhở nhân viên đánh giá giữa năm - Lần 1
+
+exec PM_spfrm_EVAL_MidYear_Remind @Activity=N'Remind_Emp',@LanguageID=N'VN'
+
+
+
+PM_0051
+
+PM_spfrmPhongBanThietLapMucTieu_TBP_PheDuyet
+
+
+NOte test check box user (bàn giao nghỉ việc)
+
+user: 11204032
+
+Cấu hình:
+THIẾT LẬP THÔNG TIN CHATBOT - TLG ✅
+ĐỀ XUẤT THAY ĐỔI TÌNH TRẠNG CHO NHÂN VIÊN 2951 ✅
+THÔNG TIN ĐỀ XUẤT THAY ĐỔI TÌNH TRẠNG NHÂN VIÊN 2973 ✅
+
+THÔNG TIN ĐỀ XUẤT THAY ĐỔI TÌNH TRẠNG NHÂN VIÊN 2978 ✅
+
+
+Note lỗi PROD:
+lặp năng lực 
+sai xếp loại

@@ -1,0 +1,48 @@
+	-- ===================================================================
+-- SCRIPT CẬP NHẬT HÀNG LOẠT XẾP LOẠI BỊ TÍNH SAI
+-- ===================================================================
+
+-- Khai báo kỳ đánh giá cần sửa
+DECLARE @KyDanhGiaID INT = 3; -- << THAY ID KỲ ĐÁNH GIÁ VÀO ĐÂY
+DECLARE @ThietLapID INT = 1; -- << THAY ID BỘ THANG ĐIỂM VÀO ĐÂY
+
+-- BƯỚC KIỂM TRA: XEM NHỮNG GÌ SẼ ĐƯỢC CẬP NHẬT
+SELECT 
+    HD.DanhGiaNangLuc_HoiDongID,
+    HD.KetQuaDanhGia,
+    XL_Cu.VNName AS XepLoai_HienTai,
+    XL_Moi.VNName AS XepLoai_Moi_Dung
+FROM 
+    CMS_tblDanhGiaNangLuc_HoiDong AS HD
+    -- Join để lọc theo kỳ đánh giá
+    INNER JOIN CMS_tblDanhGiaNangLuc_CapTren AS CT ON HD.DanhGiaNangLuc_CapTrenID = CT.DanhGiaNangLuc_CapTrenID
+    INNER JOIN CMS_tblEvaluationPeriod_Emp AS EPE ON CT.EvaluationPeriodEmpID = EPE.EvaluationPeriodEmpID
+    -- Join để tính lại xếp loại
+    INNER JOIN LS_tblThietLapXepLoaiDanhGiaNangLuc_XepLoai AS XepLoaiMoi 
+        ON XepLoaiMoi.LSThietLapXepLoaiDanhGiaNangLucID = @ThietLapID
+        AND HD.KetQuaDanhGia BETWEEN XepLoaiMoi.TuMuc AND XepLoaiMoi.DenMuc
+    -- Join để lấy tên xếp loại cũ
+    LEFT JOIN LS_tblCompetenceRatingResult AS XL_Cu ON HD.CompetenceRatingResultID = XL_Cu.CompetenceRatingResultID
+    LEFT JOIN LS_tblCompetenceRatingResult AS XL_Moi ON XepLoaiMoi.CompetenceRatingResultID = XL_Moi.CompetenceRatingResultID
+WHERE
+    EPE.EvaluationPeriodID = @KyDanhGiaID
+    AND ISNULL(HD.CompetenceRatingResultID, 0) <> XepLoaiMoi.CompetenceRatingResultID; 
+
+
+	-- BƯỚC CẬP NHẬT: CHỈ CHẠY SAU KHI ĐÃ XEM KẾT QUẢ SELECT Ở TRÊN VÀ THẤY HỢP LÝ
+
+UPDATE HD
+SET 
+    HD.CompetenceRatingResultID = XepLoaiMoi.CompetenceRatingResultID
+FROM 
+    CMS_tblDanhGiaNangLuc_HoiDong AS HD
+    INNER JOIN CMS_tblDanhGiaNangLuc_CapTren AS CT ON HD.DanhGiaNangLuc_CapTrenID = CT.DanhGiaNangLuc_CapTrenID
+    INNER JOIN CMS_tblEvaluationPeriod_Emp AS EPE ON CT.EvaluationPeriodEmpID = EPE.EvaluationPeriodEmpID
+    INNER JOIN LS_tblThietLapXepLoaiDanhGiaNangLuc_XepLoai AS XepLoaiMoi 
+        ON XepLoaiMoi.LSThietLapXepLoaiDanhGiaNangLucID = 1
+        AND HD.KetQuaDanhGia BETWEEN XepLoaiMoi.TuMuc AND XepLoaiMoi.DenMuc
+WHERE
+    EPE.EvaluationPeriodID = 3
+    AND ISNULL(HD.CompetenceRatingResultID, 0) <> XepLoaiMoi.CompetenceRatingResultID;
+
+PRINT 'Đã cập nhật xong. Vui lòng chạy lại chức năng TỔNG HỢP trên giao diện.';

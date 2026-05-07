@@ -1,0 +1,1338 @@
+USE [iHRP_TanLong_PRO2]
+GO
+/****** Object:  StoredProcedure [dbo].[PM_spfrmPhongBanDanhGiaMucTieu]    Script Date: 1/14/2026 3:37:48 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[PM_spfrmPhongBanDanhGiaMucTieu]
+@Activity			VARCHAR(50),
+@LanguageID			NCHAR(2) = 'VN',
+@FunctionID			INT = NULL,
+@UserGroupID		NVARCHAR(50) = NULL,
+@ReturnMessCode		NVARCHAR(500) = NULL OUT,
+@ReturnMess			NVARCHAR(500) = NULL OUT,
+@ReturnID			NVARCHAR(MAX) = NULL OUT,
+----------------------------------------------------
+@TypePopup				INT = NULL,
+@MasterID				INT = NULL,
+@Year					INT = NULL,
+@EvaluationPeriodID		INT = NULL,
+@ApprovedStatusID		NVARCHAR(MAX) = NULL,
+@LSCompanyID			INT = NULL,
+@LSLevel1ID				INT = NULL,
+@LSLevel2ID				INT = NULL,
+@LSLevel3ID				INT = NULL,
+@LSLevel4ID				INT = NULL,
+@LSLevel5ID				INT = NULL,
+@LSLevel6ID				INT = NULL,
+@LSLevel7ID				INT = NULL,
+@LSLevel8ID				INT = NULL,
+@LSLevel9ID				INT = NULL,
+@LSTrackingMethodID		INT = NULL,
+@strXML					NVARCHAR(MAX) = NULL,
+@JsonTyTrongLoaiMucTieu	NVARCHAR(MAX) = NULL,
+@SetupManagerAndCEOID	INT = NULL,
+@GhiChu					NVARCHAR(MAX) = NULL,
+@AttachFileID			INT = NULL -- AnCQ6 rlog 23549
+AS
+DECLARE @EmpID			INT, @MasterID_PB INT 
+DECLARE @Return_ID		NVARCHAR(MAX)
+DECLARE @Return_EmpID	NVARCHAR(MAX)
+DECLARE @Return_Cap		NVARCHAR(MAX)
+DECLARE @Return_Action	NVARCHAR(MAX)
+declare @ReturmMess_Emp nvarchar(MAX) = ''
+declare @dGetDateTime	DATETIME = getdate()
+DECLARE @handle			INT
+Declare @Count			int=0
+DECLARE @Approver		NVARCHAR(MAX)
+DECLARE @Cur_DanhGiaMucTieuCoCauID INT, @ApproveLevel INT, @Cur_YKienCapPheDuyet nvarchar(4000), @Cur_LyDoTuChoi nvarchar(4000), @Cur_DanhGiaMucTieuCoCauProcessID INT
+DECLARE @QuyID	INT, @6ThangID	INT, @KhongChoPhepPhongBanDanhGia BIT, @IsSave nvarchar(10), @CongTyDanhGiaMucTieuCoCauID nvarchar(50)
+
+BEGIN
+IF @Activity = 'GetYearComBo'
+BEGIN
+	SELECT [Year] AS ID, [Year] AS Name, [Year]
+	FROM
+	(
+		SELECT	PM_EvaluationPeriodYear AS [Year]
+		FROM	dbo.PM_tblEvaluationPeriod (NOLOCK)
+	) A
+	GROUP BY A.Year
+	ORDER BY A.Year DESC
+END
+ELSE IF @Activity = 'GetYear'
+BEGIN
+	SELECT YEAR(@dGetDateTime) as [Year]
+END
+ELSE IF @Activity = 'GetDataComboByYear'
+BEGIN
+	
+	SELECT	@EmpID = EmpID
+	FROM	UMS_tblUserAccount (NOLOCK)
+	WHERE	UserGroupID = @UserGroupID
+
+	if object_id('tempdb..#PM_EvaluationPeriodType') is not null 
+		drop table dbo.[#PM_EvaluationPeriodType]
+
+	Create table dbo.[#PM_EvaluationPeriodType]
+	(
+		PeriodTypeID int null
+	) 	
+	
+	INSERT INTO dbo.[#PM_EvaluationPeriodType]
+	(
+		PeriodTypeID
+	)
+	SELECT	1
+	UNION
+	SELECT	2
+	
+	INSERT INTO dbo.[#PM_EvaluationPeriodType] (PeriodTypeID)
+	SELECT  CASE LSTrackingMethodID WHEN 2 THEN 3
+									WHEN 3 THEN 5
+									END as PeriodTypeID
+	FROM	PM_tblSetupManagerAndCEO (NOLOCK) A
+			INNER JOIN 
+			(
+				SELECT	LSCompanyID, LSLevel1ID, LSLevel2ID, LSLevel3ID, LSLevel4ID, 
+						LSLevel5ID, LSLevel6ID, LSLevel7ID, LSLevel8ID, LSLevel9ID, MAX(EffectiveDate) AS MaxDate
+				FROM	PM_tblSetupManagerAndCEO (NOLOCK)
+				WHERE	Type = 2
+						AND EffectiveDate <= GetDate()
+						AND YEAR(EffectiveDate) = @Year
+						AND (EmpID = @EmpID OR NguoiNhapHo_EmpID = @EmpID)
+						AND	LSTrackingMethodID IN (2,3)	
+				GROUP BY LSCompanyID, LSLevel1ID, LSLevel2ID, LSLevel3ID, LSLevel4ID,
+							LSLevel5ID, LSLevel6ID, LSLevel7ID, LSLevel8ID, LSLevel9ID
+			) AS C ON CASE WHEN C.LSCompanyID IS NULL THEN -1 ELSE C.LSCompanyID END = CASE WHEN A.LSCompanyID IS NULL THEN -1 ELSE A.LSCompanyID END
+					AND CASE WHEN C.LSLevel1ID IS NULL THEN -1 ELSE C.LSLevel1ID END = CASE WHEN A.LSLevel1ID IS NULL THEN -1 ELSE A.LSLevel1ID END
+					AND CASE WHEN C.LSLevel2ID IS NULL THEN -1 ELSE C.LSLevel2ID END = CASE WHEN A.LSLevel2ID IS NULL THEN -1 ELSE A.LSLevel2ID END
+					AND CASE WHEN C.LSLevel3ID IS NULL THEN -1 ELSE C.LSLevel3ID END = CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END
+					AND CASE WHEN C.LSLevel4ID IS NULL THEN -1 ELSE C.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+					AND CASE WHEN C.LSLevel5ID IS NULL THEN -1 ELSE C.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+					AND CASE WHEN C.LSLevel6ID IS NULL THEN -1 ELSE C.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+					AND CASE WHEN C.LSLevel7ID IS NULL THEN -1 ELSE C.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+					AND CASE WHEN C.LSLevel8ID IS NULL THEN -1 ELSE C.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+					AND CASE WHEN C.LSLevel9ID IS NULL THEN -1 ELSE C.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+					AND C.MaxDate = A.EffectiveDate
+	WHERE	A.Type = 2
+			AND YEAR(EffectiveDate) = @Year
+			AND (A.EmpID = @EmpID OR A.NguoiNhapHo_EmpID = @EmpID)
+			AND	LSTrackingMethodID IN (2,3)	
+
+	
+	SELECT	A.ID, A.Name
+	FROM	(
+			SELECT	A.PM_EvaluationPeriodID AS ID, 
+					CASE WHEN @LanguageID = 'VN' THEN A.PM_EvaluationPeriodVNName ELSE A.PM_EvaluationPeriodName END AS Name, 
+					A.PM_EvaluationPeriodYear AS Nam,
+					CASE WHEN CONVERT(DATE,@dGetDateTime, 103) BETWEEN A.StartDate_PhongBan AND A.EndDate_PhongBan THEN 1 ELSE 0 END AS isHieuLuc,
+					EndDate_PhongBan
+			FROM	dbo.PM_tblEvaluationPeriod (NOLOCK) A
+			WHERE	A.PM_EvaluationPeriodYear = @Year
+					AND (A.EvaluationPeriodStatus IS NULL OR A.EvaluationPeriodStatus = 0)
+					AND PM_EvaluationPeriodTypeID IN (SELECT PeriodTypeID FROM #PM_EvaluationPeriodType)
+			--UNION
+			--SELECT '' as ID, '' Name, @Year Nam,1 isHieuLuc, GETDATE() as EndDate_CongTy
+			) AS A
+	ORDER BY A.isHieuLuc DESC, EndDate_PhongBan DESC
+END
+ELSE IF @Activity = 'LoadComboApprovedStatus'
+BEGIN
+	select	A.PM_ApprovedStatusID as ID, 
+			case when @LanguageID = 'VN' then A.VNName else A.Name end as Name
+	from PM_tblApprovedStatus (Nolock) A
+	where A.Type = 11 AND Used = 1
+	order by [Rank]
+END
+ELSE IF @Activity = 'LoadGoalCategory'
+BEGIN
+	SELECT	A.ID, A.Name
+	FROM	(
+			SELECT	A.PM_GoalCategoryID as ID,
+					case when @LanguageID = 'VN' then A.VNName else A.Name end as Name,
+					A.Rank
+			FROM	dbo.PM_tblGoalCategory (Nolock) A
+			--WHERE	ISNULL(A.Used, 0) = 1
+			--UNION 
+			--SELECT '' ID ,'' Name, 0 Rank
+	) A
+	ORDER BY ISNULL(A.RANK, 999) 
+END
+ELSE IF @Activity = 'LoadTaoPhuongPhapDo'
+BEGIN
+	SELECT	A.LSTaoPhuongPhapDoID as ID,
+			case when @LanguageID = 'VN' then A.VNName else A.Name end as Name,
+			A.VNName as CongThuc
+	FROM	dbo.LS_tblTaoPhuongPhapDo (Nolock) A
+	--WHERE	ISNULL(A.Used, 0) = 1
+	ORDER BY ISNULL(A.RANK, 999) 
+END
+ELSE IF @Activity = 'LoadUnitOfMeasure'
+BEGIN
+	SELECT	A.PM_UnitOfMeasurementID as ID,
+			case when @LanguageID = 'VN' then A.VNName else A.Name end as Name,
+			A.LSCachTinhID as CachTinh
+	FROM	dbo.PM_tblUnitOfMeasurement (Nolock) A
+	--WHERE	ISNULL(A.Used, 0) = 1
+	ORDER BY ISNULL(A.RANK, 999) 
+END
+ELSE IF @Activity = 'LoadOtherCatalog1'
+BEGIN
+	SELECT	A.LSOtherCatalogID as ID,
+			case when @LanguageID = 'VN' then A.VNName else A.Name end as Name
+	FROM	dbo.LS_tblOtherCatalog (Nolock) A
+	--WHERE	ISNULL(A.Used, 0) = 1
+	ORDER BY ISNULL(A.RANK, 999) 
+END
+ELSE IF @Activity = 'DanhMucHinhThucMucTieu'
+BEGIN
+	SELECT	A.ID, A.Name
+	FROM	(
+			SELECT	A.LS_DanhMucHinhThucMucTieuID as ID,
+					case when @LanguageID = 'VN' then A.VNName else A.Name end + case used when 0 then '(KSD)' else '' end as Name,
+					A.Rank
+			FROM	dbo.LS_tblDanhMucHinhThucMucTieu (Nolock) A
+			--WHERE	ISNULL(A.Used, 0) = 1
+			UNION 
+			SELECT	null, '', 0 as Rank
+			) A
+	ORDER BY ISNULL(A.RANK, 999) 
+END
+ELSE IF @Activity = 'Search'
+BEGIN
+	SELECT	@EmpID = EmpID
+	FROM	UMS_tblUserAccount (NOLOCK)
+	WHERE	UserGroupID = @UserGroupID
+
+	SELECT	TOP 1 @KhongChoPhepPhongBanDanhGia = ISNULL(KhongChoPhepPhongBanDanhGia, 0)
+	FROM	PM_tblSetupPM (NOLOCK)
+
+	IF OBJECT_ID('tempdb..#TableSetup') is not null DROP TABLE dbo.[#TableSetup]
+	IF OBJECT_ID('tempdb..#TableDanhGiaMucTieu') is not null DROP TABLE dbo.[#TableDanhGiaMucTieu]
+
+	SELECT	A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID, A.LSLevel4ID, A.LSLevel5ID,
+			A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID, A.LSTrackingMethodID,
+			MAX(EffectiveDate) as EffectiveDate
+	INTO	#TableSetup
+	FROM	PM_tblSetupManagerAndCEO (NOLOCK) A
+			LEFT JOIN PM_tblEvaluationPeriod (NOLOCK) C ON C.PM_EvaluationPeriodID = @EvaluationPeriodID
+	WHERE	A.Type = 2
+			AND A.EffectiveDate <= GetDate()
+			AND YEAR(A.EffectiveDate) = @Year
+			AND 
+			(
+				C.PM_EvaluationPeriodTypeID = 1
+				or
+				C.PM_EvaluationPeriodTypeID = 2
+				or
+				(C.PM_EvaluationPeriodTypeID = 3 AND A.LSTrackingMethodID = 2)
+				OR
+				(C.PM_EvaluationPeriodTypeID = 5 AND A.LSTrackingMethodID = 3)
+			)
+	GROUP BY A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID, A.LSLevel4ID, A.LSLevel5ID,
+			A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID, A.LSTrackingMethodID
+
+	SELECT	A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID, A.LSLevel4ID, A.LSLevel5ID,
+			A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID
+	INTO	#TableDanhGiaMucTieu
+	FROM	PM_tblThietLapMucTieuCoCau (NOLOCK) A
+			INNER JOIN #TableSetup (NOLOCK) B ON CASE WHEN B.LSCompanyID IS NULL THEN -1 ELSE B.LSCompanyID END = CASE WHEN A.LSCompanyID IS NULL THEN -1 ELSE A.LSCompanyID END
+												AND CASE WHEN B.LSLevel1ID IS NULL THEN -1 ELSE B.LSLevel1ID END = CASE WHEN A.LSLevel1ID IS NULL THEN -1 ELSE A.LSLevel1ID END
+												AND CASE WHEN B.LSLevel2ID IS NULL THEN -1 ELSE B.LSLevel2ID END = CASE WHEN A.LSLevel2ID IS NULL THEN -1 ELSE A.LSLevel2ID END
+												AND CASE WHEN B.LSLevel3ID IS NULL THEN -1 ELSE B.LSLevel3ID END = CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END
+												AND CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+												AND CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+												AND CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+												AND CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+												AND CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+												AND CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+			LEFT JOIN PM_tblSetupManagerAndCEO (NOLOCK) E ON E.Type = 2
+												AND CASE WHEN E.LSCompanyID IS NULL THEN -1 ELSE E.LSCompanyID END = CASE WHEN B.LSCompanyID IS NULL THEN -1 ELSE B.LSCompanyID END
+												AND CASE WHEN E.LSLevel1ID IS NULL THEN -1 ELSE E.LSLevel1ID END = CASE WHEN B.LSLevel1ID IS NULL THEN -1 ELSE B.LSLevel1ID END
+												AND CASE WHEN E.LSLevel2ID IS NULL THEN -1 ELSE E.LSLevel2ID END = CASE WHEN B.LSLevel2ID IS NULL THEN -1 ELSE B.LSLevel2ID END
+												AND CASE WHEN E.LSLevel3ID IS NULL THEN -1 ELSE E.LSLevel3ID END = CASE WHEN B.LSLevel3ID IS NULL THEN -1 ELSE B.LSLevel3ID END
+												AND CASE WHEN E.LSLevel4ID IS NULL THEN -1 ELSE E.LSLevel4ID END = CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END
+												AND CASE WHEN E.LSLevel5ID IS NULL THEN -1 ELSE E.LSLevel5ID END = CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END
+												AND CASE WHEN E.LSLevel6ID IS NULL THEN -1 ELSE E.LSLevel6ID END = CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END
+												AND CASE WHEN E.LSLevel7ID IS NULL THEN -1 ELSE E.LSLevel7ID END = CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END
+												AND CASE WHEN E.LSLevel8ID IS NULL THEN -1 ELSE E.LSLevel8ID END = CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END
+												AND CASE WHEN E.LSLevel9ID IS NULL THEN -1 ELSE E.LSLevel9ID END = CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END
+												AND E.EffectiveDate = B.EffectiveDate
+			LEFT JOIN PM_tblEvaluationPeriod (NOLOCK) C ON C.PM_EvaluationPeriodID = @EvaluationPeriodID
+			LEFT JOIN PM_tblDanhGiaMucTieuCoCau (NOLOCK) D ON D.EvaluationPeriodID = C.PM_EvaluationPeriodID 
+												AND CASE WHEN D.LSCompanyID IS NULL THEN -1 ELSE D.LSCompanyID END = CASE WHEN A.LSCompanyID IS NULL THEN -1 ELSE A.LSCompanyID END
+												AND CASE WHEN D.LSLevel1ID IS NULL THEN -1 ELSE D.LSLevel1ID END = CASE WHEN A.LSLevel1ID IS NULL THEN -1 ELSE A.LSLevel1ID END
+												AND CASE WHEN D.LSLevel2ID IS NULL THEN -1 ELSE D.LSLevel2ID END = CASE WHEN A.LSLevel2ID IS NULL THEN -1 ELSE A.LSLevel2ID END
+												AND CASE WHEN D.LSLevel3ID IS NULL THEN -1 ELSE D.LSLevel3ID END = CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END
+												AND CASE WHEN D.LSLevel4ID IS NULL THEN -1 ELSE D.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+												AND CASE WHEN D.LSLevel5ID IS NULL THEN -1 ELSE D.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+												AND CASE WHEN D.LSLevel6ID IS NULL THEN -1 ELSE D.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+												AND CASE WHEN D.LSLevel7ID IS NULL THEN -1 ELSE D.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+												AND CASE WHEN D.LSLevel8ID IS NULL THEN -1 ELSE D.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+												AND CASE WHEN D.LSLevel9ID IS NULL THEN -1 ELSE D.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+												AND D.Type = 2
+	WHERE	A.Type = 2
+			AND A.ApprovedStatusID = 78
+			AND A.Year = @Year
+			AND (@LSCompanyID IS NULL OR A.LSCompanyID = @LSCompanyID)
+			AND (@LSLevel1ID IS NULL OR A.LSLevel1ID = @LSLevel1ID)
+			AND (@LSLevel2ID IS NULL OR A.LSLevel2ID = @LSLevel2ID)
+			AND (@LSLevel3ID IS NULL OR A.LSLevel3ID = @LSLevel3ID)
+			AND (@LSLevel4ID IS NULL OR A.LSLevel4ID = @LSLevel4ID)
+			AND (@LSLevel5ID IS NULL OR A.LSLevel5ID = @LSLevel5ID)
+			AND (@LSLevel6ID IS NULL OR A.LSLevel6ID = @LSLevel6ID)
+			AND (@LSLevel7ID IS NULL OR A.LSLevel7ID = @LSLevel7ID)
+			AND (@LSLevel8ID IS NULL OR A.LSLevel8ID = @LSLevel8ID)
+			AND (@LSLevel9ID IS NULL OR A.LSLevel9ID = @LSLevel9ID)
+			AND (E.EmpID = @EmpID OR E.NguoiNhapHo_EmpID = @EmpID)
+			AND D.DanhGiaMucTieuCoCauID IS NULL
+			AND ((C.EvaluationPeriodStatus is null or C.EvaluationPeriodStatus = 0) 
+				and Convert(date,@dGetDateTime, 103) between C.StartDate_PhongBan and C.EndDate_PhongBan)
+			AND 
+			(
+				C.PM_EvaluationPeriodTypeID = 1
+				OR
+				C.PM_EvaluationPeriodTypeID = 2
+				OR
+				(C.PM_EvaluationPeriodTypeID = 3 AND A.LSTrackingMethodID = 2)
+				OR
+				(C.PM_EvaluationPeriodTypeID = 5 AND A.LSTrackingMethodID = 3)
+			)
+	GROUP BY A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID, A.LSLevel4ID, A.LSLevel5ID,
+			A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID
+
+	IF EXISTS (select top 1 1 from dbo.#TableDanhGiaMucTieu (nolock))
+	BEGIN
+		INSERT INTO PM_tblDanhGiaMucTieuCoCau([Year], EvaluationPeriodID, ApprovedStatusID,
+					LSCompanyID, LSLevel1ID, LSLevel2ID, LSLevel3ID, LSLevel4ID, LSLevel5ID,
+					LSLevel6ID, LSLevel7ID, LSLevel8ID, LSLevel9ID, LSTrackingMethodID,
+					Type, Creator, CreateTime)
+		SELECT	@Year, @EvaluationPeriodID, 84,
+				A.LSCompanyID, A.LSLevel1ID, A.LSLevel2ID, A.LSLevel3ID, A.LSLevel4ID, A.LSLevel5ID,
+				A.LSLevel6ID, A.LSLevel7ID, A.LSLevel8ID, A.LSLevel9ID
+				, CASE WHEN C.PM_EvaluationPeriodTypeID = 3 THEN 2
+					   WHEN C.PM_EvaluationPeriodTypeID = 5 THEN 3
+					   ELSE NULL END
+				,2, @UserGroupID, @dGetDateTime
+		FROM	#TableDanhGiaMucTieu (NOLOCK) A
+				LEFT JOIN PM_tblEvaluationPeriod (NOLOCK) C ON C.PM_EvaluationPeriodID = @EvaluationPeriodID
+		
+		INSERT INTO dbo.PM_tblDanhGiaMucTieuCoCauProcess
+		(
+			DanhGiaMucTieuCoCauID, CurApprover, ApprovedStatusID,  Creater, CreateTime
+		)
+		SELECT	B.DanhGiaMucTieuCoCauID, @UserGroupID, 84, @UserGroupID, @dGetDateTime
+		FROM	#TableDanhGiaMucTieu (NOLOCK) A
+				INNER JOIN PM_tblDanhGiaMucTieuCoCau (NOLOCK) B ON 
+												CASE WHEN B.LSCompanyID IS NULL THEN -1 ELSE B.LSCompanyID END = CASE WHEN A.LSCompanyID IS NULL THEN -1 ELSE A.LSCompanyID END
+											AND CASE WHEN B.LSLevel1ID IS NULL THEN -1 ELSE B.LSLevel1ID END = CASE WHEN A.LSLevel1ID IS NULL THEN -1 ELSE A.LSLevel1ID END
+											AND CASE WHEN B.LSLevel2ID IS NULL THEN -1 ELSE B.LSLevel2ID END = CASE WHEN A.LSLevel2ID IS NULL THEN -1 ELSE A.LSLevel2ID END
+											AND CASE WHEN B.LSLevel3ID IS NULL THEN -1 ELSE B.LSLevel3ID END = CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END
+											AND CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+											AND CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+											AND CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+											AND CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+											AND CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+											AND CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+		WHERE	B.EvaluationPeriodID = @EvaluationPeriodID
+				AND B.ApprovedStatusID = 84
+				AND B.Creator = @UserGroupID
+				AND B.CreateTime = @dGetDateTime
+				AND B.Type = 2
+	END
+
+	SELECT  'DanhGiaMucTieuCoCauID' = ISNULL(A.DanhGiaMucTieuCoCauID,-1),
+			'EvaluationPeriodID'	= C.PM_EvaluationPeriodID,
+			'EvaluationPeriodCode'	= C.PM_EvaluationPeriodCode, 
+			'EvaluationPeriodName'	= CASE WHEN @LanguageID = 'VN' THEN C.PM_EvaluationPeriodVNName ELSE C.PM_EvaluationPeriodName END,
+			'EvaluationPeriodYear'	= C.PM_EvaluationPeriodYear,
+			'StartDatePhongBan'		= C.StartDate_PhongBan,
+			'EndDatePhongBan'		= C.EndDate_PhongBan,
+			'ApprovedStatus'        = CASE WHEN @LanguageID = 'VN' THEN TT.VNName ELSE TT.Name END,
+			'StatusColor'			= SC.StatusColor,
+			'CompanyID'				= A.LSCompanyID,
+			'Level1ID'				= A.LSLevel1ID,
+			'Level2ID'				= A.LSLevel2ID,
+			'Level3ID'				= A.LSLevel3ID,
+			'Level4ID'				= A.LSLevel4ID,
+			'Level5ID'				= A.LSLevel5ID,
+			'Level6ID'				= A.LSLevel6ID,
+			'Level7ID'				= A.LSLevel7ID,
+			'Level8ID'				= A.LSLevel8ID,
+			'Level9ID'				= A.LSLevel9ID,
+			'CompanyName'			= CASE WHEN @LanguageID = 'VN' THEN Com.VNName ELSE Com.Name END, 
+			'Level1Name'			= CASE WHEN @LanguageID = 'VN' THEN LV1.VNName ELSE LV1.Name END,
+			'Level2Name'			= CASE WHEN @LanguageID = 'VN' THEN LV2.VNName ELSE LV2.Name END,
+			'Level3Name'			= CASE WHEN @LanguageID = 'VN' THEN LV3.VNName ELSE LV3.Name END,
+			'Level4Name'			= CASE WHEN @LanguageID = 'VN' THEN LV4.VNName ELSE LV4.Name END,
+			'Level5Name'			= CASE WHEN @LanguageID = 'VN' THEN LV5.VNName ELSE LV5.Name END,
+			'Level6Name'			= CASE WHEN @LanguageID = 'VN' THEN LV6.VNName ELSE LV6.Name END,
+			'Level7Name'			= CASE WHEN @LanguageID = 'VN' THEN LV7.VNName ELSE LV7.Name END,
+			'Level8Name'			= CASE WHEN @LanguageID = 'VN' THEN LV8.VNName ELSE LV8.Name END,
+			'Level9Name'			= CASE WHEN @LanguageID = 'VN' THEN LV9.VNName ELSE LV9.Name END,
+			'LSTrackingMethodID'	= A.LSTrackingMethodID,
+			'KetQua'				= A.KetQua,
+			'YKienCapPheDuyet'		= A.YKienCapPheDuyet,
+			'LyDoTuChoi'			= A.LyDoTuChoi,
+			'LyDoTraVe'				= A.LyDoTraVe,
+			'GhiChu'				= A.GhiChu,
+			'CEO'					= E.EmpName,
+			'NguoiNhapHo'			= E1.EmpName,
+			'Creater'				= A.Creator,
+			'CreateTime'			= CONVERT(NVARCHAR(10),A.CreateTime,103) + ' ' + CONVERT(NVARCHAR(10),A.CreateTime,108),
+			'Editer'				= A.Editor,
+			'EditTime'				= CONVERT(NVARCHAR(10),A.EditTime,103) + ' ' + CONVERT(NVARCHAR(10),A.EditTime,108),
+			'HinhThucTheoDoi'		= CASE WHEN @LanguageID = 'VN' THEN O.VNName ELSE O.Name END,
+			'PM_EvaluationPeriodTypeID' = C.PM_EvaluationPeriodTypeID								
+	FROM	PM_tblDanhGiaMucTieuCoCau (NOLOCK) A
+			LEFT JOIN PM_tblEvaluationPeriod (NOLOCK) C ON C.PM_EvaluationPeriodID = A.EvaluationPeriodID
+			OUTER APPLY  
+			(
+				SELECT	TOP 1 B.ID, EmpID, NguoiNhapHo_EmpID
+				FROM	PM_tblSetupManagerAndCEO (NOLOCK) B
+				WHERE	B.Type = A.Type
+						AND B.EffectiveDate <= GETDATE()
+						AND YEAR(B.EffectiveDate) = A.Year
+						AND CASE WHEN B.LSCompanyID IS NULL THEN -1 ELSE B.LSCompanyID END = CASE WHEN A.LSCompanyID IS NULL THEN -1 ELSE A.LSCompanyID END
+						AND CASE WHEN B.LSLevel1ID IS NULL THEN -1 ELSE B.LSLevel1ID END = CASE WHEN A.LSLevel1ID IS NULL THEN -1 ELSE A.LSLevel1ID END
+						AND CASE WHEN B.LSLevel1ID IS NULL THEN -1 ELSE B.LSLevel2ID END = CASE WHEN A.LSLevel2ID IS NULL THEN -1 ELSE A.LSLevel2ID END
+						AND CASE WHEN B.LSLevel3ID IS NULL THEN -1 ELSE B.LSLevel3ID END = CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END
+						AND CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+						AND CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+						AND CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+						AND CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+						AND CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+						AND CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+						AND (
+								C.PM_EvaluationPeriodTypeID = 1
+								OR
+								C.PM_EvaluationPeriodTypeID = 2
+								OR
+								(C.PM_EvaluationPeriodTypeID = 3 AND B.LSTrackingMethodID = 2)
+								OR
+								(C.PM_EvaluationPeriodTypeID = 5 AND B.LSTrackingMethodID = 3)
+							)
+				ORDER BY EffectiveDate DESC
+			) AS B 
+			LEFT JOIN dbo.LS_tblCompany (NOLOCK) Com ON Com.LSCompanyID = A.LSCompanyID
+			LEFT JOIN dbo.LS_tblLevel1 (NOLOCK) LV1 ON LV1.LSLevel1ID = A.LSLevel1ID
+			LEFT JOIN dbo.LS_tblLevel2 (NOLOCK) LV2 ON LV2.LSLevel2ID = A.LSLevel2ID
+			LEFT JOIN dbo.LS_tblLevel3 (NOLOCK) LV3 ON LV3.LSLevel3ID = A.LSLevel3ID
+			LEFT JOIN dbo.LS_tblLevel4 (NOLOCK) LV4 ON LV4.LSLevel4ID = A.LSLevel4ID
+			LEFT JOIN dbo.LS_tblLevel5 (NOLOCK) LV5 ON LV5.LSLevel5ID = A.LSLevel5ID
+			LEFT JOIN dbo.LS_tblLevel6 (NOLOCK) LV6 ON LV6.LSLevel6ID = A.LSLevel6ID
+			LEFT JOIN dbo.LS_tblLevel7 (NOLOCK) LV7 ON LV7.LSLevel7ID = A.LSLevel7ID
+			LEFT JOIN dbo.LS_tblLevel8 (NOLOCK) LV8 ON LV8.LSLevel8ID = A.LSLevel8ID
+			LEFT JOIN dbo.LS_tblLevel9 (NOLOCK) LV9 ON LV9.LSLevel9ID = A.LSLevel9ID
+			LEFT JOIN dbo.PM_tblApprovedStatus (NOLOCK) TT ON TT.PM_ApprovedStatusID = A.ApprovedStatusID
+			LEFT JOIN dbo.LS_tblStatusColor (NOLOCK) SC ON SC.StatusColorID = TT.StatusColorID
+			LEFT JOIN dbo.HR_vEmp (NOLOCK) E ON E.EmpID = B.EmpID
+			LEFT JOIN dbo.HR_vEmp (NOLOCK) E1 ON E1.EmpID = B.NguoiNhapHo_EmpID
+			LEFT JOIN dbo.LS_tblTrackingMethod (NOLOCK) O ON O.LSTrackingMethodID = A.LSTrackingMethodID
+			
+	WHERE	A.Type = 2
+			AND A.Year = @Year
+			--AND A.ApprovedStatusID = 84
+			AND
+			(
+				(CASE WHEN @ApprovedStatusID IS NULL THEN '' ELSE @ApprovedStatusID END = '') OR 
+				(CHARINDEX( '@'+ CONVERT(NVARCHAR(12), A.ApprovedStatusID) +'@', '@'+@ApprovedStatusID + '@') != 0)
+			)
+			AND (@LSCompanyID IS NULL OR A.LSCompanyID = @LSCompanyID)
+			AND (@LSLevel1ID IS NULL OR A.LSLevel1ID = @LSLevel1ID)
+			AND (@LSLevel2ID IS NULL OR A.LSLevel2ID = @LSLevel2ID)
+			AND (@LSLevel3ID IS NULL OR A.LSLevel3ID = @LSLevel3ID)
+			AND (@LSLevel4ID IS NULL OR A.LSLevel4ID = @LSLevel4ID)
+			AND (@LSLevel5ID IS NULL OR A.LSLevel5ID = @LSLevel5ID)
+			AND (@LSLevel6ID IS NULL OR A.LSLevel6ID = @LSLevel6ID)
+			AND (@LSLevel7ID IS NULL OR A.LSLevel7ID = @LSLevel7ID)
+			AND (@LSLevel8ID IS NULL OR A.LSLevel8ID = @LSLevel8ID)
+			AND (@LSLevel9ID IS NULL OR A.LSLevel9ID = @LSLevel9ID)
+			AND (B.EmpID = @EmpID OR B.NguoiNhapHo_EmpID = @EmpID)
+			AND (C.PM_EvaluationPeriodID = @EvaluationPeriodID)
+			AND 
+			(
+				C.PM_EvaluationPeriodTypeID = 1
+				OR
+				C.PM_EvaluationPeriodTypeID  = 2
+				OR
+				(C.PM_EvaluationPeriodTypeID  = 3 AND A.LSTrackingMethodID = 2)
+				OR
+				(C.PM_EvaluationPeriodTypeID  = 5 AND A.LSTrackingMethodID = 3)
+			)
+END
+ELSE IF @Activity = 'LoadPopup'
+BEGIN
+	IF NOT EXISTS (select top 1 1 from dbo.PM_tblDanhGiaMucTieuCoCau (nolock) where DanhGiaMucTieuCoCauID = @MasterID)
+	BEGIN
+		SELECT  @MasterID = DanhGiaMucTieuCoCauID
+		FROM	PM_tblDanhGiaMucTieuCoCau (NOLOCK) A
+		WHERE	A.Type = @TypePopup
+				AND A.Year = @Year
+				AND (A.EvaluationPeriodID = @EvaluationPeriodID)
+				AND CASE WHEN A.LSCompanyID IS NULL THEN -1 ELSE A.LSCompanyID END = CASE WHEN @LSCompanyID IS NULL THEN -1 ELSE @LSCompanyID END
+				AND CASE WHEN A.LSLevel1ID IS NULL THEN -1 ELSE A.LSLevel1ID END = CASE WHEN @LSLevel1ID IS NULL THEN -1 ELSE @LSLevel1ID END
+				AND CASE WHEN A.LSLevel2ID IS NULL THEN -1 ELSE A.LSLevel2ID END = CASE WHEN @LSLevel2ID IS NULL THEN -1 ELSE @LSLevel2ID END
+				AND CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END = CASE WHEN @LSLevel3ID IS NULL THEN -1 ELSE @LSLevel3ID END
+				AND CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END = CASE WHEN @LSLevel4ID IS NULL THEN -1 ELSE @LSLevel4ID END
+				AND CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END = CASE WHEN @LSLevel5ID IS NULL THEN -1 ELSE @LSLevel5ID END
+				AND CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END = CASE WHEN @LSLevel6ID IS NULL THEN -1 ELSE @LSLevel6ID END
+				AND CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END = CASE WHEN @LSLevel7ID IS NULL THEN -1 ELSE @LSLevel7ID END
+				AND CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END = CASE WHEN @LSLevel8ID IS NULL THEN -1 ELSE @LSLevel8ID END
+				AND CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END = CASE WHEN @LSLevel9ID IS NULL THEN -1 ELSE @LSLevel9ID END
+				
+	END
+
+	SET @IsSave = '1';
+
+	IF EXISTS (SELECT TOP 1 1 FROM PM_tblEvaluationPeriod (NOLOCK) WHERE PM_EvaluationPeriodID = @EvaluationPeriodID AND PM_EvaluationPeriodTypeID = 2)
+	BEGIN
+		SET @IsSave = dbo.PM_fnGetInfoFromDanhGiaMucTieuCoCau(1, @Year, @EvaluationPeriodID, @LSCompanyID, @LSLevel1ID, @LSLevel2ID, NULL, NULL, NULL, NULL, NULL, NULL, NULL,'VN', '2')
+	END
+
+	SET @CongTyDanhGiaMucTieuCoCauID = dbo.PM_fnGetInfoFromDanhGiaMucTieuCoCau(1, @Year, @EvaluationPeriodID, @LSCompanyID, @LSLevel1ID, @LSLevel2ID, NULL, NULL, NULL, NULL, NULL, NULL, NULL,'VN', '3')
+	SELECT	C.PM_EvaluationPeriodID AS EvaluationPeriodID, 
+			C.PM_EvaluationPeriodYear AS EvaluationPeriodYear, 
+			C.PM_EvaluationPeriodCode AS EvaluationPeriodCode, 
+			case when @LanguageID = N'VN' then C.PM_EvaluationPeriodVNName else C.PM_EvaluationPeriodName end as EvaluationPeriodName,
+			A.LSCompanyID,
+			A.LSLevel1ID,
+			A.LSLevel2ID,
+			A.LSLevel3ID,
+			A.LSLevel4ID,
+			A.LSLevel5ID,
+			A.LSLevel6ID,
+			A.LSLevel7ID,
+			A.LSLevel8ID,
+			A.LSLevel9ID,
+			CASE WHEN @LanguageID = 'VN' THEN Com.VNName ELSE Com.Name END as CompanyName, 
+			CASE WHEN @LanguageID = 'VN' THEN LV1.VNName ELSE LV1.Name END as Level1Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV2.VNName ELSE LV2.Name END as Level2Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV3.VNName ELSE LV3.Name END as Level3Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV4.VNName ELSE LV4.Name END as Level4Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV5.VNName ELSE LV5.Name END as Level5Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV6.VNName ELSE LV6.Name END as Level6Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV7.VNName ELSE LV7.Name END as Level7Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV8.VNName ELSE LV8.Name END as Level8Name,
+			CASE WHEN @LanguageID = 'VN' THEN LV9.VNName ELSE LV9.Name END as Level9Name,
+
+			CONVERT(nvarchar(10),C.StartDate_PhongBan,103) as StartDateCongTy,
+			CONVERT(nvarchar(10),C.EndDate_PhongBan,103) as EndDateCongTy,
+
+			A.DanhGiaMucTieuCoCauID as MasterID,
+
+			A.ApprovedStatusID as ApprovedStatusID,
+				
+			case when (C.EvaluationPeriodStatus is null or C.EvaluationPeriodStatus = 0)
+						AND Convert(date,@dGetDateTime, 103) between C.StartDate_PhongBan and C.EndDate_PhongBan
+						AND @IsSave = '1'
+					then '1' --mở.
+					else '0' --đóng
+			end as IsEnableBtn,
+			A.GhiChu,
+			A.YKienCapPheDuyet,
+			A.LyDoTuChoi,
+			A.LyDoTraVe
+			--TanND35
+			,case when @LanguageID = 'VN' THEN E.F_EmpName ELSE E.F_EmpNameUnsign END  + ' - ' + E.EmpCode AS Employee
+			,case when @LanguageID = 'VN' then jt.VNName else jt.Name end as JobTitle
+			--
+			,A.LSTrackingMethodID
+			,@IsSave as IsSave
+			,A.CurApprover
+			,@CongTyDanhGiaMucTieuCoCauID as CongTyDanhGiaMucTieuCoCauID
+			-- AnCQ6 rlog 23549
+			,C.AttachFileID AS AttachFileID_EvaluationPeriod
+			,A.AttachFileID_PB AS AttachFileID
+			,A.LyDoTuChoi
+			,A.LyDoTraVe
+			,A.YKienCapPheDuyet
+	FROM	PM_tblDanhGiaMucTieuCoCau (NOLOCK) A
+			LEFT JOIN PM_tblEvaluationPeriod (NOLOCK) C ON C.PM_EvaluationPeriodID = A.EvaluationPeriodID
+			--TanND35
+			OUTER APPLY  
+			(
+				SELECT	Top 1 B.EmpID
+				FROM	PM_tblSetupManagerAndCEO (NOLOCK) B
+				WHERE	B.Type = 2
+						AND B.EffectiveDate <= GetDate()
+						AND YEAR(B.EffectiveDate) = A.Year
+						AND CASE WHEN B.LSCompanyID IS NULL THEN -1 ELSE B.LSCompanyID END = CASE WHEN A.LSCompanyID IS NULL THEN -1 ELSE A.LSCompanyID END
+						AND CASE WHEN B.LSLevel1ID IS NULL THEN -1 ELSE B.LSLevel1ID END = CASE WHEN A.LSLevel1ID IS NULL THEN -1 ELSE A.LSLevel1ID END
+						AND CASE WHEN B.LSLevel2ID IS NULL THEN -1 ELSE B.LSLevel2ID END = CASE WHEN A.LSLevel2ID IS NULL THEN -1 ELSE A.LSLevel2ID END
+						AND CASE WHEN B.LSLevel3ID IS NULL THEN -1 ELSE B.LSLevel3ID END = CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END
+						AND CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+						AND CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+						AND CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+						AND CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+						AND CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+						AND CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+						AND (
+								C.PM_EvaluationPeriodTypeID = 1
+								OR
+								C.PM_EvaluationPeriodTypeID = 2
+								OR
+								(C.PM_EvaluationPeriodTypeID = 3 AND B.LSTrackingMethodID = 2)
+								OR
+								(C.PM_EvaluationPeriodTypeID = 5 AND B.LSTrackingMethodID = 3)
+							)
+				ORDER BY EffectiveDate desc
+			) AS B 
+			LEFT JOIN dbo.HR_tblEmp (NOLOCK) E ON E.EmpID = B.EmpID
+			LEFT JOIN ls_tblJobTitle(NoLock) jt on E.LSJobTitleID=jt.LSJobTitleID
+			--
+			LEFT JOIN dbo.LS_tblCompany (NOLOCK) Com ON Com.LSCompanyID = A.LSCompanyID
+			LEFT JOIN dbo.LS_tblLevel1 (NOLOCK) LV1 ON LV1.LSLevel1ID = A.LSLevel1ID
+			LEFT JOIN dbo.LS_tblLevel2 (NOLOCK) LV2 ON LV2.LSLevel2ID = A.LSLevel2ID
+			LEFT JOIN dbo.LS_tblLevel3 (NOLOCK) LV3 ON LV3.LSLevel3ID = A.LSLevel3ID
+			LEFT JOIN dbo.LS_tblLevel4 (NOLOCK) LV4 ON LV4.LSLevel4ID = A.LSLevel4ID
+			LEFT JOIN dbo.LS_tblLevel5 (NOLOCK) LV5 ON LV5.LSLevel5ID = A.LSLevel5ID
+			LEFT JOIN dbo.LS_tblLevel6 (NOLOCK) LV6 ON LV6.LSLevel6ID = A.LSLevel6ID
+			LEFT JOIN dbo.LS_tblLevel7 (NOLOCK) LV7 ON LV7.LSLevel7ID = A.LSLevel7ID
+			LEFT JOIN dbo.LS_tblLevel8 (NOLOCK) LV8 ON LV8.LSLevel8ID = A.LSLevel8ID
+			LEFT JOIN dbo.LS_tblLevel9 (NOLOCK) LV9 ON LV9.LSLevel9ID = A.LSLevel9ID
+	WHERE	A.DanhGiaMucTieuCoCauID = @MasterID
+	
+	IF NOT EXISTS (select top 1 1 from dbo.PM_tblDanhGiaMucTieuCoCau_GoalPeriod (nolock) where DanhGiaMucTieuCoCauID = @MasterID)
+	BEGIN
+	
+		SELECT	TOP 1 @MasterID_PB = ThietLapMucTieuCoCauID
+		FROM	PM_tblThietLapMucTieuCoCau (NOLOCK) A
+				LEFT JOIN PM_tblEvaluationPeriod (NOLOCK) C ON C.PM_EvaluationPeriodID = @EvaluationPeriodID
+		WHERE	A.Type = 2
+				AND A.ApprovedStatusID = 78
+				AND A.Year = @Year
+				AND CASE WHEN A.LSCompanyID IS NULL THEN -1 ELSE A.LSCompanyID END = CASE WHEN @LSCompanyID IS NULL THEN -1 ELSE @LSCompanyID END
+				AND CASE WHEN A.LSLevel1ID IS NULL THEN -1 ELSE A.LSLevel1ID END = CASE WHEN @LSLevel1ID IS NULL THEN -1 ELSE @LSLevel1ID END
+				AND CASE WHEN A.LSLevel2ID IS NULL THEN -1 ELSE A.LSLevel2ID END = CASE WHEN @LSLevel2ID IS NULL THEN -1 ELSE @LSLevel2ID END
+				AND CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END = CASE WHEN @LSLevel3ID IS NULL THEN -1 ELSE @LSLevel3ID END
+				AND CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END = CASE WHEN @LSLevel4ID IS NULL THEN -1 ELSE @LSLevel4ID END
+				AND CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END = CASE WHEN @LSLevel5ID IS NULL THEN -1 ELSE @LSLevel5ID END
+				AND CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END = CASE WHEN @LSLevel6ID IS NULL THEN -1 ELSE @LSLevel6ID END
+				AND CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END = CASE WHEN @LSLevel7ID IS NULL THEN -1 ELSE @LSLevel7ID END
+				AND CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END = CASE WHEN @LSLevel8ID IS NULL THEN -1 ELSE @LSLevel8ID END
+				AND CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END = CASE WHEN @LSLevel9ID IS NULL THEN -1 ELSE @LSLevel9ID END
+				AND (
+						C.PM_EvaluationPeriodTypeID = 1
+						OR
+						C.PM_EvaluationPeriodTypeID = 2
+						OR
+						(C.PM_EvaluationPeriodTypeID = 3 AND A.LSTrackingMethodID = 2)
+						OR
+						(C.PM_EvaluationPeriodTypeID = 5 AND A.LSTrackingMethodID = 3)
+					)
+		ORDER BY A.EditTime desc
+
+		SELECT 	@QuyID = QuyID,
+				@6ThangID = [6ThangID]
+		FROM	PM_tblEvaluationPeriod (NOLOCK)
+		WHERE	PM_EvaluationPeriodID = @EvaluationPeriodID
+
+		SELECT	ID, Name, TyTrong, KetQua
+		FROM	(
+				SELECT  GC.Rank as Seq,
+						A.GoalCategoryID as ID, 
+						case when @LanguageID = 'VN' then GC.VNName else GC.Name end + ' - ' + GC.PM_GoalCategoryCode  as Name,
+						A.TyTrong,
+						NULL as KetQua
+				FROM	dbo.PM_tblThietLapMucTieuCoCau_GoalCategory (Nolock) A
+						left join dbo.PM_tblGoalCategory (Nolock) GC on GC.PM_GoalCategoryID = A.GoalCategoryID
+				WHERE	A.ThietLapMucTieuCoCauID = @MasterID_PB
+						AND A.TyTrong > 0
+				UNION 
+				SELECT	NULL as Seq,
+						NULL as ID,
+						N'Tổng' as Name,
+						NULL as TyTrong,
+						NULL KetQua
+			) A
+		--ORDER BY A.Seq DESC
+		ORDER BY A.Name ASC
+
+		print(@6ThangID)
+		SELECT  ROW_NUMBER() OVER( ORDER BY A.ThietLapMucTieuCoCau_GoalPeriodID DESC) AS TempID,
+				A.ThietLapMucTieuCoCau_GoalPeriodID AS DetailID,
+				A.GoalCategoryID, 
+				CASE WHEN @LanguageID = 'VN' THEN GC.VNName ELSE GC.Name END AS LoaiMucTieu, 
+				A.MucTieu, 
+				A.TrongSo,
+				A.TrongSo AS TrongSoOld,
+				A.TieuChiDanhGia,
+				A.LSTaoPhuongPhapDoID,
+				CONVERT(NVARCHAR(10),A.ThoiDiemGhiNhan,103) AS ThoiDiemGhiNhan,
+				A.OtherCatalog1,
+				A.LSUnitOfMeasurementID, 
+				CASE WHEN @QuyID = 1 THEN A.Quy1
+					 WHEN @QuyID = 2 THEN A.Quy2
+					 WHEN @QuyID = 3 THEN A.Quy3
+					 WHEN @QuyID = 4 THEN A.Quy3
+					 WHEN @6ThangID = 1 THEN A.SauThangDauNam
+					 WHEN @6ThangID = 2 THEN A.SauThangCuoiNam
+					 ELSE A.KeHoach END  AS KeHoach,
+				CASE WHEN @QuyID = 1 THEN A.Quy1Den
+					 WHEN @QuyID = 2 THEN A.Quy2Den
+					 WHEN @QuyID = 3 THEN A.Quy3Den
+					 WHEN @QuyID = 4 THEN A.Quy3Den
+					 WHEN @6ThangID = 1 THEN A.SauThangDauNamDen
+					 WHEN @6ThangID = 2 THEN A.SauThangCuoiNamDen
+					 ELSE A.KeHoachDen END  AS KeHoachDen,
+				NULL AS ThucHien,
+				NULL AS HoanThanh,
+				NULL AS KetQua,
+				REPLACE(PP.VNName, 'KH', A.KeHoach) AS DienGiaiPhuongPhapDo,
+				PP.VNName AS CongThuc
+				,dbo.PM_fnCongChuoiOtherCatalog1(A.ThietLapMucTieuCoCau_GoalPeriodID,@LanguageID,'3', '2') AS OtherCatalogText
+				,CASE WHEN @LanguageID = 'VN' THEN UO.VNName ELSE UO.Name END AS DonViTinhText
+				,NULL AS MultiAttachFileID
+				,NULL AS GhiChu
+				,A.LSDanhMucHinhThucMucTieuID
+		FROM	dbo.PM_tblThietLapMucTieuCoCau_GoalPeriod (NOLOCK) A
+				INNER JOIN PM_tblThietLapMucTieuCoCau (NOLOCK) B ON B.ThietLapMucTieuCoCauID = A.ThietLapMucTieuCoCauID
+				LEFT JOIN PM_tblGoalCategory (NOLOCK) GC ON A.GoalCategoryID = GC.PM_GoalCategoryID
+				LEFT JOIN LS_tblTaoPhuongPhapDo (NOLOCK) PP ON PP.LSTaoPhuongPhapDoID = A.LSTaoPhuongPhapDoID
+				LEFT JOIN PM_tblUnitOfMeasurement (NOLOCK) UO ON UO.PM_UnitOfMeasurementID = A.LSUnitOfMeasurementID
+		WHERE	A.ThietLapMucTieuCoCauID = @MasterID_PB
+				AND 
+					(
+						(@QuyID IS NULL AND @6ThangID IS NULL AND A.KeHoach IS NOT NULL)
+						OR (@QuyID = 1 AND A.Quy1 IS NOT NULL)
+						OR (@QuyID = 2 AND A.Quy2 IS NOT NULL)
+						OR (@QuyID = 3 AND A.Quy3 IS NOT NULL)
+						OR (@QuyID = 4 AND A.Quy4 IS NOT NULL)
+						OR (@6ThangID = 1 AND A.SauThangDauNam IS NOT NULL)
+						OR (@6ThangID = 2 AND A.SauThangCuoiNam IS NOT NULL)
+					)
+		ORDER BY A.ThietLapMucTieuCoCau_GoalPeriodID DESC
+	END
+	ELSE
+	BEGIN
+		
+		SELECT	ID, Name, TyTrong, KetQua
+		FROM	(
+				SELECT  DanhGiaMucTieuCoCau_GoalCategoryID as Seq,
+						A.GoalCategoryID as ID, 
+						case when @LanguageID = 'VN' then GC.VNName else GC.Name end + ' - ' + GC.PM_GoalCategoryCode  as Name,
+						A.TyTrong,
+						A.KetQua
+				FROM	dbo.PM_tblDanhGiaMucTieuCoCau_GoalCategory (Nolock) A
+						left join dbo.PM_tblGoalCategory (Nolock) GC on GC.PM_GoalCategoryID = A.GoalCategoryID
+				WHERE	A.DanhGiaMucTieuCoCauID = @MasterID
+				UNION 
+				SELECT	NULL as Seq,
+						NULL as ID,
+						N'Tổng' as Name,
+						NULL as TyTrong,
+						A.KetQua
+				FROM	dbo.PM_tblDanhGiaMucTieuCoCau(Nolock) A
+				WHERE	A.DanhGiaMucTieuCoCauID = @MasterID	
+			) A
+		--ORDER BY A.Seq DESC
+		ORDER BY A.Name ASC
+		
+		SELECT  ROW_NUMBER() OVER( ORDER BY A.DanhGiaMucTieuCoCau_GoalPeriodID DESC) AS TempID,
+				A.DanhGiaMucTieuCoCau_GoalPeriodID AS DetailID,
+				A.GoalCategoryID, 
+				CASE WHEN @LanguageID = 'VN' THEN GC.VNName ELSE GC.Name END AS LoaiMucTieu, 
+				A.MucTieu, 
+				A.TrongSo,
+				A.TrongSoOld,
+				A.TieuChiDanhGia,
+				A.LSTaoPhuongPhapDoID,
+				CONVERT(NVARCHAR(10), A.ThoiDiemGhiNhan, 103) AS ThoiDiemGhiNhan,
+				A.OtherCatalog1,
+				A.LSUnitOfMeasurementID, 
+				A.KeHoach,
+				A.KeHoachDen,
+				A.ThucHien,
+				ROUND(A.HoanThanh, 4) AS HoanThanh,
+				ROUND(A.KetQua, 4) AS KetQua,
+				REPLACE(PP.VNName, 'KH', A.KeHoach) AS DienGiaiPhuongPhapDo,
+				PP.VNName AS CongThuc
+				,dbo.PM_fnCongChuoiOtherCatalog1(A.DanhGiaMucTieuCoCau_GoalPeriodID,@LanguageID,'2', '2') AS OtherCatalogText
+				,CASE WHEN @LanguageID = 'VN' THEN UO.VNName ELSE UO.Name END AS DonViTinhText
+				,A.AttachFile AS MultiAttachFileID
+				,A.GhiChu AS GhiChu
+				,A.LSDanhMucHinhThucMucTieuID
+		FROM	dbo.PM_tblDanhGiaMucTieuCoCau_GoalPeriod (NOLOCK) A
+				INNER JOIN PM_tblDanhGiaMucTieuCoCau (NOLOCK) B ON B.DanhGiaMucTieuCoCauID = A.DanhGiaMucTieuCoCauID
+				LEFT JOIN PM_tblGoalCategory (NOLOCK) GC ON A.GoalCategoryID = GC.PM_GoalCategoryID
+				LEFT JOIN LS_tblTaoPhuongPhapDo (NOLOCK) PP ON PP.LSTaoPhuongPhapDoID = A.LSTaoPhuongPhapDoID
+				LEFT JOIN PM_tblUnitOfMeasurement (NOLOCK) UO ON UO.PM_UnitOfMeasurementID = A.LSUnitOfMeasurementID
+		WHERE	A.DanhGiaMucTieuCoCauID = @MasterID
+		ORDER BY	A.DanhGiaMucTieuCoCau_GoalPeriodID DESC
+	END
+		
+	/*Tamnb*/
+	IF OBJECT_ID('tempdb..#tmpPhongBanDanhGiaMucTieuTTCapPheDuyetTT') IS NOT NULL
+		DROP TABLE #tmpPhongBanDanhGiaMucTieuTTCapPheDuyetTT
+		CREATE TABLE #tmpPhongBanDanhGiaMucTieuTTCapPheDuyetTT(MasterID NVARCHAR(100), Approver NVARCHAR(100), ApproveLevel NVARCHAR(100))
+		
+	Declare @CapCuoi int ,@CapHienTai int,@dApprover nvarchar(100)
+	SELECT	 @CapCuoi = ISNULL(dbo.Common_fnLayNguoiPheDuyet_PassOrg(A.LSCompanyID,A.LSLevel1ID,A.LSLevel2ID,A.LSLevel3ID,A.LSLevel4ID,A.LSLevel5ID,A.LSLevel6ID,A.LSLevel7ID,A.LSLevel8ID,A.LSLevel9ID,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,null,22,113),'')
+			,@CapHienTai = ISNULL(A.ApprovedLevelID, 0) + 1
+	FROM	dbo.PM_tblDanhGiaMucTieuCoCau (NOLOCK) A
+	WHERE	A.DanhGiaMucTieuCoCauID = @MasterID	
+	
+
+	IF @MasterID is not null
+	BEGIN
+		
+		WHILE @CapHienTai <= @CapCuoi
+		BEGIN
+		
+			SELECT	@LSCompanyID = LSCompanyID,
+					@LSLevel1ID	 = LSLevel1ID,
+					@LSLevel2ID	 = LSLevel2ID,
+					@LSLevel3ID	 = LSLevel3ID,
+					@LSLevel4ID	 = LSLevel4ID,
+					@LSLevel5ID	 = LSLevel5ID,
+					@LSLevel6ID	 = LSLevel6ID,
+					@LSLevel7ID	 = LSLevel7ID,
+					@LSLevel8ID	 = LSLevel8ID,
+					@LSLevel9ID	 = LSLevel9ID
+			FROM	dbo.PM_tblDanhGiaMucTieuCoCau(NoLock) 
+			WHERE	DanhGiaMucTieuCoCauID = @MasterID
+
+			SET @dApprover = ISNULL(dbo.Common_fnLayNguoiPheDuyet_PassOrg(@LSCompanyID,@LSLevel1ID,@LSLevel2ID,@LSLevel3ID,@LSLevel4ID,@LSLevel5ID,@LSLevel6ID,@LSLevel7ID,@LSLevel8ID,@LSLevel9ID,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,@CapHienTai,1,113),'')
+
+			insert into #tmpPhongBanDanhGiaMucTieuTTCapPheDuyetTT(MasterID,Approver,ApproveLevel)
+			Values(@MasterID,@dApprover,@CapHienTai)
+            
+			SET @CapHienTai = @CapHienTai + 1
+		END
+		
+	END
+	--select * from PM_tblDanhGiaMucTieuCoCauProcess where DanhGiaMucTieuCoCauID =@MasterID return
+		/*Tamnb*/
+	SELECT	A.DanhGiaMucTieuCoCauID,vE.EmpCode, vE.EmpName,
+			CASE WHEN @LanguageID = 'EN' THEN vE.CompanyEN ELSE vE.CompanyVN END AS CompanyName, 
+			CASE WHEN @LanguageID = 'EN' THEN vE.Level1EN ELSE vE.Level1VN   END AS Level1Name,
+			CASE WHEN @LanguageID = 'EN' THEN vE.Level2EN ELSE vE.Level2VN   END AS Level2Name,
+			CASE WHEN @LanguageID = 'EN' THEN vE.Level3EN ELSE vE.Level3VN   END AS Level3Name,
+			CASE WHEN @LanguageID = 'EN' THEN vE.Level4EN ELSE vE.Level4VN   END AS Level4Name,
+			CASE WHEN @LanguageID = 'EN' THEN vE.Level5EN ELSE vE.Level5VN   END AS Level5Name,
+			CASE WHEN @LanguageID = 'EN' THEN vE.Level6EN ELSE vE.Level6VN   END AS Level6Name,
+			CASE WHEN @LanguageID = 'EN' THEN vE.Level7EN ELSE vE.Level7VN   END AS Level7Name,
+			CASE WHEN @LanguageID = 'EN' THEN vE.Level8EN ELSE vE.Level8VN   END AS Level8Name,
+			CASE WHEN @LanguageID = 'EN' THEN vE.Level9EN ELSE vE.Level9VN   END AS Level9Name,
+			CASE WHEN @LanguageID = 'EN' THEN vE.JobTitleEN ELSE vE.JobTitleVN END AS JobtitleName,
+			CASE WHEN @LanguageID = 'EN' THEN CBNV.Name ELSE CBNV.VNName END AS CBNV,
+			CASE WHEN @LanguageID = 'VN' THEN TT.VNName ELSE TT.Name END ApprovedStatus, 
+			SC.StatusColor,
+			A.LyDoTuChoi,
+			A.Creater, A.CreateTime, A.Editer, A.EditTime
+			FROM	(
+					SELECT	A.DanhGiaMucTieuCoCauID, A.CurApprover, A.ApprovedStatusID, A.LyDoTuChoi,
+							A.Creater, A.CreateTime, A.Editer, A.EditTime
+					FROM	dbo.PM_tblDanhGiaMucTieuCoCauProcess (NOLOCK) A
+							INNER JOIN PM_tblDanhGiaMucTieuCoCau (NOLOCK) B ON B.DanhGiaMucTieuCoCauID = A.DanhGiaMucTieuCoCauID
+					WHERE	A.DanhGiaMucTieuCoCauID = @MasterID
+					UNION ALL
+					SELECT	NULL, B.Approver , NULL AS ApprovedStatusID, NULL AS LyDoTuChoi,
+							NULL Creater, NULL CreateTime, NULL Editer, NULL EditTime
+					FROM	#tmpPhongBanDanhGiaMucTieuTTCapPheDuyetTT (NOLOCK) B
+				) AS A
+				LEFT JOIN dbo.UMS_tblUserAccount (NOLOCK) UA ON UA.UserGroupID = A.CurApprover
+				LEFT JOIN dbo.HR_vEmp(NOLOCK) vE ON vE.EmpID = UA.EmpID
+				LEFT JOIN LS_tblCapBacNhanVien(NOLOCK) CBNV ON CBNV.LSCapBacNhanVienID = vE.LSCapBacNhanVienID
+				LEFT JOIN dbo.PM_tblApprovedStatus (NOLOCK) TT ON TT.PM_ApprovedStatusID = A.ApprovedStatusID
+				LEFT JOIN dbo.LS_tblStatusColor (NOLOCK) SC ON SC.StatusColorID = TT.StatusColorID
+			ORDER BY ISNULL(A.CreateTime, '2300-01-01')
+END
+ELSE IF @Activity = 'Save'
+BEGIN
+	SELECT	Seq,
+			CASE WHEN ISNULL(ID, '') = '' THEN NULL ELSE ID END AS GoalCategoryID,
+			CASE WHEN ISNULL(TyTrong, '') = '' THEN NULL ELSE TyTrong END AS TyTrong
+	INTO #temp_tblGoalCategory
+	FROM OPENJSON(@JsonTyTrongLoaiMucTieu)
+	WITH 
+	(   
+		Seq						INT,
+		ID						NVARCHAR(50),
+		TyTrong					NVARCHAR(50)
+	) 
+
+	SET @strXML = [dbo].[fnConvertToStringParseXML](@strXML,1)
+	EXEC sp_xml_preparedocument @handle OUTPUT, @strXML
+
+	IF OBJECT_ID('tempdb..#Table_EvaluationPeriod') is not null DROP TABLE dbo.[#Table_EvaluationPeriod]
+		
+	select	TempID,
+			case when GoalCategoryID = '' then null else GoalCategoryID end as GoalCategoryID,
+			case when MucTieu = '' then null else dbo.fnConvertToStringParseXML(MucTieu,2) end as MucTieu,
+			case when TrongSo = '' then null else TrongSo end as TrongSo,
+			case when TrongSoOld = '' then null else TrongSoOld end as TrongSoOld,
+			case when TieuChiDanhGia = '' then null else dbo.fnConvertToStringParseXML(TieuChiDanhGia,2) end as TieuChiDanhGia,
+			case when LSTaoPhuongPhapDoID = '' then null else LSTaoPhuongPhapDoID end as LSTaoPhuongPhapDoID,
+			case when ThoiDiemGhiNhan = '' then null else convert(date,ThoiDiemGhiNhan,103) end as ThoiDiemGhiNhan,
+			case when OtherCatalog1ID = '' then null else OtherCatalog1ID end as OtherCatalog1ID,
+			case when LSUnitOfMeasurementID = '' then null else LSUnitOfMeasurementID end as LSUnitOfMeasurementID,
+			case when KeHoach = '' then null else KeHoach end as KeHoach,
+			case when KeHoachDen = '' then null else KeHoachDen end as KeHoachDen,
+			case when ThucHien = '' then null else ThucHien end as ThucHien,
+			case when AttachFile = '' then null else AttachFile end as AttachFile,
+			case when LSDanhMucHinhThucMucTieuID = '' then null else LSDanhMucHinhThucMucTieuID end as LSDanhMucHinhThucMucTieuID,
+			case when GhiChu = '' then null else dbo.fnConvertToStringParseXML(GhiChu,2) end as GhiChu
+	INTO	#Table_EvaluationPeriod
+	from openxml(@handle,'/Root/Record', 2) with
+	(
+		GoalCategoryID			nvarchar(50),
+		MucTieu					nvarchar(MAX),
+		TrongSo					nvarchar(50),
+		TrongSoOld				nvarchar(50),
+		TieuChiDanhGia			nvarchar(MAX),
+		LSTaoPhuongPhapDoID		nvarchar(50),
+		ThoiDiemGhiNhan			nvarchar(10),
+		OtherCatalog1ID			nvarchar(50),
+		LSUnitOfMeasurementID	nvarchar(50),
+		KeHoach					nvarchar(50),
+		KeHoachDen				nvarchar(50),
+		ThucHien				nvarchar(50),
+		AttachFile				nvarchar(255),
+		LSDanhMucHinhThucMucTieuID	nvarchar(50),
+		GhiChu					nvarchar(MAX),
+		TempID					int
+	) A
+	EXEC sp_xml_removedocument @handle
+
+	---------------------------------------------------------
+	SET @dGetDateTime = GETDATE()
+
+	IF NOT EXISTS (select top 1 1 from dbo.PM_tblDanhGiaMucTieuCoCau (nolock) where DanhGiaMucTieuCoCauID = @MasterID)
+	BEGIN
+		SELECT  @MasterID = DanhGiaMucTieuCoCauID
+		FROM	PM_tblDanhGiaMucTieuCoCau (NOLOCK) A
+		WHERE	A.Type = @TypePopup
+				AND A.Year = @Year
+				AND (A.EvaluationPeriodID = @EvaluationPeriodID)
+				AND (A.LSCompanyID = @LSCompanyID)
+				AND (A.LSLevel1ID = @LSLevel1ID)
+				AND (A.LSLevel2ID = @LSLevel2ID)
+				AND CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END = CASE WHEN @LSLevel3ID IS NULL THEN -1 ELSE @LSLevel3ID END
+				AND CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END = CASE WHEN @LSLevel4ID IS NULL THEN -1 ELSE @LSLevel4ID END
+				AND CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END = CASE WHEN @LSLevel5ID IS NULL THEN -1 ELSE @LSLevel5ID END
+				AND CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END = CASE WHEN @LSLevel6ID IS NULL THEN -1 ELSE @LSLevel6ID END
+				AND CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END = CASE WHEN @LSLevel7ID IS NULL THEN -1 ELSE @LSLevel7ID END
+				AND CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END = CASE WHEN @LSLevel8ID IS NULL THEN -1 ELSE @LSLevel8ID END
+				AND CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END = CASE WHEN @LSLevel9ID IS NULL THEN -1 ELSE @LSLevel9ID END
+	END
+
+	IF NOT EXISTS (select top 1 1 from dbo.PM_tblDanhGiaMucTieuCoCau (nolock) where DanhGiaMucTieuCoCauID = @MasterID)
+	BEGIN
+		DECLARE @PM_EvaluationPeriodTypeID int
+
+		SELECT 	@PM_EvaluationPeriodTypeID = PM_EvaluationPeriodTypeID
+		FROM	PM_tblEvaluationPeriod (NOLOCK)
+		WHERE	PM_EvaluationPeriodID = @EvaluationPeriodID
+
+		INSERT INTO PM_tblDanhGiaMucTieuCoCau([Year], EvaluationPeriodID, ApprovedStatusID,
+					LSCompanyID, LSLevel1ID, LSLevel2ID, LSLevel3ID, LSLevel4ID,
+					LSLevel5ID, LSLevel6ID, LSLevel7ID, LSLevel8ID, LSLevel9ID,
+					LSTrackingMethodID,
+					GhiChu,
+					Type, Creator, CreateTime, AttachFileID_PB)
+		VALUES 
+		(
+			@Year, @EvaluationPeriodID, 85,
+			@LSCompanyID, @LSLevel1ID, @LSLevel2ID, @LSLevel3ID, @LSLevel4ID, 
+			@LSLevel5ID, @LSLevel6ID, @LSLevel7ID, @LSLevel8ID, @LSLevel9ID,
+			CASE WHEN @PM_EvaluationPeriodTypeID = 3 THEN 2
+				WHEN @PM_EvaluationPeriodTypeID = 5 THEN 3
+				ELSE NULL END,
+			@GhiChu,
+			@TypePopup,@UserGroupID, @dGetDateTime, @AttachFileID
+		)
+
+		SELECT	TOP 1 @MasterID = DanhGiaMucTieuCoCauID
+		FROM	dbo.PM_tblDanhGiaMucTieuCoCau (Nolock)
+		WHERE	Creator = @UserGroupID AND CreateTime = @dGetDateTime
+		--Insert Process.
+		INSERT INTO dbo.PM_tblDanhGiaMucTieuCoCauProcess
+		(
+			DanhGiaMucTieuCoCauID, CurApprover, ApprovedStatusID,  Creater, CreateTime
+		)
+		VALUES
+		(
+			@MasterID, @UserGroupID, 85, @UserGroupID, @dGetDateTime
+		)
+	END
+	ELSE
+	BEGIN
+		UPDATE	A
+		SET		A.ApprovedStatusID		= 85,	
+				A.Editor				= @UserGroupID,
+				A.EditTime				= @dGetDateTime,
+				A.AttachFileID_PB		= @AttachFileID
+		FROM	PM_tblDanhGiaMucTieuCoCau (NOLOCK) A
+		WHERE	DanhGiaMucTieuCoCauID = @MasterID
+
+		UPDATE	A
+		SET		A.Editer				= @UserGroupID,
+				A.EditTime				= @dGetDateTime
+		FROM	dbo.PM_tblDanhGiaMucTieuCoCauProcess (Nolock) A
+				INNER JOIN
+				(
+					SELECT	A.DanhGiaMucTieuCoCauID, MAX(A.DanhGiaMucTieuCoCauProcess_ID) as DanhGiaMucTieuCoCauProcess_ID
+					FROM	dbo.PM_tblDanhGiaMucTieuCoCauProcess (Nolock) A
+					WHERE	A.DanhGiaMucTieuCoCauID = @MasterID
+					GROUP BY A.DanhGiaMucTieuCoCauID
+				) C ON C.DanhGiaMucTieuCoCauProcess_ID = A.DanhGiaMucTieuCoCauProcess_ID
+		WHERE	A.ApprovedStatusID = 85
+
+		INSERT INTO dbo.PM_tblDanhGiaMucTieuCoCauProcess
+		(
+			DanhGiaMucTieuCoCauID, CurApprover, ApprovedStatusID,  Creater, CreateTime
+		)
+		SELECT	@MasterID, @UserGroupID, 85, @UserGroupID, @dGetDateTime
+		FROM	dbo.PM_tblDanhGiaMucTieuCoCauProcess (NOLOCK) A
+				INNER JOIN
+				(
+					SELECT	A.DanhGiaMucTieuCoCauID, MAX(A.DanhGiaMucTieuCoCauProcess_ID) AS DanhGiaMucTieuCoCauProcess_ID
+					FROM	dbo.PM_tblDanhGiaMucTieuCoCauProcess (NOLOCK) A
+					WHERE	A.DanhGiaMucTieuCoCauID = @MasterID
+					GROUP BY A.DanhGiaMucTieuCoCauID
+				) C ON C.DanhGiaMucTieuCoCauProcess_ID = A.DanhGiaMucTieuCoCauProcess_ID
+		WHERE	A.ApprovedStatusID <> 85
+				AND A.DanhGiaMucTieuCoCauID = @MasterID
+	END
+
+	IF NOT EXISTS (select top 1 1 from dbo.PM_tblDanhGiaMucTieuCoCau_GoalCategory (nolock) where DanhGiaMucTieuCoCauID = @MasterID)
+	BEGIN
+		INSERT INTO PM_tblDanhGiaMucTieuCoCau_GoalCategory
+		(
+			DanhGiaMucTieuCoCauID,
+			GoalCategoryID,
+			TyTrong,
+			Creater, CreateTime
+		)
+		SELECT	@MasterID, 
+				GoalCategoryID,	
+				TyTrong,
+				@UserGroupID, @dGetDateTime
+		FROM	#temp_tblGoalCategory (Nolock) A
+		WHERE	A.GoalCategoryID IS NOT NULL
+		ORDER BY A.Seq desc	
+	END
+
+	DELETE [dbo].[PM_tblDanhGiaMucTieuCoCau_GoalPeriod] WHERE DanhGiaMucTieuCoCauID = @MasterID
+	--Insert Detail.
+	INSERT INTO dbo.PM_tblDanhGiaMucTieuCoCau_GoalPeriod
+	(
+		DanhGiaMucTieuCoCauID,
+		GoalCategoryID,			
+		MucTieu,					
+		TrongSo,
+		TrongSoOld,
+		TieuChiDanhGia,			
+		LSTaoPhuongPhapDoID,	
+		ThoiDiemGhiNhan,			
+		OtherCatalog1,			
+		LSUnitOfMeasurementID,	
+		KeHoach,
+		KeHoachDen,
+		ThucHien,
+		AttachFile,
+		LSDanhMucHinhThucMucTieuID,
+		GhiChu,
+		Creater, CreateTime
+	)
+	SELECT	@MasterID,
+			GoalCategoryID,			
+			MucTieu,					
+			TrongSo,	
+			TrongSoOld,
+			TieuChiDanhGia,			
+			LSTaoPhuongPhapDoID,	
+			ThoiDiemGhiNhan,			
+			OtherCatalog1ID,			
+			LSUnitOfMeasurementID,	
+			KeHoach,
+			KeHoachDen,
+			ThucHien,
+			AttachFile,
+			LSDanhMucHinhThucMucTieuID,
+			GhiChu,
+			@UserGroupID, @dGetDateTime
+	FROM	dbo.[#Table_EvaluationPeriod] (Nolock) A
+	ORDER BY A.TempID desc
+
+	UPDATE	A
+	SET		A.EmpID					= B.EmpID,
+			A.GhiChu				= @GhiChu,
+			A.Editor				= @UserGroupID,
+			A.EditTime				= @dGetDateTime
+	FROM	PM_tblDanhGiaMucTieuCoCau (NOLOCK) A
+			LEFT JOIN PM_tblEvaluationPeriod (NOLOCK) C ON C.PM_EvaluationPeriodID = A.EvaluationPeriodID
+			OUTER APPLY  
+			(
+				SELECT	TOP 1 B.ID, EmpID, NguoiNhapHo_EmpID
+				FROM	PM_tblSetupManagerAndCEO (NOLOCK) B
+				WHERE	B.Type = 2
+						AND B.EffectiveDate <= GETDATE()
+						AND YEAR(B.EffectiveDate) = A.Year
+						AND B.LSCompanyID = A.LSCompanyID
+						AND B.LSLevel1ID = A.LSLevel1ID
+						AND B.LSLevel2ID = A.LSLevel2ID
+						AND CASE WHEN B.LSLevel3ID IS NULL THEN -1 ELSE B.LSLevel3ID END = CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END
+						AND CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+						AND CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+						AND CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+						AND CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+						AND CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+						AND CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+						AND (
+								C.PM_EvaluationPeriodTypeID = 1
+								OR
+								C.PM_EvaluationPeriodTypeID = 2
+								OR
+								(C.PM_EvaluationPeriodTypeID = 3 AND B.LSTrackingMethodID = 2)
+								OR
+								(C.PM_EvaluationPeriodTypeID = 5 AND B.LSTrackingMethodID = 3)
+							)
+				ORDER BY EffectiveDate DESC
+			) AS B 
+	WHERE	A.DanhGiaMucTieuCoCauID = @MasterID
+
+	--select @Master_ID
+
+	DECLARE @DanhGiaMucTieuCoCau_GoalPeriodID INT
+	DECLARE @LSTaoPhuongPhapDoID INT
+	DECLARE @LSUnitOfMeasurementID INT
+	DECLARE @SQL NVARCHAR(MAX), @strSQLCol NVARCHAR(MAX),@strSQLUpdate NVARCHAR(MAX), @strSQLFrom NVARCHAR(MAX);
+	DECLARE DetailCursor CURSOR FOR
+	SELECT	DanhGiaMucTieuCoCau_GoalPeriodID, LSTaoPhuongPhapDoID, LSUnitOfMeasurementID
+	FROM	PM_tblDanhGiaMucTieuCoCau_GoalPeriod (NOLOCK)
+	WHERE	DanhGiaMucTieuCoCauID = @MasterID
+
+	OPEN DetailCursor
+
+	FETCH NEXT FROM DetailCursor INTO @DanhGiaMucTieuCoCau_GoalPeriodID, @LSTaoPhuongPhapDoID, @LSUnitOfMeasurementID
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		SET @strSQLCol		= N'UPDATE	A '
+		SET @strSQLUpdate	= N'SET		HoanThanh =  ' + [dbo].[PM_fnGetStrFormulaTaoPhuongPhapDo](@LSTaoPhuongPhapDoID, 1, @LSUnitOfMeasurementID)
+		SET @strSQLFrom		= N'
+								FROM	PM_tblDanhGiaMucTieuCoCau_GoalPeriod(NoLock) A
+								WHERE	A.DanhGiaMucTieuCoCau_GoalPeriodID = ' + CONVERT(NVARCHAR(50),@DanhGiaMucTieuCoCau_GoalPeriodID)
+		SET @SQL = @strSQLCol + @strSQLUpdate + @strSQLFrom
+		--EXEC sp_executesql @SQL, N'@PM_EVAL_MidYear_Detail_ID NVARCHAR(50)', @PM_EVAL_MidYear_Detail_ID = @PM_EVAL_MidYear_Detail_ID;
+		--select @SQL
+		EXEC (@SQL)
+		FETCH NEXT FROM DetailCursor INTO @DanhGiaMucTieuCoCau_GoalPeriodID, @LSTaoPhuongPhapDoID, @LSUnitOfMeasurementID
+	END
+
+	CLOSE DetailCursor
+	DEALLOCATE DetailCursor
+
+	--UPDATE	PM_tblDanhGiaMucTieuCoCau_GoalPeriod
+	--SET		HoanThanh = 100
+	--WHERE	DanhGiaMucTieuCoCauID = @MasterID
+
+	UPDATE	PM_tblDanhGiaMucTieuCoCau_GoalPeriod
+	SET		HoanThanh = ROUND(HoanThanh, 2)
+	WHERE	DanhGiaMucTieuCoCauID = @MasterID
+    
+	UPDATE	PM_tblDanhGiaMucTieuCoCau_GoalPeriod
+	SET		KetQua = (TrongSo * HoanThanh) /100
+	WHERE DanhGiaMucTieuCoCauID = @MasterID
+
+	UPDATE	PM_tblDanhGiaMucTieuCoCau_GoalPeriod
+	SET		KetQua = ROUND(KetQua, 2)
+	WHERE	DanhGiaMucTieuCoCauID = @MasterID
+
+	UPDATE	B
+	SET		B.KetQua = (B.TyTrong * C.TongKetQua)/100	
+	FROM	PM_tblDanhGiaMucTieuCoCau_GoalCategory (NOLOCK) B
+			LEFT JOIN (
+				SELECT	GoalCategoryID, SUM(KetQua) as TongKetQua
+				FROM	PM_tblDanhGiaMucTieuCoCau_GoalPeriod (NOLOCK) A
+				WHERE	DanhGiaMucTieuCoCauID = @MasterID
+				GROUP BY GoalCategoryID
+			) C ON C.GoalCategoryID = B.GoalCategoryID
+	WHERE	DanhGiaMucTieuCoCauID = @MasterID
+
+	UPDATE	B
+	SET     B.KetQua = C.TongKetQua
+	FROM	PM_tblDanhGiaMucTieuCoCau (NOLOCK) B
+			LEFT JOIN (
+				SELECT	DanhGiaMucTieuCoCauID, SUM(KetQua) as TongKetQua
+				FROM	PM_tblDanhGiaMucTieuCoCau_GoalCategory (NOLOCK) A
+				WHERE	DanhGiaMucTieuCoCauID = @MasterID
+				GROUP BY DanhGiaMucTieuCoCauID 
+			) C ON C.DanhGiaMucTieuCoCauID = B.DanhGiaMucTieuCoCauID
+	WHERE	B.DanhGiaMucTieuCoCauID = @MasterID
+
+
+	SET @ReturnMess = dbo.SYS_fnGetMess('0046', @LanguageID)
+	SET @ReturnMessCode = '1'
+	SET @ReturnID = @MasterID
+END
+ELSE IF @Activity = 'Transfer'
+BEGIN
+	SET @strXML =[dbo].[fnConvertToStringParseXML](@strXML,1)
+	EXEC sp_xml_preparedocument @handle OUTPUT, @strXML
+
+	if object_id('tempdb..#DanhGiaMucTieuCoCau_Transfer') is not null 
+		drop table dbo.[#DanhGiaMucTieuCoCau_Transfer]
+
+	Create table dbo.[#DanhGiaMucTieuCoCau_Transfer]
+	(
+		DanhGiaMucTieuCoCauID	int null
+	) 	
+	
+	INSERT INTO dbo.[#DanhGiaMucTieuCoCau_Transfer]
+	(
+		DanhGiaMucTieuCoCauID
+	)
+	SELECT	A.DanhGiaMucTieuCoCauID	
+	FROM   
+	(
+		SELECT case when MasterID = '' then null else MasterID end as DanhGiaMucTieuCoCauID
+		FROM OPENXML(@handle, '/Root/Record', 2) WITH 
+		( 
+			MasterID nvarchar(12)
+		)
+	) A
+
+	EXEC sp_xml_removedocument @handle
+	
+	SET @dGetDateTime = GETDATE()
+	IF EXISTS (SELECT TOP 1 1 FROM #DanhGiaMucTieuCoCau_Transfer(NOLOCK))
+	BEGIN
+		DECLARE ChuyenDanhGia CURSOR
+		FOR 
+			SELECT	A.DanhGiaMucTieuCoCauID
+			FROM	#DanhGiaMucTieuCoCau_Transfer(NOLOCK) A
+		OPEN ChuyenDanhGia
+		FETCH NEXT FROM ChuyenDanhGia INTO @Cur_DanhGiaMucTieuCoCauID
+		WHILE @@FETCH_STATUS = 0 
+		BEGIN
+			SELECT	@LSCompanyID = LSCompanyID,
+					@LSLevel1ID	 = LSLevel1ID,
+					@LSLevel2ID	 = LSLevel2ID,
+					@LSLevel3ID	 = LSLevel3ID,
+					@LSLevel4ID	 = LSLevel4ID,
+					@LSLevel5ID	 = LSLevel5ID,
+					@LSLevel6ID	 = LSLevel6ID,
+					@LSLevel7ID	 = LSLevel7ID,
+					@LSLevel8ID	 = LSLevel8ID,
+					@LSLevel9ID	 = LSLevel9ID
+			FROM	dbo.PM_tblDanhGiaMucTieuCoCau(NoLock) 
+			WHERE	DanhGiaMucTieuCoCauID = @Cur_DanhGiaMucTieuCoCauID
+
+			SET @Approver = ISNULL(dbo.Common_fnLayNguoiPheDuyet_PassOrg(@LSCompanyID,@LSLevel1ID,@LSLevel2ID,@LSLevel3ID,@LSLevel4ID,@LSLevel5ID,@LSLevel6ID,@LSLevel7ID,@LSLevel8ID,@LSLevel9ID,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,1,113),'')
+
+			IF ISNULL(@Approver,'') <> ''
+			BEGIN
+				SET @ReturnMess = dbo.SYS_fnGetMess('Approve_002', @LanguageID)
+			END
+				
+			UPDATE	dbo.PM_tblDanhGiaMucTieuCoCau
+			SET		ApprovedLevelID = 1,
+					CurApprover = @Approver,
+					ApprovedStatusID = 86,
+					LyDoTuChoi = NULL,
+					Editor = @UserGroupID,
+					EditTime = @dGetDateTime
+			WHERE	DanhGiaMucTieuCoCauID = @Cur_DanhGiaMucTieuCoCauID
+
+			INSERT INTO dbo.PM_tblDanhGiaMucTieuCoCauProcess(DanhGiaMucTieuCoCauID, ApprovedLevelID, CurApprover, ApprovedStatusID, Creater, CreateTime)
+			VALUES  (@Cur_DanhGiaMucTieuCoCauID, 1, @Approver, 86, @UserGroupID, @dGetDateTime)
+            
+			FETCH NEXT FROM ChuyenDanhGia INTO @Cur_DanhGiaMucTieuCoCauID
+		END
+		CLOSE ChuyenDanhGia
+		DEALLOCATE ChuyenDanhGia
+	END
+	SELECT	@Return_ID		= ISNULL(@Return_ID,'')			+ CONVERT(nvarchar(12),A.DanhGiaMucTieuCoCauID)	+ '$',
+			@Return_EmpID	= ISNULL(@Return_EmpID,'')		+ CONVERT(nvarchar(12),B.EmpID)						+ '$',
+			@Return_Cap		= ISNULL(@Return_Cap,'')		+ CONVERT(nvarchar(12),0)							+ '$',
+			@Return_Action	= ISNULL(@Return_Action,'')		+ 'CHUYEN'											+ '$'
+	FROM	dbo.[#DanhGiaMucTieuCoCau_Transfer] (Nolock) A
+			LEFT JOIN dbo.PM_tblDanhGiaMucTieuCoCau (Nolock) B on B.DanhGiaMucTieuCoCauID = A.DanhGiaMucTieuCoCauID
+			
+	SET @ReturnID = @Return_ID + '#' + @Return_EmpID + '#' + @Return_Cap + '#' + @Return_Action	
+	SET @ReturnMess = '0046'
+	SET @ReturnMessCode = '1'
+END
+ELSE IF @Activity = 'GetListMail'
+BEGIN
+	SELECT		'; ' + ISNULL(CEO.Email, '') + '; ' + ISNULL(CEONhapHo.Email, '') as Mail
+	FROM		PM_tblDanhGiaMucTieuCoCau (NOLOCK) A
+				OUTER APPLY  
+				(
+					SELECT	Top 1 B.ID, B.EmpID, B.NguoiNhapHo_EmpID
+					FROM	PM_tblSetupManagerAndCEO (NOLOCK) B
+							LEFT JOIN PM_tblEvaluationPeriod (NOLOCK) C ON C.PM_EvaluationPeriodID  = A.EvaluationPeriodID
+					WHERE	B.Type = A.Type
+							AND B.EffectiveDate <= GetDate()
+							AND YEAR(B.EffectiveDate) = A.Year
+							AND B.LSCompanyID = A.LSCompanyID
+							AND B.LSLevel1ID = A.LSLevel1ID
+							AND B.LSLevel2ID = A.LSLevel2ID
+							AND CASE WHEN B.LSLevel3ID IS NULL THEN -1 ELSE B.LSLevel3ID END = CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END
+							AND CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END = CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END
+							AND CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END = CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END
+							AND CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END = CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END
+							AND CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END = CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END
+							AND CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END = CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END
+							AND CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END = CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END
+							AND (
+									C.PM_EvaluationPeriodTypeID = 1
+									OR
+									C.PM_EvaluationPeriodTypeID = 2
+									OR
+									(C.PM_EvaluationPeriodTypeID = 3 AND B.LSTrackingMethodID = 2)
+									OR
+									(C.PM_EvaluationPeriodTypeID = 5 AND B.LSTrackingMethodID = 3)
+								)
+					ORDER BY EffectiveDate desc
+				) AS B 
+				left join dbo.HR_vEmp (Nolock) CEO on CEO.EmpID = B.EmpID	
+				left join dbo.HR_vEmp (Nolock) CEONhapHo on CEONhapHo.EmpID = B.NguoiNhapHo_EmpID	
+	WHERE		A.DanhGiaMucTieuCoCauID = @MasterID
+END
+ELSE IF @Activity = 'GetListMailTBP'
+BEGIN
+	SELECT	TBP.Email as ToMail,
+			ISNULL(TBPNhapHo.Email, '') as CCMail
+	FROM	PM_tblDanhGiaMucTieuCoCau (NOLOCK) A 
+			OUTER APPLY  
+			(
+				SELECT	Top 1 B.ID, EmpID, NguoiNhapHo_EmpID
+				FROM	PM_tblSetupManagerAndCEO (NOLOCK) B
+						LEFT JOIN PM_tblEvaluationPeriod (NOLOCK) C ON C.PM_EvaluationPeriodID  = A.EvaluationPeriodID
+				WHERE	B.Type = A.Type
+						AND B.EffectiveDate <= GetDate()
+						AND YEAR(B.EffectiveDate) = A.Year
+						AND A.LSCompanyID = B.LSCompanyID
+						AND A.LSLevel1ID = B.LSLevel1ID
+						AND A.LSLevel2ID = B.LSLevel2ID
+						AND CASE WHEN A.LSLevel3ID IS NULL THEN -1 ELSE A.LSLevel3ID END = CASE WHEN B.LSLevel3ID IS NULL THEN -1 ELSE B.LSLevel3ID END
+						AND	CASE WHEN A.LSLevel4ID IS NULL THEN -1 ELSE A.LSLevel4ID END = CASE WHEN B.LSLevel4ID IS NULL THEN -1 ELSE B.LSLevel4ID END
+						AND	CASE WHEN A.LSLevel5ID IS NULL THEN -1 ELSE A.LSLevel5ID END = CASE WHEN B.LSLevel5ID IS NULL THEN -1 ELSE B.LSLevel5ID END
+						AND	CASE WHEN A.LSLevel6ID IS NULL THEN -1 ELSE A.LSLevel6ID END = CASE WHEN B.LSLevel6ID IS NULL THEN -1 ELSE B.LSLevel6ID END
+						AND	CASE WHEN A.LSLevel7ID IS NULL THEN -1 ELSE A.LSLevel7ID END = CASE WHEN B.LSLevel7ID IS NULL THEN -1 ELSE B.LSLevel7ID END
+						AND	CASE WHEN A.LSLevel8ID IS NULL THEN -1 ELSE A.LSLevel8ID END = CASE WHEN B.LSLevel8ID IS NULL THEN -1 ELSE B.LSLevel8ID END
+						AND	CASE WHEN A.LSLevel9ID IS NULL THEN -1 ELSE A.LSLevel9ID END = CASE WHEN B.LSLevel9ID IS NULL THEN -1 ELSE B.LSLevel9ID END
+						AND (
+								C.PM_EvaluationPeriodTypeID = 1
+								OR
+								C.PM_EvaluationPeriodTypeID = 2
+								OR
+								(C.PM_EvaluationPeriodTypeID = 3 AND B.LSTrackingMethodID = 2)
+								OR
+								(C.PM_EvaluationPeriodTypeID = 5 AND B.LSTrackingMethodID = 3)
+							)
+				ORDER BY EffectiveDate desc
+			) AS B 
+			left join dbo.HR_vEmp (Nolock) TBP on TBP.EmpID = B.EmpID	
+			left join dbo.HR_vEmp (Nolock) TBPNhapHo on TBPNhapHo.EmpID = B.NguoiNhapHo_EmpID	
+	WHERE	A.DanhGiaMucTieuCoCauID = @MasterID
+END
+END
