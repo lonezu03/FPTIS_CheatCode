@@ -1,0 +1,293 @@
+
+FitTrack AI — Gym / Nutrition Platform
+
+Mục tiêu: app giúp người dùng theo dõi tập luyện, ăn uống, chỉ số cơ thể và nhận gợi ý cải thiện.
+
+1. Scope MVP trước
+
+Đừng làm quá to ngay. MVP nên có:
+
+User
+Đăng ký / đăng nhập
+Profile: chiều cao, cân nặng, mục tiêu
+Mục tiêu: giảm mỡ / tăng cơ / giữ cân
+Workout
+Tạo lịch tập
+Log bài tập từng buổi
+Theo dõi mức tạ, reps, sets
+Progressive overload suggestion
+Nutrition
+Log bữa ăn
+Tính calo, protein, carb, fat
+Tạo meal plan đơn giản
+Body Tracking
+Cân nặng
+Vòng bụng
+Ảnh progress nếu muốn
+Biểu đồ tiến bộ
+Dashboard
+Tổng calo hôm nay
+Protein hôm nay
+Buổi tập gần nhất
+Tiến độ cân nặng
+2. Tech stack khuyên dùng
+Frontend
+React + TypeScript
+Vite
+TailwindCSS
+shadcn/ui
+TanStack Query
+Zustand hoặc Redux Toolkit
+React Hook Form + Zod
+Recharts
+Backend
+Java 21
+Spring Boot 3
+Spring Security + JWT
+Spring Data JPA
+PostgreSQL
+Redis
+Docker
+Swagger/OpenAPI
+Deploy
+Frontend: Vercel
+Backend: Render / Railway / VPS
+Database: PostgreSQL cloud
+3. Kiến trúc backend
+
+Dùng Modular Monolith + Clean-ish Architecture.
+
+src/main/java/com/fittrack
+│
+├── auth
+│   ├── controller
+│   ├── service
+│   ├── dto
+│   ├── entity
+│   └── repository
+│
+├── user
+├── workout
+├── nutrition
+├── bodytracking
+├── dashboard
+│
+├── common
+│   ├── exception
+│   ├── security
+│   ├── response
+│   └── config
+
+Đây là kiến trúc rất đẹp để show CV.
+
+4. Database chính
+users
+id
+email
+password
+full_name
+gender
+height
+weight
+date_of_birth
+goal
+activity_level
+created_at
+exercises
+id
+name
+muscle_group
+equipment
+description
+workout_plans
+id
+user_id
+name
+start_date
+end_date
+workout_sessions
+id
+user_id
+plan_id
+session_date
+note
+duration_minutes
+workout_sets
+id
+session_id
+exercise_id
+set_number
+weight
+reps
+rir
+foods
+id
+name
+calories
+protein
+carbs
+fat
+unit
+meal_logs
+id
+user_id
+meal_type
+log_date
+total_calories
+meal_items
+id
+meal_log_id
+food_id
+quantity
+calories
+protein
+carbs
+fat
+body_measurements
+id
+user_id
+weight
+waist
+chest
+arm
+thigh
+record_date
+5. API MVP
+Auth
+POST /api/auth/register
+POST /api/auth/login
+GET  /api/auth/me
+Workout
+GET    /api/exercises
+POST   /api/workout-sessions
+GET    /api/workout-sessions
+GET    /api/workout-sessions/{id}
+DELETE /api/workout-sessions/{id}
+Nutrition
+GET  /api/foods
+POST /api/meal-logs
+GET  /api/meal-logs?date=2026-05-24
+Body
+POST /api/body-measurements
+GET  /api/body-measurements
+Dashboard
+GET /api/dashboard/today
+GET /api/dashboard/progress
+6. Frontend folder structure
+src/
+├── app/
+│   ├── router.tsx
+│   └── providers.tsx
+│
+├── features/
+│   ├── auth/
+│   ├── workout/
+│   ├── nutrition/
+│   ├── body-tracking/
+│   └── dashboard/
+│
+├── shared/
+│   ├── components/
+│   ├── hooks/
+│   ├── api/
+│   ├── types/
+│   └── utils/
+7. UI Pages cần làm
+Public
+/login
+/register
+App
+/dashboard
+/workouts
+/workouts/new
+/workouts/:id
+/nutrition
+/nutrition/log
+/body-tracking
+/profile
+8. Roadmap 45 ngày
+Tuần 1 — Foundation
+Setup GitHub repo
+Setup Spring Boot
+Setup React TypeScript
+Docker PostgreSQL
+Auth JWT
+Layout dashboard
+Tuần 2 — Workout Module
+Exercise list
+Create workout session
+Add sets/reps/weight
+Workout history
+Tuần 3 — Nutrition Module
+Food database
+Meal logging
+Daily calories
+Macro summary
+Tuần 4 — Body Tracking + Dashboard
+Log cân nặng/vòng bụng
+Chart tiến độ
+Dashboard tổng hợp
+Basic analytics
+Tuần 5 — Smart Features
+Gợi ý tăng mức tạ
+Tính TDEE/BMR
+Gợi ý calo theo mục tiêu
+Streak tracking
+Tuần 6 — Polish + Deploy
+Responsive UI
+Error handling
+Loading skeleton
+Swagger docs
+Deploy frontend/backend
+Viết README portfolio
+9. Feature thông minh để nổi bật CV
+
+Sau MVP, thêm:
+
+Progressive overload suggestion
+
+Ví dụ:
+
+Nếu user bench press 20kg x 12 reps đủ 3 sets
+=> suggest tăng lên 22.5kg tuần sau
+Nutrition goal engine
+TDEE = BMR x activity level
+Cutting = TDEE - 300
+Bulking = TDEE + 250
+Weekly report
+Tuần này:
+- Tập 4 buổi
+- Protein trung bình 110g/ngày
+- Cân nặng +0.3kg
+- Strength tăng 5%
+10. Thứ tự bắt đầu ngay
+
+Làm theo checklist này:
+
+Bước 1
+
+Tạo repo:
+
+fittrack-ai
+Bước 2
+
+Tạo 2 folder:
+
+fittrack-ai/
+├── backend/
+└── frontend/
+Bước 3
+
+Backend trước:
+
+Auth
+User profile
+Exercise
+Workout session
+Bước 4
+
+Frontend sau:
+
+Login
+Dashboard layout
+Workout form

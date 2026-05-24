@@ -1,0 +1,277 @@
+Tạo 1 Project riêng:
+
+Tên: Fullstack Mentor
+
+Bên trong upload:
+
+Source code React
+Backend Spring Boot
+API docs
+DB schema
+Error logs
+Workflow hằng ngày
+Khi gặp bug
+
+Prompt:
+
+Act as senior fullstack engineer.
+
+Stack:
+- ReactJS
+- Redux Toolkit
+- Java Spring Boot
+
+Tôi gặp bug:
+
+[paste lỗi]
+
+Phân tích:
+1. Root cause
+2. Tại sao xảy ra
+3. Cách fix
+4. Best practice tránh lặp lại
+Code review
+
+Paste component:
+
+Review như tech lead:
+- Clean code?
+- Performance?
+- Scalability?
+- Security issue?
+Architecture
+
+Ví dụ:
+
+Thiết kế module comment nested cho app đọc truyện.
+Stack React + Spring Boot.
+Ưu tiên scalable.
+
+Cái này cực hợp với project novel/chapter/comment của bạn.
+
+Kết quả sau 3–6 tháng
+
+Bạn sẽ lên level từ:
+
+Biết code → biết design hệ thống
+
+2. 💰 Tăng lương — biến GPT thành Career Coach
+
+Bạn đang ở giai đoạn cực quan trọng:
+Từ student → dev đi làm
+
+Tạo Project:
+
+Career Growth
+
+Upload:
+
+CV
+JD công việc
+Portfolio
+Các project đã làm
+A. Mock interview
+
+Prompt:
+
+Giả lập interview Junior React Developer.
+
+Hỏi từng câu như interviewer thật.
+Sau mỗi câu:
+- chấm điểm
+- sửa câu trả lời
+- đưa phiên bản tốt hơn
+B. Lập roadmap tăng lương
+
+Prompt:
+
+Tôi đang ở level:
+- React
+- Spring Boot
+- Redux Toolkit
+
+Mục tiêu:
+Thu nhập 20–25 triệu trong 18 tháng.
+
+Lập roadmap kỹ năng theo tháng.
+C. Review CV
+Review CV như recruiter IT tại HCM.
+Chỉ ra điểm yếu.
+Mục tiêu thực tế
+
+Với nền hiện tại, nếu đi đúng:
+
+6–12 tháng: Junior
+18–24 tháng: 15–20tr
+2–3 năm: Mid-level 20–30tr
+3. 💪 Gym Physique — biến GPT thành PT riêng
+
+Bạn hiện:
+
+~58–62kg
+1m60
+Có mỡ bụng/lưng
+Tập tại nhà
+
+Mục tiêu hợp lý nhất của bạn:
+Lean bulk hoặc body recomp
+
+Tạo Project:
+
+Gym Coach
+
+Log hằng tuần:
+
+Cân nặng:
+Vòng bụng:
+Buổi tập:
+Mức tạ:
+Ảnh physique
+A. Meal tracking
+
+Ví dụ mỗi ngày:
+
+Hôm nay ăn:
+4 trứng
+200g ức gà
+400g cơm
+80g cải thìa
+
+Tính calo + protein
+B. Progressive overload
+Buổi vai:
+Shoulder press 9kg x 8
+
+Tăng sao tuần tới?
+C. Điều chỉnh lịch
+
+Ví dụ:
+
+Tuần này bơi 2 buổi.
+Điều chỉnh lịch chân sao cho recovery tốt?
+
+Cái này rất đúng với lịch tập của bạn.
+
+4. 🧠 Cuộc sống — dùng như trợ lý cá nhân
+
+Đây là thứ underrated nhất.
+
+Tạo Project:
+
+Life OS
+
+Dùng để:
+
+A. Ra quyết định
+
+Ví dụ:
+
+Mua xe
+Quản lý tiền
+Quan hệ
+Kế hoạch tương lai
+
+Prompt:
+
+Phân tích quyết định này như cố vấn cá nhân.
+Cho:
+- rủi ro
+- lợi ích
+- khuyến nghị
+B. Lập kế hoạch tháng
+Lập kế hoạch tháng:
+- học React
+- gym
+- tiết kiệm
+- đi làm
+C. Quản trị tài chính
+
+Ví dụ như vụ VF6 vừa rồi:
+
+Thu nhập 10tr
+Chi tiêu X
+
+Lập kế hoạch mua xe / tiết kiệm
+5. 🚀 Side Project — dùng như Co-founder kỹ thuật
+
+Cực hợp với bạn.
+
+Bạn đang làm web/app → GPT có thể làm:
+
+Product strategist
+UI designer
+Backend architect
+Tester
+Content writer
+Tạo Project:
+
+Tên project thật của bạn
+
+Upload:
+
+Requirement
+API docs
+Wireframe
+Workflow
+A. Product planning
+Thiết kế feature roadmap cho app đọc truyện
+B. UI/UX
+Thiết kế giao diện modern cho chapter reading page
+C. Test cases
+Viết test cases chuẩn QA
+D. Generate code
+Code React component production-ready
+Cách triển khai mỗi ngày (rất thực tế)
+Buổi sáng
+
+Career / planning
+(15 phút)
+
+Khi code
+
+Fullstack Mentor
+(1–2h)
+
+Sau tập
+
+Gym tracking
+(5 phút)
+
+Tối
+
+Review ngày + plan mai
+(10 phút)
+
+Mẹo để Plus đáng tiền nhất
+1. Dùng context dài
+
+GPT Plus mạnh khi có nhiều context.
+
+2. Làm việc liên tục trong cùng project
+
+Nó giữ ngữ cảnh tốt hơn.
+
+3. Đừng hỏi kiểu Google
+
+❌
+“Redux là gì”
+
+✅
+“Tôi dùng Redux Toolkit cho chapter state, selector rerender dư. Analyze.”
+
+Nếu là mình setup cho bạn ngay hôm nay:
+Project 1:
+
+Fullstack Mentor
+
+Project 2:
+
+Gym Coach
+
+Project 3:
+
+Career Growth
+
+3 cái này đem ROI cao nhất cho bạn trong 2026.
+
+Với mục tiêu của bạn, nếu dùng GPT Plus đúng cách trong 1 năm, nó có thể giúp bạn đi nhanh hơn khoảng 1–2 năm học mò một mình.
