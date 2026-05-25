@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Danh sách Blacklist</title>
+	<style>
+		:root {
+			--primary: #0b6b3a;
+			--title: #0b6b3a;
+			--line: #d7e0e8;
+			--text: #1e2a35;
+			--muted: #6b7785;
+			--bg: #f4f5f7;
+			--white: #ffffff;
+			--input-bg: #f1f1f1;
+			--input-border: #c4ccd5;
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			margin: 0;
+			font-family: Arial, Helvetica, sans-serif;
+			font-size: 14px;
+			background: var(--bg);
+			color: var(--text);
+		}
+
+		.page {
+			max-width: 1280px;
+			width: 100%;
+			margin: 0 auto;
+			padding: 10px 12px 24px;
+			min-height: 100vh;
+			background: #f6f6f6;
+		}
+
+		.title {
+			margin: 14px 0 18px;
+			text-align: center;
+			color: var(--title);
+			font-weight: 800;
+			font-size: 34px;
+			letter-spacing: 0.5px;
+			text-transform: uppercase;
+			line-height: 1.1;
+		}
+
+		.filter {
+			padding: 6px 0 6px;
+		}
+
+		.filter-row {
+			display: grid;
+			grid-template-columns: 190px 1fr 190px 1fr;
+			gap: 10px 16px;
+			align-items: start;
+		}
+
+		.label {
+			font-size: 15px;
+			color: #2d3a43;
+			padding-top: 8px;
+		}
+
+		.input,
+		.textarea {
+			width: 100%;
+			border: 1px solid var(--input-border);
+			border-radius: 2px;
+			background: var(--input-bg);
+			font-size: 14px;
+			color: #344654;
+		}
+
+		.input {
+			height: 38px;
+			padding: 0 10px;
+		}
+
+		.textarea {
+			min-height: 38px;
+			padding: 8px 10px;
+			resize: vertical;
+			line-height: 1.2;
+		}
+
+		.tabs {
+			margin-top: 12px;
+			border-bottom: 1px solid var(--line);
+			display: flex;
+			gap: 10px;
+			align-items: flex-end;
+		}
+
+		.tab-radio {
+			position: absolute;
+			opacity: 0;
+			pointer-events: none;
+		}
+
+		.tab {
+			display: inline-block;
+			padding: 8px 18px;
+			border-radius: 10px 10px 0 0;
+			color: #1f2a33;
+			cursor: pointer;
+			font-weight: 700;
+			user-select: none;
+		}
+
+		.tab[data-active="true"] {
+			color: #d00;
+			border-bottom: 2px solid #d00;
+			margin-bottom: -1px;
+		}
+
+		.actions {
+			padding: 12px 0 10px;
+			display: flex;
+			justify-content: center;
+			gap: 8px;
+		}
+
+		.btn {
+			border: 0;
+			color: #fff;
+			padding: 8px 18px;
+			border-radius: 3px;
+			font-size: 14px;
+			line-height: 1;
+			cursor: pointer;
+			font-weight: 800;
+		}
+
+		.btn:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+
+		.btn-search { background: #f3b100; }
+		.btn-refresh { background: #44ab1f; }
+		.btn-export { background: #ef7d12; }
+
+		.grid {
+			border-top: 1px solid var(--line);
+			margin-top: 2px;
+			background: var(--white);
+		}
+
+		.table-wrap {
+			overflow-x: auto;
+		}
+
+		table {
+			width: 100%;
+			border-collapse: collapse;
+			min-width: 1400px;
+		}
+
+		thead tr {
+			background: var(--primary);
+			color: #fff;
+			height: 46px;
+			font-size: 14px;
+		}
+
+		th,
+		td {
+			border-bottom: 1px solid #dde5eb;
+			padding: 8px 10px;
+			vertical-align: top;
+			white-space: nowrap;
+		}
+
+		th { font-weight: 800; text-align: left; }
+
+		.col-stt { width: 64px; text-align: center; }
+		.col-code { width: 110px; }
+		.col-name { width: 200px; }
+		.col-dob { width: 130px; }
+		.col-phone { width: 150px; }
+		.col-email { width: 220px; }
+		.col-title { width: 220px; }
+		.col-applied { width: 220px; }
+		.col-note { width: 260px; }
+		.col-last { width: 140px; }
+		.col-interview { width: 140px; }
+		.col-org { width: 340px; }
+
+		tbody tr:nth-child(even) { background: #f4f6f8; }
+
+		.empty {
+			color: #5c6a77;
+			font-style: italic;
+			white-space: normal;
+		}
+
+		.hidden { display: none; }
+
+		@media (max-width: 980px) {
+			.page { padding: 8px; }
+			.title { font-size: 28px; }
+			.filter-row { grid-template-columns: 140px 1fr; }
+			.label { padding-top: 6px; }
+		}
+	</style>
+</head>
+
+<body>
+	<main class="page">
+		<h1 class="title">DANH SÁCH BLACKLIST</h1>
+
+		<section class="filter" aria-label="Điều kiện lọc">
+			<form id="blacklistForm" autocomplete="off">
+				<div class="filter-row">
+					<label class="label" for="txtHoTen">Họ tên</label>
+					<input class="input" id="txtHoTen" name="hoTen" type="text" maxlength="50" />
+
+					<label class="label" for="txtSoDienThoai">Số điện thoại</label>
+					<textarea class="textarea" id="txtSoDienThoai" name="soDienThoai" rows="1"></textarea>
+
+					<label class="label" for="txtEmail">Email</label>
+					<input class="input" id="txtEmail" name="email" type="text" maxlength="50" />
+
+					<label class="label" for="txtCCCD">CCCD</label>
+					<input class="input" id="txtCCCD" name="cccd" type="text" maxlength="20" />
+				</div>
+
+				<div class="tabs" role="tablist" aria-label="Nhóm đối tượng">
+					<input class="tab-radio" type="radio" name="tab" id="tabNhanVien" value="nhanvien" checked />
+					<label class="tab" for="tabNhanVien" id="lblNhanVien" role="tab" aria-controls="panelNhanVien" data-active="true">Nhân viên</label>
+
+					<input class="tab-radio" type="radio" name="tab" id="tabUngVien" value="ungvien" />
+					<label class="tab" for="tabUngVien" id="lblUngVien" role="tab" aria-controls="panelUngVien" data-active="false">Ứng viên</label>
+				</div>
+
+				<div class="actions" aria-label="Nút xử lý">
+					<button type="button" class="btn btn-search" id="btnTimKiem">Tìm kiếm</button>
+					<button type="button" class="btn btn-refresh" id="btnLamMoi">Làm mới</button>
+					<button type="button" class="btn btn-export" id="btnXuatDL">Xuất DL</button>
+				</div>
+			</form>
+		</section>
+
+		<section class="grid" aria-label="Lưới dữ liệu">
+			<div id="panelNhanVien" role="tabpanel" aria-labelledby="lblNhanVien">
+				<div class="table-wrap">
+					<table id="tblNhanVien">
+						<thead>
+							<tr>
+								<th class="col-stt">STT</th>
+								<th class="col-code">Mã NV</th>
+								<th class="col-name">Tên nhân viên</th>
+								<th class="col-dob">Ngày sinh</th>
+								<th class="col-phone">Số điện thoại</th>
+								<th class="col-email">Email cá nhân</th>
+								<th class="col-title">Chức danh</th>
+								<th class="col-applied">Các vị trí đã ứng tuyển</th>
+								<th class="col-note">Ghi chú lý do blacklist</th>
+								<th class="col-last">Ngày nghỉ việc</th>
+								<th class="col-interview">Ngày phỏng vấn</th>
+								<th class="col-org">Ngành/Mảng, Khối, Phòng ban, Bộ phận</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="col-stt">1</td>
+								<td>11211268</td>
+								<td>Nguyễn Phước Lâm</td>
+								<td>13/08/1994</td>
+								<td>0904808034</td>
+								<td>phuoclamn@gmail.com</td>
+								<td>Trưởng phòng Vận hành Hệ thống và Chuyển đổi số Nhân sự</td>
+								<td>Chuyên viên CNTT; Trưởng nhóm Hệ thống</td>
+								<td>Không được ứng tuyển lại do vi phạm quy định nội bộ (mẫu)</td>
+								<td>30/04/2026</td>
+								<td>15/01/2026</td>
+								<td>Công ty CP Tập đoàn Tân Long &gt; Ngành chăn nuôi công nghệ cao &gt; Khối Hành chính - Nhân sự &gt; Trung tâm Dịch vụ Nhân sự &gt; Phòng Vận hành HT &amp; CĐS Nhân sự</td>
+							</tr>
+							<tr>
+								<td class="col-stt">2</td>
+								<td>130376</td>
+								<td>Trần Minh Khoa</td>
+								<td>05/11/1990</td>
+								<td>0912345678</td>
+								<td>khoatran@gmail.com</td>
+								<td>Chuyên viên Tuyển dụng</td>
+								<td>Chuyên viên Tuyển dụng; Trưởng nhóm Tuyển dụng</td>
+								<td>Blacklist theo đề nghị đơn vị (mẫu)</td>
+								<td>20/03/2026</td>
+								<td>10/12/2025</td>
+								<td>BAF Việt Nam &gt; Khối HCNS &gt; Phòng Tuyển dụng &gt; Bộ phận Tuyển dụng</td>
+							</tr>
+							<tr>
+								<td class="col-stt">3</td>
+								<td>11210987</td>
+								<td>Lê Thị Ngọc Anh</td>
+								<td>22/02/1996</td>
+								<td>0987654321</td>
+								<td>ngocanh.le@gmail.com</td>
+								<td>Nhân viên Hành chính</td>
+								<td>Nhân viên Hành chính</td>
+								<td>Không đạt tiêu chí tái tuyển dụng (mẫu)</td>
+								<td>12/02/2026</td>
+								<td>02/11/2025</td>
+								<td>Tân Long Group &gt; Khối HCNS &gt; Phòng Hành chính &gt; Bộ phận Văn phòng</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+
+			<div id="panelUngVien" role="tabpanel" aria-labelledby="lblUngVien" class="hidden">
+				<div class="table-wrap">
+					<table id="tblUngVien">
+						<thead>
+							<tr>
+								<th class="col-stt">STT</th>
+								<th class="col-code">Mã UV</th>
+								<th class="col-name">Tên ứng viên</th>
+								<th class="col-dob">Ngày sinh</th>
+								<th class="col-phone">Số điện thoại</th>
+								<th class="col-email">Email cá nhân</th>
+								<th class="col-title">Chức danh</th>
+								<th class="col-applied">Các vị trí đã ứng tuyển</th>
+								<th class="col-note">Ghi chú lý do blacklist</th>
+								<th class="col-interview">Ngày phỏng vấn</th>
+								<th class="col-org">Ngành/Mảng, Khối, Phòng ban, Bộ phận</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="col-stt">1</td>
+								<td>UV-BL-0001</td>
+								<td>Phạm Hoàng Nam</td>
+								<td>09/09/1998</td>
+								<td>0909111222</td>
+								<td>nam.pham@gmail.com</td>
+								<td>Chuyên viên Phần mềm</td>
+								<td>Chuyên viên Phần mềm; Kỹ sư Full-stack</td>
+								<td>Blacklist theo kết quả phỏng vấn (mẫu)</td>
+								<td>18/02/2026</td>
+								<td>Tân Long Group &gt; Ngành CNTT &gt; Khối HCNS &gt; TT Dịch vụ Nhân sự</td>
+							</tr>
+							<tr>
+								<td class="col-stt">2</td>
+								<td>UV-BL-0002</td>
+								<td>Võ Thị Thu Hà</td>
+								<td>14/03/1995</td>
+								<td>0933444555</td>
+								<td>thuhavo@gmail.com</td>
+								<td>Chuyên viên Nhân sự</td>
+								<td>Chuyên viên Nhân sự; Chuyên viên C&amp;B</td>
+								<td>Blacklist theo yêu cầu pháp nhân (mẫu)</td>
+								<td>06/01/2026</td>
+								<td>BAF Việt Nam &gt; Khối HCNS &gt; Phòng Nhân sự</td>
+							</tr>
+							<tr>
+								<td class="col-stt">3</td>
+								<td>UV-BL-0003</td>
+								<td>Nguyễn Thảo Vy</td>
+								<td>01/12/1999</td>
+								<td>0977000111</td>
+								<td>vy.nguyen@gmail.com</td>
+								<td>Thực tập sinh Tuyển dụng</td>
+								<td>Thực tập sinh Tuyển dụng</td>
+								<td>Blacklist do hồ sơ không hợp lệ (mẫu)</td>
+								<td>25/12/2025</td>
+								<td>Tân Long Group &gt; Khối HCNS &gt; Trung tâm DVNS &gt; Bộ phận Tuyển dụng</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<script>
+		(function () {
+			var tabNhanVien = document.getElementById('tabNhanVien');
+			var tabUngVien = document.getElementById('tabUngVien');
+			var lblNhanVien = document.getElementById('lblNhanVien');
+			var lblUngVien = document.getElementById('lblUngVien');
+			var panelNhanVien = document.getElementById('panelNhanVien');
+			var panelUngVien = document.getElementById('panelUngVien');
+			var form = document.getElementById('blacklistForm');
+			var btnTimKiem = document.getElementById('btnTimKiem');
+			var btnLamMoi = document.getElementById('btnLamMoi');
+			var btnXuatDL = document.getElementById('btnXuatDL');
+
+			function setTab(active) {
+				var isNhanVien = active === 'nhanvien';
+				panelNhanVien.classList.toggle('hidden', !isNhanVien);
+				panelUngVien.classList.toggle('hidden', isNhanVien);
+				lblNhanVien.dataset.active = isNhanVien ? 'true' : 'false';
+				lblUngVien.dataset.active = isNhanVien ? 'false' : 'true';
+				panelNhanVien.setAttribute('aria-hidden', isNhanVien ? 'false' : 'true');
+				panelUngVien.setAttribute('aria-hidden', isNhanVien ? 'true' : 'false');
+			}
+
+			function getActiveTable() {
+				return tabNhanVien.checked ? document.getElementById('tblNhanVien') : document.getElementById('tblUngVien');
+			}
+
+			function toCsv(table) {
+				var rows = Array.prototype.slice.call(table.querySelectorAll('tr'));
+				return rows
+					.map(function (row) {
+						var cells = Array.prototype.slice.call(row.children);
+						return cells
+							.map(function (cell) {
+								var text = (cell.textContent || '').replace(/\s+/g, ' ').trim();
+								text = text.replace(/"/g, '""');
+								return '"' + text + '"';
+							})
+							.join(',');
+					})
+					.join('\r\n');
+			}
+
+			function downloadCsv(filename, csvText) {
+				var bom = '\ufeff';
+				var blob = new Blob([bom + csvText], { type: 'text/csv;charset=utf-8;' });
+				var url = URL.createObjectURL(blob);
+				var a = document.createElement('a');
+				a.href = url;
+				a.download = filename;
+				document.body.appendChild(a);
+				a.click();
+				a.remove();
+				URL.revokeObjectURL(url);
+			}
+
+			tabNhanVien.addEventListener('change', function () {
+				if (tabNhanVien.checked) setTab('nhanvien');
+			});
+			tabUngVien.addEventListener('change', function () {
+				if (tabUngVien.checked) setTab('ungvien');
+			});
+
+			btnLamMoi.addEventListener('click', function () {
+				form.reset();
+				setTab(tabNhanVien.checked ? 'nhanvien' : 'ungvien');
+			});
+
+			btnTimKiem.addEventListener('click', function () {
+				setTab(tabNhanVien.checked ? 'nhanvien' : 'ungvien');
+			});
+
+			btnXuatDL.addEventListener('click', function () {
+				var table = getActiveTable();
+				var csv = toCsv(table);
+				var isNhanVien = tabNhanVien.checked;
+				downloadCsv(isNhanVien ? 'blacklist_nhanvien.csv' : 'blacklist_ungvien.csv', csv);
+			});
+
+			setTab('nhanvien');
+		})();
+	</script>
+</body>
+</html>
