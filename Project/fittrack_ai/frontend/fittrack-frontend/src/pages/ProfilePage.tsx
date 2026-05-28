@@ -1,43 +1,52 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { getProfile, updateProfile, type UserProfile } from "../api/user.api";
 import { toast } from "sonner";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Calculator, Flame, Target, Beef } from "lucide-react";
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState<UserProfile | null>(null);
 
-  const load = async () => {
-    setProfile(await getProfile());
-  };
+  const profileQuery = useQuery({
+    queryKey: ["profile"],
+    queryFn: getProfile,
+  });
 
   useEffect(() => {
-    load();
-  }, []);
-
-  const handleSave = async () => {
-    if (!profile) {
-      return;
+    if (!draft && profileQuery.data) {
+      setDraft(profileQuery.data);
     }
+  }, [draft, profileQuery.data]);
 
-    try {
-      const updated = await updateProfile(profile);
-      setProfile(updated);
+  const profile = draft ?? profileQuery.data ?? null;
+
+  const updateMutation = useMutation({
+    mutationFn: updateProfile,
+    onSuccess: (updated) => {
+      setDraft(updated);
       toast.success("Profile updated");
-    } catch (error) {
-      const message =
-        typeof error === "object" && error && "response" in error
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : undefined;
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
       toast.error(message || "Cannot update profile");
-    }
-  };
+    },
+  });
 
-  if (!profile) {
+  if (profileQuery.isLoading || !profile) {
     return <div>Loading profile...</div>;
   }
+
+  const handleSave = () => {
+    updateMutation.mutate(profile);
+  };
 
   const metrics = [
     { title: "BMR", value: profile.bmr, icon: Calculator },
@@ -80,7 +89,7 @@ export default function ProfilePage() {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <Input
             value={profile.fullName ?? ""}
-            onChange={(event) => setProfile({ ...profile, fullName: event.target.value })}
+            onChange={(event) => setDraft({ ...profile, fullName: event.target.value })}
             placeholder="Full name"
           />
 
@@ -89,30 +98,30 @@ export default function ProfilePage() {
           <Input
             type="number"
             value={profile.age ?? 23}
-            onChange={(event) => setProfile({ ...profile, age: Number(event.target.value) })}
+            onChange={(event) => setDraft({ ...profile, age: Number(event.target.value) })}
             placeholder="Age"
           />
 
           <Input
             type="number"
             value={profile.height ?? 160}
-            onChange={(event) => setProfile({ ...profile, height: Number(event.target.value) })}
+            onChange={(event) => setDraft({ ...profile, height: Number(event.target.value) })}
             placeholder="Height"
           />
 
           <Input
             type="number"
             value={profile.weight ?? 60}
-            onChange={(event) => setProfile({ ...profile, weight: Number(event.target.value) })}
+            onChange={(event) => setDraft({ ...profile, weight: Number(event.target.value) })}
             placeholder="Weight"
           />
 
-          <select className="rounded-md border px-3 py-2" value={profile.gender ?? "MALE"} onChange={(event) => setProfile({ ...profile, gender: event.target.value })}>
+          <select className="rounded-md border px-3 py-2" value={profile.gender ?? "MALE"} onChange={(event) => setDraft({ ...profile, gender: event.target.value })}>
             <option value="MALE">Male</option>
             <option value="FEMALE">Female</option>
           </select>
 
-          <select className="rounded-md border px-3 py-2" value={profile.goal ?? "LEAN_BULK"} onChange={(event) => setProfile({ ...profile, goal: event.target.value })}>
+          <select className="rounded-md border px-3 py-2" value={profile.goal ?? "LEAN_BULK"} onChange={(event) => setDraft({ ...profile, goal: event.target.value })}>
             <option value="CUT">Cut</option>
             <option value="MAINTAIN">Maintain</option>
             <option value="LEAN_BULK">Lean Bulk</option>
@@ -121,7 +130,7 @@ export default function ProfilePage() {
           <select
             className="rounded-md border px-3 py-2"
             value={profile.activityLevel ?? "MODERATE"}
-            onChange={(event) => setProfile({ ...profile, activityLevel: event.target.value })}
+            onChange={(event) => setDraft({ ...profile, activityLevel: event.target.value })}
           >
             <option value="SEDENTARY">Sedentary</option>
             <option value="LIGHT">Light</option>
@@ -129,8 +138,8 @@ export default function ProfilePage() {
             <option value="ACTIVE">Active</option>
           </select>
 
-          <Button onClick={handleSave} className="md:col-span-2">
-            Save Profile
+          <Button onClick={handleSave} className="md:col-span-2" disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? "Saving..." : "Save Profile"}
           </Button>
         </CardContent>
       </Card>

@@ -1,85 +1,123 @@
 import { useEffect, useState } from "react";
-import { createMealLog, deleteMealLog, getFoods, getMealLogs, type Food, type MealLog } from "../api/nutrition.api";
+import axios from "axios";
+import { createMealLog, deleteMealLog, getFoods, getMealLogs, updateMealLog } from "../api/nutrition.api";
 import { toast } from "sonner";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function NutritionPage() {
-  const [foods, setFoods] = useState<Food[]>([]);
-  const [logs, setLogs] = useState<MealLog[]>([]);
-  const [keyword, setKeyword] = useState("");
-  const [foodId, setFoodId] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const [mealType, setMealType] = useState("LUNCH");
+  const queryClient = useQueryClient();
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const loadFoods = async () => {
-    const data = await getFoods(keyword);
-    setFoods(data);
+  const [keyword, setKeyword] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [foodId, setFoodId] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [mealType, setMealType] = useState("LUNCH");
+  const [editingMeal, setEditingMeal] = useState<{
+    id: string;
+    mealType: string;
+    quantity: number;
+  } | null>(null);
 
-    if (!foodId && data.length > 0) {
-      setFoodId(data[0].id);
-    }
-  };
+  const foodsQuery = useQuery({
+    queryKey: ["foods", searchKeyword],
+    queryFn: () => getFoods(searchKeyword),
+  });
 
-  const loadLogs = async () => {
-    setLogs(await getMealLogs(today));
-  };
+  const mealLogsQuery = useQuery({
+    queryKey: ["meal-logs", today],
+    queryFn: () => getMealLogs(today),
+  });
 
-  const load = async () => {
-    await Promise.all([loadFoods(), loadLogs()]);
-  };
+  const foods = foodsQuery.data ?? [];
+  const logs = mealLogsQuery.data ?? [];
 
   useEffect(() => {
-    load();
-  }, []);
-
-  const handleSearch = async () => {
-    await loadFoods();
-  };
-
-  const handleCreate = async () => {
-    try {
-      await createMealLog({
-        mealType,
-        logDate: today,
-        items: [{ foodId, quantity }],
-      });
-
-      toast.success("Meal saved");
-      await loadLogs();
-    } catch (error) {
-      const message =
-        typeof error === "object" && error && "response" in error
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : undefined;
-      toast.error(message || "Cannot save meal");
+    if (!foodId && foods.length > 0) {
+      setFoodId(foods[0].id);
     }
+  }, [foods, foodId]);
+
+  const createMutation = useMutation({
+    mutationFn: createMealLog,
+    onSuccess: () => {
+      toast.success("Meal saved");
+      queryClient.invalidateQueries({ queryKey: ["meal-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
+      toast.error(message || "Cannot save meal");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteMealLog,
+    onSuccess: () => {
+      toast.success("Meal deleted");
+      queryClient.invalidateQueries({ queryKey: ["meal-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
+      toast.error(message || "Cannot delete meal");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: { id: string; mealType: string; quantity: number }) =>
+      updateMealLog(payload.id, {
+        mealType: payload.mealType,
+        quantity: payload.quantity,
+      }),
+    onSuccess: () => {
+      toast.success("Meal updated");
+      setEditingMeal(null);
+      queryClient.invalidateQueries({ queryKey: ["meal-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
+      toast.error(message || "Cannot update meal");
+    },
+  });
+
+  const handleSearch = () => {
+    setSearchKeyword(keyword);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleCreate = () => {
+    createMutation.mutate({
+      mealType,
+      logDate: today,
+      items: [{ foodId, quantity }],
+    });
+  };
+
+  const handleDelete = (id: string) => {
     if (!window.confirm("Delete this meal log?")) {
       return;
     }
 
-    try {
-      await deleteMealLog(id);
-      toast.success("Meal log deleted");
-      await loadLogs();
-    } catch (error) {
-      const message =
-        typeof error === "object" && error && "response" in error
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : undefined;
-      toast.error(message || "Cannot delete meal log");
-    }
+    deleteMutation.mutate(id);
   };
 
   const totalCalories = logs.reduce((sum, log) => sum + log.totalCalories, 0);
   const totalProtein = logs.reduce((sum, log) => sum + log.totalProtein, 0);
+
+  if (foodsQuery.isLoading || mealLogsQuery.isLoading) {
+    return <div>Loading nutrition...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -126,8 +164,8 @@ export default function NutritionPage() {
               placeholder="Quantity"
             />
 
-            <Button className="w-full" onClick={handleCreate}>
-              Save Meal
+            <Button className="w-full" onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Saving..." : "Save Meal"}
             </Button>
           </CardContent>
         </Card>
@@ -178,8 +216,26 @@ export default function NutritionPage() {
                     <TableCell>{item.quantity}</TableCell>
                     <TableCell>{item.calories.toFixed(0)}</TableCell>
                     <TableCell>{item.protein.toFixed(1)}g</TableCell>
-                    <TableCell>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(log.id)}>
+                    <TableCell className="space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setEditingMeal({
+                            id: log.id,
+                            mealType: log.mealType,
+                            quantity: item.quantity,
+                          })
+                        }
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(log.id)}
+                        disabled={deleteMutation.isPending}
+                      >
                         Delete
                       </Button>
                     </TableCell>
@@ -190,6 +246,47 @@ export default function NutritionPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!editingMeal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingMeal(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Meal</DialogTitle>
+          </DialogHeader>
+
+          {editingMeal && (
+            <div className="space-y-4">
+              <select
+                className="w-full rounded-md border px-3 py-2"
+                value={editingMeal.mealType}
+                onChange={(event) => setEditingMeal({ ...editingMeal, mealType: event.target.value })}
+              >
+                <option value="BREAKFAST">Breakfast</option>
+                <option value="LUNCH">Lunch</option>
+                <option value="DINNER">Dinner</option>
+                <option value="SNACK">Snack</option>
+              </select>
+
+              <Input
+                type="number"
+                value={editingMeal.quantity}
+                onChange={(event) => setEditingMeal({ ...editingMeal, quantity: Number(event.target.value) })}
+                placeholder="Quantity"
+              />
+
+              <Button className="w-full" onClick={() => updateMutation.mutate(editingMeal)} disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

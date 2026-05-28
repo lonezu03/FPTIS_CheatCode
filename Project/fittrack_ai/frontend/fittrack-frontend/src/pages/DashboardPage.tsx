@@ -1,25 +1,34 @@
-import { useEffect, useState } from "react";
-import {
-  getProgressDashboard,
-  getTodayDashboard,
-  type DashboardToday,
-  type ProgressPoint,
-} from "../api/dashboard.api";
+import { getProgressDashboard, getTodayDashboard } from "../api/dashboard.api";
+import { useQuery } from "@tanstack/react-query";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { Activity, Beef, Dumbbell, Flame } from "lucide-react";
 
 export default function DashboardPage() {
-  const [today, setToday] = useState<DashboardToday | null>(null);
-  const [points, setPoints] = useState<ProgressPoint[]>([]);
+  const todayQuery = useQuery({
+    queryKey: ["dashboard-today"],
+    queryFn: getTodayDashboard,
+  });
 
-  useEffect(() => {
-    getTodayDashboard().then(setToday);
-    getProgressDashboard().then((response) => setPoints(response.points));
-  }, []);
+  const progressQuery = useQuery({
+    queryKey: ["dashboard-progress"],
+    queryFn: getProgressDashboard,
+  });
+
+  if (todayQuery.isLoading || progressQuery.isLoading) {
+    return <div>Loading dashboard...</div>;
+  }
+
+  if (todayQuery.isError || progressQuery.isError) {
+    return <div>Cannot load dashboard</div>;
+  }
+
+  const today = todayQuery.data;
+  const points = progressQuery.data?.points ?? [];
 
   if (!today) {
-    return <div>Loading dashboard...</div>;
+    return <div>Cannot load dashboard</div>;
   }
 
   const cards = [

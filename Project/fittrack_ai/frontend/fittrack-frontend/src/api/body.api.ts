@@ -33,3 +33,18 @@ export const createBodyMeasurement = async (payload: {
 export const deleteBodyMeasurement = async (id: string): Promise<void> => {
   await api.delete(`/body-measurements/${id}`);
 };
+
+export const updateBodyMeasurement = async (
+  id: string,
+  payload: {
+    weight: number;
+    waist: number;
+    chest: number;
+    arm: number;
+    thigh: number;
+  }
+): Promise<BodyMeasurement> => {
+  const response = await api.put(`/body-measurements/${id}`, payload);
+
+  return response.data;
+};

@@ -60,3 +60,18 @@ export const createWorkoutSession = async (payload: {
 export const deleteWorkoutSession = async (id: string): Promise<void> => {
   await api.delete(`/workouts/sessions/${id}`);
 };
+
+export const updateWorkoutSession = async (
+  id: string,
+  payload: {
+    note: string;
+    durationMinutes: number;
+    weight: number;
+    reps: number;
+    rir: number;
+  }
+): Promise<WorkoutSession> => {
+  const response = await api.put(`/workouts/sessions/${id}`, payload);
+
+  return response.data;
+};

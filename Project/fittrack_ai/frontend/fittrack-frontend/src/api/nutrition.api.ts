@@ -63,3 +63,15 @@ export const createMealLog = async (payload: {
 export const deleteMealLog = async (id: string): Promise<void> => {
   await api.delete(`/nutrition/meal-logs/${id}`);
 };
+
+export const updateMealLog = async (
+  id: string,
+  payload: {
+    mealType: string;
+    quantity: number;
+  }
+): Promise<MealLog> => {
+  const response = await api.put(`/nutrition/meal-logs/${id}`, payload);
+
+  return response.data;
+};

@@ -1,69 +1,118 @@
-import { useEffect, useState } from "react";
-import { createBodyMeasurement, deleteBodyMeasurement, getBodyMeasurements, type BodyMeasurement } from "../api/body.api";
+import { useState } from "react";
+import axios from "axios";
+import { createBodyMeasurement, deleteBodyMeasurement, getBodyMeasurements, updateBodyMeasurement } from "../api/body.api";
 import { toast } from "sonner";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function BodyTrackingPage() {
-  const [items, setItems] = useState<BodyMeasurement[]>([]);
+  const queryClient = useQueryClient();
+
   const [weight, setWeight] = useState(60);
   const [waist, setWaist] = useState(78);
   const [chest, setChest] = useState(90);
   const [arm, setArm] = useState(30);
   const [thigh, setThigh] = useState(52);
+  const [editingBody, setEditingBody] = useState<{
+    id: string;
+    weight: number;
+    waist: number;
+    chest: number;
+    arm: number;
+    thigh: number;
+  } | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const load = async () => {
-    setItems(await getBodyMeasurements());
+  const measurementsQuery = useQuery({
+    queryKey: ["body-measurements"],
+    queryFn: getBodyMeasurements,
+  });
+
+  const items = measurementsQuery.data ?? [];
+
+  const createMutation = useMutation({
+    mutationFn: createBodyMeasurement,
+    onSuccess: () => {
+      toast.success("Measurement saved");
+      queryClient.invalidateQueries({ queryKey: ["body-measurements"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
+      toast.error(message || "Cannot save measurement");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteBodyMeasurement,
+    onSuccess: () => {
+      toast.success("Measurement deleted");
+      queryClient.invalidateQueries({ queryKey: ["body-measurements"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
+      toast.error(message || "Cannot delete measurement");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: {
+      id: string;
+      weight: number;
+      waist: number;
+      chest: number;
+      arm: number;
+      thigh: number;
+    }) =>
+      updateBodyMeasurement(payload.id, {
+        weight: payload.weight,
+        waist: payload.waist,
+        chest: payload.chest,
+        arm: payload.arm,
+        thigh: payload.thigh,
+      }),
+    onSuccess: () => {
+      toast.success("Measurement updated");
+      setEditingBody(null);
+      queryClient.invalidateQueries({ queryKey: ["body-measurements"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
+      toast.error(message || "Cannot update measurement");
+    },
+  });
+
+  const handleCreate = () => {
+    createMutation.mutate({
+      weight,
+      waist,
+      chest,
+      arm,
+      thigh,
+      recordDate: today,
+    });
   };
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const handleCreate = async () => {
-    try {
-      await createBodyMeasurement({
-        weight,
-        waist,
-        chest,
-        arm,
-        thigh,
-        recordDate: today,
-      });
-
-      toast.success("Body measurement saved");
-      await load();
-    } catch (error) {
-      const message =
-        typeof error === "object" && error && "response" in error
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : undefined;
-      toast.error(message || "Cannot save body measurement");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!window.confirm("Delete this measurement?")) {
       return;
     }
 
-    try {
-      await deleteBodyMeasurement(id);
-      toast.success("Measurement deleted");
-      await load();
-    } catch (error) {
-      const message =
-        typeof error === "object" && error && "response" in error
-          ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
-          : undefined;
-      toast.error(message || "Cannot delete measurement");
-    }
+    deleteMutation.mutate(id);
   };
+
+  if (measurementsQuery.isLoading) {
+    return <div>Loading body tracking...</div>;
+  }
 
   const chartData = [...items].reverse();
 
@@ -91,8 +140,8 @@ export default function BodyTrackingPage() {
 
             <Input type="number" value={thigh} onChange={(event) => setThigh(Number(event.target.value))} placeholder="Thigh" />
 
-            <Button className="w-full" onClick={handleCreate}>
-              Save Measurement
+            <Button className="w-full" onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Saving..." : "Save Measurement"}
             </Button>
           </CardContent>
         </Card>
@@ -144,8 +193,29 @@ export default function BodyTrackingPage() {
                   <TableCell>{item.chest}cm</TableCell>
                   <TableCell>{item.arm}cm</TableCell>
                   <TableCell>{item.thigh}cm</TableCell>
-                  <TableCell>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id)}>
+                  <TableCell className="space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setEditingBody({
+                          id: item.id,
+                          weight: item.weight,
+                          waist: item.waist,
+                          chest: item.chest,
+                          arm: item.arm,
+                          thigh: item.thigh,
+                        })
+                      }
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(item.id)}
+                      disabled={deleteMutation.isPending}
+                    >
                       Delete
                     </Button>
                   </TableCell>
@@ -155,6 +225,64 @@ export default function BodyTrackingPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!editingBody}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingBody(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Measurement</DialogTitle>
+          </DialogHeader>
+
+          {editingBody && (
+            <div className="space-y-4">
+              <Input
+                type="number"
+                value={editingBody.weight}
+                onChange={(event) => setEditingBody({ ...editingBody, weight: Number(event.target.value) })}
+                placeholder="Weight"
+              />
+
+              <Input
+                type="number"
+                value={editingBody.waist}
+                onChange={(event) => setEditingBody({ ...editingBody, waist: Number(event.target.value) })}
+                placeholder="Waist"
+              />
+
+              <Input
+                type="number"
+                value={editingBody.chest}
+                onChange={(event) => setEditingBody({ ...editingBody, chest: Number(event.target.value) })}
+                placeholder="Chest"
+              />
+
+              <Input
+                type="number"
+                value={editingBody.arm}
+                onChange={(event) => setEditingBody({ ...editingBody, arm: Number(event.target.value) })}
+                placeholder="Arm"
+              />
+
+              <Input
+                type="number"
+                value={editingBody.thigh}
+                onChange={(event) => setEditingBody({ ...editingBody, thigh: Number(event.target.value) })}
+                placeholder="Thigh"
+              />
+
+              <Button className="w-full" onClick={() => updateMutation.mutate(editingBody)} disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
