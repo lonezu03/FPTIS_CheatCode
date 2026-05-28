@@ -6,7 +6,7 @@ import { useAuthStore } from "../store/auth.store";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-import { Activity, Apple, BarChart3, Dumbbell, LogOut, Menu, User } from "lucide-react";
+import { Activity, Apple, BarChart3, CalendarDays, Dumbbell, ListPlus, LogOut, Menu, User } from "lucide-react";
 
 const navItems = [
   {
@@ -18,6 +18,16 @@ const navItems = [
     to: "/workouts",
     label: "Workout",
     icon: Dumbbell,
+  },
+  {
+    to: "/workout-plans",
+    label: "Plans",
+    icon: CalendarDays,
+  },
+  {
+    to: "/exercises",
+    label: "Exercises",
+    icon: ListPlus,
   },
   {
     to: "/nutrition",

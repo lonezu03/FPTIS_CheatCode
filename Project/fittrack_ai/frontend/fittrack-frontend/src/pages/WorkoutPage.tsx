@@ -15,6 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import PageHeader from "../components/PageHeader";
+import TableLoading from "../components/common/TableLoading";
+import EmptyState from "../components/common/EmptyState";
+import ErrorState from "../components/common/ErrorState";
 
 export default function WorkoutPage() {
   const queryClient = useQueryClient();
@@ -150,15 +154,16 @@ export default function WorkoutPage() {
   };
 
   if (exercisesQuery.isLoading || sessionsQuery.isLoading) {
-    return <div>Loading workouts...</div>;
+    return <TableLoading />;
+  }
+
+  if (exercisesQuery.isError || sessionsQuery.isError) {
+    return <ErrorState title="Cannot load workouts" message="Please try refreshing the page." />;
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Workout</h1>
-        <p className="text-muted-foreground">Log your training sessions and track progressive overload.</p>
-      </div>
+      <PageHeader title="Workout" description="Log your training sessions and track progressive overload." />
 
       <Card>
         <CardHeader>
@@ -166,32 +171,47 @@ export default function WorkoutPage() {
         </CardHeader>
 
         <CardContent className="grid gap-4 md:grid-cols-6">
-          <select className="rounded-md border px-3 py-2 md:col-span-2" value={exerciseId} onChange={(event) => setExerciseId(event.target.value)}>
-            {exercises.map((exercise) => (
-              <option key={exercise.id} value={exercise.id}>
-                {exercise.name}
-              </option>
-            ))}
-          </select>
+          {exercises.length === 0 ? (
+            <div className="md:col-span-6">
+              <EmptyState
+                title="No exercises found"
+                description="Please seed exercises in backend before creating workout sessions."
+              />
+            </div>
+          ) : (
+            <>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
+                value={exerciseId}
+                onChange={(event) => setExerciseId(event.target.value)}
+              >
+                {exercises.map((exercise) => (
+                  <option key={exercise.id} value={exercise.id}>
+                    {exercise.name}
+                  </option>
+                ))}
+              </select>
 
-          <Input type="number" value={weight} onChange={(event) => setWeight(Number(event.target.value))} placeholder="Weight" />
+              <Input type="number" value={weight} onChange={(event) => setWeight(Number(event.target.value))} placeholder="Weight" />
 
-          <Input type="number" value={reps} onChange={(event) => setReps(Number(event.target.value))} placeholder="Reps" />
+              <Input type="number" value={reps} onChange={(event) => setReps(Number(event.target.value))} placeholder="Reps" />
 
-          <Input type="number" value={rir} onChange={(event) => setRir(Number(event.target.value))} placeholder="RIR" />
+              <Input type="number" value={rir} onChange={(event) => setRir(Number(event.target.value))} placeholder="RIR" />
 
-          <Input
-            type="number"
-            value={durationMinutes}
-            onChange={(event) => setDurationMinutes(Number(event.target.value))}
-            placeholder="Duration"
-          />
+              <Input
+                type="number"
+                value={durationMinutes}
+                onChange={(event) => setDurationMinutes(Number(event.target.value))}
+                placeholder="Duration"
+              />
 
-          <Input className="md:col-span-5" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Note" />
+              <Input className="md:col-span-5" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Note" />
 
-          <Button onClick={handleCreate} disabled={createMutation.isPending}>
-            {createMutation.isPending ? "Saving..." : "Save"}
-          </Button>
+              <Button onClick={handleCreate} disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -201,47 +221,56 @@ export default function WorkoutPage() {
         </CardHeader>
 
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Exercise</TableHead>
-                <TableHead>Weight</TableHead>
-                <TableHead>Reps</TableHead>
-                <TableHead>RIR</TableHead>
-                <TableHead>Note</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
+          {sessions.length === 0 ? (
+            <EmptyState
+              title="No workout sessions yet"
+              description="Create your first workout session to start tracking progress."
+            />
+          ) : (
+            <div className="w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Exercise</TableHead>
+                  <TableHead>Weight</TableHead>
+                  <TableHead>Reps</TableHead>
+                  <TableHead>RIR</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
 
-            <TableBody>
-              {sessions.flatMap((session) =>
-                session.sets.map((set) => (
-                  <TableRow key={set.id}>
-                    <TableCell>{session.sessionDate}</TableCell>
-                    <TableCell>{set.exerciseName}</TableCell>
-                    <TableCell>{set.weight} kg</TableCell>
-                    <TableCell>{set.reps}</TableCell>
-                    <TableCell>{set.rir}</TableCell>
-                    <TableCell>{session.note}</TableCell>
-                    <TableCell className="space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => openEditWorkout(session, set)}>
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(session.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+              <TableBody>
+                {sessions.flatMap((session) =>
+                  session.sets.map((set) => (
+                    <TableRow key={set.id}>
+                      <TableCell>{session.sessionDate}</TableCell>
+                      <TableCell>{set.exerciseName}</TableCell>
+                      <TableCell>{set.weight} kg</TableCell>
+                      <TableCell>{set.reps}</TableCell>
+                      <TableCell>{set.rir}</TableCell>
+                      <TableCell>{session.note}</TableCell>
+                      <TableCell className="space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => openEditWorkout(session, set)}>
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(session.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          )}
         </CardContent>
       </Card>
 

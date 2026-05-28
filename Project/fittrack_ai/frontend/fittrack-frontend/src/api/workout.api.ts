@@ -29,7 +29,7 @@ export type WorkoutSession = {
 };
 
 export const getExercises = async (): Promise<Exercise[]> => {
-  const response = await api.get("/workouts/exercises");
+  const response = await api.get("/exercises");
 
   return response.data;
 };

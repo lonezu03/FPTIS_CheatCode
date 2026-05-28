@@ -10,6 +10,10 @@ import { Input } from "@/components/ui/input";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import PageHeader from "../components/PageHeader";
+import TableLoading from "../components/common/TableLoading";
+import EmptyState from "../components/common/EmptyState";
+import ErrorState from "../components/common/ErrorState";
 
 export default function BodyTrackingPage() {
   const queryClient = useQueryClient();
@@ -111,17 +115,18 @@ export default function BodyTrackingPage() {
   };
 
   if (measurementsQuery.isLoading) {
-    return <div>Loading body tracking...</div>;
+    return <TableLoading />;
+  }
+
+  if (measurementsQuery.isError) {
+    return <ErrorState title="Cannot load body measurements" message="Please try refreshing the page." />;
   }
 
   const chartData = [...items].reverse();
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Body Tracking</h1>
-        <p className="text-muted-foreground">Track weight, waist and body measurements over time.</p>
-      </div>
+      <PageHeader title="Body Tracking" description="Track weight, waist and body measurements over time." />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card>
@@ -152,15 +157,19 @@ export default function BodyTrackingPage() {
           </CardHeader>
 
           <CardContent className="h-[340px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <XAxis dataKey="recordDate" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="weight" strokeWidth={2} />
-                <Line type="monotone" dataKey="waist" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            {chartData.length === 0 ? (
+              <EmptyState title="No body data yet" description="Add your first body measurement to see progress." />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <XAxis dataKey="recordDate" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="weight" strokeWidth={2} />
+                  <Line type="monotone" dataKey="waist" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -171,58 +180,64 @@ export default function BodyTrackingPage() {
         </CardHeader>
 
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Weight</TableHead>
-                <TableHead>Waist</TableHead>
-                <TableHead>Chest</TableHead>
-                <TableHead>Arm</TableHead>
-                <TableHead>Thigh</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.recordDate}</TableCell>
-                  <TableCell>{item.weight}kg</TableCell>
-                  <TableCell>{item.waist}cm</TableCell>
-                  <TableCell>{item.chest}cm</TableCell>
-                  <TableCell>{item.arm}cm</TableCell>
-                  <TableCell>{item.thigh}cm</TableCell>
-                  <TableCell className="space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setEditingBody({
-                          id: item.id,
-                          weight: item.weight,
-                          waist: item.waist,
-                          chest: item.chest,
-                          arm: item.arm,
-                          thigh: item.thigh,
-                        })
-                      }
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(item.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
+          {items.length === 0 ? (
+            <EmptyState title="No measurements yet" description="Save your first measurement to start tracking." />
+          ) : (
+            <div className="w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Weight</TableHead>
+                  <TableHead>Waist</TableHead>
+                  <TableHead>Chest</TableHead>
+                  <TableHead>Arm</TableHead>
+                  <TableHead>Thigh</TableHead>
+                  <TableHead>Action</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.recordDate}</TableCell>
+                    <TableCell>{item.weight}kg</TableCell>
+                    <TableCell>{item.waist}cm</TableCell>
+                    <TableCell>{item.chest}cm</TableCell>
+                    <TableCell>{item.arm}cm</TableCell>
+                    <TableCell>{item.thigh}cm</TableCell>
+                    <TableCell className="space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setEditingBody({
+                            id: item.id,
+                            weight: item.weight,
+                            waist: item.waist,
+                            chest: item.chest,
+                            arm: item.arm,
+                            thigh: item.thigh,
+                          })
+                        }
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          )}
         </CardContent>
       </Card>
 

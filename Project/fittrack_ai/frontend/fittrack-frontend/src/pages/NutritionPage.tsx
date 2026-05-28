@@ -9,6 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import PageHeader from "../components/PageHeader";
+import TableLoading from "../components/common/TableLoading";
+import EmptyState from "../components/common/EmptyState";
+import ErrorState from "../components/common/ErrorState";
 
 export default function NutritionPage() {
   const queryClient = useQueryClient();
@@ -116,15 +120,16 @@ export default function NutritionPage() {
   const totalProtein = logs.reduce((sum, log) => sum + log.totalProtein, 0);
 
   if (foodsQuery.isLoading || mealLogsQuery.isLoading) {
-    return <div>Loading nutrition...</div>;
+    return <TableLoading />;
+  }
+
+  if (foodsQuery.isError || mealLogsQuery.isError) {
+    return <ErrorState title="Cannot load nutrition" message="Please try refreshing the page." />;
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Nutrition</h1>
-        <p className="text-muted-foreground">Log meals and track calories, protein, carbs and fat.</p>
-      </div>
+      <PageHeader title="Nutrition" description="Log meals and track calories, protein, carbs and fat." />
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -138,35 +143,45 @@ export default function NutritionPage() {
               <Button onClick={handleSearch}>Search</Button>
             </div>
 
-            <select className="w-full rounded-md border px-3 py-2" value={foodId} onChange={(event) => setFoodId(event.target.value)}>
-              {foods.map((food) => (
-                <option key={food.id} value={food.id}>
-                  {food.name} / {food.unit}
-                </option>
-              ))}
-            </select>
+            {foods.length === 0 ? (
+              <EmptyState title="No foods found" description="Try another keyword or seed food data in backend." />
+            ) : (
+              <>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={foodId}
+                  onChange={(event) => setFoodId(event.target.value)}
+                >
+                  {foods.map((food) => (
+                    <option key={food.id} value={food.id}>
+                      {food.name} / {food.unit}
+                    </option>
+                  ))}
+                </select>
 
-            <select
-              className="w-full rounded-md border px-3 py-2"
-              value={mealType}
-              onChange={(event) => setMealType(event.target.value)}
-            >
-              <option value="BREAKFAST">Breakfast</option>
-              <option value="LUNCH">Lunch</option>
-              <option value="DINNER">Dinner</option>
-              <option value="SNACK">Snack</option>
-            </select>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={mealType}
+                  onChange={(event) => setMealType(event.target.value)}
+                >
+                  <option value="BREAKFAST">Breakfast</option>
+                  <option value="LUNCH">Lunch</option>
+                  <option value="DINNER">Dinner</option>
+                  <option value="SNACK">Snack</option>
+                </select>
 
-            <Input
-              type="number"
-              value={quantity}
-              onChange={(event) => setQuantity(Number(event.target.value))}
-              placeholder="Quantity"
-            />
+                <Input
+                  type="number"
+                  value={quantity}
+                  onChange={(event) => setQuantity(Number(event.target.value))}
+                  placeholder="Quantity"
+                />
 
-            <Button className="w-full" onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Saving..." : "Save Meal"}
-            </Button>
+                <Button className="w-full" onClick={handleCreate} disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Saving..." : "Save Meal"}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -195,55 +210,61 @@ export default function NutritionPage() {
         </CardHeader>
 
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Meal</TableHead>
-                <TableHead>Food</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Calories</TableHead>
-                <TableHead>Protein</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
+          {logs.length === 0 ? (
+            <EmptyState title="No meals logged today" description="Add your first meal to track today's nutrition." />
+          ) : (
+            <div className="w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Meal</TableHead>
+                  <TableHead>Food</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Calories</TableHead>
+                  <TableHead>Protein</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
 
-            <TableBody>
-              {logs.flatMap((log) =>
-                log.items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{log.mealType}</TableCell>
-                    <TableCell>{item.foodName}</TableCell>
-                    <TableCell>{item.quantity}</TableCell>
-                    <TableCell>{item.calories.toFixed(0)}</TableCell>
-                    <TableCell>{item.protein.toFixed(1)}g</TableCell>
-                    <TableCell className="space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setEditingMeal({
-                            id: log.id,
-                            mealType: log.mealType,
-                            quantity: item.quantity,
-                          })
-                        }
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(log.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+              <TableBody>
+                {logs.flatMap((log) =>
+                  log.items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>{log.mealType}</TableCell>
+                      <TableCell>{item.foodName}</TableCell>
+                      <TableCell>{item.quantity}</TableCell>
+                      <TableCell>{item.calories.toFixed(0)}</TableCell>
+                      <TableCell>{item.protein.toFixed(1)}g</TableCell>
+                      <TableCell className="space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setEditingMeal({
+                              id: log.id,
+                              mealType: log.mealType,
+                              quantity: item.quantity,
+                            })
+                          }
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(log.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -263,7 +284,7 @@ export default function NutritionPage() {
           {editingMeal && (
             <div className="space-y-4">
               <select
-                className="w-full rounded-md border px-3 py-2"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={editingMeal.mealType}
                 onChange={(event) => setEditingMeal({ ...editingMeal, mealType: event.target.value })}
               >

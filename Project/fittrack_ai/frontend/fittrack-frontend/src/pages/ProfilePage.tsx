@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Calculator, Flame, Target, Beef } from "lucide-react";
+import PageHeader from "../components/PageHeader";
+import PageLoading from "../components/common/PageLoading";
+import ErrorState from "../components/common/ErrorState";
 
 export default function ProfilePage() {
   const queryClient = useQueryClient();
@@ -19,10 +22,10 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    if (!draft && profileQuery.data) {
+    if (profileQuery.data) {
       setDraft(profileQuery.data);
     }
-  }, [draft, profileQuery.data]);
+  }, [profileQuery.data]);
 
   const profile = draft ?? profileQuery.data ?? null;
 
@@ -40,8 +43,12 @@ export default function ProfilePage() {
     },
   });
 
+  if (profileQuery.isError) {
+    return <ErrorState title="Cannot load profile" message="Please login again or refresh the page." />;
+  }
+
   if (profileQuery.isLoading || !profile) {
-    return <div>Loading profile...</div>;
+    return <PageLoading />;
   }
 
   const handleSave = () => {
@@ -57,12 +64,9 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Profile</h1>
-        <p className="text-muted-foreground">Update your personal data and nutrition targets.</p>
-      </div>
+      <PageHeader title="Profile" description="Update your personal data and nutrition targets." />
 
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map((item) => {
           const Icon = item.icon;
 
@@ -116,19 +120,27 @@ export default function ProfilePage() {
             placeholder="Weight"
           />
 
-          <select className="rounded-md border px-3 py-2" value={profile.gender ?? "MALE"} onChange={(event) => setDraft({ ...profile, gender: event.target.value })}>
+          <select
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={profile.gender ?? "MALE"}
+            onChange={(event) => setDraft({ ...profile, gender: event.target.value })}
+          >
             <option value="MALE">Male</option>
             <option value="FEMALE">Female</option>
           </select>
 
-          <select className="rounded-md border px-3 py-2" value={profile.goal ?? "LEAN_BULK"} onChange={(event) => setDraft({ ...profile, goal: event.target.value })}>
+          <select
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={profile.goal ?? "LEAN_BULK"}
+            onChange={(event) => setDraft({ ...profile, goal: event.target.value })}
+          >
             <option value="CUT">Cut</option>
             <option value="MAINTAIN">Maintain</option>
             <option value="LEAN_BULK">Lean Bulk</option>
           </select>
 
           <select
-            className="rounded-md border px-3 py-2"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={profile.activityLevel ?? "MODERATE"}
             onChange={(event) => setDraft({ ...profile, activityLevel: event.target.value })}
           >
