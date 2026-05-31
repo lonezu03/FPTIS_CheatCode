@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.idea/
+.vscode/
+.env
+.git
+fittrack-frontend/node_modules/
+fittrack-frontend/dist/

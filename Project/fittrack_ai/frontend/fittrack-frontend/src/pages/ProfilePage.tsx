@@ -36,6 +36,8 @@ export default function ProfilePage() {
       toast.success("Profile updated");
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;

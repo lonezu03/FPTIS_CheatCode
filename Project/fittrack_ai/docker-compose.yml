@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: fittrack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fittrack_db
+      POSTGRES_USER: fittrack_user
+      POSTGRES_PASSWORD: fittrack_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - fittrack_postgres_data:/var/lib/postgresql/data
+    networks:
+      - fittrack-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fittrack-backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fittrack_db
+      SPRING_DATASOURCE_USERNAME: fittrack_user
+      SPRING_DATASOURCE_PASSWORD: fittrack_password
+      JPA_DDL_AUTO: update
+      JPA_SHOW_SQL: false
+      JWT_SECRET: fittrack_super_secret_key_fittrack_super_secret_key_2026_change_me
+      JWT_EXPIRATION_MS: 604800000
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8080:8080"
+    networks:
+      - fittrack-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8080/api
+    container_name: fittrack-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - fittrack-network
+
+volumes:
+  fittrack_postgres_data:
+
+networks:
+  fittrack-network:
+    driver: bridge

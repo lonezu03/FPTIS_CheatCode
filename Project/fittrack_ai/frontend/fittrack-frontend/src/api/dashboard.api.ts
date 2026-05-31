@@ -5,6 +5,14 @@ export type DashboardToday = {
   totalProtein: number;
   totalCarbs: number;
   totalFat: number;
+  targetCalories: number;
+  targetProtein: number;
+  targetCarbs: number;
+  targetFat: number;
+  caloriesProgressPercent: number;
+  proteinProgressPercent: number;
+  carbsProgressPercent: number;
+  fatProgressPercent: number;
   mealCount: number;
   workoutCount: number;
   latestWorkoutNote: string | null;

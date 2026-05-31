@@ -17,7 +17,9 @@ import ErrorState from "../components/common/ErrorState";
 
 export default function BodyTrackingPage() {
   const queryClient = useQueryClient();
+  const today = new Date().toISOString().slice(0, 10);
 
+  const [recordDate, setRecordDate] = useState(today);
   const [weight, setWeight] = useState(60);
   const [waist, setWaist] = useState(78);
   const [chest, setChest] = useState(90);
@@ -30,9 +32,8 @@ export default function BodyTrackingPage() {
     chest: number;
     arm: number;
     thigh: number;
+    recordDate: string;
   } | null>(null);
-
-  const today = new Date().toISOString().slice(0, 10);
 
   const measurementsQuery = useQuery({
     queryKey: ["body-measurements"],
@@ -47,6 +48,9 @@ export default function BodyTrackingPage() {
       toast.success("Measurement saved");
       queryClient.invalidateQueries({ queryKey: ["body-measurements"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
@@ -60,6 +64,9 @@ export default function BodyTrackingPage() {
       toast.success("Measurement deleted");
       queryClient.invalidateQueries({ queryKey: ["body-measurements"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
@@ -75,6 +82,7 @@ export default function BodyTrackingPage() {
       chest: number;
       arm: number;
       thigh: number;
+      recordDate: string;
     }) =>
       updateBodyMeasurement(payload.id, {
         weight: payload.weight,
@@ -82,12 +90,16 @@ export default function BodyTrackingPage() {
         chest: payload.chest,
         arm: payload.arm,
         thigh: payload.thigh,
+        recordDate: payload.recordDate,
       }),
     onSuccess: () => {
       toast.success("Measurement updated");
       setEditingBody(null);
       queryClient.invalidateQueries({ queryKey: ["body-measurements"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
@@ -102,7 +114,7 @@ export default function BodyTrackingPage() {
       chest,
       arm,
       thigh,
-      recordDate: today,
+      recordDate,
     });
   };
 
@@ -135,6 +147,8 @@ export default function BodyTrackingPage() {
           </CardHeader>
 
           <CardContent className="space-y-4">
+            <Input type="date" value={recordDate} onChange={(event) => setRecordDate(event.target.value)} />
+
             <Input type="number" value={weight} onChange={(event) => setWeight(Number(event.target.value))} placeholder="Weight" />
 
             <Input type="number" value={waist} onChange={(event) => setWaist(Number(event.target.value))} placeholder="Waist" />
@@ -218,6 +232,7 @@ export default function BodyTrackingPage() {
                             chest: item.chest,
                             arm: item.arm,
                             thigh: item.thigh,
+                            recordDate: item.recordDate,
                           })
                         }
                       >
@@ -256,6 +271,12 @@ export default function BodyTrackingPage() {
 
           {editingBody && (
             <div className="space-y-4">
+              <Input
+                type="date"
+                value={editingBody.recordDate}
+                onChange={(event) => setEditingBody({ ...editingBody, recordDate: event.target.value })}
+              />
+
               <Input
                 type="number"
                 value={editingBody.weight}

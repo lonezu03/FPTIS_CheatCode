@@ -42,6 +42,7 @@ export const updateBodyMeasurement = async (
     chest: number;
     arm: number;
     thigh: number;
+    recordDate: string;
   }
 ): Promise<BodyMeasurement> => {
   const response = await api.put(`/body-measurements/${id}`, payload);

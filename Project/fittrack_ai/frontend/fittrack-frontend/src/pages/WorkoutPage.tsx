@@ -22,7 +22,9 @@ import ErrorState from "../components/common/ErrorState";
 
 export default function WorkoutPage() {
   const queryClient = useQueryClient();
+  const today = new Date().toISOString().slice(0, 10);
 
+  const [sessionDate, setSessionDate] = useState(today);
   const [exerciseId, setExerciseId] = useState("");
   const [weight, setWeight] = useState(9);
   const [reps, setReps] = useState(10);
@@ -31,6 +33,7 @@ export default function WorkoutPage() {
   const [note, setNote] = useState("Workout from frontend");
   const [editingWorkout, setEditingWorkout] = useState<{
     id: string;
+    sessionDate: string;
     note: string;
     durationMinutes: number;
     weight: number;
@@ -64,6 +67,9 @@ export default function WorkoutPage() {
       queryClient.invalidateQueries({ queryKey: ["workout-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
@@ -78,6 +84,9 @@ export default function WorkoutPage() {
       queryClient.invalidateQueries({ queryKey: ["workout-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
@@ -88,6 +97,7 @@ export default function WorkoutPage() {
   const updateMutation = useMutation({
     mutationFn: (payload: {
       id: string;
+      sessionDate: string;
       note: string;
       durationMinutes: number;
       weight: number;
@@ -95,6 +105,7 @@ export default function WorkoutPage() {
       rir: number;
     }) =>
       updateWorkoutSession(payload.id, {
+        sessionDate: payload.sessionDate,
         note: payload.note,
         durationMinutes: payload.durationMinutes,
         weight: payload.weight,
@@ -107,6 +118,9 @@ export default function WorkoutPage() {
       queryClient.invalidateQueries({ queryKey: ["workout-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
@@ -116,7 +130,7 @@ export default function WorkoutPage() {
 
   const handleCreate = () => {
     createMutation.mutate({
-      sessionDate: new Date().toISOString().slice(0, 10),
+      sessionDate,
       note,
       durationMinutes,
       sets: [
@@ -140,11 +154,12 @@ export default function WorkoutPage() {
   };
 
   const openEditWorkout = (
-    session: { id: string; note: string; durationMinutes: number },
+    session: { id: string; sessionDate: string; note: string; durationMinutes: number },
     set: { weight: number; reps: number; rir: number }
   ) => {
     setEditingWorkout({
       id: session.id,
+      sessionDate: session.sessionDate,
       note: session.note,
       durationMinutes: session.durationMinutes,
       weight: set.weight,
@@ -180,6 +195,8 @@ export default function WorkoutPage() {
             </div>
           ) : (
             <>
+              <Input type="date" value={sessionDate} onChange={(event) => setSessionDate(event.target.value)} />
+
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
                 value={exerciseId}
@@ -289,6 +306,12 @@ export default function WorkoutPage() {
 
           {editingWorkout && (
             <div className="space-y-4">
+              <Input
+                type="date"
+                value={editingWorkout.sessionDate}
+                onChange={(event) => setEditingWorkout({ ...editingWorkout, sessionDate: event.target.value })}
+              />
+
               <Input
                 value={editingWorkout.note}
                 onChange={(event) => setEditingWorkout({ ...editingWorkout, note: event.target.value })}

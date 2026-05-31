@@ -125,6 +125,9 @@ export default function WorkoutPlansPage() {
       queryClient.invalidateQueries({ queryKey: ["workout-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
+      queryClient.invalidateQueries({ queryKey: ["achievements"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;

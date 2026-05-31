@@ -12,6 +12,7 @@ import {
   createExerciseApi,
   deleteExerciseApi,
   getExercisesApi,
+  restoreExerciseApi,
   updateExerciseApi,
   type Exercise,
 } from "../api/exercise.api";
@@ -41,6 +42,7 @@ export default function ExercisesPage() {
 
   const [keyword, setKeyword] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [includeInactive, setIncludeInactive] = useState(true);
 
   const [draft, setDraft] = useState<ExerciseDraft>({
     name: "Dumbbell Bench Press",
@@ -52,8 +54,8 @@ export default function ExercisesPage() {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
 
   const exercisesQuery = useQuery({
-    queryKey: ["exercises-management", searchKeyword],
-    queryFn: () => getExercisesApi(searchKeyword),
+    queryKey: ["exercises-management", searchKeyword, includeInactive],
+    queryFn: () => getExercisesApi(searchKeyword, includeInactive),
   });
 
   const exercises = exercisesQuery.data ?? [];
@@ -95,13 +97,26 @@ export default function ExercisesPage() {
   const deleteMutation = useMutation({
     mutationFn: deleteExerciseApi,
     onSuccess: () => {
-      toast.success("Exercise deleted");
+      toast.success("Exercise archived");
       queryClient.invalidateQueries({ queryKey: ["exercises-management"] });
       queryClient.invalidateQueries({ queryKey: ["exercises"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
       toast.error(message || "Cannot delete exercise. It may already be used in workout data.");
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: restoreExerciseApi,
+    onSuccess: () => {
+      toast.success("Exercise restored");
+      queryClient.invalidateQueries({ queryKey: ["exercises-management"] });
+      queryClient.invalidateQueries({ queryKey: ["exercises"] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
+      toast.error(message || "Cannot restore exercise");
     },
   });
 
@@ -168,10 +183,21 @@ export default function ExercisesPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Search exercise..." />
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="flex flex-1 gap-2">
+              <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Search exercise..." />
 
-            <Button onClick={() => setSearchKeyword(keyword)}>Search</Button>
+              <Button onClick={() => setSearchKeyword(keyword)}>Search</Button>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeInactive}
+                onChange={(event) => setIncludeInactive(event.target.checked)}
+              />
+              Show archived
+            </label>
           </div>
 
           {exercisesQuery.isLoading ? (
@@ -187,30 +213,49 @@ export default function ExercisesPage() {
                     <TableHead>Muscle</TableHead>
                     <TableHead>Equipment</TableHead>
                     <TableHead>Custom</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
 
                 <TableBody>
                   {exercises.map((exercise) => (
-                    <TableRow key={exercise.id}>
+                    <TableRow key={exercise.id} className={!exercise.active ? "opacity-50" : ""}>
                       <TableCell className="font-medium">{exercise.name}</TableCell>
                       <TableCell>{exercise.muscleGroup}</TableCell>
                       <TableCell>{exercise.equipment}</TableCell>
                       <TableCell>{exercise.custom ? "Yes" : "No"}</TableCell>
+                      <TableCell>
+                        {exercise.active ? (
+                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">Active</span>
+                        ) : (
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">Archived</span>
+                        )}
+                      </TableCell>
                       <TableCell className="space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => setEditingExercise(exercise)}>
+                        <Button variant="outline" size="sm" onClick={() => setEditingExercise(exercise)} disabled={!exercise.active}>
                           Edit
                         </Button>
 
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(exercise.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          Delete
-                        </Button>
+                        {exercise.active ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(exercise.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            Archive
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => restoreMutation.mutate(exercise.id)}
+                            disabled={restoreMutation.isPending}
+                          >
+                            Restore
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

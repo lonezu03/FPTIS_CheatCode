@@ -64,6 +64,7 @@ export const deleteWorkoutSession = async (id: string): Promise<void> => {
 export const updateWorkoutSession = async (
   id: string,
   payload: {
+    sessionDate: string;
     note: string;
     durationMinutes: number;
     weight: number;

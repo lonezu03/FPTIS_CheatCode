@@ -8,6 +8,8 @@ export type Food = {
   carbs: number;
   fat: number;
   unit: string;
+  custom: boolean;
+  active: boolean;
 };
 
 export type MealLog = {
@@ -68,7 +70,11 @@ export const updateMealLog = async (
   id: string,
   payload: {
     mealType: string;
-    quantity: number;
+    logDate: string;
+    items: {
+      foodId: string;
+      quantity: number;
+    }[];
   }
 ): Promise<MealLog> => {
   const response = await api.put(`/nutrition/meal-logs/${id}`, payload);
