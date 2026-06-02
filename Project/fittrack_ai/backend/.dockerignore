@@ -1,10 +1,7 @@
 target/
-demo/target/
 .idea/
-demo/.idea/
 .vscode/
-demo/.vscode/
 *.iml
 .env
 .git
-demo/.git
+demo/

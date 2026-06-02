@@ -28,8 +28,8 @@ The repository also contains `backend/demo/Dockerfile` for local Docker Compose 
 
 ```txt
 SERVER_PORT=8080
-SPRING_DATASOURCE_URL=jdbc:postgresql://<render-postgres-host>:5432/<database>
-SPRING_DATASOURCE_USERNAME=<username>
+SPRING_DATASOURCE_URL=jdbc:postgresql://dpg-d8eqo6l7vvec73du09vg-a:5432/fittrack_db_b1ri
+SPRING_DATASOURCE_USERNAME=fittrack_user
 SPRING_DATASOURCE_PASSWORD=<password>
 JWT_SECRET=<very-long-secret>
 JWT_EXPIRATION_MS=604800000
@@ -62,6 +62,18 @@ Use the JDBC format:
 ```txt
 jdbc:postgresql://HOST:PORT/DATABASE
 ```
+
+Current Render database values:
+
+```txt
+Host: dpg-d8eqo6l7vvec73du09vg-a
+Port: 5432
+Database: fittrack_db_b1ri
+Username: fittrack_user
+JDBC URL: jdbc:postgresql://dpg-d8eqo6l7vvec73du09vg-a:5432/fittrack_db_b1ri
+```
+
+Do not commit the database password or JWT secret. Set them in Render environment variables.
 
 ## Frontend on Vercel
 
