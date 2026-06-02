@@ -1,0 +1,7 @@
+{
+  "name": "fittrack-frontend-deploy",
+  "private": true,
+  "scripts": {
+    "build": "node build-vercel.mjs"
+  }
+}
