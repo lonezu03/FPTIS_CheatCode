@@ -41,7 +41,7 @@ JPA_SHOW_SQL=false
 ### Health Check
 
 ```txt
-GET https://your-render-backend.onrender.com/api/health
+GET https://https-github-com-lonezu03-fptis.onrender.com/api/health
 ```
 
 Expected response:
@@ -91,10 +91,10 @@ Output directory: dist
 ### Frontend Environment Variables
 
 ```txt
-VITE_API_URL=https://your-render-backend.onrender.com/api
+VITE_API_URL=https://https-github-com-lonezu03-fptis.onrender.com/api
 ```
 
-The frontend Axios client reads `VITE_API_URL` and falls back to `http://localhost:8080/api` for local development.
+The frontend Axios client reads `VITE_API_URL`. If the variable is missing, it falls back to the Render API URL. Local development uses `.env.development`.
 
 ## Deployment Checklist
 
