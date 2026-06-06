@@ -16,7 +16,7 @@ SPRING_DATASOURCE_USERNAME=fittrack_user
 SPRING_DATASOURCE_PASSWORD=<set-in-render-dashboard>
 JWT_SECRET=<set-in-render-dashboard>
 JWT_EXPIRATION_MS=604800000
-CORS_ALLOWED_ORIGINS=https://your-vercel-app.vercel.app
+CORS_ALLOWED_ORIGINS=https://fptis-cheat-code.vercel.app
 JPA_DDL_AUTO=update
 JPA_SHOW_SQL=false
 ```

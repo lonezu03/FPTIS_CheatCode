@@ -20,7 +20,7 @@ services:
       - key: JWT_EXPIRATION_MS
         value: 604800000
       - key: CORS_ALLOWED_ORIGINS
-        value: http://localhost:5173
+        value: https://fptis-cheat-code.vercel.app,http://localhost:5173,http://127.0.0.1:5173
       - key: JPA_DDL_AUTO
         value: update
       - key: JPA_SHOW_SQL
