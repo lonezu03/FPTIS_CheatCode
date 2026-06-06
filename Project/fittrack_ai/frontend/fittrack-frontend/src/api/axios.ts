@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const DEFAULT_API_URL = "https://https-github-com-lonezu03-fptis.onrender.com/api";
+
 const envApiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 
 const baseURL =
