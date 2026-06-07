@@ -151,7 +151,7 @@ export default function FoodsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader title="Foods" description="Create and manage food items used for meal logging." />
 
       <Card>

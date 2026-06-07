@@ -12,11 +12,11 @@ export default function MacroProgressCard({ title, current, target, unit, percen
   const safePercent = Math.min(percent, 100);
 
   return (
-    <div className="rounded-2xl border bg-white p-5">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-2xl border bg-white p-3 sm:p-5">
+      <div className="mb-2 flex items-center justify-between sm:mb-3">
         <div>
-          <p className="text-sm text-muted-foreground">{title}</p>
-          <h3 className="text-2xl font-bold">
+          <p className="text-xs text-muted-foreground sm:text-sm">{title}</p>
+          <h3 className="text-xl font-bold sm:text-2xl">
             {current.toFixed(0)}
             <span className="ml-1 text-sm font-normal text-muted-foreground">
               / {target.toFixed(0)} {unit}
@@ -24,7 +24,9 @@ export default function MacroProgressCard({ title, current, target, unit, percen
           </h3>
         </div>
 
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium">{percent.toFixed(0)}%</span>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium sm:px-3 sm:py-1 sm:text-sm">
+          {percent.toFixed(0)}%
+        </span>
       </div>
 
       <Progress value={safePercent} />

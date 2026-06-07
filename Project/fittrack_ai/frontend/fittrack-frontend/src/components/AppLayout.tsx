@@ -114,10 +114,10 @@ export default function AppLayout() {
         </Button>
       </aside>
 
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-white px-4 md:hidden">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-white px-3 md:hidden">
         <div>
-          <p className="text-sm text-muted-foreground">FitTrack</p>
-          <h1 className="font-semibold">{currentPage}</h1>
+          <p className="text-xs text-muted-foreground">FitTrack</p>
+          <h1 className="text-sm font-semibold">{currentPage}</h1>
         </div>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -127,14 +127,14 @@ export default function AppLayout() {
             </Button>
           </SheetTrigger>
 
-          <SheetContent side="left" className="w-72">
+          <SheetContent side="left" className="w-64">
             <SheetHeader>
               <SheetTitle>
                 <Brand />
               </SheetTitle>
             </SheetHeader>
 
-            <nav className="mt-8 space-y-2">
+            <nav className="mt-5 space-y-1">
               {navItems.map((item) => (
                 <MobileSidebarLink key={item.to} item={item} onClick={() => setMobileOpen(false)} />
               ))}
@@ -142,7 +142,7 @@ export default function AppLayout() {
 
             <Button
               variant="destructive"
-              className="mt-8 w-full"
+              className="mt-5 w-full"
               onClick={() => {
                 setMobileOpen(false);
                 handleLogout();
@@ -155,7 +155,7 @@ export default function AppLayout() {
         </Sheet>
       </header>
 
-      <main className="p-4 md:ml-64 md:p-8">
+      <main className="p-3 md:ml-64 md:p-8">
         <Outlet />
       </main>
     </div>
@@ -165,8 +165,8 @@ export default function AppLayout() {
 function Brand() {
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">FitTrack</h1>
-      <p className="text-sm text-muted-foreground">Fitness OS</p>
+      <h1 className="text-xl font-bold tracking-tight md:text-2xl">FitTrack</h1>
+      <p className="text-xs text-muted-foreground md:text-sm">Fitness OS</p>
     </div>
   );
 }
@@ -178,7 +178,7 @@ function SidebarLink({ item }: { item: NavItem }) {
     <NavLink
       to={item.to}
       className={({ isActive }) =>
-        `flex items-center rounded-xl px-4 py-3 text-sm font-medium transition ${
+        `flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition ${
           isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
         }`
       }
@@ -197,7 +197,7 @@ function MobileSidebarLink({ item, onClick }: { item: NavItem; onClick: () => vo
       to={item.to}
       onClick={onClick}
       className={({ isActive }) =>
-        `flex items-center rounded-xl px-4 py-3 text-sm font-medium transition ${
+        `flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition ${
           isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
         }`
       }

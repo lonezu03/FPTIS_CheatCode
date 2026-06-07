@@ -177,7 +177,7 @@ export default function WorkoutPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader title="Workout" description="Log your training sessions and track progressive overload." />
 
       <Card>

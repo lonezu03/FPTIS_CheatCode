@@ -137,16 +137,16 @@ export default function BodyTrackingPage() {
   const chartData = [...items].reverse();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader title="Body Tracking" description="Track weight, waist and body measurements over time." />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Add Measurement</CardTitle>
           </CardHeader>
 
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4">
             <Input type="date" value={recordDate} onChange={(event) => setRecordDate(event.target.value)} />
 
             <Input type="number" value={weight} onChange={(event) => setWeight(Number(event.target.value))} placeholder="Weight" />
@@ -170,7 +170,7 @@ export default function BodyTrackingPage() {
             <CardTitle>Progress Chart</CardTitle>
           </CardHeader>
 
-          <CardContent className="h-[340px]">
+          <CardContent className="h-[240px] md:h-[340px]">
             {chartData.length === 0 ? (
               <EmptyState title="No body data yet" description="Add your first body measurement to see progress." />
             ) : (
@@ -270,7 +270,7 @@ export default function BodyTrackingPage() {
           </DialogHeader>
 
           {editingBody && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <Input
                 type="date"
                 value={editingBody.recordDate}

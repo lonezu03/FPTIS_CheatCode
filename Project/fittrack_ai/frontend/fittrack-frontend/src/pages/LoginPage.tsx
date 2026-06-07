@@ -42,13 +42,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-3 sm:p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center text-3xl">{mode === "login" ? "Login" : "Register"}</CardTitle>
+          <CardTitle className="text-center text-2xl sm:text-3xl">{mode === "login" ? "Login" : "Register"}</CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           {mode === "register" && (
             <Input placeholder="Full name" value={fullName} onChange={(event) => setFullName(event.target.value)} />
           )}

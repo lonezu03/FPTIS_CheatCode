@@ -267,7 +267,7 @@ export default function WorkoutPlansPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader
         title="Workout Plans"
         description="Create reusable training plans and generate workout sessions from them."
@@ -407,7 +407,7 @@ export default function WorkoutPlansPage() {
       {plans.length === 0 ? (
         <EmptyState title="No workout plans yet" description="Create a reusable workout plan to generate sessions faster." />
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {plans.map((plan) => (
             <PlanCard
               key={plan.id}

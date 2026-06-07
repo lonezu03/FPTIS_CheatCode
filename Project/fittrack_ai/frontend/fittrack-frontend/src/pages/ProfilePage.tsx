@@ -65,10 +65,10 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader title="Profile" description="Update your personal data and nutrition targets." />
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         {metrics.map((item) => {
           const Icon = item.icon;
 
@@ -80,7 +80,7 @@ export default function ProfilePage() {
               </CardHeader>
 
               <CardContent>
-                <p className="text-2xl font-bold">{item.value}</p>
+                <p className="text-xl font-bold md:text-2xl">{item.value}</p>
               </CardContent>
             </Card>
           );
@@ -92,7 +92,7 @@ export default function ProfilePage() {
           <CardTitle>User Information</CardTitle>
         </CardHeader>
 
-        <CardContent className="grid gap-4 md:grid-cols-2">
+        <CardContent className="grid gap-3 sm:gap-4 md:grid-cols-2">
           <Input
             value={profile.fullName ?? ""}
             onChange={(event) => setDraft({ ...profile, fullName: event.target.value })}

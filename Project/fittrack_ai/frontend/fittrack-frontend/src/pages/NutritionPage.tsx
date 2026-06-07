@@ -257,11 +257,11 @@ export default function NutritionPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader title="Nutrition" description="Log meals with multiple foods and track daily macros." />
 
       {dashboard && (
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
           <MacroProgressCard
             title="Calories"
             current={dashboard.totalCalories}
@@ -296,13 +296,13 @@ export default function NutritionPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Add Meal</CardTitle>
           </CardHeader>
 
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 sm:space-y-4">
             <div className="flex gap-2">
               <Input placeholder="Search food..." value={keyword} onChange={(event) => setKeyword(event.target.value)} />
 
@@ -374,7 +374,7 @@ export default function NutritionPage() {
             <CardTitle>Summary for {logDate}</CardTitle>
           </CardHeader>
 
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2 sm:space-y-3">
             <MacroCard label="Calories" value={totalCalories.toFixed(0)} />
             <MacroCard label="Protein" value={`${totalProtein.toFixed(1)}g`} />
             <MacroCard label="Carbs" value={`${totalCarbs.toFixed(1)}g`} />
@@ -458,7 +458,7 @@ export default function NutritionPage() {
           </DialogHeader>
 
           {editingMeal && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <Input
                 type="date"
                 value={editingMeal.logDate}
@@ -524,9 +524,9 @@ export default function NutritionPage() {
 
 function MacroCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-slate-100 p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="text-2xl font-bold">{value}</p>
+    <div className="rounded-xl bg-slate-100 p-3 sm:p-4">
+      <p className="text-xs text-muted-foreground sm:text-sm">{label}</p>
+      <p className="text-xl font-bold md:text-2xl">{value}</p>
     </div>
   );
 }

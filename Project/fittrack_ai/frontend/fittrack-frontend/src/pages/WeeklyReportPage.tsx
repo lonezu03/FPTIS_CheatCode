@@ -49,7 +49,7 @@ export default function WeeklyReportPage() {
   const recommendations = recommendationQuery.data;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader
         title="Weekly Report"
         description="Review your weekly nutrition, training consistency and body progress."
@@ -133,7 +133,7 @@ function WeeklyReportContent({
         <Badge variant="secondary">{report.workoutDays} workout days</Badge>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         {overviewCards.map((item) => {
           const Icon = item.icon;
 
@@ -145,7 +145,7 @@ function WeeklyReportContent({
               </CardHeader>
 
               <CardContent>
-                <p className="text-3xl font-bold">
+                <p className="text-2xl font-bold md:text-3xl">
                   {item.value}
                   {item.suffix && <span className="ml-1 text-sm font-normal text-muted-foreground">{item.suffix}</span>}
                 </p>
@@ -155,7 +155,7 @@ function WeeklyReportContent({
         })}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         <MacroProgressCard
           title="Calories Compliance"
           current={report.averageCalories}
@@ -191,13 +191,13 @@ function WeeklyReportContent({
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Daily Calories</CardTitle>
           </CardHeader>
 
-          <CardContent className="h-[320px]">
+          <CardContent className="h-[240px] md:h-[320px]">
             {report.dailyNutrition.length === 0 ? (
               <EmptyState title="No nutrition data" description="Log meals during this range to see calorie trends." />
             ) : (
@@ -219,7 +219,7 @@ function WeeklyReportContent({
             <CardTitle>Daily Protein</CardTitle>
           </CardHeader>
 
-          <CardContent className="h-[320px]">
+          <CardContent className="h-[240px] md:h-[320px]">
             {report.dailyNutrition.length === 0 ? (
               <EmptyState title="No protein data" description="Log meals during this range to see protein trends." />
             ) : (
@@ -253,7 +253,7 @@ function WeeklyReportContent({
           ) : (
             <ul className="space-y-3">
               {report.insights.map((insight, index) => (
-                <li key={index} className="rounded-xl border bg-slate-50 p-4 text-sm">
+                <li key={index} className="rounded-xl border bg-slate-50 p-3 text-sm sm:p-4">
                   {insight}
                 </li>
               ))}
@@ -316,7 +316,7 @@ function BodyChangeCard({
       </CardHeader>
 
       <CardContent>
-        <p className="text-2xl font-bold">{displayChange}</p>
+        <p className="text-xl font-bold md:text-2xl">{displayChange}</p>
 
         {start != null && end != null && (
           <p className="mt-1 text-sm text-muted-foreground">

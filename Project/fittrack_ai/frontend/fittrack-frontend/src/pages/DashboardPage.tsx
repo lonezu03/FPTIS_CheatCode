@@ -76,7 +76,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader title="Dashboard" description="Track your training, nutrition and body progress." />
 
       <div className="flex justify-end">
@@ -85,7 +85,7 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
 
@@ -97,14 +97,14 @@ export default function DashboardPage() {
               </CardHeader>
 
               <CardContent>
-                <p className="text-3xl font-bold">{card.value}</p>
+                <p className="text-2xl font-bold md:text-3xl">{card.value}</p>
               </CardContent>
             </Card>
           );
         })}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         <MacroProgressCard
           title="Calories Goal"
           current={today.totalCalories}
@@ -162,34 +162,34 @@ export default function DashboardPage() {
           <CardContent className="grid gap-4 md:grid-cols-4">
             <div className="rounded-xl bg-slate-100 p-4">
               <p className="text-sm text-muted-foreground">Meal Streak</p>
-              <p className="text-2xl font-bold">{achievementQuery.data.mealLoggingStreak} days</p>
+              <p className="text-xl font-bold md:text-2xl">{achievementQuery.data.mealLoggingStreak} days</p>
             </div>
 
             <div className="rounded-xl bg-slate-100 p-4">
               <p className="text-sm text-muted-foreground">Workout Streak</p>
-              <p className="text-2xl font-bold">{achievementQuery.data.workoutStreak} days</p>
+              <p className="text-xl font-bold md:text-2xl">{achievementQuery.data.workoutStreak} days</p>
             </div>
 
             <div className="rounded-xl bg-slate-100 p-4">
               <p className="text-sm text-muted-foreground">Protein Hits</p>
-              <p className="text-2xl font-bold">{achievementQuery.data.proteinHitDaysThisWeek}</p>
+              <p className="text-xl font-bold md:text-2xl">{achievementQuery.data.proteinHitDaysThisWeek}</p>
             </div>
 
             <div className="rounded-xl bg-slate-100 p-4">
               <p className="text-sm text-muted-foreground">Body Logs</p>
-              <p className="text-2xl font-bold">{achievementQuery.data.bodyTrackingDaysThisWeek}</p>
+              <p className="text-xl font-bold md:text-2xl">{achievementQuery.data.bodyTrackingDaysThisWeek}</p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Weight & Waist Progress</CardTitle>
           </CardHeader>
 
-          <CardContent className="h-[320px]">
+          <CardContent className="h-[240px] md:h-[320px]">
             {points.length === 0 ? (
               <EmptyState
                 title="No progress data yet"
@@ -214,7 +214,7 @@ export default function DashboardPage() {
             <CardTitle>Calories & Protein</CardTitle>
           </CardHeader>
 
-          <CardContent className="h-[320px]">
+          <CardContent className="h-[240px] md:h-[320px]">
             {points.length === 0 ? (
               <EmptyState title="No nutrition trend yet" description="Log meals to see calories and protein trends." />
             ) : (

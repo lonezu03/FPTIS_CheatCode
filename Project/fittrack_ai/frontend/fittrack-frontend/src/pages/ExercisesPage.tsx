@@ -142,7 +142,7 @@ export default function ExercisesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader title="Exercises" description="Create and manage exercises used in workout sessions and plans." />
 
       <Card>

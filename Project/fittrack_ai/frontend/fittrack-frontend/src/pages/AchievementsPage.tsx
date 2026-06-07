@@ -54,10 +54,10 @@ export default function AchievementsPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader title="Achievements" description="Track consistency, streaks, and weekly progress milestones." />
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
 
@@ -69,7 +69,7 @@ export default function AchievementsPage() {
               </CardHeader>
 
               <CardContent>
-                <p className="text-3xl font-bold">
+                <p className="text-2xl font-bold md:text-3xl">
                   {stat.value}
                   <span className="ml-1 text-sm font-normal text-muted-foreground">{stat.suffix}</span>
                 </p>
@@ -82,7 +82,7 @@ export default function AchievementsPage() {
       {summary.achievements.length === 0 ? (
         <EmptyState title="No achievements yet" description="Keep logging meals, workouts and body measurements to unlock milestones." />
       ) : (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-6">
           {summary.achievements.map((achievement) => (
             <AchievementCard key={achievement.code} achievement={achievement} />
           ))}
