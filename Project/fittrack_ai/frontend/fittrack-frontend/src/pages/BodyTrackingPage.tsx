@@ -3,6 +3,7 @@ import axios from "axios";
 import { createBodyMeasurement, deleteBodyMeasurement, getBodyMeasurements, updateBodyMeasurement } from "../api/body.api";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toLocalDateInput } from "../lib/format";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import ErrorState from "../components/common/ErrorState";
 
 export default function BodyTrackingPage() {
   const queryClient = useQueryClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateInput();
 
   const [recordDate, setRecordDate] = useState(today);
   const [weight, setWeight] = useState(60);

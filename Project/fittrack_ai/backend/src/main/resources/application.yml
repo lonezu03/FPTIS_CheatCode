@@ -1,21 +1,22 @@
 server:
-  port: ${PORT:8080}
+  address: 0.0.0.0
+  port: ${PORT:${SERVER_PORT:8081}}
 
 spring:
   application:
     name: fittrack-backend
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/fittrack_db}
+    username: ${SPRING_DATASOURCE_USERNAME:fittrack_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:fittrack_password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
-    show-sql: false
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: false
@@ -24,8 +25,9 @@ spring:
     time-zone: Asia/Ho_Chi_Minh
 
 app:
+  admin-emails: ${ADMIN_EMAILS:admin@fittrack.local,admin@gmail.com}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:https://fptis-cheat-code.vercel.app,http://localhost:5173,http://127.0.0.1:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:https://fptis-cheat-code.vercel.app,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}
   jwt:
     secret: ${JWT_SECRET:fittrack_super_secret_key_fittrack_super_secret_key_2026}
     expiration-ms: ${JWT_EXPIRATION_MS:604800000}

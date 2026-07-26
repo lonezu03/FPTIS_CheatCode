@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { getProfile, updateProfile, type UserProfile } from "../api/user.api";
 import { toast } from "sonner";
@@ -20,12 +20,6 @@ export default function ProfilePage() {
     queryKey: ["profile"],
     queryFn: getProfile,
   });
-
-  useEffect(() => {
-    if (profileQuery.data) {
-      setDraft(profileQuery.data);
-    }
-  }, [profileQuery.data]);
 
   const profile = draft ?? profileQuery.data ?? null;
 

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { toLocalDateInput } from "../lib/format";
 
 import { getExercises } from "../api/workout.api";
 import {
@@ -40,7 +41,7 @@ type PlanDayDraft = {
 export default function WorkoutPlansPage() {
   const queryClient = useQueryClient();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateInput();
 
   const [name, setName] = useState("Home Dumbbell Hypertrophy");
   const [description, setDescription] = useState("3-day workout plan using dumbbells, rings and pull-up bar");
@@ -74,20 +75,7 @@ export default function WorkoutPlansPage() {
 
   const exercises = exercisesQuery.data ?? [];
   const plans = plansQuery.data ?? [];
-
-  useEffect(() => {
-    if (exercises.length > 0) {
-      setDraftDays((prev) =>
-        prev.map((day) => ({
-          ...day,
-          exercises: day.exercises.map((exercise) => ({
-            ...exercise,
-            exerciseId: exercise.exerciseId || exercises[0].id,
-          })),
-        }))
-      );
-    }
-  }, [exercises]);
+  const defaultExerciseId = exercises[0]?.id ?? "";
 
   const createMutation = useMutation({
     mutationFn: createWorkoutPlan,
@@ -247,7 +235,7 @@ export default function WorkoutPlansPage() {
         name: day.name,
         dayOrder: day.dayOrder,
         exercises: day.exercises.map((exercise, index) => ({
-          exerciseId: exercise.exerciseId,
+          exerciseId: exercise.exerciseId || defaultExerciseId,
           exerciseOrder: index + 1,
           targetSets: exercise.targetSets,
           targetReps: exercise.targetReps,
@@ -329,7 +317,7 @@ export default function WorkoutPlansPage() {
                     <div key={exerciseIndex} className="grid gap-3 rounded-xl border bg-white p-3 md:grid-cols-7">
                       <select
                         className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
-                        value={exercise.exerciseId}
+                        value={exercise.exerciseId || defaultExerciseId}
                         onChange={(event) =>
                           updateDayExercise(dayIndex, exerciseIndex, "exerciseId", event.target.value)
                         }

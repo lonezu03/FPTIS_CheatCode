@@ -11,8 +11,8 @@
 Environment variables:
 
 ```env
-SPRING_DATASOURCE_URL=jdbc:postgresql://dpg-d8eqo6l7vvec73du09vg-a:5432/fittrack_db_b1ri
-SPRING_DATASOURCE_USERNAME=fittrack_user
+SPRING_DATASOURCE_URL=jdbc:postgresql://<AIVEN_HOST>:<AIVEN_PORT>/<AIVEN_DATABASE>?sslmode=require
+SPRING_DATASOURCE_USERNAME=avnadmin
 SPRING_DATASOURCE_PASSWORD=<set-in-render-dashboard>
 JWT_SECRET=<set-in-render-dashboard>
 JWT_EXPIRATION_MS=604800000
@@ -21,7 +21,7 @@ JPA_DDL_AUTO=update
 JPA_SHOW_SQL=false
 ```
 
-Use Render PostgreSQL for the database.
+Use Aiven PostgreSQL for the database. Copy the host, port, database name, username, and password from the Aiven service Overview page.
 
 ## Frontend: Vercel
 
@@ -33,13 +33,13 @@ Use Render PostgreSQL for the database.
 Environment variables:
 
 ```env
-VITE_API_URL=https://https-github-com-lonezu03-fptis.onrender.com/api
+VITE_API_URL=https://your-render-service.onrender.com/api
 ```
 
 Backend production:
 
 ```txt
-BACKEND_URL=https://https-github-com-lonezu03-fptis.onrender.com
-API_BASE_URL=https://https-github-com-lonezu03-fptis.onrender.com/api
-Swagger=https://https-github-com-lonezu03-fptis.onrender.com/swagger-ui/index.html
+BACKEND_URL=https://your-render-service.onrender.com
+API_BASE_URL=https://your-render-service.onrender.com/api
+Swagger=https://your-render-service.onrender.com/swagger-ui/index.html
 ```

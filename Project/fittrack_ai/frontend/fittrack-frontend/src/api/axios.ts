@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const DEFAULT_API_URL = "http://localhost:8080/api";
+// Mirrors the backend's local default: SERVER_PORT falls back to 8081.
+const DEFAULT_API_URL = "http://localhost:8081/api";
 const envApiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 
 const baseURL =
@@ -27,6 +28,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
+      localStorage.removeItem("fittrack-user");
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
       }

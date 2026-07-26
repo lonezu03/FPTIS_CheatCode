@@ -3,6 +3,7 @@ import type { ElementType } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getWeeklyRecommendations, type WeeklyRecommendation } from "../api/recommendation.api";
 import { getWeeklyReport, type WeeklyReport } from "../api/report.api";
+import { toLocalDateInput } from "../lib/format";
 
 import PageHeader from "../components/PageHeader";
 import MacroProgressCard from "../components/MacroProgressCard";
@@ -21,14 +22,14 @@ import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { Beef, CalendarDays, Dumbbell, Flame, Lightbulb, Ruler, Scale, Utensils } from "lucide-react";
 
 function getDefaultToDate() {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateInput();
 }
 
 function getDefaultFromDate() {
   const date = new Date();
   date.setDate(date.getDate() - 6);
 
-  return date.toISOString().slice(0, 10);
+  return toLocalDateInput(date);
 }
 
 export default function WeeklyReportPage() {

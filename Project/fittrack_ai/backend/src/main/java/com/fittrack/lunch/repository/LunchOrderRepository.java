@@ -1,0 +1,94 @@
+package com.fittrack.lunch.repository;
+
+import com.fittrack.lunch.entity.*;
+import com.fittrack.user.entity.User;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+public interface LunchOrderRepository extends JpaRepository<LunchOrder, String> {
+
+    Optional<LunchOrder> findByMenuAndBeneficiary(LunchMenu menu, User beneficiary);
+
+    Optional<LunchOrder> findByMenuAndBeneficiaryAndStatus(
+            LunchMenu menu,
+            User beneficiary,
+            LunchOrderStatus status
+    );
+
+    List<LunchOrder> findByMenuAndStatusOrderByCreatedAtAsc(
+            LunchMenu menu,
+            LunchOrderStatus status
+    );
+
+    List<LunchOrder> findByMenuAndOrderedByAndStatusOrderByCreatedAtAsc(
+            LunchMenu menu,
+            User orderedBy,
+            LunchOrderStatus status
+    );
+
+    @Query("""
+            select lunchOrder
+            from LunchOrder lunchOrder
+            where lunchOrder.beneficiary = :user
+               or lunchOrder.orderedBy = :user
+            order by lunchOrder.menu.menuDate desc, lunchOrder.createdAt desc
+            """)
+    List<LunchOrder> findHistoryForUser(@Param("user") User user);
+
+    boolean existsByBeneficiaryAndStatusAndPaymentStatusAndMenu_MenuDateBefore(
+            User beneficiary,
+            LunchOrderStatus status,
+            LunchPaymentStatus paymentStatus,
+            LocalDate menuDate
+    );
+
+    long countByMenuAndStatus(LunchMenu menu, LunchOrderStatus status);
+
+    long countByMenuAndStatusAndPaymentStatus(
+            LunchMenu menu,
+            LunchOrderStatus status,
+            LunchPaymentStatus paymentStatus
+    );
+
+    long countByBeneficiaryAndStatusAndPaymentStatus(
+            User beneficiary,
+            LunchOrderStatus status,
+            LunchPaymentStatus paymentStatus
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select lunchOrder from LunchOrder lunchOrder where lunchOrder.id = :id")
+    Optional<LunchOrder> findByIdForUpdate(@Param("id") String id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select lunchOrder
+            from LunchOrder lunchOrder
+            where lunchOrder.menu = :menu
+              and lunchOrder.beneficiary = :beneficiary
+            """)
+    Optional<LunchOrder> findByMenuAndBeneficiaryForUpdate(
+            @Param("menu") LunchMenu menu,
+            @Param("beneficiary") User beneficiary
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select lunchOrder
+            from LunchOrder lunchOrder
+            where lunchOrder.menu = :menu
+              and lunchOrder.status = :status
+            order by lunchOrder.createdAt asc
+            """)
+    List<LunchOrder> findByMenuAndStatusForUpdate(
+            @Param("menu") LunchMenu menu,
+            @Param("status") LunchOrderStatus status
+    );
+}

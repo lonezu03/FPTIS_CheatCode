@@ -10,17 +10,19 @@ services:
       - key: SERVER_PORT
         value: 8080
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:postgresql://dpg-d8eqo6l7vvec73du09vg-a:5432/fittrack_db_b1ri
+        sync: false
       - key: SPRING_DATASOURCE_USERNAME
-        value: fittrack_user
+        sync: false
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRATION_MS
         value: 604800000
+      - key: ADMIN_EMAILS
+        sync: false
       - key: CORS_ALLOWED_ORIGINS
-        value: https://fptis-cheat-code.vercel.app,http://localhost:5173,http://127.0.0.1:5173
+        sync: false
       - key: JPA_DDL_AUTO
         value: update
       - key: JPA_SHOW_SQL

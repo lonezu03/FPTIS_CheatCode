@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { getTodayDashboard } from "../api/dashboard.api";
 import { createMealLog, deleteMealLog, getFoods, getMealLogs, updateMealLog } from "../api/nutrition.api";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toLocalDateInput } from "../lib/format";
 
 import PageHeader from "../components/PageHeader";
 import MacroProgressCard from "../components/MacroProgressCard";
@@ -31,7 +32,7 @@ type EditingMealDraft = {
 
 export default function NutritionPage() {
   const queryClient = useQueryClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateInput();
 
   const [logDate, setLogDate] = useState(today);
   const [keyword, setKeyword] = useState("");
@@ -65,17 +66,7 @@ export default function NutritionPage() {
   const foods = foodsQuery.data ?? [];
   const logs = mealLogsQuery.data ?? [];
   const dashboard = dashboardQuery.data;
-
-  useEffect(() => {
-    if (foods.length > 0) {
-      setItems((prev) =>
-        prev.map((item) => ({
-          ...item,
-          foodId: item.foodId || foods[0].id,
-        }))
-      );
-    }
-  }, [foods]);
+  const defaultFoodId = foods[0]?.id ?? "";
 
   const createMutation = useMutation({
     mutationFn: createMealLog,
@@ -165,7 +156,10 @@ export default function NutritionPage() {
     createMutation.mutate({
       mealType,
       logDate,
-      items,
+      items: items.map((item) => ({
+        ...item,
+        foodId: item.foodId || defaultFoodId,
+      })),
     });
   };
 
@@ -331,7 +325,7 @@ export default function NutritionPage() {
                     <div key={index} className="grid gap-3 rounded-xl border bg-slate-50 p-3 md:grid-cols-5">
                       <select
                         className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-3"
-                        value={item.foodId}
+                        value={item.foodId || defaultFoodId}
                         onChange={(event) => updateItem(index, "foodId", event.target.value)}
                       >
                         {foods.map((food) => (

@@ -28,62 +28,57 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --radius: 0.875rem;
+  --background: oklch(0.977 0.006 145);
+  --foreground: oklch(0.205 0.032 157);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
+  --card-foreground: oklch(0.205 0.032 157);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.205 0.032 157);
+  --primary: oklch(0.405 0.112 157);
+  --primary-foreground: oklch(0.985 0.006 145);
+  --secondary: oklch(0.948 0.02 151);
+  --secondary-foreground: oklch(0.31 0.07 157);
+  --muted: oklch(0.951 0.009 145);
+  --muted-foreground: oklch(0.515 0.028 157);
+  --accent: oklch(0.934 0.035 151);
+  --accent-foreground: oklch(0.285 0.069 157);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  --border: oklch(0.902 0.016 151);
+  --input: oklch(0.88 0.018 151);
+  --ring: oklch(0.585 0.125 157);
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
+  --background: oklch(0.17 0.028 157);
+  --foreground: oklch(0.966 0.009 145);
+  --card: oklch(0.215 0.034 157);
+  --card-foreground: oklch(0.966 0.009 145);
+  --popover: oklch(0.215 0.034 157);
+  --popover-foreground: oklch(0.966 0.009 145);
+  --primary: oklch(0.72 0.145 157);
+  --primary-foreground: oklch(0.16 0.035 157);
+  --secondary: oklch(0.275 0.035 157);
+  --secondary-foreground: oklch(0.966 0.009 145);
+  --muted: oklch(0.275 0.027 157);
+  --muted-foreground: oklch(0.73 0.025 151);
+  --accent: oklch(0.31 0.047 157);
+  --accent-foreground: oklch(0.966 0.009 145);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
+  --ring: oklch(0.68 0.12 157);
 }
 
 @layer base {
   html {
-    font-size: 15px;
+    font-size: 16px;
+    scroll-behavior: smooth;
   }
 
   @media (max-width: 640px) {
     html {
-      font-size: 14px;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    html {
-      font-size: 16px;
+      font-size: 15px;
     }
   }
 
@@ -92,6 +87,49 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply min-w-[320px] bg-background text-foreground antialiased;
+    min-height: 100vh;
+    font-family:
+      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    background-image:
+      radial-gradient(circle at 7% 0%, rgb(167 243 208 / 0.18), transparent 22rem),
+      radial-gradient(circle at 96% 8%, rgb(253 230 138 / 0.13), transparent 24rem);
+    background-attachment: fixed;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: rgb(110 231 183 / 0.45);
+    color: rgb(6 78 59);
+  }
+
+  :focus-visible {
+    scroll-margin: 6rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  @media (pointer: fine) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgb(148 163 184 / 0.45) transparent;
+    }
   }
 }

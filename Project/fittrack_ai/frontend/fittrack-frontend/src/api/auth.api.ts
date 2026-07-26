@@ -6,6 +6,7 @@ export type AuthResponse = {
   userId: string;
   email: string;
   fullName: string;
+  role: "USER" | "ADMIN";
 };
 
 export const loginApi = async (email: string, password: string): Promise<AuthResponse> => {

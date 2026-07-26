@@ -5,7 +5,7 @@ WORKDIR /app
 
 COPY fittrack-frontend/package*.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY fittrack-frontend/ .
 

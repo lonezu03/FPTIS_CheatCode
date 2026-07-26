@@ -3,8 +3,8 @@
 ## Environment variables
 
 - `VITE_API_URL`: Base URL for the backend API (must include `/api`).
-  - Example (remote): `https://https-github-com-lonezu03-fptis.onrender.com/api`
-  - Example (local): `http://localhost:8080/api`
+  - Example (remote): `https://your-render-service.onrender.com/api`
+  - Example (local): `http://localhost:8081/api`
 
 Notes:
 

@@ -4,6 +4,7 @@ export type UserProfile = {
   id: string;
   email: string;
   fullName: string;
+  role: "USER" | "ADMIN";
   gender: string;
   age: number;
   height: number;

@@ -2,14 +2,27 @@ import { getAchievementSummary } from "../api/achievement.api";
 import { getProgressDashboard, getTodayDashboard } from "../api/dashboard.api";
 import { seedDemoData } from "../api/demo.api";
 import { getWeeklyRecommendations } from "../api/recommendation.api";
+import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuthStore } from "../store/auth.store";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { Activity, Beef, Dumbbell, Flame, Trophy } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  CartesianGrid,
+  Legend,
+} from "recharts";
+import { Activity, Beef, Dumbbell, Flame, Soup, Trophy } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import PageLoading from "../components/common/PageLoading";
 import ErrorState from "../components/common/ErrorState";
@@ -19,6 +32,7 @@ import RecommendationCard from "../components/RecommendationCard";
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
+  const authUser = useAuthStore((state) => state.user);
 
   const seedMutation = useMutation({
     mutationFn: seedDemoData,
@@ -27,8 +41,11 @@ export default function DashboardPage() {
 
       queryClient.invalidateQueries();
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Cannot seed demo data");
+    onError: (error) => {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      toast.error(message || "Cannot seed demo data");
     },
   });
 
@@ -69,35 +86,72 @@ export default function DashboardPage() {
   }
 
   const cards = [
-    { title: "Calories", value: today.totalCalories, icon: Flame },
-    { title: "Protein", value: `${today.totalProtein}g`, icon: Beef },
-    { title: "Meals", value: today.mealCount, icon: Activity },
-    { title: "Workouts", value: today.workoutCount, icon: Dumbbell },
+    {
+      title: "Calories",
+      value: today.totalCalories,
+      detail: "kcal hôm nay",
+      icon: Flame,
+      tone: "from-amber-50 to-orange-50/50 text-orange-700 bg-orange-100",
+    },
+    {
+      title: "Protein",
+      value: `${today.totalProtein}g`,
+      detail: "đã nạp",
+      icon: Beef,
+      tone: "from-rose-50 to-pink-50/50 text-rose-700 bg-rose-100",
+    },
+    {
+      title: "Meals",
+      value: today.mealCount,
+      detail: "bữa đã ghi",
+      icon: Activity,
+      tone: "from-emerald-50 to-teal-50/50 text-emerald-700 bg-emerald-100",
+    },
+    {
+      title: "Workouts",
+      value: today.workoutCount,
+      detail: "buổi tập",
+      icon: Dumbbell,
+      tone: "from-blue-50 to-indigo-50/50 text-blue-700 bg-blue-100",
+    },
   ];
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <PageHeader title="Dashboard" description="Track your training, nutrition and body progress." />
-
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending}>
-          {seedMutation.isPending ? "Seeding..." : "Seed Demo Data"}
-        </Button>
+    <div className="space-y-5 md:space-y-7">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <PageHeader title="Tổng quan hôm nay" description="Theo dõi luyện tập, dinh dưỡng và tiến độ cơ thể của bạn." />
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-800">
+            <Link to="/lunch">
+              <Soup className="size-4" />
+              Đặt cơm hôm nay
+            </Link>
+          </Button>
+          {authUser?.role === "ADMIN" && (
+            <Button variant="outline" onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending}>
+              {seedMutation.isPending ? "Đang tạo..." : "Tạo dữ liệu mẫu"}
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
+          const [gradient, , iconText, iconBg] = card.tone.split(" ");
 
           return (
-            <Card key={card.title}>
-              <CardHeader className="flex flex-row items-center justify-between">
+            <Card key={card.title} className={`border-0 bg-gradient-to-br ${gradient} ${card.tone.split(" ")[1]}`}>
+              <CardHeader className="flex flex-row items-center justify-between pb-0">
                 <CardTitle className="text-sm text-muted-foreground">{card.title}</CardTitle>
-                <Icon className="h-5 w-5 text-muted-foreground" />
+                <span className={`grid size-9 place-items-center rounded-xl ${iconBg} ${iconText}`}>
+                  <Icon className="size-4" />
+                </span>
               </CardHeader>
 
               <CardContent>
-                <p className="text-2xl font-bold md:text-3xl">{card.value}</p>
+                <p className="text-3xl font-semibold tracking-[-0.04em]">{card.value}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{card.detail}</p>
               </CardContent>
             </Card>
           );
@@ -160,22 +214,22 @@ export default function DashboardPage() {
           </CardHeader>
 
           <CardContent className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-xl bg-slate-100 p-4">
+            <div className="rounded-xl bg-emerald-50 p-4">
               <p className="text-sm text-muted-foreground">Meal Streak</p>
               <p className="text-xl font-bold md:text-2xl">{achievementQuery.data.mealLoggingStreak} days</p>
             </div>
 
-            <div className="rounded-xl bg-slate-100 p-4">
+            <div className="rounded-xl bg-blue-50 p-4">
               <p className="text-sm text-muted-foreground">Workout Streak</p>
               <p className="text-xl font-bold md:text-2xl">{achievementQuery.data.workoutStreak} days</p>
             </div>
 
-            <div className="rounded-xl bg-slate-100 p-4">
+            <div className="rounded-xl bg-amber-50 p-4">
               <p className="text-sm text-muted-foreground">Protein Hits</p>
               <p className="text-xl font-bold md:text-2xl">{achievementQuery.data.proteinHitDaysThisWeek}</p>
             </div>
 
-            <div className="rounded-xl bg-slate-100 p-4">
+            <div className="rounded-xl bg-violet-50 p-4">
               <p className="text-sm text-muted-foreground">Body Logs</p>
               <p className="text-xl font-bold md:text-2xl">{achievementQuery.data.bodyTrackingDaysThisWeek}</p>
             </div>
@@ -198,11 +252,36 @@ export default function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={points}>
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="weight" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    yAxisId="waist"
+                    orientation="right"
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <Tooltip />
-                  <Line type="monotone" dataKey="weight" strokeWidth={2} />
-                  <Line type="monotone" dataKey="waist" strokeWidth={2} />
+                  <Legend />
+                  <Line
+                    yAxisId="weight"
+                    type="monotone"
+                    dataKey="weight"
+                    name="Cân nặng (kg)"
+                    stroke="#059669"
+                    strokeWidth={2.5}
+                    dot={false}
+                  />
+                  <Line
+                    yAxisId="waist"
+                    type="monotone"
+                    dataKey="waist"
+                    name="Vòng eo (cm)"
+                    stroke="#f59e0b"
+                    strokeWidth={2.5}
+                    dot={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -220,11 +299,32 @@ export default function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={points}>
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis yAxisId="calories" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    yAxisId="protein"
+                    orientation="right"
+                    tick={{ fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <Tooltip />
-                  <Bar dataKey="calories" />
-                  <Bar dataKey="protein" />
+                  <Legend />
+                  <Bar
+                    yAxisId="calories"
+                    dataKey="calories"
+                    name="Calories (kcal)"
+                    fill="#10b981"
+                    radius={[5, 5, 0, 0]}
+                  />
+                  <Bar
+                    yAxisId="protein"
+                    dataKey="protein"
+                    name="Protein (g)"
+                    fill="#f59e0b"
+                    radius={[5, 5, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -232,7 +332,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-white">
         <CardHeader>
           <CardTitle>Weekly Report</CardTitle>
         </CardHeader>

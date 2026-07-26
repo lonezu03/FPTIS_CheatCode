@@ -46,6 +46,13 @@ The application helps users track workouts, nutrition, body measurements, weekly
 - Edit and delete meal logs
 - Compare daily intake against personal targets
 
+### Lunch Ordering and Team Fund
+- Admin imports the vendor's daily menu from plain text using `+` as the regular/special dish separator
+- Users choose either two regular dishes or one special dish, for themselves or a colleague
+- Configurable cutoff, default 35,000 VND price, wallet debit, unpaid fallback, and external-payment confirmation
+- Admin fund top-up, payment reconciliation, order summary, dish counts, and copy-ready vendor text
+- Full Vietnamese workflow: [docs/LUNCH_ORDERING.md](docs/LUNCH_ORDERING.md)
+
 ### Food Library
 - Create custom foods
 - Edit foods
@@ -222,7 +229,7 @@ Important relationships:
 Base URL:
 
 ```txt
-http://localhost:8080/api
+http://localhost:8081/api
 ```
 
 Key endpoints:
@@ -263,9 +270,27 @@ GET    /reports/weekly
 GET    /recommendations/weekly
 GET    /achievements/summary
 POST   /demo/seed
+GET    /lunch/today
+GET    /lunch/people
+GET    /lunch/orders/history
+GET    /lunch/wallet/transactions
+POST   /lunch/orders
+PUT    /lunch/orders/{id}
+DELETE /lunch/orders/{id}
+GET    /lunch/admin/menus
+POST   /lunch/admin/menus/import
+GET    /lunch/admin/menus/{id}/orders
+POST   /lunch/admin/menus/{id}/close
+POST   /lunch/admin/menus/{id}/reopen
+POST   /lunch/admin/menus/{id}/summarize
+GET    /lunch/admin/members
+POST   /lunch/admin/funds/top-up
+POST   /lunch/admin/orders/{id}/confirm-external
 ```
 
 Full API documentation is available in [docs/API.md](docs/API.md).
+
+The lunch ordering workflow and reconciliation rules are documented in [docs/LUNCH_ORDERING.md](docs/LUNCH_ORDERING.md).
 
 Deployment instructions are available in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
@@ -282,20 +307,50 @@ Deployment instructions are available in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md
 ### Backend Setup
 
 ```bash
-cd backend/demo
-./mvnw spring-boot:run
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
+
+The `local` profile uses an embedded H2 database stored under `backend/data/`, so PostgreSQL is not required for local development. On Windows, use `mvnw.cmd` instead of `./mvnw`.
 
 Backend URL:
 
 ```txt
-http://localhost:8080
+http://localhost:8081
 ```
 
 Swagger URL:
 
 ```txt
-http://localhost:8080/swagger-ui/index.html
+http://localhost:8081/swagger-ui/index.html
+```
+
+### Docker Compose
+
+```bash
+docker compose up -d --build
+```
+
+Open the frontend at `http://localhost:3000`. The Docker frontend calls the
+Docker backend at `http://localhost:8082/api`. Port `8082` avoids a conflict
+with the local IntelliJ backend running on `8081`. To use another host port,
+set `BACKEND_HOST_PORT` before starting Compose.
+
+```powershell
+$env:BACKEND_HOST_PORT = "8090"
+docker compose up -d --build
+```
+
+Lunch admin access is controlled by the `ADMIN_EMAILS` environment variable. Use a comma-separated list and restart the backend after changing it:
+
+```bash
+export ADMIN_EMAILS="admin@company.com,backup-admin@company.com"
+```
+
+On PowerShell:
+
+```powershell
+$env:ADMIN_EMAILS = "admin@company.com,backup-admin@company.com"
 ```
 
 ### Frontend Setup

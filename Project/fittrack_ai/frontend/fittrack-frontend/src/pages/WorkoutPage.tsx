@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import {
   createWorkoutSession,
@@ -9,6 +9,7 @@ import {
 } from "../api/workout.api";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toLocalDateInput } from "../lib/format";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +23,7 @@ import ErrorState from "../components/common/ErrorState";
 
 export default function WorkoutPage() {
   const queryClient = useQueryClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalDateInput();
 
   const [sessionDate, setSessionDate] = useState(today);
   const [exerciseId, setExerciseId] = useState("");
@@ -53,12 +54,7 @@ export default function WorkoutPage() {
 
   const exercises = exercisesQuery.data ?? [];
   const sessions = sessionsQuery.data ?? [];
-
-  useEffect(() => {
-    if (!exerciseId && exercises.length > 0) {
-      setExerciseId(exercises[0].id);
-    }
-  }, [exercises, exerciseId]);
+  const selectedExerciseId = exerciseId || exercises[0]?.id || "";
 
   const createMutation = useMutation({
     mutationFn: createWorkoutSession,
@@ -135,7 +131,7 @@ export default function WorkoutPage() {
       durationMinutes,
       sets: [
         {
-          exerciseId,
+          exerciseId: selectedExerciseId,
           setNumber: 1,
           weight,
           reps,
@@ -199,7 +195,7 @@ export default function WorkoutPage() {
 
               <select
                 className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
-                value={exerciseId}
+                value={selectedExerciseId}
                 onChange={(event) => setExerciseId(event.target.value)}
               >
                 {exercises.map((exercise) => (
