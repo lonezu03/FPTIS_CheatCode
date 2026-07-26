@@ -2,7 +2,7 @@ services:
   - type: web
     name: fittrack-backend
     runtime: docker
-    rootDir: backend
+    rootDir: Project/fittrack_ai/backend
     dockerfilePath: Dockerfile
     plan: free
     healthCheckPath: /api/health

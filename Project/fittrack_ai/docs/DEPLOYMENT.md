@@ -17,7 +17,7 @@ Recommended settings:
 ```txt
 Service type: Web Service
 Runtime: Docker
-Root directory: backend
+Root directory: Project/fittrack_ai/backend
 Dockerfile path: Dockerfile
 Port: 8080
 ```
@@ -74,7 +74,7 @@ Recommended settings:
 
 ```txt
 Framework: Vite
-Root directory: frontend
+Root directory: Project/fittrack_ai/frontend
 Build command: npm run build
 Output directory: dist
 ```
@@ -90,10 +90,10 @@ The frontend Axios client reads `VITE_API_URL`. If the variable is missing, it f
 ## Deployment Checklist
 
 1. Create the Aiven PostgreSQL service and copy its host, port, database, username, and password.
-2. Deploy backend on Render with `backend` as root directory.
+2. Deploy backend on Render with `Project/fittrack_ai/backend` as root directory.
 3. Set Aiven database and backend environment variables in Render.
 4. Confirm `/api/health` returns `UP`.
-5. Deploy frontend on Vercel with `frontend` as root directory.
+5. Deploy frontend on Vercel with `Project/fittrack_ai/frontend` as root directory.
 6. Set `VITE_API_URL` to the Render backend API URL.
 7. Set `CORS_ALLOWED_ORIGINS` on Render backend to the Vercel frontend URL.
 8. Register/login and test demo seed.

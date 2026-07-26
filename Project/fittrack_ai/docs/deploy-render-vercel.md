@@ -4,7 +4,7 @@
 
 - Service type: Web Service
 - Runtime: Docker
-- Root directory: `backend`
+- Root directory: `Project/fittrack_ai/backend`
 - Dockerfile path: `Dockerfile`
 - Port: `8080`
 
@@ -26,7 +26,7 @@ Use Aiven PostgreSQL for the database. Copy the host, port, database name, usern
 ## Frontend: Vercel
 
 - Framework: Vite
-- Root directory: `frontend`
+- Root directory: `Project/fittrack_ai/frontend`
 - Build command: `npm run build`
 - Output directory: `dist`
 
