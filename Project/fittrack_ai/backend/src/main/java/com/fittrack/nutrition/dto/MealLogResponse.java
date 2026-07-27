@@ -18,6 +18,9 @@ public class MealLogResponse {
     private Double totalCarbs;
     private Double totalFat;
     private LocalDateTime createdAt;
+    private String sourceType;
+    private String sourceId;
+    private Boolean readOnly;
     private List<MealItemResponse> items;
 }
 

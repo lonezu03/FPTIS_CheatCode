@@ -8,8 +8,19 @@ export type Food = {
   carbs: number;
   fat: number;
   unit: string;
+  imageUrl: string | null;
   custom: boolean;
   active: boolean;
+};
+
+export type FoodPayload = {
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  unit: string;
+  imageUrl?: string | null;
 };
 
 export const getFoodsManagementApi = async (keyword?: string, includeInactive?: boolean): Promise<Food[]> => {
@@ -23,14 +34,7 @@ export const getFoodsManagementApi = async (keyword?: string, includeInactive?: 
   return response.data;
 };
 
-export const createFoodApi = async (payload: {
-  name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  unit: string;
-}): Promise<Food> => {
+export const createFoodApi = async (payload: FoodPayload): Promise<Food> => {
   const response = await api.post("/foods", payload);
 
   return response.data;
@@ -38,14 +42,7 @@ export const createFoodApi = async (payload: {
 
 export const updateFoodApi = async (
   id: string,
-  payload: {
-    name: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    unit: string;
-  }
+  payload: FoodPayload
 ): Promise<Food> => {
   const response = await api.put(`/foods/${id}`, payload);
 

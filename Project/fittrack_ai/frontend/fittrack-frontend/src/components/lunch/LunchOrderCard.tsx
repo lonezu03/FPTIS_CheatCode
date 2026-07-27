@@ -1,10 +1,11 @@
-import { CalendarDays, Pencil, Trash2, UserRound } from "lucide-react";
+import { CalendarDays, MessageSquareText, Pencil, Trash2, UserRound } from "lucide-react";
 
 import type { LunchOrder } from "@/api/lunch.api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, formatShortDate } from "@/lib/format";
 import { PaymentStatusBadge, SelectionTypeBadge } from "./LunchStatus";
+import ImagePreviewDialog from "@/components/common/ImagePreviewDialog";
 
 type LunchOrderCardProps = {
   order: LunchOrder;
@@ -12,6 +13,7 @@ type LunchOrderCardProps = {
   busy?: boolean;
   onEdit?: (order: LunchOrder) => void;
   onDelete?: (order: LunchOrder) => void;
+  onReview?: (order: LunchOrder) => void;
 };
 
 export default function LunchOrderCard({
@@ -20,6 +22,7 @@ export default function LunchOrderCard({
   busy = false,
   onEdit,
   onDelete,
+  onReview,
 }: LunchOrderCardProps) {
   const payerName = order.payer?.fullName;
   const orderedForAnotherPerson = order.orderedBy.id !== order.beneficiary.id;
@@ -51,6 +54,19 @@ export default function LunchOrderCard({
           <span className="font-semibold text-foreground">{formatCurrency(order.price)}</span>
         </div>
 
+        {order.items.some((item) => item.imageUrl) && (
+          <div className="flex gap-2 overflow-x-auto">
+            {order.items.filter((item) => item.imageUrl).map((item) => (
+              <ImagePreviewDialog
+                key={item.id}
+                src={item.imageUrl}
+                alt={item.name}
+                className="h-16 w-24 shrink-0"
+              />
+            ))}
+          </div>
+        )}
+
         {payerName && payerName !== order.beneficiary.fullName && (
           <p className="rounded-lg bg-sky-50 px-2.5 py-2 text-xs text-sky-800">
             Quỹ được trừ từ tài khoản của {payerName}.
@@ -71,6 +87,15 @@ export default function LunchOrderCard({
                 Hủy phần
               </Button>
             )}
+          </div>
+        )}
+
+        {onReview && order.status.toUpperCase() === "ACTIVE" && (
+          <div className="border-t pt-3">
+            <Button type="button" variant="outline" size="sm" onClick={() => onReview(order)}>
+              <MessageSquareText aria-hidden="true" />
+              {order.reviews?.length ? "Sửa đánh giá" : "Đánh giá món"}
+            </Button>
           </div>
         )}
       </CardContent>

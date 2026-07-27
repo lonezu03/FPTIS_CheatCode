@@ -34,6 +34,9 @@ public class LunchFundAccount {
     @Column(nullable = false)
     private Long balance;
 
+    @Column(nullable = false, columnDefinition = "bigint default 0")
+    private Long debt;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -50,6 +53,9 @@ public class LunchFundAccount {
         this.updatedAt = now;
         if (this.balance == null) {
             this.balance = 0L;
+        }
+        if (this.debt == null) {
+            this.debt = 0L;
         }
     }
 

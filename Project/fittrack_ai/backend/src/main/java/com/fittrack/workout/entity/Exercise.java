@@ -27,6 +27,9 @@ public class Exercise {
 
     private String description;
 
+    @Column(columnDefinition = "TEXT")
+    private String imageUrl;
+
     private Boolean custom;
 
     private Boolean active;

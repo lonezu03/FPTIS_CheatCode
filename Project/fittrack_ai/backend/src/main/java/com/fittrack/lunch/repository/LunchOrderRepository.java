@@ -33,6 +33,11 @@ public interface LunchOrderRepository extends JpaRepository<LunchOrder, String> 
             LunchOrderStatus status
     );
 
+    List<LunchOrder> findDistinctByItems_MenuItemAndStatus(
+            LunchMenuItem menuItem,
+            LunchOrderStatus status
+    );
+
     @Query("""
             select lunchOrder
             from LunchOrder lunchOrder

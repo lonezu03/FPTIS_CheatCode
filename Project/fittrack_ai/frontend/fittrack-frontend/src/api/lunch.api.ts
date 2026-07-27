@@ -11,6 +11,25 @@ export type LunchMenuItem = {
   name: string;
   type: LunchItemType;
   sortOrder: number;
+  imageUrl?: string | null;
+  calories?: number | null;
+  protein?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
+  averageRating: number;
+  reviewCount: number;
+};
+
+export type LunchDishReview = {
+  id: string;
+  orderId: string;
+  menuItemId: string;
+  dishName: string;
+  reviewer: LunchOrderParty;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type LunchMenu = {
@@ -58,11 +77,13 @@ export type LunchOrder = {
   paymentStatus: LunchPaymentStatus;
   status: LunchOrderStatus;
   createdAt: string;
+  reviews: LunchDishReview[];
 };
 
 export type LunchTodayResponse = {
   menu: LunchMenu | null;
   walletBalance: number;
+  outstandingDebt: number;
   canOrder: boolean;
   blockReason: string | null;
   myMealOrder: LunchOrder | null;
@@ -123,7 +144,49 @@ export type LunchMember = {
   fullName: string;
   email: string;
   walletBalance: number;
+  outstandingDebt: number;
   unpaidOrders: number;
+};
+
+export type LunchPaymentSettings = {
+  qrImageUrl?: string | null;
+  bankName?: string | null;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  instructions?: string | null;
+  updatedAt?: string | null;
+};
+
+export type LunchPaymentRequestType = "FUND_TOP_UP" | "DEBT_PAYMENT";
+export type LunchPaymentRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type LunchPaymentRequest = {
+  id: string;
+  user: LunchOrderParty;
+  type: LunchPaymentRequestType;
+  amount: number;
+  status: LunchPaymentRequestStatus;
+  note?: string | null;
+  reviewedBy?: LunchOrderParty | null;
+  reviewNote?: string | null;
+  createdAt: string;
+  reviewedAt?: string | null;
+};
+
+export type LunchNotification = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  createdAt: string;
+  readAt?: string | null;
+};
+
+export type LunchNotificationList = {
+  unreadCount: number;
+  notifications: LunchNotification[];
 };
 
 export type LunchTopUpInput = {
@@ -142,6 +205,10 @@ export const lunchKeys = {
   adminMenus: (from: string, to: string) => [...lunchKeys.admin(), "menus", from, to] as const,
   adminOrders: (menuId: string) => [...lunchKeys.admin(), "menus", menuId, "orders"] as const,
   adminMembers: () => [...lunchKeys.admin(), "members"] as const,
+  paymentSettings: () => [...lunchKeys.all, "payment-settings"] as const,
+  paymentRequests: () => [...lunchKeys.all, "payment-requests"] as const,
+  adminPaymentRequests: () => [...lunchKeys.admin(), "payment-requests"] as const,
+  notifications: () => [...lunchKeys.all, "notifications"] as const,
 };
 
 export async function getTodayLunch(): Promise<LunchTodayResponse> {
@@ -223,4 +290,84 @@ export async function topUpLunchFund(payload: LunchTopUpInput): Promise<LunchWal
 export async function confirmLunchExternalPayment(orderId: string): Promise<LunchOrder> {
   const response = await api.post<LunchOrder>(`/lunch/admin/orders/${orderId}/confirm-external`);
   return response.data;
+}
+
+export async function updateLunchMenuItem(
+  itemId: string,
+  payload: {
+    name?: string;
+    imageUrl?: string | null;
+    calories?: number | null;
+    protein?: number | null;
+    carbs?: number | null;
+    fat?: number | null;
+  },
+): Promise<LunchMenuItem> {
+  const response = await api.put<LunchMenuItem>(`/lunch/admin/menu-items/${itemId}`, payload);
+  return response.data;
+}
+
+export async function reviewLunchDish(
+  orderId: string,
+  payload: { menuItemId: string; rating: number; comment: string },
+): Promise<LunchDishReview> {
+  const response = await api.put<LunchDishReview>(`/lunch/orders/${orderId}/reviews`, payload);
+  return response.data;
+}
+
+export async function getLunchDishReviews(menuItemId: string): Promise<LunchDishReview[]> {
+  const response = await api.get<LunchDishReview[]>(`/lunch/menu-items/${menuItemId}/reviews`);
+  return response.data;
+}
+
+export async function getLunchPaymentSettings(): Promise<LunchPaymentSettings> {
+  const response = await api.get<LunchPaymentSettings>("/lunch/payment-settings");
+  return response.data;
+}
+
+export async function updateLunchPaymentSettings(payload: LunchPaymentSettings): Promise<LunchPaymentSettings> {
+  const response = await api.put<LunchPaymentSettings>("/lunch/admin/payment-settings", payload);
+  return response.data;
+}
+
+export async function createLunchPaymentRequest(payload: {
+  type: LunchPaymentRequestType;
+  amount: number;
+  note: string;
+}): Promise<LunchPaymentRequest> {
+  const response = await api.post<LunchPaymentRequest>("/lunch/payment-requests", payload);
+  return response.data;
+}
+
+export async function getMyLunchPaymentRequests(): Promise<LunchPaymentRequest[]> {
+  const response = await api.get<LunchPaymentRequest[]>("/lunch/payment-requests/mine");
+  return response.data;
+}
+
+export async function getAdminLunchPaymentRequests(): Promise<LunchPaymentRequest[]> {
+  const response = await api.get<LunchPaymentRequest[]>("/lunch/admin/payment-requests");
+  return response.data;
+}
+
+export async function approveLunchPaymentRequest(id: string, note = ""): Promise<LunchPaymentRequest> {
+  const response = await api.post<LunchPaymentRequest>(`/lunch/admin/payment-requests/${id}/approve`, { note });
+  return response.data;
+}
+
+export async function rejectLunchPaymentRequest(id: string, note: string): Promise<LunchPaymentRequest> {
+  const response = await api.post<LunchPaymentRequest>(`/lunch/admin/payment-requests/${id}/reject`, { note });
+  return response.data;
+}
+
+export async function getLunchNotifications(): Promise<LunchNotificationList> {
+  const response = await api.get<LunchNotificationList>("/lunch/notifications");
+  return response.data;
+}
+
+export async function markLunchNotificationRead(id: string): Promise<void> {
+  await api.patch(`/lunch/notifications/${id}/read`);
+}
+
+export async function markAllLunchNotificationsRead(): Promise<void> {
+  await api.post("/lunch/notifications/read-all");
 }

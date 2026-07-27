@@ -3,6 +3,7 @@ import { Check, Soup, UtensilsCrossed } from "lucide-react";
 import type { LunchMenu, LunchSelectionType } from "@/api/lunch.api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import ImagePreviewDialog from "@/components/common/ImagePreviewDialog";
 
 type MenuPickerProps = {
   menu: LunchMenu;
@@ -125,31 +126,47 @@ export default function MenuPicker({
             const maxReached = selectionType === "COMBO" && selectedItemIds.length >= requiredCount && !selected;
 
             return (
-              <button
+              <div
                 key={item.id}
-                type="button"
-                aria-pressed={selected}
-                disabled={disabled || maxReached}
-                onClick={() => toggleItem(item.id)}
                 className={cn(
-                  "group flex min-h-12 items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left text-sm transition",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2",
+                  "group flex min-h-16 items-center gap-3 rounded-xl border bg-white p-2 text-left text-sm transition",
                   selected
                     ? "border-emerald-400 bg-emerald-50 text-emerald-950 shadow-sm"
                     : "border-slate-200 hover:border-slate-300 hover:bg-slate-50",
                   (disabled || maxReached) && "cursor-not-allowed opacity-50"
                 )}
               >
-                <span
-                  className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-                    selected ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white"
-                  )}
+                {item.imageUrl && (
+                  <ImagePreviewDialog
+                    src={item.imageUrl}
+                    alt={item.name}
+                    className="size-14 shrink-0"
+                  />
+                )}
+                <button
+                  type="button"
+                  aria-pressed={selected}
+                  disabled={disabled || maxReached}
+                  onClick={() => toggleItem(item.id)}
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 >
-                  {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />}
-                </span>
-                <span className="font-medium">{item.name}</span>
-              </button>
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                      selected ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white"
+                    )}
+                  >
+                    {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{item.name}</span>
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                      {item.calories ? `${Math.round(item.calories)} kcal` : "Chưa cập nhật calo"}
+                      {item.reviewCount > 0 ? ` · ★ ${item.averageRating} (${item.reviewCount})` : ""}
+                    </span>
+                  </span>
+                </button>
+              </div>
             );
           })}
         </div>

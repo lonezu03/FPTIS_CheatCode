@@ -6,6 +6,7 @@ import com.fittrack.nutrition.dto.UpdateFoodRequest;
 import com.fittrack.nutrition.entity.Food;
 import com.fittrack.nutrition.mapper.NutritionMapper;
 import com.fittrack.nutrition.repository.FoodRepository;
+import com.fittrack.common.media.ImageReferences;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -48,6 +49,7 @@ public class FoodService {
                 .carbs(defaultZero(request.getCarbs()))
                 .fat(defaultZero(request.getFat()))
                 .unit(request.getUnit())
+                .imageUrl(ImageReferences.normalizeForStorage(request.getImageUrl()))
                 .custom(true)
                 .active(true)
                 .build();
@@ -67,6 +69,11 @@ public class FoodService {
         food.setCarbs(defaultZero(request.getCarbs()));
         food.setFat(defaultZero(request.getFat()));
         food.setUnit(request.getUnit());
+        food.setImageUrl(ImageReferences.resolveStoredValue(
+                food.getImageUrl(),
+                request.getImageUrl(),
+                ImageReferences.foodPath(food.getId())
+        ));
 
         Food saved = foodRepository.save(food);
 

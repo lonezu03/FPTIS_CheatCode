@@ -1,5 +1,5 @@
 import { useMemo, useState, type ElementType } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { getProfile } from "../api/user.api";
 import { useAuthStore } from "../store/auth.store";
@@ -23,6 +23,7 @@ import {
   User,
   Utensils,
 } from "lucide-react";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 type NavItem = {
   to: string;
@@ -74,6 +75,7 @@ const navGroups: NavGroup[] = [
 ];
 
 export default function AppLayout() {
+  const queryClient = useQueryClient();
   const logout = useAuthStore((state) => state.logout);
   const authUser = useAuthStore((state) => state.user);
   const navigate = useNavigate();
@@ -124,6 +126,7 @@ export default function AppLayout() {
 
   const handleLogout = () => {
     logout();
+    queryClient.clear();
     navigate("/login", { replace: true });
   };
 
@@ -227,6 +230,7 @@ export default function AppLayout() {
             </div>
 
             <div className="flex items-center gap-2">
+              <NotificationBell isAdmin={isAdmin} />
               {location.pathname !== "/lunch" && (
                 <Button asChild variant="outline" className="hidden border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:inline-flex">
                   <Link to="/lunch">

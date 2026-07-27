@@ -6,6 +6,7 @@ import com.fittrack.workout.dto.UpdateExerciseRequest;
 import com.fittrack.workout.entity.Exercise;
 import com.fittrack.workout.mapper.WorkoutMapper;
 import com.fittrack.workout.repository.ExerciseRepository;
+import com.fittrack.common.media.ImageReferences;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -46,6 +47,7 @@ public class ExerciseService {
                 .muscleGroup(request.getMuscleGroup())
                 .equipment(request.getEquipment())
                 .description(request.getDescription())
+                .imageUrl(ImageReferences.normalizeForStorage(request.getImageUrl()))
                 .custom(true)
                 .active(true)
                 .build();
@@ -63,6 +65,11 @@ public class ExerciseService {
         exercise.setMuscleGroup(request.getMuscleGroup());
         exercise.setEquipment(request.getEquipment());
         exercise.setDescription(request.getDescription());
+        exercise.setImageUrl(ImageReferences.resolveStoredValue(
+                exercise.getImageUrl(),
+                request.getImageUrl(),
+                ImageReferences.exercisePath(exercise.getId())
+        ));
 
         Exercise saved = exerciseRepository.save(exercise);
 

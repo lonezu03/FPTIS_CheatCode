@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { resolveApiAssetUrl } from "@/api/axios";
 
 import PageHeader from "../components/PageHeader";
 import EmptyState from "../components/common/EmptyState";
@@ -22,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuthStore } from "@/store/auth.store";
 
 type FoodDraft = {
   name: string;
@@ -30,6 +32,7 @@ type FoodDraft = {
   carbs: number;
   fat: number;
   unit: string;
+  imageUrl: string;
 };
 
 const emptyDraft: FoodDraft = {
@@ -39,14 +42,18 @@ const emptyDraft: FoodDraft = {
   carbs: 0,
   fat: 0,
   unit: "100g",
+  imageUrl: "",
 };
+
+const MAX_IMAGE_FILE_SIZE = 1024 * 1024;
 
 export default function FoodsPage() {
   const queryClient = useQueryClient();
+  const isAdmin = useAuthStore((state) => state.user?.role === "ADMIN");
 
   const [keyword, setKeyword] = useState("");
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [includeInactive, setIncludeInactive] = useState(true);
+  const [includeInactive, setIncludeInactive] = useState(isAdmin);
 
   const [draft, setDraft] = useState<FoodDraft>({
     name: "Greek Yogurt",
@@ -55,13 +62,15 @@ export default function FoodsPage() {
     carbs: 3.6,
     fat: 0.4,
     unit: "100g",
+    imageUrl: "",
   });
 
   const [editingFood, setEditingFood] = useState<Food | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   const foodsQuery = useQuery({
-    queryKey: ["foods-management", searchKeyword, includeInactive],
-    queryFn: () => getFoodsManagementApi(searchKeyword, includeInactive),
+    queryKey: ["foods-management", searchKeyword, isAdmin && includeInactive],
+    queryFn: () => getFoodsManagementApi(searchKeyword, isAdmin && includeInactive),
   });
 
   const foods = foodsQuery.data ?? [];
@@ -91,6 +100,7 @@ export default function FoodsPage() {
         carbs: payload.carbs,
         fat: payload.fat,
         unit: payload.unit,
+        imageUrl: payload.imageUrl?.trim() || null,
       }),
     onSuccess: () => {
       toast.success("Food updated");
@@ -143,7 +153,10 @@ export default function FoodsPage() {
       return;
     }
 
-    createMutation.mutate(draft);
+    createMutation.mutate({
+      ...draft,
+      imageUrl: draft.imageUrl.trim() || null,
+    });
   };
 
   if (foodsQuery.isError) {
@@ -154,49 +167,59 @@ export default function FoodsPage() {
     <div className="space-y-4 md:space-y-6">
       <PageHeader title="Foods" description="Create and manage food items used for meal logging." />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Food</CardTitle>
-        </CardHeader>
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Food</CardTitle>
+          </CardHeader>
 
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Food name" />
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Food name" />
 
-          <Input value={draft.unit} onChange={(event) => setDraft({ ...draft, unit: event.target.value })} placeholder="Unit, e.g. 100g" />
+            <Input value={draft.unit} onChange={(event) => setDraft({ ...draft, unit: event.target.value })} placeholder="Unit, e.g. 100g" />
 
-          <Input
-            type="number"
-            value={draft.calories}
-            onChange={(event) => setDraft({ ...draft, calories: Number(event.target.value) })}
-            placeholder="Calories"
-          />
+            <Input
+              type="number"
+              value={draft.calories}
+              onChange={(event) => setDraft({ ...draft, calories: Number(event.target.value) })}
+              placeholder="Calories"
+            />
 
-          <Input
-            type="number"
-            value={draft.protein}
-            onChange={(event) => setDraft({ ...draft, protein: Number(event.target.value) })}
-            placeholder="Protein"
-          />
+            <Input
+              type="number"
+              value={draft.protein}
+              onChange={(event) => setDraft({ ...draft, protein: Number(event.target.value) })}
+              placeholder="Protein"
+            />
 
-          <Input
-            type="number"
-            value={draft.carbs}
-            onChange={(event) => setDraft({ ...draft, carbs: Number(event.target.value) })}
-            placeholder="Carbs"
-          />
+            <Input
+              type="number"
+              value={draft.carbs}
+              onChange={(event) => setDraft({ ...draft, carbs: Number(event.target.value) })}
+              placeholder="Carbs"
+            />
 
-          <Input
-            type="number"
-            value={draft.fat}
-            onChange={(event) => setDraft({ ...draft, fat: Number(event.target.value) })}
-            placeholder="Fat"
-          />
+            <Input
+              type="number"
+              value={draft.fat}
+              onChange={(event) => setDraft({ ...draft, fat: Number(event.target.value) })}
+              placeholder="Fat"
+            />
 
-          <Button className="md:col-span-3" onClick={handleCreate} disabled={createMutation.isPending}>
-            {createMutation.isPending ? "Creating..." : "Create Food"}
-          </Button>
-        </CardContent>
-      </Card>
+            <div className="md:col-span-3">
+              <FoodImageField
+                value={draft.imageUrl}
+                onChange={(imageUrl) => setDraft({ ...draft, imageUrl })}
+                onPreview={() => draft.imageUrl && setPreviewImage({ url: draft.imageUrl, title: draft.name || "Food image" })}
+              />
+            </div>
+
+            <Button className="md:col-span-3" onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Creating..." : "Create Food"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -211,14 +234,16 @@ export default function FoodsPage() {
               <Button onClick={() => setSearchKeyword(keyword)}>Search</Button>
             </div>
 
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={includeInactive}
-                onChange={(event) => setIncludeInactive(event.target.checked)}
-              />
-              Show archived
-            </label>
+            {isAdmin && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={includeInactive}
+                  onChange={(event) => setIncludeInactive(event.target.checked)}
+                />
+                Show archived
+              </label>
+            )}
           </div>
 
           {foodsQuery.isLoading ? (
@@ -230,6 +255,7 @@ export default function FoodsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Image</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead>Calories</TableHead>
@@ -237,13 +263,32 @@ export default function FoodsPage() {
                     <TableHead>Carbs</TableHead>
                     <TableHead>Fat</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Action</TableHead>
+                    {isAdmin && <TableHead>Action</TableHead>}
                   </TableRow>
                 </TableHeader>
 
                 <TableBody>
                   {foods.map((food) => (
                     <TableRow key={food.id} className={!food.active ? "opacity-50" : ""}>
+                      <TableCell>
+                        {food.imageUrl ? (
+                          <button
+                            type="button"
+                            className="block overflow-hidden rounded-lg border bg-slate-50 transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            onClick={() => setPreviewImage({ url: food.imageUrl!, title: food.name })}
+                            aria-label={`View image for ${food.name}`}
+                          >
+                            <img
+                              src={resolveApiAssetUrl(food.imageUrl)}
+                              alt=""
+                              loading="lazy"
+                              className="h-12 w-16 object-cover"
+                            />
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium">{food.name}</TableCell>
                       <TableCell>{food.unit}</TableCell>
                       <TableCell>{food.calories}</TableCell>
@@ -259,31 +304,33 @@ export default function FoodsPage() {
                         )}
                       </TableCell>
 
-                      <TableCell className="space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => setEditingFood(food)} disabled={!food.active}>
-                          Edit
-                        </Button>
+                      {isAdmin && (
+                        <TableCell className="space-x-2">
+                          <Button variant="outline" size="sm" onClick={() => setEditingFood(food)} disabled={!food.active}>
+                            Edit
+                          </Button>
 
-                        {food.active ? (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => archiveMutation.mutate(food.id)}
-                            disabled={archiveMutation.isPending}
-                          >
-                            Archive
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => restoreMutation.mutate(food.id)}
-                            disabled={restoreMutation.isPending}
-                          >
-                            Restore
-                          </Button>
-                        )}
-                      </TableCell>
+                          {food.active ? (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => archiveMutation.mutate(food.id)}
+                              disabled={archiveMutation.isPending}
+                            >
+                              Archive
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => restoreMutation.mutate(food.id)}
+                              disabled={restoreMutation.isPending}
+                            >
+                              Restore
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -293,60 +340,167 @@ export default function FoodsPage() {
         </CardContent>
       </Card>
 
-      <Dialog
-        open={!!editingFood}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditingFood(null);
-          }
-        }}
-      >
-        <DialogContent>
+      {isAdmin && (
+        <Dialog
+          open={!!editingFood}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingFood(null);
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Food</DialogTitle>
+            </DialogHeader>
+
+            {editingFood && (
+              <div className="space-y-4">
+                <Input value={editingFood.name} onChange={(event) => setEditingFood({ ...editingFood, name: event.target.value })} placeholder="Name" />
+
+                <Input value={editingFood.unit} onChange={(event) => setEditingFood({ ...editingFood, unit: event.target.value })} placeholder="Unit" />
+
+                <Input
+                  type="number"
+                  value={editingFood.calories}
+                  onChange={(event) => setEditingFood({ ...editingFood, calories: Number(event.target.value) })}
+                  placeholder="Calories"
+                />
+
+                <Input
+                  type="number"
+                  value={editingFood.protein}
+                  onChange={(event) => setEditingFood({ ...editingFood, protein: Number(event.target.value) })}
+                  placeholder="Protein"
+                />
+
+                <Input
+                  type="number"
+                  value={editingFood.carbs}
+                  onChange={(event) => setEditingFood({ ...editingFood, carbs: Number(event.target.value) })}
+                  placeholder="Carbs"
+                />
+
+                <Input
+                  type="number"
+                  value={editingFood.fat}
+                  onChange={(event) => setEditingFood({ ...editingFood, fat: Number(event.target.value) })}
+                  placeholder="Fat"
+                />
+
+                <FoodImageField
+                  value={editingFood.imageUrl ?? ""}
+                  onChange={(imageUrl) => setEditingFood({ ...editingFood, imageUrl })}
+                  onPreview={() =>
+                    editingFood.imageUrl &&
+                    setPreviewImage({ url: editingFood.imageUrl, title: editingFood.name || "Food image" })
+                  }
+                />
+
+                <Button className="w-full" onClick={() => updateMutation.mutate(editingFood)} disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Edit Food</DialogTitle>
+            <DialogTitle>{previewImage?.title}</DialogTitle>
           </DialogHeader>
 
-          {editingFood && (
-            <div className="space-y-4">
-              <Input value={editingFood.name} onChange={(event) => setEditingFood({ ...editingFood, name: event.target.value })} placeholder="Name" />
-
-              <Input value={editingFood.unit} onChange={(event) => setEditingFood({ ...editingFood, unit: event.target.value })} placeholder="Unit" />
-
-              <Input
-                type="number"
-                value={editingFood.calories}
-                onChange={(event) => setEditingFood({ ...editingFood, calories: Number(event.target.value) })}
-                placeholder="Calories"
+          {previewImage && (
+            <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-xl bg-slate-100 p-2">
+              <img
+                src={resolveApiAssetUrl(previewImage.url)}
+                alt={previewImage.title}
+                className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain"
               />
-
-              <Input
-                type="number"
-                value={editingFood.protein}
-                onChange={(event) => setEditingFood({ ...editingFood, protein: Number(event.target.value) })}
-                placeholder="Protein"
-              />
-
-              <Input
-                type="number"
-                value={editingFood.carbs}
-                onChange={(event) => setEditingFood({ ...editingFood, carbs: Number(event.target.value) })}
-                placeholder="Carbs"
-              />
-
-              <Input
-                type="number"
-                value={editingFood.fat}
-                onChange={(event) => setEditingFood({ ...editingFood, fat: Number(event.target.value) })}
-                placeholder="Fat"
-              />
-
-              <Button className="w-full" onClick={() => updateMutation.mutate(editingFood)} disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? "Saving..." : "Save Changes"}
-              </Button>
             </div>
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+type FoodImageFieldProps = {
+  value: string;
+  onChange: (value: string) => void;
+  onPreview: () => void;
+};
+
+function FoodImageField({ value, onChange, onPreview }: FoodImageFieldProps) {
+  const isUploadedFile = value.startsWith("data:image/");
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif", "image/avif"].includes(file.type)) {
+      toast.error("Chỉ hỗ trợ PNG, JPEG, WebP, GIF hoặc AVIF");
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_FILE_SIZE) {
+      toast.error("Image must be 1 MB or smaller");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        onChange(reader.result);
+      }
+    };
+    reader.onerror = () => toast.error("Cannot read this image");
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border bg-slate-50/60 p-3">
+      <div>
+        <p className="text-sm font-medium">Food image</p>
+        <p className="text-xs text-muted-foreground">Paste an image URL or upload an image up to 1 MB.</p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Input
+          type="url"
+          value={isUploadedFile ? "" : value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={isUploadedFile ? "Image selected from your device" : "https://example.com/food.jpg"}
+        />
+        <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" onChange={handleFileChange} />
+      </div>
+
+      {value && (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="overflow-hidden rounded-lg border bg-white transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            onClick={onPreview}
+            aria-label="Preview food image"
+          >
+            <img src={resolveApiAssetUrl(value)} alt="" className="h-16 w-24 object-cover" />
+          </button>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">
+              {isUploadedFile ? "Uploaded image ready to save" : "Image URL ready to save"}
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={() => onChange("")}>
+              Remove image
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

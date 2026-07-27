@@ -2,6 +2,7 @@ package com.fittrack.lunch.controller;
 
 import com.fittrack.lunch.dto.LunchDtos.*;
 import com.fittrack.lunch.service.LunchAdminService;
+import com.fittrack.lunch.service.LunchPaymentService;
 import com.fittrack.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import java.util.List;
 public class LunchAdminController {
 
     private final LunchAdminService lunchAdminService;
+    private final LunchPaymentService paymentService;
 
     @GetMapping("/menus")
     public List<MenuResponse> getMenus(
@@ -84,6 +86,44 @@ public class LunchAdminController {
                 id,
                 request
         );
+    }
+
+    @PutMapping("/menu-items/{id}")
+    public MenuItemResponse updateMenuItem(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateMenuItemRequest request
+    ) {
+        return lunchAdminService.updateMenuItem(id, request);
+    }
+
+    @PutMapping("/payment-settings")
+    public PaymentSettingsResponse updatePaymentSettings(
+            @Valid @RequestBody UpdatePaymentSettingsRequest request
+    ) {
+        return paymentService.updateSettings(request);
+    }
+
+    @GetMapping("/payment-requests")
+    public List<PaymentRequestResponse> getPaymentRequests() {
+        return paymentService.getAll();
+    }
+
+    @PostMapping("/payment-requests/{id}/approve")
+    public PaymentRequestResponse approvePayment(
+            Authentication authentication,
+            @PathVariable String id,
+            @Valid @RequestBody(required = false) ReviewPaymentRequest request
+    ) {
+        return paymentService.approve(currentUser(authentication), id, request);
+    }
+
+    @PostMapping("/payment-requests/{id}/reject")
+    public PaymentRequestResponse rejectPayment(
+            Authentication authentication,
+            @PathVariable String id,
+            @Valid @RequestBody(required = false) ReviewPaymentRequest request
+    ) {
+        return paymentService.reject(currentUser(authentication), id, request);
     }
 
     private User currentUser(Authentication authentication) {

@@ -39,6 +39,9 @@ public class MealLog {
 
     private LocalDateTime createdAt;
 
+    @Column(unique = true, length = 80)
+    private String sourceLunchOrderId;
+
     @OneToMany(mappedBy = "mealLog", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<MealItem> items = new ArrayList<>();

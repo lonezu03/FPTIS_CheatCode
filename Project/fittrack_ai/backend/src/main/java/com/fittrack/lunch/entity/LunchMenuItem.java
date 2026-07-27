@@ -1,5 +1,6 @@
 package com.fittrack.lunch.entity;
 
+import com.fittrack.nutrition.entity.Food;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,4 +36,19 @@ public class LunchMenuItem {
 
     @Column(nullable = false)
     private Integer sortOrder;
+
+    @Column(columnDefinition = "TEXT")
+    private String imageUrl;
+
+    private Double calories;
+
+    private Double protein;
+
+    private Double carbs;
+
+    private Double fat;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nutrition_food_id")
+    private Food nutritionFood;
 }

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CalendarDays,
+  CreditCard,
   CheckCircle2,
   ClipboardList,
   Copy,
@@ -17,6 +18,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 
 import {
   closeLunchMenu,
@@ -37,6 +39,8 @@ import {
 } from "@/api/lunch.api";
 import { LunchMetric, MenuStatusBadge, PaymentStatusBadge, SelectionTypeBadge } from "@/components/lunch/LunchStatus";
 import PageHeader from "@/components/PageHeader";
+import AdminMenuItemEditor from "@/components/lunch/AdminMenuItemEditor";
+import AdminPaymentPanel from "@/components/lunch/AdminPaymentPanel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,6 +78,11 @@ const DEFAULT_PRICE = 35_000;
 
 export default function AdminLunchPage() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const activeTab = ["menu", "orders", "funds", "payments"].includes(requestedTab ?? "")
+    ? requestedTab!
+    : "menu";
   const today = toLocalDateInput();
   const defaultCutoff = getDefaultLunchCutoff();
   const defaultMenuDate = defaultCutoff.slice(0, 10);
@@ -335,8 +344,12 @@ export default function AdminLunchPage() {
         />
       )}
 
-      <Tabs defaultValue="menu" className="gap-4">
-        <TabsList className="grid h-auto w-full grid-cols-3 sm:w-fit">
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) => setSearchParams(tab === "menu" ? {} : { tab })}
+        className="gap-4"
+      >
+        <TabsList className="grid h-auto w-full grid-cols-4 sm:w-fit">
           <TabsTrigger value="menu" className="min-h-9 px-3">
             <UtensilsCrossed aria-hidden="true" />
             Menu & tổng hợp
@@ -348,6 +361,10 @@ export default function AdminLunchPage() {
           <TabsTrigger value="funds" className="min-h-9 px-3">
             <Wallet aria-hidden="true" />
             Quỹ & công nợ
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="min-h-9 px-3">
+            <CreditCard aria-hidden="true" />
+            Thanh toán QR
           </TabsTrigger>
         </TabsList>
 
@@ -492,6 +509,7 @@ export default function AdminLunchPage() {
             onReopen={() => activeMenu && setMenuAction({ menu: activeMenu, action: "reopen" })}
             onCopy={copySummary}
           />
+          {activeMenu && <AdminMenuItemEditor menu={activeMenu} />}
         </TabsContent>
 
         <TabsContent value="orders" className="space-y-4">
@@ -596,9 +614,9 @@ export default function AdminLunchPage() {
                       <p className="mt-1 font-bold">{formatCurrency(selectedMember.walletBalance)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Đơn chưa trả</p>
-                      <p className={selectedMember.unpaidOrders > 0 ? "mt-1 font-bold text-amber-700" : "mt-1 font-bold"}>
-                        {selectedMember.unpaidOrders}
+                      <p className="text-xs text-muted-foreground">Công nợ</p>
+                      <p className={selectedMember.outstandingDebt > 0 ? "mt-1 font-bold text-red-700" : "mt-1 font-bold"}>
+                        {formatCurrency(selectedMember.outstandingDebt)}
                       </p>
                     </div>
                   </div>
@@ -686,6 +704,10 @@ export default function AdminLunchPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-4 md:space-y-6">
+          <AdminPaymentPanel />
         </TabsContent>
       </Tabs>
 
@@ -1074,9 +1096,9 @@ function MembersTable({
                   {formatCurrency(member.walletBalance)}
                 </TableCell>
                 <TableCell>
-                  {member.unpaidOrders > 0 ? (
+                  {member.outstandingDebt > 0 ? (
                     <Badge className="border-amber-200 bg-amber-50 text-amber-800" variant="outline">
-                      {member.unpaidOrders} đơn chưa trả
+                      {formatCurrency(member.outstandingDebt)}
                     </Badge>
                   ) : (
                     <span className="text-xs text-muted-foreground">Không có</span>
@@ -1108,8 +1130,8 @@ function MembersTable({
             </span>
             <span className="shrink-0 text-right">
               <span className="block font-bold">{formatCurrency(member.walletBalance)}</span>
-              <span className={member.unpaidOrders > 0 ? "block text-xs text-amber-700" : "block text-xs text-muted-foreground"}>
-                {member.unpaidOrders} đơn chưa trả
+              <span className={member.outstandingDebt > 0 ? "block text-xs text-red-700" : "block text-xs text-muted-foreground"}>
+                Nợ {formatCurrency(member.outstandingDebt)}
               </span>
             </span>
           </button>

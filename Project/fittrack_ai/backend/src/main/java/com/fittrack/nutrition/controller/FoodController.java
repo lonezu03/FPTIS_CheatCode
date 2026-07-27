@@ -4,6 +4,7 @@ import com.fittrack.nutrition.dto.CreateFoodRequest;
 import com.fittrack.nutrition.dto.FoodResponse;
 import com.fittrack.nutrition.dto.UpdateFoodRequest;
 import com.fittrack.nutrition.service.FoodService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,14 +26,14 @@ public class FoodController {
     }
 
     @PostMapping
-    public FoodResponse create(@RequestBody CreateFoodRequest request) {
+    public FoodResponse create(@Valid @RequestBody CreateFoodRequest request) {
         return foodService.create(request);
     }
 
     @PutMapping("/{id}")
     public FoodResponse update(
             @PathVariable String id,
-            @RequestBody UpdateFoodRequest request
+            @Valid @RequestBody UpdateFoodRequest request
     ) {
         return foodService.update(id, request);
     }

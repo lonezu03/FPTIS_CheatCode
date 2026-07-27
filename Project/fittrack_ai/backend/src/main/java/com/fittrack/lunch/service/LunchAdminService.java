@@ -8,6 +8,7 @@ import com.fittrack.lunch.mapper.LunchMapper;
 import com.fittrack.lunch.repository.*;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.repository.UserRepository;
+import com.fittrack.common.media.ImageReferences;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,12 +27,13 @@ public class LunchAdminService {
 
     private final LunchMenuRepository menuRepository;
     private final LunchOrderRepository orderRepository;
-    private final LunchFundAccountRepository accountRepository;
-    private final LunchFundTransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final LunchMenuParser menuParser;
     private final LunchTextFormatter textFormatter;
     private final LunchMapper mapper;
+    private final LunchMenuItemRepository menuItemRepository;
+    private final LunchAccountService accountService;
+    private final LunchNutritionService nutritionService;
 
     @Transactional
     public MenuResponse importMenu(User admin, ImportMenuRequest request) {
@@ -182,9 +184,8 @@ public class LunchAdminService {
                             person.id(),
                             person.fullName(),
                             person.email(),
-                            accountRepository.findByUser(user)
-                                    .map(LunchFundAccount::getBalance)
-                                    .orElse(0L),
+                            accountService.netBalance(user),
+                            accountService.outstandingDebt(user),
                             orderRepository.countByBeneficiaryAndStatusAndPaymentStatus(
                                     user,
                                     LunchOrderStatus.ACTIVE,
@@ -202,34 +203,41 @@ public class LunchAdminService {
     ) {
         User member = userRepository.findById(request.userId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thành viên"));
-        LunchFundAccount account = accountRepository.findByUserForUpdate(member)
-                .orElseGet(() -> accountRepository.saveAndFlush(
-                        LunchFundAccount.builder()
-                                .user(member)
-                                .balance(0L)
-                                .build()
-                ));
-
-        long newBalance;
-        try {
-            newBalance = Math.addExact(account.getBalance(), request.amount());
-        } catch (ArithmeticException exception) {
-            throw new IllegalArgumentException("Số tiền vượt quá giới hạn cho phép");
-        }
-        account.setBalance(newBalance);
-
-        LunchFundTransaction transaction = transactionRepository.save(
-                LunchFundTransaction.builder()
-                        .account(account)
-                        .type(LunchFundTransactionType.TOP_UP)
-                        .amount(request.amount())
-                        .balanceAfter(newBalance)
-                        .actor(admin)
-                        .note(textFormatter.sanitizeNote(request.note()))
-                        .createdAt(now())
-                        .build()
+        LunchFundTransaction transaction = accountService.credit(
+                member,
+                request.amount(),
+                LunchFundTransactionType.TOP_UP,
+                null,
+                admin,
+                textFormatter.sanitizeNote(request.note())
         );
         return mapper.toTransactionResponse(transaction);
+    }
+
+    @Transactional
+    public MenuItemResponse updateMenuItem(
+            String itemId,
+            UpdateMenuItemRequest request
+    ) {
+        LunchMenuItem item = menuItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy món ăn"));
+        if (request.name() != null && !request.name().isBlank()) {
+            item.setName(request.name().trim());
+        }
+        item.setImageUrl(ImageReferences.resolveStoredValue(
+                item.getImageUrl(),
+                request.imageUrl(),
+                ImageReferences.lunchItemPath(item.getId())
+        ));
+        item.setCalories(request.calories());
+        item.setProtein(request.protein());
+        item.setCarbs(request.carbs());
+        item.setFat(request.fat());
+        nutritionService.ensureFood(item);
+        LunchMenuItem saved = menuItemRepository.save(item);
+        orderRepository.findDistinctByItems_MenuItemAndStatus(saved, LunchOrderStatus.ACTIVE)
+                .forEach(nutritionService::syncOrder);
+        return mapper.toMenuItemResponse(saved);
     }
 
     @Transactional
@@ -322,6 +330,10 @@ public class LunchAdminService {
             return admin.getFullName().trim();
         }
         return "Đặt cơm";
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private LocalDateTime now() {

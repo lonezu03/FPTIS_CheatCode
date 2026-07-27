@@ -4,6 +4,7 @@ import com.fittrack.workout.dto.CreateExerciseRequest;
 import com.fittrack.workout.dto.ExerciseResponse;
 import com.fittrack.workout.dto.UpdateExerciseRequest;
 import com.fittrack.workout.service.ExerciseService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,14 +26,14 @@ public class ExerciseController {
     }
 
     @PostMapping
-    public ExerciseResponse create(@RequestBody CreateExerciseRequest request) {
+    public ExerciseResponse create(@Valid @RequestBody CreateExerciseRequest request) {
         return exerciseService.create(request);
     }
 
     @PutMapping("/{id}")
     public ExerciseResponse update(
             @PathVariable String id,
-            @RequestBody UpdateExerciseRequest request
+            @Valid @RequestBody UpdateExerciseRequest request
     ) {
         return exerciseService.update(id, request);
     }

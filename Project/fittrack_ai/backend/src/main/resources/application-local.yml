@@ -10,7 +10,3 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
-
-app:
-  # Keep the documented demo account convenient only in the local profile.
-  admin-emails: ${ADMIN_EMAILS:admin@fittrack.local,test@gmail.com}

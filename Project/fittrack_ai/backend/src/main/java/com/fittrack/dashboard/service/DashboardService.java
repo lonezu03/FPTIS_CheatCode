@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -25,13 +26,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DashboardService {
 
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+
     private final BodyMeasurementRepository bodyMeasurementRepository;
     private final MealLogRepository mealLogRepository;
     private final WorkoutSessionRepository workoutSessionRepository;
     private final GoalCalculatorService goalCalculatorService;
 
     public DashboardTodayResponse getTodayDashboard(User user) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(BUSINESS_ZONE);
 
         List<MealLog> meals = mealLogRepository.findByUserAndLogDate(user, today);
 
@@ -113,15 +116,25 @@ public class DashboardService {
                         Collectors.counting()
                 ));
 
+        Map<LocalDate, BodyMeasurement> measurementByDate = measurements.stream()
+                .collect(Collectors.toMap(
+                        BodyMeasurement::getRecordDate,
+                        measurement -> measurement,
+                        (first, latest) -> latest
+                ));
+        java.util.Set<LocalDate> dates = new java.util.TreeSet<>();
+        dates.addAll(measurementByDate.keySet());
+        dates.addAll(caloriesByDate.keySet());
+        dates.addAll(proteinByDate.keySet());
+        dates.addAll(workoutCountByDate.keySet());
+
         List<ProgressPointResponse> points = new ArrayList<>();
-
-        for (BodyMeasurement measurement : measurements) {
-            LocalDate date = measurement.getRecordDate();
-
+        for (LocalDate date : dates) {
+            BodyMeasurement measurement = measurementByDate.get(date);
             points.add(ProgressPointResponse.builder()
                     .date(date)
-                    .weight(measurement.getWeight())
-                    .waist(measurement.getWaist())
+                    .weight(measurement == null ? null : measurement.getWeight())
+                    .waist(measurement == null ? null : measurement.getWaist())
                     .calories(caloriesByDate.getOrDefault(date, 0.0))
                     .protein(proteinByDate.getOrDefault(date, 0.0))
                     .workoutCount(workoutCountByDate.getOrDefault(date, 0L).intValue())

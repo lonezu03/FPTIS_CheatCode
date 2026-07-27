@@ -13,6 +13,7 @@ public class FoodResponse {
     private Double carbs;
     private Double fat;
     private String unit;
+    private String imageUrl;
     private Boolean custom;
     private Boolean active;
 }

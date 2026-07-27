@@ -11,6 +11,7 @@ public class ExerciseResponse {
     private String muscleGroup;
     private String equipment;
     private String description;
+    private String imageUrl;
     private Boolean custom;
     private Boolean active;
 }

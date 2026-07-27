@@ -21,6 +21,9 @@ export type MealLog = {
   totalCarbs: number;
   totalFat: number;
   createdAt: string;
+  sourceType: "MANUAL" | "LUNCH_ORDER";
+  sourceId: string | null;
+  readOnly: boolean;
   items: {
     id: string;
     foodId: string;

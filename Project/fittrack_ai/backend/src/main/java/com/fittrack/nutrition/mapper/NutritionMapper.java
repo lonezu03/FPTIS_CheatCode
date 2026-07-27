@@ -6,6 +6,7 @@ import com.fittrack.nutrition.dto.MealLogResponse;
 import com.fittrack.nutrition.entity.Food;
 import com.fittrack.nutrition.entity.MealItem;
 import com.fittrack.nutrition.entity.MealLog;
+import com.fittrack.common.media.ImageReferences;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -22,6 +23,10 @@ public class NutritionMapper {
                 .carbs(food.getCarbs())
                 .fat(food.getFat())
                 .unit(food.getUnit())
+                .imageUrl(ImageReferences.responseUrl(
+                        food.getImageUrl(),
+                        ImageReferences.foodPath(food.getId())
+                ))
                 .custom(food.getCustom())
                 .active(food.getActive())
                 .build();
@@ -58,6 +63,9 @@ public class NutritionMapper {
                 .totalCarbs(mealLog.getTotalCarbs())
                 .totalFat(mealLog.getTotalFat())
                 .createdAt(mealLog.getCreatedAt())
+                .sourceType(mealLog.getSourceLunchOrderId() == null ? "MANUAL" : "LUNCH_ORDER")
+                .sourceId(mealLog.getSourceLunchOrderId())
+                .readOnly(mealLog.getSourceLunchOrderId() != null)
                 .items(mealLog.getItems().stream()
                         .map(this::toMealItemResponse)
                         .toList())

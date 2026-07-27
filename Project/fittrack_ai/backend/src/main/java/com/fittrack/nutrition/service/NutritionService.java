@@ -90,6 +90,7 @@ public class NutritionService {
     public void deleteMealLog(User user, String mealLogId) {
         MealLog mealLog = mealLogRepository.findByIdAndUser(mealLogId, user)
                 .orElseThrow(() -> new IllegalArgumentException("Meal log not found"));
+        ensureManual(mealLog);
 
         mealLogRepository.delete(mealLog);
     }
@@ -102,6 +103,7 @@ public class NutritionService {
     ) {
         MealLog mealLog = mealLogRepository.findByIdAndUser(mealLogId, user)
                 .orElseThrow(() -> new IllegalArgumentException("Meal log not found"));
+        ensureManual(mealLog);
 
         mealLog.setMealType(request.getMealType());
         mealLog.setLogDate(request.getLogDate());
@@ -161,6 +163,14 @@ public class NutritionService {
 
     private double defaultZero(Double value) {
         return value == null ? 0.0 : value;
+    }
+
+    private void ensureManual(MealLog mealLog) {
+        if (mealLog.getSourceLunchOrderId() != null) {
+            throw new IllegalArgumentException(
+                    "Bữa ăn từ đơn cơm được cập nhật tự động. Hãy sửa hoặc hủy tại trang Đặt cơm"
+            );
+        }
     }
 }
 

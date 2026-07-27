@@ -6,6 +6,7 @@ import com.fittrack.workout.dto.WorkoutSetResponse;
 import com.fittrack.workout.entity.Exercise;
 import com.fittrack.workout.entity.WorkoutSession;
 import com.fittrack.workout.entity.WorkoutSet;
+import com.fittrack.common.media.ImageReferences;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -20,6 +21,10 @@ public class WorkoutMapper {
                 .muscleGroup(exercise.getMuscleGroup())
                 .equipment(exercise.getEquipment())
                 .description(exercise.getDescription())
+                .imageUrl(ImageReferences.responseUrl(
+                        exercise.getImageUrl(),
+                        ImageReferences.exercisePath(exercise.getId())
+                ))
                 .custom(exercise.getCustom())
                 .active(exercise.getActive())
                 .build();

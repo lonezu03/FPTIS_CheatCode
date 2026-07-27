@@ -31,6 +31,9 @@ public class Food {
 
     private String unit;
 
+    @Column(columnDefinition = "TEXT")
+    private String imageUrl;
+
     private Boolean custom;
 
     private Boolean active;

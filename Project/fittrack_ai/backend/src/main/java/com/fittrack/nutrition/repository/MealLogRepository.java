@@ -22,5 +22,7 @@ public interface MealLogRepository extends JpaRepository<MealLog, String> {
     );
 
     Optional<MealLog> findByIdAndUser(String id, User user);
+
+    Optional<MealLog> findBySourceLunchOrderId(String sourceLunchOrderId);
 }
 

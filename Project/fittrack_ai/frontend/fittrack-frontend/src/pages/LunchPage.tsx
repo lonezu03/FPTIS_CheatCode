@@ -5,6 +5,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   CalendarDays,
+  CreditCard,
   History,
   ReceiptText,
   RefreshCw,
@@ -13,6 +14,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 
 import {
   createLunchOrder,
@@ -30,6 +32,8 @@ import {
 import LunchOrderCard from "@/components/lunch/LunchOrderCard";
 import { CutoffStatus, LunchMetric, MenuStatusBadge } from "@/components/lunch/LunchStatus";
 import MenuPicker from "@/components/lunch/MenuPicker";
+import LunchReviewDialog from "@/components/lunch/LunchReviewDialog";
+import LunchPaymentPanel from "@/components/lunch/LunchPaymentPanel";
 import PageHeader from "@/components/PageHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -46,17 +50,25 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency, formatDate, formatDateTime, getApiErrorMessage } from "@/lib/format";
+import { useAuthStore } from "@/store/auth.store";
 
 const NOTE_SUGGESTIONS = ["Cơm thêm", "Rau thêm"];
 
 export default function LunchPage() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const activeTab = ["today", "history", "wallet", "payment"].includes(requestedTab ?? "")
+    ? requestedTab!
+    : "today";
+  const authUser = useAuthStore((state) => state.user);
   const [selectionType, setSelectionType] = useState<LunchSelectionType>("COMBO");
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [beneficiaryUserId, setBeneficiaryUserId] = useState("");
   const [note, setNote] = useState("");
   const [editingOrder, setEditingOrder] = useState<LunchOrder | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LunchOrder | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<LunchOrder | null>(null);
 
   const todayQuery = useQuery({
     queryKey: lunchKeys.today(),
@@ -73,11 +85,13 @@ export default function LunchPage() {
   const historyQuery = useQuery({
     queryKey: lunchKeys.history(),
     queryFn: getLunchOrderHistory,
+    enabled: activeTab === "history",
   });
 
   const transactionsQuery = useQuery({
     queryKey: lunchKeys.transactions(),
     queryFn: getLunchWalletTransactions,
+    enabled: activeTab === "wallet",
   });
 
   const refreshLunchData = () => {
@@ -85,17 +99,20 @@ export default function LunchPage() {
       queryClient.invalidateQueries({ queryKey: lunchKeys.today() }),
       queryClient.invalidateQueries({ queryKey: lunchKeys.history() }),
       queryClient.invalidateQueries({ queryKey: lunchKeys.transactions() }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] }),
+      queryClient.invalidateQueries({ queryKey: ["meal-logs"] }),
+      queryClient.invalidateQueries({ queryKey: ["weekly-report"] }),
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] }),
+      queryClient.invalidateQueries({ queryKey: ["achievements"] }),
+      queryClient.invalidateQueries({ queryKey: ["foods"] }),
     ]);
   };
 
   const createMutation = useMutation({
     mutationFn: createLunchOrder,
     onSuccess: (order) => {
-      toast.success(
-        order.paymentStatus.toUpperCase() === "UNPAID"
-          ? "Đã giữ phần ăn. Đơn đang chờ thanh toán."
-          : "Đặt cơm thành công."
-      );
+      toast.success(`Đặt cơm thành công. Sổ công nợ đã ghi ${formatCurrency(-order.price)}.`);
       resetOrderForm();
       refreshLunchData();
     },
@@ -159,6 +176,15 @@ export default function LunchPage() {
   }, [menu, selectedItemIds]);
 
   const selectedBeneficiary = people.find((person) => person.id === beneficiaryUserId);
+  const selectedNutrition = selectedItems.reduce(
+    (total, item) => ({
+      calories: total.calories + (item.calories ?? 0),
+      protein: total.protein + (item.protein ?? 0),
+      carbs: total.carbs + (item.carbs ?? 0),
+      fat: total.fat + (item.fat ?? 0),
+    }),
+    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+  );
   const walletBalance = today?.walletBalance ?? 0;
   const insufficientBalance = !!menu && walletBalance < menu.price;
   const cannotSponsor = !!beneficiaryUserId && insufficientBalance;
@@ -275,8 +301,12 @@ export default function LunchPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="today" className="gap-4">
-        <TabsList className="grid h-auto w-full grid-cols-3 sm:w-fit">
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) => setSearchParams(tab === "today" ? {} : { tab })}
+        className="gap-4"
+      >
+        <TabsList className="grid h-auto w-full grid-cols-4 sm:w-fit">
           <TabsTrigger value="today" className="min-h-9 px-3">
             <UtensilsCrossed aria-hidden="true" />
             Hôm nay
@@ -288,6 +318,10 @@ export default function LunchPage() {
           <TabsTrigger value="wallet" className="min-h-9 px-3">
             <Wallet aria-hidden="true" />
             Sổ quỹ
+          </TabsTrigger>
+          <TabsTrigger value="payment" className="min-h-9 px-3">
+            <CreditCard aria-hidden="true" />
+            Thanh toán
           </TabsTrigger>
         </TabsList>
 
@@ -304,7 +338,7 @@ export default function LunchPage() {
 
           <div className="grid gap-3 sm:grid-cols-3">
             <LunchMetric
-              label="Số dư quỹ của bạn"
+              label={today.walletBalance < 0 ? "Số dư ròng (đang nợ)" : "Số dư quỹ của bạn"}
               value={formatCurrency(today.walletBalance)}
               hint={menu ? `Giá hôm nay: ${formatCurrency(menu.price)}` : "Chưa có menu hôm nay"}
               tone={menu && today.walletBalance < menu.price ? "warning" : "success"}
@@ -315,10 +349,10 @@ export default function LunchPage() {
               hint={today.myMealOrder ? "Đã có phần cho bạn" : "Bạn chưa đặt phần của mình"}
             />
             <LunchMetric
-              label="Thanh toán"
-              value={todayOrders.filter((order) => order.paymentStatus.toUpperCase() === "UNPAID").length}
-              hint="đơn chưa thanh toán hôm nay"
-              tone={todayOrders.some((order) => order.paymentStatus.toUpperCase() === "UNPAID") ? "warning" : "default"}
+              label="Công nợ hiện tại"
+              value={formatCurrency(today.outstandingDebt)}
+              hint="có thể thanh toán bằng QR"
+              tone={today.outstandingDebt > 0 ? "warning" : "default"}
             />
           </div>
 
@@ -464,6 +498,15 @@ export default function LunchPage() {
                       )}
                     </div>
 
+                    {selectedItems.length > 0 && (
+                      <div className="grid grid-cols-2 gap-2 rounded-xl bg-emerald-50 p-3 text-xs sm:grid-cols-4">
+                        <SummaryRow label="Calo" value={`${Math.round(selectedNutrition.calories)} kcal`} />
+                        <SummaryRow label="Protein" value={`${selectedNutrition.protein.toFixed(1)}g`} />
+                        <SummaryRow label="Carb" value={`${selectedNutrition.carbs.toFixed(1)}g`} />
+                        <SummaryRow label="Fat" value={`${selectedNutrition.fat.toFixed(1)}g`} />
+                      </div>
+                    )}
+
                     {hasExistingSelfOrder && (
                       <Alert>
                         <AlertTriangle />
@@ -479,7 +522,7 @@ export default function LunchPage() {
                         <AlertDescription className="text-amber-800">
                           {cannotSponsor
                             ? "Bạn cần nạp thêm quỹ hoặc để người nhận tự đặt. Đơn trả hộ chỉ được tạo khi quỹ của người trả còn đủ."
-                            : "Bạn vẫn có thể tự đặt. Đơn sẽ mang trạng thái “Chưa thanh toán” để admin xác nhận sau khi nhận tiền bên ngoài."}
+                            : `Bạn vẫn có thể tự đặt. Hệ thống sẽ ghi ${formatCurrency(-menu.price)} vào sổ công nợ.`}
                         </AlertDescription>
                       </Alert>
                     )}
@@ -504,7 +547,7 @@ export default function LunchPage() {
                           : editingOrder
                             ? "Lưu thay đổi"
                             : insufficientBalance && !beneficiaryUserId
-                              ? "Đặt và ghi nhận chưa trả"
+                              ? "Đặt và ghi nợ"
                               : beneficiaryUserId
                                 ? "Xác nhận đặt hộ"
                                 : "Xác nhận đặt cơm"}
@@ -572,7 +615,11 @@ export default function LunchPage() {
           ) : (
             <div className="grid gap-3 lg:grid-cols-2">
               {history.map((order) => (
-                <LunchOrderCard key={order.id} order={order} />
+                <LunchOrderCard
+                  key={order.id}
+                  order={order}
+                  onReview={order.beneficiary.id === authUser?.userId ? setReviewTarget : undefined}
+                />
               ))}
             </div>
           )}
@@ -588,8 +635,10 @@ export default function LunchPage() {
           <Card className="border-emerald-200 bg-emerald-50/60">
             <CardContent className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm text-emerald-800">Số dư khả dụng</p>
-                <p className="mt-1 text-2xl font-bold text-emerald-950 sm:text-3xl">{formatCurrency(today.walletBalance)}</p>
+                <p className="text-sm text-emerald-800">Số dư ròng</p>
+                <p className={`mt-1 text-2xl font-bold sm:text-3xl ${today.walletBalance < 0 ? "text-red-700" : "text-emerald-950"}`}>
+                  {formatCurrency(today.walletBalance)}
+                </p>
               </div>
               <div className="rounded-full bg-white p-3 text-emerald-700 shadow-sm">
                 <Wallet className="h-6 w-6" aria-hidden="true" />
@@ -650,7 +699,25 @@ export default function LunchPage() {
             </Card>
           )}
         </TabsContent>
+
+        <TabsContent value="payment" className="space-y-4">
+          <LunchPaymentPanel
+            walletBalance={today.walletBalance}
+            outstandingDebt={today.outstandingDebt}
+          />
+        </TabsContent>
       </Tabs>
+
+      <LunchReviewDialog
+        key={reviewTarget?.id ?? "review-empty"}
+        order={reviewTarget}
+        open={!!reviewTarget}
+        onOpenChange={(open) => !open && setReviewTarget(null)}
+        onSaved={() => {
+          void queryClient.invalidateQueries({ queryKey: lunchKeys.history() });
+          void queryClient.invalidateQueries({ queryKey: lunchKeys.today() });
+        }}
+      />
 
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent>
@@ -798,6 +865,9 @@ function LunchPageLoading() {
 function getTransactionLabel(type: string): string {
   const normalized = type.toUpperCase();
 
+  if (normalized.includes("DEBT_PAYMENT")) {
+    return "Thanh toán công nợ";
+  }
   if (normalized.includes("TOP") || normalized.includes("DEPOSIT")) {
     return "Nạp quỹ";
   }

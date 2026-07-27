@@ -3,9 +3,13 @@ package com.fittrack.lunch.service;
 import com.fittrack.FittrackBackendApplication;
 import com.fittrack.common.exception.ConflictException;
 import com.fittrack.lunch.dto.LunchDtos.CreateOrderRequest;
-import com.fittrack.lunch.dto.LunchDtos.ConfirmExternalPaymentRequest;
 import com.fittrack.lunch.dto.LunchDtos.OrderResponse;
 import com.fittrack.lunch.dto.LunchDtos.SummaryResponse;
+import com.fittrack.lunch.dto.LunchDtos.CreatePaymentRequest;
+import com.fittrack.lunch.dto.LunchDtos.ReviewPaymentRequest;
+import com.fittrack.lunch.dto.LunchDtos.UpdatePaymentSettingsRequest;
+import com.fittrack.lunch.dto.LunchDtos.DishReviewRequest;
+import com.fittrack.nutrition.repository.MealLogRepository;
 import com.fittrack.lunch.entity.*;
 import com.fittrack.lunch.repository.*;
 import com.fittrack.user.entity.User;
@@ -35,6 +39,12 @@ class LunchServiceIntegrationTest {
     private LunchAdminService lunchAdminService;
 
     @Autowired
+    private LunchPaymentService lunchPaymentService;
+
+    @Autowired
+    private LunchReviewService lunchReviewService;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -49,8 +59,11 @@ class LunchServiceIntegrationTest {
     @Autowired
     private LunchFundTransactionRepository transactionRepository;
 
+    @Autowired
+    private MealLogRepository mealLogRepository;
+
     @Test
-    void selfOrderWithInsufficientFundIsCreatedUnpaidWithoutNegativeBalance() {
+    void selfOrderWithInsufficientFundCreatesDebtAndLedgerDebit() {
         User user = saveUser("self-unpaid");
         LunchMenu menu = saveMenu(user, LocalDate.of(2099, 1, 10));
 
@@ -59,11 +72,16 @@ class LunchServiceIntegrationTest {
                 comboRequest(menu, null)
         );
 
-        assertEquals("UNPAID", response.paymentStatus());
-        assertNull(response.payer());
-        assertEquals(0L, accountRepository.findByUser(user)
-                .map(LunchFundAccount::getBalance)
-                .orElse(0L));
+        assertEquals("PAID_FUND", response.paymentStatus());
+        assertEquals(user.getId(), response.payer().id());
+        LunchFundAccount account = accountRepository.findByUser(user).orElseThrow();
+        assertEquals(0L, account.getBalance());
+        assertEquals(35_000L, account.getDebt());
+        LunchFundTransaction debit = transactionRepository
+                .findByAccountOrderByCreatedAtDesc(account)
+                .getFirst();
+        assertEquals(-35_000L, debit.getAmount());
+        assertEquals(-35_000L, debit.getBalanceAfter());
     }
 
     @Test
@@ -102,7 +120,7 @@ class LunchServiceIntegrationTest {
     }
 
     @Test
-    void priorUnpaidOrderBlocksTheBeneficiaryFromOrderingForSelfNextDay() {
+    void priorUnpaidOrderNoLongerBlocksOrderingNextDay() {
         User user = saveUser("prior-debt");
         LunchMenu previousMenu = saveMenu(user, LocalDate.of(2099, 1, 12));
         LunchOrder previousOrder = LunchOrder.builder()
@@ -118,41 +136,52 @@ class LunchServiceIntegrationTest {
         orderRepository.save(previousOrder);
         LunchMenu nextMenu = saveMenu(user, LocalDate.of(2099, 1, 13));
 
-        ConflictException exception = assertThrows(
-                ConflictException.class,
-                () -> lunchService.createOrder(user, comboRequest(nextMenu, null))
-        );
+        OrderResponse response = lunchService.createOrder(user, comboRequest(nextMenu, null));
 
-        assertTrue(exception.getMessage().contains("chưa thanh toán"));
+        assertEquals("PAID_FUND", response.paymentStatus());
+        assertEquals(35_000L, accountRepository.findByUser(user).orElseThrow().getDebt());
     }
 
     @Test
-    void externalPaymentConfirmationDoesNotChangeTheWallet() {
+    void approvedDebtPaymentClearsDebtAndCreditsLedgerExactlyOnce() {
         User admin = saveUser("external-admin");
         User user = saveUser("external-user");
         LunchMenu menu = saveMenu(admin, LocalDate.of(2099, 1, 15));
-        LunchFundAccount account = accountRepository.save(
-                LunchFundAccount.builder()
-                        .user(user)
-                        .balance(10_000L)
-                        .build()
-        );
-        OrderResponse unpaidOrder = lunchService.createOrder(
+        lunchService.createOrder(user, comboRequest(menu, null));
+        lunchPaymentService.updateSettings(new UpdatePaymentSettingsRequest(
+                "https://example.com/qr.png",
+                "Test Bank",
+                "FITTRACK",
+                "123456",
+                null
+        ));
+        var paymentRequest = lunchPaymentService.create(
                 user,
-                comboRequest(menu, null)
+                new CreatePaymentRequest(LunchPaymentRequestType.DEBT_PAYMENT, 35_000L, "Đã chuyển")
         );
 
-        OrderResponse confirmed = lunchAdminService.confirmExternalPayment(
+        lunchPaymentService.approve(
                 admin,
-                unpaidOrder.id(),
-                new ConfirmExternalPaymentRequest("Đã nhận chuyển khoản")
+                paymentRequest.id(),
+                new ReviewPaymentRequest("Đã nhận")
+        );
+        assertThrows(
+                ConflictException.class,
+                () -> lunchPaymentService.approve(
+                        admin,
+                        paymentRequest.id(),
+                        new ReviewPaymentRequest("Duyệt lại")
+                )
         );
 
-        assertEquals("PAID_EXTERNAL", confirmed.paymentStatus());
-        assertEquals(10_000L, account.getBalance());
-        assertTrue(transactionRepository
-                .findByAccountOrderByCreatedAtDesc(account)
-                .isEmpty());
+        LunchFundAccount account = accountRepository.findByUser(user).orElseThrow();
+        assertEquals(0L, account.getDebt());
+        assertEquals(0L, account.getBalance());
+        List<LunchFundTransaction> transactions =
+                transactionRepository.findByAccountOrderByCreatedAtDesc(account);
+        assertEquals(2, transactions.size());
+        assertEquals(LunchFundTransactionType.DEBT_PAYMENT, transactions.getFirst().getType());
+        assertEquals(35_000L, transactions.getFirst().getAmount());
     }
 
     @Test
@@ -164,7 +193,8 @@ class LunchServiceIntegrationTest {
         SummaryResponse summary = lunchAdminService.summarize(admin, menu.getId());
 
         assertEquals(1, summary.totalOrders());
-        assertEquals(1, summary.unpaidOrders());
+        assertEquals(1, summary.paidFundOrders());
+        assertEquals(0, summary.unpaidOrders());
         assertEquals(35_000L, summary.totalAmount());
         assertEquals(2, summary.dishCounts().size());
         assertEquals("Sườn ram", summary.dishCounts().getFirst().dishName());
@@ -181,6 +211,39 @@ class LunchServiceIntegrationTest {
                 ConflictException.class,
                 () -> lunchAdminService.reopenMenu(menu.getId())
         );
+    }
+
+    @Test
+    void lunchOrderSyncsNutritionAndBeneficiaryCanReviewEachDish() {
+        User user = saveUser("nutrition-review");
+        LunchMenu menu = saveMenu(user, LocalDate.of(2099, 1, 16));
+        menu.getItems().get(0).setCalories(320.0);
+        menu.getItems().get(0).setProtein(24.0);
+        menu.getItems().get(0).setImageUrl("https://example.com/suon-ram.jpg");
+        menu.getItems().get(1).setCalories(180.0);
+        menu.getItems().get(1).setProtein(12.0);
+        menuRepository.saveAndFlush(menu);
+
+        OrderResponse order = lunchService.createOrder(user, comboRequest(menu, null));
+        var mealLog = mealLogRepository.findBySourceLunchOrderId(order.id()).orElseThrow();
+
+        assertEquals(500.0, mealLog.getTotalCalories());
+        assertEquals(36.0, mealLog.getTotalProtein());
+        assertEquals(2, mealLog.getItems().size());
+        assertEquals(
+                "https://example.com/suon-ram.jpg",
+                mealLog.getItems().getFirst().getFood().getImageUrl()
+        );
+
+        var review = lunchReviewService.review(
+                user,
+                order.id(),
+                new DishReviewRequest(menu.getItems().getFirst().getId(), 5, "Rất ngon")
+        );
+
+        assertEquals(5, review.rating());
+        assertEquals("Rất ngon", review.comment());
+        assertEquals(menu.getItems().getFirst().getId(), review.menuItemId());
     }
 
     private User saveUser(String prefix) {

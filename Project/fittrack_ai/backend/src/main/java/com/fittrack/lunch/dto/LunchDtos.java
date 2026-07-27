@@ -1,6 +1,7 @@
 package com.fittrack.lunch.dto;
 
 import com.fittrack.lunch.entity.LunchSelectionType;
+import com.fittrack.lunch.entity.LunchPaymentRequestType;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
@@ -16,7 +17,27 @@ public final class LunchDtos {
             String id,
             String name,
             String type,
-            Integer sortOrder
+            Integer sortOrder,
+            String imageUrl,
+            Double calories,
+            Double protein,
+            Double carbs,
+            Double fat,
+            Double averageRating,
+            long reviewCount
+    ) {
+    }
+
+    public record DishReviewResponse(
+            String id,
+            String orderId,
+            String menuItemId,
+            String dishName,
+            PersonResponse reviewer,
+            Integer rating,
+            String comment,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
     ) {
     }
 
@@ -58,13 +79,15 @@ public final class LunchDtos {
             Long price,
             String paymentStatus,
             String status,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            List<DishReviewResponse> reviews
     ) {
     }
 
     public record TodayResponse(
             MenuResponse menu,
             Long walletBalance,
+            Long outstandingDebt,
             OrderResponse myMealOrder,
             List<OrderResponse> ordersPlacedByMe,
             boolean canOrder,
@@ -110,11 +133,92 @@ public final class LunchDtos {
     ) {
     }
 
+    public record UpdateMenuItemRequest(
+            @Size(max = 255) String name,
+            @Size(max = 2_000_000) String imageUrl,
+            @PositiveOrZero Double calories,
+            @PositiveOrZero Double protein,
+            @PositiveOrZero Double carbs,
+            @PositiveOrZero Double fat
+    ) {
+    }
+
+    public record DishReviewRequest(
+            @NotBlank String menuItemId,
+            @NotNull @Min(1) @Max(5) Integer rating,
+            @Size(max = 1000) String comment
+    ) {
+    }
+
+    public record PaymentSettingsResponse(
+            String qrImageUrl,
+            String bankName,
+            String accountName,
+            String accountNumber,
+            String instructions,
+            LocalDateTime updatedAt
+    ) {
+    }
+
+    public record UpdatePaymentSettingsRequest(
+            @Size(max = 2_000_000) String qrImageUrl,
+            @Size(max = 120) String bankName,
+            @Size(max = 120) String accountName,
+            @Size(max = 80) String accountNumber,
+            @Size(max = 500) String instructions
+    ) {
+    }
+
+    public record CreatePaymentRequest(
+            @NotNull LunchPaymentRequestType type,
+            @NotNull @Positive Long amount,
+            @Size(max = 500) String note
+    ) {
+    }
+
+    public record ReviewPaymentRequest(
+            @Size(max = 500) String note
+    ) {
+    }
+
+    public record PaymentRequestResponse(
+            String id,
+            PersonResponse user,
+            String type,
+            Long amount,
+            String status,
+            String note,
+            PersonResponse reviewedBy,
+            String reviewNote,
+            LocalDateTime createdAt,
+            LocalDateTime reviewedAt
+    ) {
+    }
+
+    public record NotificationResponse(
+            String id,
+            String type,
+            String title,
+            String message,
+            String referenceType,
+            String referenceId,
+            LocalDateTime createdAt,
+            LocalDateTime readAt
+    ) {
+    }
+
+    public record NotificationListResponse(
+            long unreadCount,
+            List<NotificationResponse> notifications
+    ) {
+    }
+
     public record MemberResponse(
             String id,
             String fullName,
             String email,
             Long walletBalance,
+            Long outstandingDebt,
             long unpaidOrders
     ) {
     }

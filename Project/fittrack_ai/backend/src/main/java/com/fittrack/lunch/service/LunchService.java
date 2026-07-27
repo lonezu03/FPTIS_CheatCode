@@ -31,19 +31,22 @@ public class LunchService {
     private final LunchOrderRules orderRules;
     private final LunchTextFormatter textFormatter;
     private final LunchMapper mapper;
+    private final LunchAccountService accountService;
+    private final LunchNutritionService nutritionService;
+    private final LunchDishReviewRepository reviewRepository;
 
     @Transactional(readOnly = true)
     public TodayResponse getToday(User user) {
         LocalDate today = now().toLocalDate();
         LunchMenu menu = menuRepository.findByMenuDate(today).orElse(null);
-        long walletBalance = accountRepository.findByUser(user)
-                .map(LunchFundAccount::getBalance)
-                .orElse(0L);
+        long walletBalance = accountService.netBalance(user);
+        long outstandingDebt = accountService.outstandingDebt(user);
 
         if (menu == null) {
             return new TodayResponse(
                     null,
                     walletBalance,
+                    outstandingDebt,
                     null,
                     List.of(),
                     false,
@@ -79,13 +82,12 @@ public class LunchService {
             blockReason = menu.getStatus() == LunchMenuStatus.CLOSED
                     ? "Thực đơn đã đóng"
                     : "Đã qua giờ chốt món";
-        } else if (hasPriorUnpaidOrder(user, menu.getMenuDate())) {
-            blockReason = "Bạn còn phần ăn ngày trước chưa thanh toán. Vui lòng liên hệ admin để xác nhận";
         }
 
         return new TodayResponse(
                 menuResponse,
                 walletBalance,
+                outstandingDebt,
                 myOrder == null ? null : mapper.toOrderResponse(myOrder),
                 placedForOthers,
                 blockReason == null,
@@ -133,12 +135,6 @@ public class LunchService {
 
         User beneficiary = resolveBeneficiary(actor, request.beneficiaryUserId());
         boolean selfOrder = sameUser(actor, beneficiary);
-        if (selfOrder && hasPriorUnpaidOrder(beneficiary, menu.getMenuDate())) {
-            throw new ConflictException(
-                    "Bạn còn phần ăn ngày trước chưa thanh toán. Vui lòng liên hệ admin để xác nhận"
-            );
-        }
-
         List<LunchMenuItem> selectedItems = resolveSelectedItems(menu, request.itemIds());
         orderRules.validateSelection(request.selectionType(), selectedItems);
 
@@ -146,17 +142,6 @@ public class LunchService {
                 .findByMenuAndBeneficiaryForUpdate(menu, beneficiary);
         if (existing.isPresent() && existing.get().getStatus() == LunchOrderStatus.ACTIVE) {
             throw new ConflictException("Người này đã có một phần ăn trong ngày");
-        }
-
-        LunchFundAccount account = accountRepository.findByUserForUpdate(actor).orElse(null);
-        boolean paidFromFund;
-        if (selfOrder) {
-            paidFromFund = account != null && account.getBalance() >= menu.getPrice();
-        } else {
-            if (account == null || account.getBalance() < menu.getPrice()) {
-                throw new ConflictException("Số dư quỹ của bạn không đủ để trả hộ");
-            }
-            paidFromFund = true;
         }
 
         LunchOrder order = existing.orElseGet(() -> LunchOrder.builder()
@@ -171,13 +156,18 @@ public class LunchService {
                 request.selectionType(),
                 selectedItems,
                 request.note(),
-                paidFromFund
+                true
         );
         LunchOrder saved = orderRepository.save(order);
-
-        if (paidFromFund) {
-            debit(account, saved, actor);
-        }
+        accountService.debitOrder(
+                actor,
+                saved.getPrice(),
+                saved,
+                actor,
+                "Ghi nợ phần ăn " + saved.getMenu().getMenuDate(),
+                selfOrder
+        );
+        nutritionService.syncOrder(saved);
 
         return mapper.toOrderResponse(saved);
     }
@@ -201,9 +191,12 @@ public class LunchService {
 
         order.setSelectionType(request.selectionType());
         order.setNote(textFormatter.sanitizeNote(request.note()));
+        reviewRepository.deleteByOrder(order);
         replaceOrderItems(order, selectedItems);
 
-        return mapper.toOrderResponse(orderRepository.save(order));
+        LunchOrder saved = orderRepository.save(order);
+        nutritionService.syncOrder(saved);
+        return mapper.toOrderResponse(saved);
     }
 
     @Transactional
@@ -218,14 +211,21 @@ public class LunchService {
             if (payer == null) {
                 throw new IllegalStateException("Đơn đã trừ quỹ nhưng không có người thanh toán");
             }
-            LunchFundAccount account = accountRepository.findByUserForUpdate(payer)
-                    .orElseThrow(() -> new IllegalStateException("Không tìm thấy ví để hoàn tiền"));
-            refund(account, order, actor);
+            accountService.credit(
+                    payer,
+                    order.getPrice(),
+                    LunchFundTransactionType.ORDER_REFUND,
+                    order,
+                    actor,
+                    "Hoàn ghi nợ phần ăn " + order.getMenu().getMenuDate()
+            );
         }
 
+        reviewRepository.deleteByOrder(order);
         order.setStatus(LunchOrderStatus.CANCELLED);
         order.setCancelledAt(now());
         orderRepository.save(order);
+        nutritionService.removeOrder(order.getId());
     }
 
     private void resetOrder(
@@ -254,6 +254,9 @@ public class LunchService {
         order.setExternalPaymentNote(null);
         order.setCancelledAt(null);
         order.setCreatedAt(now());
+        if (order.getId() != null) {
+            reviewRepository.deleteByOrder(order);
+        }
         replaceOrderItems(order, selectedItems);
     }
 
@@ -303,47 +306,6 @@ public class LunchService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người nhận"));
     }
 
-    private void debit(
-            LunchFundAccount account,
-            LunchOrder order,
-            User actor
-    ) {
-        if (account == null || account.getBalance() < order.getPrice()) {
-            throw new ConflictException("Số dư quỹ không đủ");
-        }
-        long newBalance = Math.subtractExact(account.getBalance(), order.getPrice());
-        account.setBalance(newBalance);
-        transactionRepository.save(LunchFundTransaction.builder()
-                .account(account)
-                .type(LunchFundTransactionType.ORDER_DEBIT)
-                .amount(-order.getPrice())
-                .balanceAfter(newBalance)
-                .order(order)
-                .actor(actor)
-                .note("Thanh toán phần ăn " + order.getMenu().getMenuDate())
-                .createdAt(now())
-                .build());
-    }
-
-    private void refund(
-            LunchFundAccount account,
-            LunchOrder order,
-            User actor
-    ) {
-        long newBalance = Math.addExact(account.getBalance(), order.getPrice());
-        account.setBalance(newBalance);
-        transactionRepository.save(LunchFundTransaction.builder()
-                .account(account)
-                .type(LunchFundTransactionType.ORDER_REFUND)
-                .amount(order.getPrice())
-                .balanceAfter(newBalance)
-                .order(order)
-                .actor(actor)
-                .note("Hoàn tiền phần ăn " + order.getMenu().getMenuDate())
-                .createdAt(now())
-                .build());
-    }
-
     private LunchMenu getMenuForUpdate(String menuId) {
         return menuRepository.findByIdForUpdate(menuId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thực đơn"));
@@ -376,16 +338,6 @@ public class LunchService {
         if (order.getStatus() != LunchOrderStatus.ACTIVE) {
             throw new ConflictException("Đơn đặt món đã bị hủy");
         }
-    }
-
-    private boolean hasPriorUnpaidOrder(User user, LocalDate menuDate) {
-        return orderRepository
-                .existsByBeneficiaryAndStatusAndPaymentStatusAndMenu_MenuDateBefore(
-                        user,
-                        LunchOrderStatus.ACTIVE,
-                        LunchPaymentStatus.UNPAID,
-                        menuDate
-                );
     }
 
     private long activeOrderCount(LunchMenu menu) {
