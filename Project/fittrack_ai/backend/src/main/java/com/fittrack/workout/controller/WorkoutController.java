@@ -7,6 +7,7 @@ import com.fittrack.workout.dto.UpdateWorkoutSessionRequest;
 import com.fittrack.workout.dto.WorkoutSessionResponse;
 import com.fittrack.workout.service.ExerciseService;
 import com.fittrack.workout.service.WorkoutService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +30,7 @@ public class WorkoutController {
     @PostMapping("/sessions")
     public WorkoutSessionResponse createSession(
             Authentication authentication,
-            @RequestBody CreateWorkoutSessionRequest request
+            @Valid @RequestBody CreateWorkoutSessionRequest request
     ) {
         User user = (User) authentication.getPrincipal();
         return workoutService.createSession(user, request);

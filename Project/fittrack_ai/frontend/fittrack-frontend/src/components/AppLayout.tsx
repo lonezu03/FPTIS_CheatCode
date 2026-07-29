@@ -21,9 +21,12 @@ import {
   Sparkles,
   Trophy,
   User,
+  UsersRound,
   Utensils,
 } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import AssistantChat from "@/components/assistant/AssistantChat";
+import BackendKeepAlive from "@/components/BackendKeepAlive";
 
 type NavItem = {
   to: string;
@@ -70,6 +73,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: "/profile", label: "Hồ sơ cá nhân", icon: User },
       { to: "/admin/lunch", label: "Điều phối cơm", icon: ShieldCheck, adminOnly: true },
+      { to: "/admin/users", label: "Quản lý tài khoản", icon: UsersRound, adminOnly: true },
     ],
   },
 ];
@@ -259,6 +263,8 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <BackendKeepAlive />
+      <AssistantChat />
     </div>
   );
 }

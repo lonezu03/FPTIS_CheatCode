@@ -7,6 +7,7 @@ import com.fittrack.nutrition.dto.UpdateMealLogRequest;
 import com.fittrack.nutrition.service.FoodService;
 import com.fittrack.nutrition.service.NutritionService;
 import com.fittrack.user.entity.User;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +33,7 @@ public class NutritionController {
     @PostMapping("/meal-logs")
     public MealLogResponse createMealLog(
             Authentication authentication,
-            @RequestBody CreateMealLogRequest request
+            @Valid @RequestBody CreateMealLogRequest request
     ) {
         User user = (User) authentication.getPrincipal();
 

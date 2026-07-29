@@ -40,6 +40,9 @@ public class User {
 
     private String role;
 
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean active;
+
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -48,6 +51,10 @@ public class User {
 
         if (this.role == null) {
             this.role = "USER";
+        }
+
+        if (this.active == null) {
+            this.active = true;
         }
     }
 }

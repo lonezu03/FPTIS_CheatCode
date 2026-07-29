@@ -31,6 +31,17 @@ app:
     secret: ${JWT_SECRET:fittrack_super_secret_key_fittrack_super_secret_key_2026}
     expiration-ms: ${JWT_EXPIRATION_MS:604800000}
 
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-5.6-terra}
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+    requests-per-minute: ${OPENAI_REQUESTS_PER_MINUTE:6}
+
+  keep-alive:
+    enabled: ${KEEP_ALIVE_ENABLED:false}
+    url: ${KEEP_ALIVE_URL:${RENDER_EXTERNAL_URL:}}
+    interval-ms: ${KEEP_ALIVE_INTERVAL_MS:600000}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

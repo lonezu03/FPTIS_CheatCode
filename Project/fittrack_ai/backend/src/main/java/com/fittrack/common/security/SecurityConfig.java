@@ -66,6 +66,7 @@ public class SecurityConfig {
                                 "/api/foods/**"
                         ).hasRole("ADMIN")
                         .requestMatchers("/api/lunch/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

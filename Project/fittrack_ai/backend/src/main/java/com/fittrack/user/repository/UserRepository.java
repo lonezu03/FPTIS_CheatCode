@@ -17,6 +17,18 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     List<User> findByRoleIgnoreCase(String role);
 
+    long countByRoleIgnoreCaseAndActiveTrue(String role);
+
+    @Query("""
+            select user
+            from User user
+            where :keyword = ''
+               or lower(user.email) like lower(concat('%', :keyword, '%'))
+               or lower(coalesce(user.fullName, '')) like lower(concat('%', :keyword, '%'))
+            order by user.createdAt desc
+            """)
+    List<User> searchForAdmin(@Param("keyword") String keyword);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select user from User user where user.id = :id")
     Optional<User> findByIdForUpdate(@Param("id") String id);

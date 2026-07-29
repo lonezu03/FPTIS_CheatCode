@@ -47,6 +47,10 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            throw new BadCredentialsException("Invalid email or password");
+        }
+
         boolean passwordMatches = passwordEncoder.matches(
                 request.getPassword(),
                 user.getPassword()

@@ -18,6 +18,7 @@ const AchievementsPage = lazy(() => import("../pages/AchievementsPage"));
 const ProfilePage = lazy(() => import("../pages/ProfilePage"));
 const LunchPage = lazy(() => import("../pages/LunchPage"));
 const AdminLunchPage = lazy(() => import("../pages/AdminLunchPage"));
+const AdminUsersPage = lazy(() => import("../pages/AdminUsersPage"));
 
 export default function AppRoutes() {
   return (
@@ -43,6 +44,7 @@ export default function AppRoutes() {
 
               <Route element={<AdminRoute />}>
                 <Route path="/admin/lunch" element={<AdminLunchPage />} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
               </Route>
             </Route>
           </Route>

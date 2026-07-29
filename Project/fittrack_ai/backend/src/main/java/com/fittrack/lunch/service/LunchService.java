@@ -99,6 +99,7 @@ public class LunchService {
     public List<PersonResponse> getPeople(User currentUser) {
         return userRepository.findAll().stream()
                 .filter(user -> !sameUser(user, currentUser))
+                .filter(user -> Boolean.TRUE.equals(user.getActive()))
                 .sorted(Comparator
                         .comparing(
                                 User::getFullName,

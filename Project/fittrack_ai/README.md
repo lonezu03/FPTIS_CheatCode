@@ -11,6 +11,7 @@ The application helps users track workouts, nutrition, body measurements, weekly
 - JWT-based authentication
 - Protected frontend routes
 - Axios token interceptor
+- Admin-only account management with role assignment, account lock/unlock, and password reset
 
 ### User Profile and Goal Engine
 - Profile management
@@ -88,6 +89,13 @@ The application helps users track workouts, nutrition, body measurements, weekly
 - Workout frequency suggestions
 - Body progress suggestions
 - Weekly action items
+
+### FitTrack PT Assistant
+- Uses the OpenAI Responses API from the backend only
+- Understands the current user profile, food catalog, exercise catalog, recent logs, and today's lunch menu
+- Can propose workout sessions, meal logs, and lunch orders
+- Requires explicit user confirmation before any proposed action is saved
+- Keeps the OpenAI API key out of the browser and source control
 
 ### Achievements
 - Meal logging streak
@@ -239,6 +247,10 @@ POST   /auth/register
 POST   /auth/login
 GET    /users/me
 PUT    /users/me
+GET    /admin/users
+PATCH  /admin/users/{id}
+POST   /admin/users/{id}/reset-password
+GET    /health
 GET    /dashboard/today
 GET    /dashboard/progress
 GET    /workouts/sessions
@@ -286,6 +298,8 @@ POST   /lunch/admin/menus/{id}/summarize
 GET    /lunch/admin/members
 POST   /lunch/admin/funds/top-up
 POST   /lunch/admin/orders/{id}/confirm-external
+POST   /assistant/chat
+POST   /assistant/actions/execute
 ```
 
 Full API documentation is available in [docs/API.md](docs/API.md).
@@ -352,6 +366,28 @@ On PowerShell:
 ```powershell
 $env:ADMIN_EMAILS = "admin@company.com,backup-admin@company.com"
 ```
+
+Configure the AI assistant only on the backend. Never add the key to a
+`VITE_` variable because Vite exposes those values to browsers:
+
+```bash
+export OPENAI_API_KEY="replace-with-a-new-key"
+export OPENAI_MODEL="gpt-5.6-terra"
+export OPENAI_REQUESTS_PER_MINUTE="6"
+```
+
+The public `GET /api/health` endpoint verifies both the application and its
+database connection. On Render, the optional keep-alive scheduler calls this
+endpoint every 10 minutes:
+
+```bash
+export KEEP_ALIVE_ENABLED="true"
+export KEEP_ALIVE_INTERVAL_MS="600000"
+```
+
+Render provides `RENDER_EXTERNAL_URL` automatically. For other hosts, set
+`KEEP_ALIVE_URL` to the public backend URL. Keep-alive is disabled by default
+outside production.
 
 ### Frontend Setup
 
@@ -420,7 +456,7 @@ This project demonstrates:
 - Role-based admin panel
 - Image upload for body progress photos
 - AI-generated workout plans
-- AI-generated meal plans
+- Longer-lived AI conversation history
 - Export weekly report as PDF
 - Mobile app version
 - Deployment with Docker Compose

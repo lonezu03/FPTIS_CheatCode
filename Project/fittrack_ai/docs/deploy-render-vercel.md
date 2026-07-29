@@ -19,9 +19,19 @@ JWT_EXPIRATION_MS=604800000
 CORS_ALLOWED_ORIGINS=https://fptis-cheat-code.vercel.app
 JPA_DDL_AUTO=update
 JPA_SHOW_SQL=false
+OPENAI_API_KEY=<new-key-set-only-in-render-dashboard>
+OPENAI_MODEL=gpt-5.6-terra
+OPENAI_REQUESTS_PER_MINUTE=6
+KEEP_ALIVE_ENABLED=true
+KEEP_ALIVE_INTERVAL_MS=600000
 ```
 
 Use Aiven PostgreSQL for the database. Copy the host, port, database name, username, and password from the Aiven service Overview page.
+
+Set Render's Health Check Path to `/api/health`. Render automatically provides
+`RENDER_EXTERNAL_URL`, which the optional keep-alive scheduler uses to call the
+health endpoint every 10 minutes. Do not put `OPENAI_API_KEY` in `render.yaml`,
+Git, Vercel, or any `VITE_` environment variable.
 
 ## Frontend: Vercel
 
@@ -34,6 +44,7 @@ Environment variables:
 
 ```env
 VITE_API_URL=https://your-render-service.onrender.com/api
+VITE_KEEP_ALIVE_MINUTES=10
 ```
 
 Backend production:
