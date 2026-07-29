@@ -23,7 +23,7 @@ public class AssistantRateLimiter {
 
     @Autowired
     public AssistantRateLimiter(
-            @Value("${app.openai.requests-per-minute:6}") int requestsPerMinute
+            @Value("${app.assistant.requests-per-minute:6}") int requestsPerMinute
     ) {
         this(requestsPerMinute, Clock.systemUTC());
     }

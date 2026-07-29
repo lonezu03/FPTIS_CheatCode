@@ -91,11 +91,11 @@ The application helps users track workouts, nutrition, body measurements, weekly
 - Weekly action items
 
 ### FitTrack PT Assistant
-- Uses the OpenAI Responses API from the backend only
+- Uses Gemini Chat Completions compatibility from the backend only
 - Understands the current user profile, food catalog, exercise catalog, recent logs, and today's lunch menu
 - Can propose workout sessions, meal logs, and lunch orders
 - Requires explicit user confirmation before any proposed action is saved
-- Keeps the OpenAI API key out of the browser and source control
+- Keeps the Gemini API key out of the browser and source control
 
 ### Achievements
 - Meal logging streak
@@ -371,9 +371,9 @@ Configure the AI assistant only on the backend. Never add the key to a
 `VITE_` variable because Vite exposes those values to browsers:
 
 ```bash
-export OPENAI_API_KEY="replace-with-a-new-key"
-export OPENAI_MODEL="gpt-5.6-terra"
-export OPENAI_REQUESTS_PER_MINUTE="6"
+export GEMINI_API_KEY="replace-with-a-new-key"
+export GEMINI_MODEL="gemini-3.6-flash"
+export ASSISTANT_REQUESTS_PER_MINUTE="6"
 ```
 
 The public `GET /api/health` endpoint verifies both the application and its

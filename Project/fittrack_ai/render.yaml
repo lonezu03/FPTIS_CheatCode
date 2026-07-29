@@ -21,11 +21,11 @@ services:
         value: 604800000
       - key: ADMIN_EMAILS
         sync: false
-      - key: OPENAI_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
-      - key: OPENAI_MODEL
-        value: gpt-5.6-terra
-      - key: OPENAI_REQUESTS_PER_MINUTE
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: ASSISTANT_REQUESTS_PER_MINUTE
         value: 6
       - key: KEEP_ALIVE_ENABLED
         value: true

@@ -1,8 +1,8 @@
 package com.fittrack.assistant.service;
 
 import com.fittrack.assistant.dto.AssistantDtos.*;
-import com.fittrack.assistant.service.OpenAiResponsesClient.AiResult;
-import com.fittrack.assistant.service.OpenAiResponsesClient.ToolCall;
+import com.fittrack.assistant.service.GeminiChatClient.AiResult;
+import com.fittrack.assistant.service.GeminiChatClient.ToolCall;
 import com.fittrack.lunch.dto.LunchDtos.CreateOrderRequest;
 import com.fittrack.lunch.service.LunchService;
 import com.fittrack.nutrition.dto.CreateMealLogRequest;
@@ -26,7 +26,7 @@ public class AssistantService {
 
     private final AssistantContextService contextService;
     private final AssistantRateLimiter rateLimiter;
-    private final OpenAiResponsesClient openAiClient;
+    private final GeminiChatClient geminiClient;
     private final WorkoutService workoutService;
     private final NutritionService nutritionService;
     private final LunchService lunchService;
@@ -47,13 +47,13 @@ public class AssistantService {
             );
         }
         String context = contextService.buildContext(user);
-        AiResult result = openAiClient.respond(request.messages(), context);
+        AiResult result = geminiClient.respond(request.messages(), context);
         ProposedAction action = toProposedAction(result.toolCall());
         String reply = result.reply();
         if ((reply == null || reply.isBlank()) && action != null) {
             reply = "Tôi đã chuẩn bị thao tác bên dưới. Hãy kiểm tra kỹ rồi xác nhận.";
         }
-        return new ChatResponse(reply, action, openAiClient.getModel());
+        return new ChatResponse(reply, action, geminiClient.getModel());
     }
 
     public ExecuteActionResponse execute(
@@ -116,7 +116,7 @@ public class AssistantService {
                 "create_meal_log",
                 "create_lunch_order"
         ).contains(toolCall.name())) {
-            throw new IllegalArgumentException("OpenAI yêu cầu thao tác không được hỗ trợ");
+            throw new IllegalArgumentException("Gemini yêu cầu thao tác không được hỗ trợ");
         }
         return new ProposedAction(
                 toolCall.name(),
