@@ -25,8 +25,13 @@ export default function LoginPage() {
     event.preventDefault();
     if (isSubmitting) return;
 
-    if (!email.trim() || password.length < 8 || (mode === "register" && !fullName.trim())) {
-      setError("Vui lòng nhập đầy đủ thông tin. Mật khẩu cần ít nhất 6 ký tự.");
+    if (!email.trim() || !password) {
+      setError("Vui lòng nhập đầy đủ email và mật khẩu.");
+      return;
+    }
+
+    if (mode === "register" && (!fullName.trim() || password.length < 8)) {
+      setError("Vui lòng nhập họ tên. Mật khẩu đăng ký cần ít nhất 8 ký tự.");
       return;
     }
 
