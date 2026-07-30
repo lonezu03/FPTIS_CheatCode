@@ -38,43 +38,43 @@ public class AchievementService {
         List<AchievementResponse> achievements = List.of(
                 achievement(
                         "MEAL_STREAK_3",
-                        "Meal Logger",
-                        "Log meals for 3 days in a row.",
+                        "Duy trì nhật ký bữa ăn",
+                        "Ghi lại bữa ăn trong 3 ngày liên tiếp.",
                         mealStreak,
                         3
                 ),
                 achievement(
                         "MEAL_STREAK_7",
-                        "Nutrition Discipline",
-                        "Log meals for 7 days in a row.",
+                        "Kỷ luật dinh dưỡng",
+                        "Ghi lại bữa ăn trong 7 ngày liên tiếp.",
                         mealStreak,
                         7
                 ),
                 achievement(
                         "WORKOUT_3_WEEK",
-                        "Consistent Trainee",
-                        "Complete 3 workout days this week.",
+                        "Tập luyện đều đặn",
+                        "Hoàn thành 3 ngày tập trong tuần.",
                         workoutDays,
                         3
                 ),
                 achievement(
                         "WORKOUT_5_WEEK",
-                        "High Volume Week",
-                        "Complete 5 workout days this week.",
+                        "Tuần tập luyện tích cực",
+                        "Hoàn thành 5 ngày tập trong tuần.",
                         workoutDays,
                         5
                 ),
                 achievement(
                         "PROTEIN_5_WEEK",
-                        "Protein Focused",
-                        "Hit protein target 5 days this week.",
+                        "Đạt mục tiêu protein",
+                        "Đạt mục tiêu protein trong 5 ngày của tuần.",
                         proteinHitDays,
                         5
                 ),
                 achievement(
                         "BODY_TRACK_2_WEEK",
-                        "Progress Tracker",
-                        "Log body measurements 2 days this week.",
+                        "Theo dõi tiến độ cơ thể",
+                        "Ghi chỉ số cơ thể trong 2 ngày của tuần.",
                         bodyTrackingDays,
                         2
                 )

@@ -192,37 +192,37 @@ public class WeeklyReportService {
         List<String> insights = new ArrayList<>();
 
         if (averageCalories < targetCalories * 0.85) {
-            insights.add("Calories are quite below target. Consider adding more carbs or healthy fats.");
+            insights.add("Năng lượng nạp vào đang thấp hơn nhiều so với mục tiêu. Hãy cân nhắc bổ sung tinh bột hoặc chất béo lành mạnh.");
         } else if (averageCalories > targetCalories * 1.1) {
-            insights.add("Calories are above target. Review snacks, drinks, and portion sizes.");
+            insights.add("Năng lượng nạp vào đang cao hơn mục tiêu. Hãy kiểm tra lại đồ ăn vặt, thức uống và khẩu phần.");
         } else {
-            insights.add("Calories are close to your weekly target.");
+            insights.add("Năng lượng trung bình đang gần với mục tiêu của bạn.");
         }
 
         if (averageProtein < targetProtein * 0.85) {
-            insights.add("Protein intake is below target. Add more lean protein such as chicken breast, eggs, yogurt, or fish.");
+            insights.add("Lượng protein đang thấp hơn mục tiêu. Hãy bổ sung nguồn đạm nạc như ức gà, trứng, sữa chua hoặc cá.");
         } else {
-            insights.add("Protein intake is solid this week.");
+            insights.add("Lượng protein trong tuần đang ở mức tốt.");
         }
 
         if (workoutDays < 3) {
-            insights.add("Workout frequency is low. Aim for at least 3 training days per week.");
+            insights.add("Tần suất tập luyện còn thấp. Hãy đặt mục tiêu tập ít nhất 3 ngày mỗi tuần.");
         } else {
-            insights.add("Workout consistency is good this week.");
+            insights.add("Bạn duy trì tập luyện khá đều đặn trong tuần.");
         }
 
         if (weightChange != null) {
             if (weightChange > 0.7) {
-                insights.add("Weight increased quickly. If your goal is lean bulk, monitor waist changes.");
+                insights.add("Cân nặng tăng khá nhanh. Nếu đang tăng cơ, hãy theo dõi thêm thay đổi vòng eo.");
             } else if (weightChange < -0.7) {
-                insights.add("Weight dropped quickly. Make sure recovery and protein are sufficient.");
+                insights.add("Cân nặng giảm khá nhanh. Hãy bảo đảm phục hồi và bổ sung đủ protein.");
             } else {
-                insights.add("Weight change is within a controlled weekly range.");
+                insights.add("Mức thay đổi cân nặng đang nằm trong khoảng kiểm soát hợp lý.");
             }
         }
 
         if (waistChange != null && waistChange > 1.0) {
-            insights.add("Waist increased noticeably. Consider lowering calories slightly or increasing activity.");
+            insights.add("Vòng eo tăng đáng kể. Hãy cân nhắc giảm nhẹ năng lượng nạp vào hoặc tăng vận động.");
         }
 
         return insights;

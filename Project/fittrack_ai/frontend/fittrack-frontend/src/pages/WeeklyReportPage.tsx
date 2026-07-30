@@ -10,6 +10,7 @@ import MacroProgressCard from "../components/MacroProgressCard";
 import RecommendationCard from "../components/RecommendationCard";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
+import FormField from "../components/common/FormField";
 import PageLoading from "../components/common/PageLoading";
 
 import { Button } from "@/components/ui/button";
@@ -61,10 +62,14 @@ export default function WeeklyReportPage() {
           <CardTitle>Khoảng báo cáo</CardTitle>
         </CardHeader>
 
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <Input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+        <CardContent className="grid items-end gap-4 md:grid-cols-3">
+          <FormField label="Từ ngày" hint="Ngày bắt đầu của khoảng báo cáo.">
+            <Input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+          </FormField>
 
-          <Input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+          <FormField label="Đến ngày" hint="Ngày kết thúc của khoảng báo cáo.">
+            <Input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
+          </FormField>
 
           <Button
             variant="outline"
@@ -73,7 +78,7 @@ export default function WeeklyReportPage() {
               setToDate(getDefaultToDate());
             }}
           >
-            Reset to last 7 days
+            Đặt lại 7 ngày gần nhất
           </Button>
         </CardContent>
       </Card>
@@ -98,25 +103,25 @@ function WeeklyReportContent({
 }) {
   const overviewCards = [
     {
-      title: "Avg Calories",
+      title: "Năng lượng trung bình",
       value: report.averageCalories,
       suffix: "kcal",
       icon: Flame,
     },
     {
-      title: "Avg Protein",
+      title: "Protein trung bình",
       value: report.averageProtein,
       suffix: "g",
       icon: Beef,
     },
     {
-      title: "Meals",
+      title: "Bữa ăn",
       value: report.totalMeals,
       suffix: "",
       icon: Utensils,
     },
     {
-        title: "Buổi tập",
+      title: "Buổi tập",
       value: report.totalWorkouts,
       suffix: "",
       icon: Dumbbell,
@@ -131,7 +136,7 @@ function WeeklyReportContent({
           {report.fromDate} - {report.toDate}
         </Badge>
 
-          <Badge variant="secondary">{report.workoutDays} ngày luyện tập</Badge>
+        <Badge variant="secondary">{report.workoutDays} ngày luyện tập</Badge>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
@@ -158,7 +163,7 @@ function WeeklyReportContent({
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         <MacroProgressCard
-          title="Calories Compliance"
+          title="Mức đạt năng lượng"
           current={report.averageCalories}
           target={report.targetCalories}
           unit="kcal"
@@ -166,7 +171,7 @@ function WeeklyReportContent({
         />
 
         <MacroProgressCard
-          title="Protein Compliance"
+          title="Mức đạt protein"
           current={report.averageProtein}
           target={report.targetProtein}
           unit="g"
@@ -174,7 +179,7 @@ function WeeklyReportContent({
         />
 
         <BodyChangeCard
-          title="Weight Change"
+          title="Thay đổi cân nặng"
           start={report.startWeight}
           end={report.endWeight}
           change={report.weightChange}
@@ -183,7 +188,7 @@ function WeeklyReportContent({
         />
 
         <BodyChangeCard
-          title="Waist Change"
+          title="Thay đổi vòng eo"
           start={report.startWaist}
           end={report.endWaist}
           change={report.waistChange}
@@ -207,8 +212,8 @@ function WeeklyReportContent({
                   <XAxis dataKey="date" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="calories" />
-                  <Bar dataKey="targetCalories" />
+                  <Bar dataKey="calories" name="Năng lượng thực tế" />
+                  <Bar dataKey="targetCalories" name="Mục tiêu năng lượng" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -229,8 +234,8 @@ function WeeklyReportContent({
                   <XAxis dataKey="date" />
                   <YAxis />
                   <Tooltip />
-                  <Line type="monotone" dataKey="protein" strokeWidth={2} />
-                  <Line type="monotone" dataKey="targetProtein" strokeWidth={2} />
+                  <Line type="monotone" dataKey="protein" name="Protein thực tế" strokeWidth={2} />
+                  <Line type="monotone" dataKey="targetProtein" name="Mục tiêu protein" strokeWidth={2} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -243,7 +248,7 @@ function WeeklyReportContent({
           <CardTitle>
             <div className="flex items-center gap-2">
               <Lightbulb className="h-5 w-5" />
-              Weekly Insights
+              Nhận xét trong tuần
             </div>
           </CardTitle>
         </CardHeader>
@@ -271,7 +276,7 @@ function WeeklyReportContent({
         <CardContent className="space-y-4">
           {recommendations ? (
             recommendations.recommendations.length === 0 ? (
-              <EmptyState title="No recommendations yet" description={recommendations.summary} />
+              <EmptyState title="Chưa có khuyến nghị" description={recommendations.summary} />
             ) : (
               <>
                 <div className="rounded-xl bg-slate-50 p-4 text-sm text-muted-foreground">{recommendations.summary}</div>
@@ -284,7 +289,7 @@ function WeeklyReportContent({
               </>
             )
           ) : (
-          <p className="text-sm text-muted-foreground">Đang tải khuyến nghị...</p>
+            <p className="text-sm text-muted-foreground">Đang tải khuyến nghị...</p>
           )}
         </CardContent>
       </Card>
@@ -307,7 +312,7 @@ function BodyChangeCard({
   unit: string;
   icon: ElementType;
 }) {
-  const displayChange = change == null ? "No data" : `${change > 0 ? "+" : ""}${change} ${unit}`;
+  const displayChange = change == null ? "Chưa có dữ liệu" : `${change > 0 ? "+" : ""}${change} ${unit}`;
 
   return (
     <Card>

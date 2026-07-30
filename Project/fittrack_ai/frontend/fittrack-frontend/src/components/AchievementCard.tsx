@@ -23,7 +23,9 @@ export default function AchievementCard({ achievement }: { achievement: Achievem
           <p className="mt-1 text-sm text-muted-foreground">{achievement.description}</p>
         </div>
 
-        <Badge variant={achievement.unlocked ? "default" : "secondary"}>{achievement.unlocked ? "Unlocked" : "Locked"}</Badge>
+        <Badge variant={achievement.unlocked ? "default" : "secondary"}>
+          {achievement.unlocked ? "Đã mở khóa" : "Chưa mở khóa"}
+        </Badge>
       </CardHeader>
 
       <CardContent className="space-y-2">

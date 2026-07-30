@@ -23,6 +23,17 @@ function getSeverityStyle(severity: string) {
   }
 }
 
+function getSeverityLabel(severity: string) {
+  switch (severity) {
+    case "HIGH":
+      return "Cao";
+    case "MEDIUM":
+      return "Trung bình";
+    default:
+      return "Thấp";
+  }
+}
+
 export default function RecommendationCard({ item }: { item: RecommendationItem }) {
   const style = getSeverityStyle(item.severity);
   const Icon = style.icon;
@@ -39,14 +50,14 @@ export default function RecommendationCard({ item }: { item: RecommendationItem 
           <p className="text-sm text-muted-foreground">{item.message}</p>
         </div>
 
-        <Badge variant={style.badge}>{item.severity}</Badge>
+        <Badge variant={style.badge}>{getSeverityLabel(item.severity)}</Badge>
       </CardHeader>
 
       <CardContent>
         <div className="rounded-xl bg-slate-50 p-4 text-sm">
           <div className="mb-1 flex items-center gap-2 font-medium">
             <Lightbulb className="h-4 w-4" />
-            Suggested action
+            Hành động đề xuất
           </div>
 
           <p className="text-muted-foreground">{item.action}</p>

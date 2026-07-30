@@ -32,9 +32,9 @@ public class RecommendationService {
             items.add(RecommendationItemResponse.builder()
                     .type("GENERAL")
                     .severity("LOW")
-                    .title("Good week overall")
-                    .message("Your nutrition and training look balanced this week.")
-                    .action("Keep the same plan next week and continue tracking consistently.")
+                    .title("Một tuần khá cân bằng")
+                    .message("Dinh dưỡng và tập luyện của bạn đang khá cân bằng.")
+                    .action("Tiếp tục kế hoạch hiện tại và duy trì ghi nhận dữ liệu đều đặn.")
                     .build());
         }
 
@@ -60,25 +60,25 @@ public class RecommendationService {
             items.add(RecommendationItemResponse.builder()
                     .type("NUTRITION")
                     .severity("HIGH")
-                    .title("Calories are too low")
-                    .message("Your average calories are significantly below target.")
-                    .action("Increase around " + round(Math.abs(diff)) + " kcal/day. Add rice, sweet potato, milk, olive oil, or larger meal portions.")
+                    .title("Năng lượng nạp vào quá thấp")
+                    .message("Năng lượng trung bình đang thấp hơn đáng kể so với mục tiêu.")
+                    .action("Tăng khoảng " + round(Math.abs(diff)) + " kcal mỗi ngày. Có thể bổ sung cơm, khoai lang, sữa, dầu ô liu hoặc tăng khẩu phần.")
                     .build());
         } else if (avg > target * 1.10) {
             items.add(RecommendationItemResponse.builder()
                     .type("NUTRITION")
                     .severity("MEDIUM")
-                    .title("Calories are above target")
-                    .message("Your average calories are higher than your current goal.")
-                    .action("Reduce around " + round(diff) + " kcal/day. Start by cutting snacks, sugary drinks, or excess cooking oil.")
+                    .title("Năng lượng nạp vào vượt mục tiêu")
+                    .message("Năng lượng trung bình đang cao hơn mục tiêu hiện tại.")
+                    .action("Giảm khoảng " + round(diff) + " kcal mỗi ngày. Bắt đầu bằng cách giảm đồ ăn vặt, nước ngọt hoặc dầu ăn dư thừa.")
                     .build());
         } else {
             items.add(RecommendationItemResponse.builder()
                     .type("NUTRITION")
                     .severity("LOW")
-                    .title("Calories are on track")
-                    .message("Your average calories are close to your target.")
-                    .action("Keep your current meal structure next week.")
+                    .title("Năng lượng đang đúng hướng")
+                    .message("Năng lượng trung bình đang gần với mục tiêu.")
+                    .action("Duy trì cấu trúc bữa ăn hiện tại trong tuần tới.")
                     .build());
         }
     }
@@ -97,25 +97,25 @@ public class RecommendationService {
             items.add(RecommendationItemResponse.builder()
                     .type("PROTEIN")
                     .severity("HIGH")
-                    .title("Protein is too low")
-                    .message("Your average protein intake is below your target.")
-                    .action("Add around " + round(missing) + "g protein/day. Example: chicken breast, eggs, Greek yogurt, or whey.")
+                    .title("Lượng protein quá thấp")
+                    .message("Lượng protein trung bình đang thấp hơn mục tiêu.")
+                    .action("Bổ sung khoảng " + round(missing) + " g protein mỗi ngày, chẳng hạn từ ức gà, trứng, sữa chua Hy Lạp hoặc whey.")
                     .build());
         } else if (avg < target) {
             items.add(RecommendationItemResponse.builder()
                     .type("PROTEIN")
                     .severity("MEDIUM")
-                    .title("Protein is slightly low")
-                    .message("You are close to your protein target but still under it.")
-                    .action("Add one small protein serving per day, such as eggs, yogurt, or chicken.")
+                    .title("Lượng protein hơi thấp")
+                    .message("Bạn đã gần đạt mục tiêu protein nhưng vẫn còn thiếu.")
+                    .action("Bổ sung một khẩu phần protein nhỏ mỗi ngày như trứng, sữa chua hoặc thịt gà.")
                     .build());
         } else {
             items.add(RecommendationItemResponse.builder()
                     .type("PROTEIN")
                     .severity("LOW")
-                    .title("Protein target reached")
-                    .message("Your protein intake is strong this week.")
-                    .action("Keep protein stable and adjust calories through carbs/fats if needed.")
+                    .title("Đã đạt mục tiêu protein")
+                    .message("Lượng protein trong tuần đang ở mức tốt.")
+                    .action("Duy trì lượng protein và điều chỉnh năng lượng qua tinh bột hoặc chất béo nếu cần.")
                     .build());
         }
     }
@@ -127,25 +127,25 @@ public class RecommendationService {
             items.add(RecommendationItemResponse.builder()
                     .type("TRAINING")
                     .severity("HIGH")
-                    .title("Workout frequency is low")
-                    .message("You trained fewer than 3 days this week.")
-                    .action("Aim for at least 3 sessions next week: Push, Pull, Legs or Full Body 3x/week.")
+                    .title("Tần suất tập luyện còn thấp")
+                    .message("Bạn tập ít hơn 3 ngày trong tuần.")
+                    .action("Hãy đặt mục tiêu ít nhất 3 buổi trong tuần tới, ví dụ: thân trên đẩy, thân trên kéo và chân hoặc 3 buổi toàn thân.")
                     .build());
         } else if (workoutDays <= 4) {
             items.add(RecommendationItemResponse.builder()
                     .type("TRAINING")
                     .severity("LOW")
-                    .title("Workout frequency is good")
-                    .message("You trained enough days for steady progress.")
-                    .action("Focus on progressive overload: add reps, sets, or small weight increases.")
+                    .title("Tần suất tập luyện phù hợp")
+                    .message("Bạn đã tập đủ số ngày để duy trì tiến bộ.")
+                    .action("Tập trung tăng tiến dần: thêm số lần lặp, số hiệp hoặc tăng nhẹ mức tạ.")
                     .build());
         } else {
             items.add(RecommendationItemResponse.builder()
                     .type("TRAINING")
                     .severity("MEDIUM")
-                    .title("High workout frequency")
-                    .message("You trained many days this week.")
-                    .action("Make sure sleep, calories, and recovery are sufficient. Avoid pushing every set to failure.")
+                    .title("Tần suất tập luyện cao")
+                    .message("Bạn đã tập khá nhiều ngày trong tuần.")
+                    .action("Hãy bảo đảm ngủ, dinh dưỡng và phục hồi đầy đủ; tránh tập mọi hiệp đến mức thất bại.")
                     .build());
         }
     }
@@ -158,9 +158,9 @@ public class RecommendationService {
             items.add(RecommendationItemResponse.builder()
                     .type("BODY")
                     .severity("MEDIUM")
-                    .title("Body tracking is missing")
-                    .message("There is not enough weight or waist data this week.")
-                    .action("Log body weight and waist at least 2 times per week to evaluate progress.")
+                    .title("Thiếu dữ liệu cơ thể")
+                    .message("Chưa có đủ dữ liệu cân nặng hoặc vòng eo trong tuần.")
+                    .action("Ghi cân nặng và vòng eo ít nhất 2 lần mỗi tuần để đánh giá tiến độ.")
                     .build());
             return;
         }
@@ -170,44 +170,44 @@ public class RecommendationService {
                 items.add(RecommendationItemResponse.builder()
                         .type("BODY")
                         .severity("HIGH")
-                        .title("Bulk may be too aggressive")
-                        .message("Weight and waist both increased quickly.")
-                        .action("Reduce calories by 150-250 kcal/day or increase daily steps.")
+                        .title("Tốc độ tăng cân có thể quá nhanh")
+                        .message("Cân nặng và vòng eo đều tăng nhanh.")
+                        .action("Giảm 150–250 kcal mỗi ngày hoặc tăng số bước đi hằng ngày.")
                         .build());
             } else if (weightChange > 0 && waistChange <= 0.5) {
                 items.add(RecommendationItemResponse.builder()
                         .type("BODY")
                         .severity("LOW")
-                        .title("Lean bulk looks controlled")
-                        .message("Weight increased while waist stayed controlled.")
-                        .action("Keep calories similar and continue progressive overload.")
+                        .title("Tăng cơ đang được kiểm soát")
+                        .message("Cân nặng tăng trong khi vòng eo vẫn ổn định.")
+                        .action("Duy trì mức năng lượng hiện tại và tiếp tục tăng tiến trong tập luyện.")
                         .build());
             } else if (weightChange < -0.7) {
                 items.add(RecommendationItemResponse.builder()
                         .type("BODY")
                         .severity("MEDIUM")
-                        .title("Weight dropped quickly")
-                        .message("Fast weight loss may affect recovery and strength.")
-                        .action("Increase calories slightly or ensure protein and sleep are sufficient.")
+                        .title("Cân nặng giảm nhanh")
+                        .message("Giảm cân quá nhanh có thể ảnh hưởng đến phục hồi và sức mạnh.")
+                        .action("Tăng nhẹ năng lượng hoặc bảo đảm bổ sung đủ protein và ngủ đủ.")
                         .build());
             }
         }
     }
 
     private String buildSummary(WeeklyReportResponse report) {
-        return "This week you averaged "
-                + round(safe(report.getAverageCalories())) + " kcal/day, "
-                + round(safe(report.getAverageProtein())) + "g protein/day, trained "
-                + safeInt(report.getWorkoutDays()) + " days, with weight change "
-                + formatNullable(report.getWeightChange()) + " kg.";
+        return "Trong khoảng báo cáo, trung bình mỗi ngày bạn nạp "
+                + round(safe(report.getAverageCalories())) + " kcal và "
+                + round(safe(report.getAverageProtein())) + " g protein; luyện tập "
+                + safeInt(report.getWorkoutDays()) + " ngày; thay đổi cân nặng: "
+                + formatWeightChange(report.getWeightChange()) + ".";
     }
 
-    private String formatNullable(Double value) {
+    private String formatWeightChange(Double value) {
         if (value == null) {
-            return "N/A";
+            return "chưa có dữ liệu";
         }
 
-        return String.valueOf(round(value));
+        return round(value) + " kg";
     }
 
     private double safe(Double value) {
