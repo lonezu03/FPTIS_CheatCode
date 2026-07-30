@@ -17,6 +17,11 @@ public final class AdminUserDtos {
             String fullName,
             String role,
             boolean active,
+            boolean emailVerified,
+            boolean lunchEnabled,
+            boolean fitnessEnabled,
+            boolean healthEnabled,
+            boolean chatbotEnabled,
             LocalDateTime createdAt
     ) {
     }
@@ -25,8 +30,15 @@ public final class AdminUserDtos {
             @Size(max = 255) String fullName,
             @Pattern(regexp = "USER|ADMIN", message = "role chỉ nhận USER hoặc ADMIN")
             String role,
-            Boolean active
+            Boolean active,
+            Boolean lunchEnabled,
+            Boolean fitnessEnabled,
+            Boolean healthEnabled,
+            Boolean chatbotEnabled
     ) {
+        public UpdateAdminUserRequest(String fullName, String role, Boolean active) {
+            this(fullName, role, active, null, null, null, null);
+        }
     }
 
     public record ResetPasswordRequest(

@@ -13,6 +13,8 @@ import { getApiErrorMessage } from "@/lib/format";
 import PageHeader from "@/components/PageHeader";
 import EmptyState from "@/components/common/EmptyState";
 import TableLoading from "@/components/common/TableLoading";
+import DataPagination from "@/components/common/DataPagination";
+import { usePagination } from "@/hooks/usePagination";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+type UserAccessPayload = {
+  fullName: string;
+  role: "USER" | "ADMIN";
+  active: boolean;
+  lunchEnabled: boolean;
+  fitnessEnabled: boolean;
+  healthEnabled: boolean;
+  chatbotEnabled: boolean;
+};
+
 export default function AdminUsersPage() {
   const queryClient = useQueryClient();
   const currentUserId = useAuthStore((state) => state.user?.userId);
@@ -55,7 +67,7 @@ export default function AdminUsersPage() {
       payload,
     }: {
       id: string;
-      payload: { fullName: string; role: "USER" | "ADMIN"; active: boolean };
+      payload: UserAccessPayload;
     }) => updateAdminUser(id, payload),
     onSuccess: () => {
       toast.success("Đã cập nhật tài khoản");
@@ -80,6 +92,7 @@ export default function AdminUsersPage() {
   });
 
   const users = usersQuery.data ?? [];
+  const userPagination = usePagination(users);
   const activeUsers = users.filter((user) => user.active).length;
   const admins = users.filter((user) => user.role === "ADMIN" && user.active).length;
 
@@ -149,7 +162,7 @@ export default function AdminUsersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((user) => (
+                    {userPagination.paginatedItems.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
                           <p className="font-medium">{user.fullName || "Chưa cập nhật tên"}</p>
@@ -183,7 +196,7 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="grid gap-3 md:hidden">
-                {users.map((user) => (
+                {userPagination.paginatedItems.map((user) => (
                   <Card key={user.id} size="sm">
                     <CardContent className="space-y-3">
                       <div className="flex items-start justify-between gap-3">
@@ -213,6 +226,14 @@ export default function AdminUsersPage() {
                   </Card>
                 ))}
               </div>
+              <DataPagination
+                page={userPagination.page}
+                pageSize={userPagination.pageSize}
+                totalItems={userPagination.totalItems}
+                totalPages={userPagination.totalPages}
+                onPageChange={userPagination.setPage}
+                onPageSizeChange={userPagination.setPageSize}
+              />
             </>
           )}
         </CardContent>
@@ -256,11 +277,15 @@ function EditUserDialog({
   currentUserId?: string;
   pending: boolean;
   onClose: () => void;
-  onSave: (payload: { fullName: string; role: "USER" | "ADMIN"; active: boolean }) => void;
+  onSave: (payload: UserAccessPayload) => void;
 }) {
   const [fullName, setFullName] = useState(user.fullName ?? "");
   const [role, setRole] = useState<"USER" | "ADMIN">(user.role);
   const [active, setActive] = useState(user.active);
+  const [lunchEnabled, setLunchEnabled] = useState(user.lunchEnabled);
+  const [fitnessEnabled, setFitnessEnabled] = useState(user.fitnessEnabled);
+  const [healthEnabled, setHealthEnabled] = useState(user.healthEnabled);
+  const [chatbotEnabled, setChatbotEnabled] = useState(user.chatbotEnabled);
 
   const isSelf = user.id === currentUserId;
 
@@ -310,6 +335,13 @@ function EditUserDialog({
               className="size-5 accent-emerald-700"
             />
           </label>
+          <div className="space-y-2 rounded-xl border p-3">
+            <p className="font-medium">Quyền sử dụng chức năng</p>
+            <PermissionToggle label="Đặt cơm" checked={lunchEnabled} onChange={setLunchEnabled} />
+            <PermissionToggle label="Fitness" checked={fitnessEnabled} onChange={setFitnessEnabled} />
+            <PermissionToggle label="Chăm sóc sức khỏe" checked={healthEnabled} onChange={setHealthEnabled} />
+            <PermissionToggle label="Trợ lý AI" checked={chatbotEnabled} onChange={setChatbotEnabled} />
+          </div>
         </div>
 
         <DialogFooter>
@@ -317,7 +349,17 @@ function EditUserDialog({
             Hủy
           </Button>
           <Button
-            onClick={() => onSave({ fullName: fullName.trim(), role, active })}
+            onClick={() =>
+              onSave({
+                fullName: fullName.trim(),
+                role,
+                active,
+                lunchEnabled,
+                fitnessEnabled,
+                healthEnabled,
+                chatbotEnabled,
+              })
+            }
             disabled={pending || !fullName.trim()}
           >
             {pending ? "Đang lưu..." : "Lưu thay đổi"}
@@ -373,6 +415,28 @@ function ResetPasswordDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PermissionToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+      <span>{label}</span>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="size-4 accent-emerald-700"
+      />
+    </label>
   );
 }
 

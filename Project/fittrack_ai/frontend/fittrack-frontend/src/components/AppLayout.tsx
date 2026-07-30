@@ -8,10 +8,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import {
   Activity,
   Apple,
+  BellRing,
   CalendarDays,
   ChevronRight,
   Dumbbell,
   FileBarChart,
+  HeartPulse,
   LayoutDashboard,
   ListPlus,
   LogOut,
@@ -27,6 +29,7 @@ import {
 import NotificationBell from "@/components/notifications/NotificationBell";
 import AssistantChat from "@/components/assistant/AssistantChat";
 import BackendKeepAlive from "@/components/BackendKeepAlive";
+import { canUseFeature, type FeaturePermission } from "@/lib/feature-access";
 
 type NavItem = {
   to: string;
@@ -35,6 +38,7 @@ type NavItem = {
   icon: ElementType;
   adminOnly?: boolean;
   highlight?: boolean;
+  feature?: FeaturePermission;
 };
 
 type NavGroup = {
@@ -47,25 +51,26 @@ const navGroups: NavGroup[] = [
     label: "Không gian của bạn",
     items: [
       { to: "/dashboard", label: "Tổng quan", description: "Hôm nay", icon: LayoutDashboard },
-      { to: "/lunch", label: "Đặt cơm", description: "Menu hằng ngày", icon: Soup, highlight: true },
+      { to: "/lunch", label: "Đặt cơm", description: "Menu hằng ngày", icon: Soup, highlight: true, feature: "lunchEnabled" },
     ],
   },
   {
     label: "Luyện tập",
     items: [
-      { to: "/workouts", label: "Buổi tập", icon: Dumbbell },
-      { to: "/workout-plans", label: "Giáo án", icon: CalendarDays },
-      { to: "/exercises", label: "Kho bài tập", icon: ListPlus },
+      { to: "/workouts", label: "Buổi tập", icon: Dumbbell, feature: "fitnessEnabled" },
+      { to: "/workout-plans", label: "Giáo án", icon: CalendarDays, feature: "fitnessEnabled" },
+      { to: "/exercises", label: "Kho bài tập", icon: ListPlus, feature: "fitnessEnabled" },
     ],
   },
   {
     label: "Dinh dưỡng & tiến độ",
     items: [
-      { to: "/nutrition", label: "Nhật ký ăn uống", icon: Apple },
-      { to: "/foods", label: "Kho thực phẩm", icon: Utensils },
-      { to: "/body", label: "Chỉ số cơ thể", icon: Activity },
-      { to: "/reports/weekly", label: "Báo cáo tuần", icon: FileBarChart },
-      { to: "/achievements", label: "Thành tích", icon: Trophy },
+      { to: "/nutrition", label: "Nhật ký ăn uống", icon: Apple, feature: "healthEnabled" },
+      { to: "/foods", label: "Kho thực phẩm", icon: Utensils, feature: "healthEnabled" },
+      { to: "/body", label: "Chỉ số cơ thể", icon: Activity, feature: "healthEnabled" },
+      { to: "/health", label: "Sức khỏe toàn diện", icon: HeartPulse, feature: "healthEnabled" },
+      { to: "/reports/weekly", label: "Báo cáo tuần", icon: FileBarChart, feature: "healthEnabled" },
+      { to: "/achievements", label: "Thành tích", icon: Trophy, feature: "fitnessEnabled" },
     ],
   },
   {
@@ -74,6 +79,7 @@ const navGroups: NavGroup[] = [
       { to: "/profile", label: "Hồ sơ cá nhân", icon: User },
       { to: "/admin/lunch", label: "Điều phối cơm", icon: ShieldCheck, adminOnly: true },
       { to: "/admin/users", label: "Quản lý tài khoản", icon: UsersRound, adminOnly: true },
+      { to: "/admin/notifications", label: "Gửi thông báo", icon: BellRing, adminOnly: true },
     ],
   },
 ];
@@ -95,6 +101,10 @@ export default function AppLayout() {
         email: profile.email,
         fullName: profile.fullName,
         role: profile.role,
+        lunchEnabled: profile.lunchEnabled,
+        fitnessEnabled: profile.fitnessEnabled,
+        healthEnabled: profile.healthEnabled,
+        chatbotEnabled: profile.chatbotEnabled,
       });
       return profile;
     },
@@ -107,10 +117,14 @@ export default function AppLayout() {
       navGroups
         .map((group) => ({
           ...group,
-          items: group.items.filter((item) => !item.adminOnly || isAdmin),
+          items: group.items.filter(
+            (item) =>
+              (!item.adminOnly || isAdmin) &&
+              (!item.feature || canUseFeature(authUser, item.feature)),
+          ),
         }))
         .filter((group) => group.items.length > 0),
-    [isAdmin],
+    [authUser, isAdmin],
   );
   const allItems = visibleGroups.flatMap((group) => group.items);
   const currentPage =
@@ -235,7 +249,7 @@ export default function AppLayout() {
 
             <div className="flex items-center gap-2">
               <NotificationBell isAdmin={isAdmin} />
-              {location.pathname !== "/lunch" && (
+              {location.pathname !== "/lunch" && canUseFeature(authUser, "lunchEnabled") && (
                 <Button asChild variant="outline" className="hidden border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:inline-flex">
                   <Link to="/lunch">
                     <Soup className="size-4" />
@@ -264,7 +278,7 @@ export default function AppLayout() {
         </main>
       </div>
       <BackendKeepAlive />
-      <AssistantChat />
+      {canUseFeature(authUser, "chatbotEnabled") && <AssistantChat />}
     </div>
   );
 }

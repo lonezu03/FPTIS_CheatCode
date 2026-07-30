@@ -19,6 +19,7 @@ import org.springframework.http.HttpMethod;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final FeatureAccessFilter featureAccessFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -39,12 +40,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/health",
-                                "/api/auth/register",
-                                "/api/auth/login",
+                                "/api/auth/**",
                                 "/api/media/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/exercises/suggestions",
+                                "/api/foods/suggestions"
+                        ).authenticated()
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/exercises/**",
@@ -70,6 +75,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(featureAccessFilter, JwtAuthFilter.class)
                 .build();
     }
 

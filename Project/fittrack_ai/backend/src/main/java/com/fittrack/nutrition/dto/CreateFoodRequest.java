@@ -20,6 +20,22 @@ public class CreateFoodRequest {
     private Double carbs;
     @PositiveOrZero
     private Double fat;
+    @PositiveOrZero
+    private Double fiber;
+    @PositiveOrZero
+    private Double sugar;
+    @PositiveOrZero
+    private Double sodium;
+    @PositiveOrZero
+    private Double potassium;
+    @PositiveOrZero
+    private Double calcium;
+    @PositiveOrZero
+    private Double iron;
+    @PositiveOrZero
+    private Double vitaminC;
+    @PositiveOrZero
+    private Double water;
     @Size(max = 100)
     private String unit;
     @Size(max = 2_000_000)

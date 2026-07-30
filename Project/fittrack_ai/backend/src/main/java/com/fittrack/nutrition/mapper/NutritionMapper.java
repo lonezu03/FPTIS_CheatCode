@@ -22,6 +22,14 @@ public class NutritionMapper {
                 .protein(food.getProtein())
                 .carbs(food.getCarbs())
                 .fat(food.getFat())
+                .fiber(food.getFiber())
+                .sugar(food.getSugar())
+                .sodium(food.getSodium())
+                .potassium(food.getPotassium())
+                .calcium(food.getCalcium())
+                .iron(food.getIron())
+                .vitaminC(food.getVitaminC())
+                .water(food.getWater())
                 .unit(food.getUnit())
                 .imageUrl(ImageReferences.responseUrl(
                         food.getImageUrl(),
@@ -29,6 +37,18 @@ public class NutritionMapper {
                 ))
                 .custom(food.getCustom())
                 .active(food.getActive())
+                .approvalStatus(food.getApprovalStatus())
+                .submittedById(
+                        food.getSubmittedBy() == null
+                                ? null
+                                : food.getSubmittedBy().getId()
+                )
+                .submittedByName(
+                        food.getSubmittedBy() == null
+                                ? null
+                                : food.getSubmittedBy().getFullName()
+                )
+                .adminNote(food.getAdminNote())
                 .build();
     }
 
@@ -50,6 +70,14 @@ public class NutritionMapper {
                 .protein(item.getProtein())
                 .carbs(item.getCarbs())
                 .fat(item.getFat())
+                .fiber(item.getFiber())
+                .sugar(item.getSugar())
+                .sodium(item.getSodium())
+                .potassium(item.getPotassium())
+                .calcium(item.getCalcium())
+                .iron(item.getIron())
+                .vitaminC(item.getVitaminC())
+                .water(item.getWater())
                 .build();
     }
 
@@ -62,6 +90,14 @@ public class NutritionMapper {
                 .totalProtein(mealLog.getTotalProtein())
                 .totalCarbs(mealLog.getTotalCarbs())
                 .totalFat(mealLog.getTotalFat())
+                .totalFiber(sum(mealLog, MealItem::getFiber))
+                .totalSugar(sum(mealLog, MealItem::getSugar))
+                .totalSodium(sum(mealLog, MealItem::getSodium))
+                .totalPotassium(sum(mealLog, MealItem::getPotassium))
+                .totalCalcium(sum(mealLog, MealItem::getCalcium))
+                .totalIron(sum(mealLog, MealItem::getIron))
+                .totalVitaminC(sum(mealLog, MealItem::getVitaminC))
+                .totalWater(sum(mealLog, MealItem::getWater))
                 .createdAt(mealLog.getCreatedAt())
                 .sourceType(mealLog.getSourceLunchOrderId() == null ? "MANUAL" : "LUNCH_ORDER")
                 .sourceId(mealLog.getSourceLunchOrderId())
@@ -70,6 +106,18 @@ public class NutritionMapper {
                         .map(this::toMealItemResponse)
                         .toList())
                 .build();
+    }
+
+    private double sum(
+            MealLog mealLog,
+            java.util.function.Function<MealItem, Double> getter
+    ) {
+        return mealLog.getItems()
+                .stream()
+                .map(getter)
+                .filter(java.util.Objects::nonNull)
+                .mapToDouble(Double::doubleValue)
+                .sum();
     }
 
     public List<MealLogResponse> toMealLogResponseList(List<MealLog> mealLogs) {

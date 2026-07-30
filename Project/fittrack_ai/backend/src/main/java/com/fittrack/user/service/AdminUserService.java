@@ -70,6 +70,18 @@ public class AdminUserService {
         }
         target.setRole(nextRole);
         target.setActive(nextActive);
+        if (request.lunchEnabled() != null) {
+            target.setLunchEnabled(request.lunchEnabled());
+        }
+        if (request.fitnessEnabled() != null) {
+            target.setFitnessEnabled(request.fitnessEnabled());
+        }
+        if (request.healthEnabled() != null) {
+            target.setHealthEnabled(request.healthEnabled());
+        }
+        if (request.chatbotEnabled() != null) {
+            target.setChatbotEnabled(request.chatbotEnabled());
+        }
         return toResponse(userRepository.save(target));
     }
 
@@ -88,6 +100,11 @@ public class AdminUserService {
                 user.getFullName(),
                 user.getRole(),
                 Boolean.TRUE.equals(user.getActive()),
+                Boolean.TRUE.equals(user.getEmailVerified()),
+                Boolean.TRUE.equals(user.getLunchEnabled()),
+                Boolean.TRUE.equals(user.getFitnessEnabled()),
+                Boolean.TRUE.equals(user.getHealthEnabled()),
+                Boolean.TRUE.equals(user.getChatbotEnabled()),
                 user.getCreatedAt()
         );
     }

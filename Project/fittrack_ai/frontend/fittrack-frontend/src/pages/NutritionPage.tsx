@@ -19,6 +19,9 @@ import MacroProgressCard from "../components/MacroProgressCard";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import TableLoading from "../components/common/TableLoading";
+import DataPagination from "../components/common/DataPagination";
+import { usePagination } from "../hooks/usePagination";
+import FormField from "../components/common/FormField";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +86,7 @@ export default function NutritionPage() {
 
   const foods = foodsQuery.data ?? [];
   const logs = mealLogsQuery.data ?? [];
+  const mealPagination = usePagination(logs);
   const dashboard = dashboardQuery.data;
   const defaultFoodId = foods[0]?.id ?? "";
 
@@ -335,18 +339,19 @@ export default function NutritionPage() {
               <Button onClick={() => setSearchKeyword(keyword)}>Tìm</Button>
             </div>
 
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={mealType}
-              onChange={(event) => setMealType(event.target.value)}
-            >
-              <option value="BREAKFAST">Bữa sáng</option>
-              <option value="LUNCH">Bữa trưa</option>
-              <option value="DINNER">Bữa tối</option>
-              <option value="SNACK">Ăn nhẹ</option>
-            </select>
-
-            <Input type="date" value={logDate} onChange={(event) => setLogDate(event.target.value)} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Loại bữa ăn" htmlFor="meal-type" hint="Chọn thời điểm ăn phù hợp." required>
+                <select id="meal-type" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={mealType} onChange={(event) => setMealType(event.target.value)}>
+                  <option value="BREAKFAST">Bữa sáng</option>
+                  <option value="LUNCH">Bữa trưa</option>
+                  <option value="DINNER">Bữa tối</option>
+                  <option value="SNACK">Ăn nhẹ</option>
+                </select>
+              </FormField>
+              <FormField label="Ngày ăn" htmlFor="meal-date" hint="Ngày thực tế bạn dùng bữa." required>
+                <Input id="meal-date" type="date" value={logDate} onChange={(event) => setLogDate(event.target.value)} />
+              </FormField>
+            </div>
 
             {foods.length === 0 ? (
               <EmptyState
@@ -357,31 +362,24 @@ export default function NutritionPage() {
               <>
                 <div className="space-y-3">
                   {items.map((item, index) => (
-                    <div key={index} className="grid gap-3 rounded-xl border bg-slate-50 p-3 md:grid-cols-5">
-                      <select
-                        className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-3"
-                        value={item.foodId || defaultFoodId}
-                        onChange={(event) => updateItem(index, "foodId", event.target.value)}
-                      >
-                        {foods.map((food) => (
-                          <option key={food.id} value={food.id}>
-                            {food.name} / {food.unit}
-                          </option>
-                        ))}
-                      </select>
-
-                      <Input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={item.quantity}
-                        onChange={(event) => updateItem(index, "quantity", Number(event.target.value))}
-                        placeholder="Số lượng"
-                      />
+                    <div key={index} className="grid gap-3 rounded-xl border bg-slate-50 p-4 md:grid-cols-5">
+                      <FormField label={`Món ${index + 1}`} htmlFor={`meal-food-${index}`} hint="Dinh dưỡng được tính theo khẩu phần chuẩn của món." className="md:col-span-3" required>
+                        <select id={`meal-food-${index}`} className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={item.foodId || defaultFoodId} onChange={(event) => updateItem(index, "foodId", event.target.value)}>
+                          {foods.map((food) => (
+                            <option key={food.id} value={food.id}>
+                              {food.name} / {food.unit}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
+                      <FormField label="Số khẩu phần" htmlFor={`meal-quantity-${index}`} hint="1 = một khẩu phần chuẩn." required>
+                        <Input id={`meal-quantity-${index}`} type="number" min="0.1" step="0.1" value={item.quantity} onChange={(event) => updateItem(index, "quantity", Number(event.target.value))} />
+                      </FormField>
 
                       <Button
                         variant="destructive"
                         size="sm"
+                        className="self-end"
                         onClick={() => removeItem(index)}
                         disabled={items.length === 1}
                       >
@@ -449,7 +447,7 @@ export default function NutritionPage() {
                 </TableHeader>
 
                 <TableBody>
-                  {logs.map((log) => {
+                  {mealPagination.paginatedItems.map((log) => {
                     const automated = isAutomatedMeal(log);
 
                     return (
@@ -506,6 +504,14 @@ export default function NutritionPage() {
                   })}
                 </TableBody>
               </Table>
+              <DataPagination
+                page={mealPagination.page}
+                pageSize={mealPagination.pageSize}
+                totalItems={mealPagination.totalItems}
+                totalPages={mealPagination.totalPages}
+                onPageChange={mealPagination.setPage}
+                onPageSizeChange={mealPagination.setPageSize}
+              />
             </div>
           )}
         </CardContent>

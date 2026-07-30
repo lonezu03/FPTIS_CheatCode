@@ -4,9 +4,12 @@ import com.fittrack.workout.dto.CreateExerciseRequest;
 import com.fittrack.workout.dto.ExerciseResponse;
 import com.fittrack.workout.dto.UpdateExerciseRequest;
 import com.fittrack.workout.service.ExerciseService;
+import com.fittrack.common.dto.CatalogReviewRequest;
+import com.fittrack.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.List;
 
@@ -19,15 +22,43 @@ public class ExerciseController {
 
     @GetMapping
     public List<ExerciseResponse> getExercises(
+            @AuthenticationPrincipal User user,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean includeInactive
     ) {
-        return exerciseService.getExercises(keyword, includeInactive);
+        boolean admin = "ADMIN".equalsIgnoreCase(user.getRole());
+        return exerciseService.getExercises(
+                keyword,
+                admin && Boolean.TRUE.equals(includeInactive)
+        );
+    }
+
+    @GetMapping("/mine")
+    public List<ExerciseResponse> getMySubmissions(
+            @AuthenticationPrincipal User user
+    ) {
+        return exerciseService.getMySubmissions(user);
     }
 
     @PostMapping
     public ExerciseResponse create(@Valid @RequestBody CreateExerciseRequest request) {
         return exerciseService.create(request);
+    }
+
+    @PostMapping("/suggestions")
+    public ExerciseResponse suggest(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody CreateExerciseRequest request
+    ) {
+        return exerciseService.createSuggestion(user, request);
+    }
+
+    @PatchMapping("/{id}/review")
+    public ExerciseResponse review(
+            @PathVariable String id,
+            @Valid @RequestBody CatalogReviewRequest request
+    ) {
+        return exerciseService.review(id, request);
     }
 
     @PutMapping("/{id}")

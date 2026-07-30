@@ -17,6 +17,9 @@ import PageHeader from "../components/PageHeader";
 import TableLoading from "../components/common/TableLoading";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
+import DataPagination from "../components/common/DataPagination";
+import { usePagination } from "../hooks/usePagination";
+import FormField from "../components/common/FormField";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,12 +46,12 @@ export default function WorkoutPlansPage() {
 
   const today = toLocalDateInput();
 
-  const [name, setName] = useState("Home Dumbbell Hypertrophy");
-  const [description, setDescription] = useState("3-day workout plan using dumbbells, rings and pull-up bar");
+  const [name, setName] = useState("Giáo án tăng cơ tại nhà");
+  const [description, setDescription] = useState("Giáo án 3 ngày với tạ đơn, vòng treo và xà đơn");
 
   const [draftDays, setDraftDays] = useState<PlanDayDraft[]>([
     {
-      name: "Push Day",
+      name: "Ngày tập đẩy",
       dayOrder: 1,
       exercises: [
         {
@@ -75,29 +78,30 @@ export default function WorkoutPlansPage() {
 
   const exercises = exercisesQuery.data ?? [];
   const plans = plansQuery.data ?? [];
+  const planPagination = usePagination(plans, 10);
   const defaultExerciseId = exercises[0]?.id ?? "";
 
   const createMutation = useMutation({
     mutationFn: createWorkoutPlan,
     onSuccess: () => {
-      toast.success("Workout plan created");
+      toast.success("Đã tạo giáo án");
       queryClient.invalidateQueries({ queryKey: ["workout-plans"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot create workout plan");
+      toast.error(message || "Không thể tạo giáo án");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteWorkoutPlan,
     onSuccess: () => {
-      toast.success("Workout plan deleted");
+      toast.success("Đã xóa giáo án");
       queryClient.invalidateQueries({ queryKey: ["workout-plans"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot delete workout plan");
+      toast.error(message || "Không thể xóa giáo án");
     },
   });
 
@@ -109,7 +113,7 @@ export default function WorkoutPlansPage() {
         note: payload.note,
       }),
     onSuccess: () => {
-      toast.success("Workout session generated");
+      toast.success("Đã tạo buổi tập từ giáo án");
       queryClient.invalidateQueries({ queryKey: ["workout-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
@@ -119,7 +123,7 @@ export default function WorkoutPlansPage() {
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot generate session");
+      toast.error(message || "Không thể tạo buổi tập");
     },
   });
 
@@ -127,7 +131,7 @@ export default function WorkoutPlansPage() {
     setDraftDays((prev) => [
       ...prev,
       {
-        name: `Day ${prev.length + 1}`,
+          name: `Ngày ${prev.length + 1}`,
         dayOrder: prev.length + 1,
         exercises: [
           {
@@ -251,33 +255,36 @@ export default function WorkoutPlansPage() {
   }
 
   if (exercisesQuery.isError || plansQuery.isError) {
-    return <ErrorState title="Cannot load workout plans" message="Please try refreshing the page." />;
+    return <ErrorState title="Không thể tải giáo án" message="Vui lòng tải lại trang." />;
   }
 
   return (
     <div className="space-y-4 md:space-y-6">
       <PageHeader
-        title="Workout Plans"
-        description="Create reusable training plans and generate workout sessions from them."
+        title="Giáo án"
+        description="Tạo giáo án dùng lại và khởi tạo nhanh các buổi tập."
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Create Workout Plan</CardTitle>
+            <CardTitle>Tạo giáo án</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Plan name" />
-
-            <Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" />
+            <FormField label="Tên giáo án" htmlFor="plan-name" hint="Tên ngắn gọn để bạn dễ tìm và sử dụng lại." required>
+              <Input id="plan-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ví dụ: Tăng cơ tại nhà" />
+            </FormField>
+            <FormField label="Mô tả mục tiêu" htmlFor="plan-description" hint="Ghi mục tiêu, số ngày và dụng cụ cần thiết.">
+              <Input id="plan-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Ví dụ: 3 ngày/tuần với tạ đơn" />
+            </FormField>
           </div>
 
           <div className="space-y-4">
             {draftDays.map((day, dayIndex) => (
               <div key={dayIndex} className="space-y-4 rounded-2xl border bg-slate-50 p-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Day {dayIndex + 1}</h3>
+                  <h3 className="font-semibold">Ngày {dayIndex + 1}</h3>
 
                   <Button
                     variant="destructive"
@@ -285,93 +292,121 @@ export default function WorkoutPlansPage() {
                     onClick={() => removeDay(dayIndex)}
                     disabled={draftDays.length === 1}
                   >
-                    Remove Day
+                    Xóa ngày
                   </Button>
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-3">
-                  <Input
-                    value={day.name}
-                    onChange={(event) => updateDay(dayIndex, "name", event.target.value)}
-                    placeholder="Day name"
-                  />
-
-                  <Input
-                    type="number"
-                    value={day.dayOrder}
-                    onChange={(event) => updateDay(dayIndex, "dayOrder", Number(event.target.value))}
-                    placeholder="Day order"
-                  />
+                  <FormField label="Tên ngày tập" htmlFor={`plan-day-name-${dayIndex}`} hint="Ví dụ: Ngày đẩy, Chân & mông." className="md:col-span-2" required>
+                    <Input
+                      id={`plan-day-name-${dayIndex}`}
+                      value={day.name}
+                      onChange={(event) => updateDay(dayIndex, "name", event.target.value)}
+                      placeholder="Tên ngày tập"
+                    />
+                  </FormField>
+                  <FormField label="Thứ tự ngày" htmlFor={`plan-day-order-${dayIndex}`} hint="Vị trí ngày trong giáo án." required>
+                    <Input
+                      id={`plan-day-order-${dayIndex}`}
+                      type="number"
+                      min={1}
+                      value={day.dayOrder}
+                      onChange={(event) => updateDay(dayIndex, "dayOrder", Number(event.target.value))}
+                    />
+                  </FormField>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-muted-foreground">Exercises</p>
+                    <div>
+                      <p className="text-sm font-semibold">Danh sách bài tập</p>
+                      <p className="text-xs text-muted-foreground">Thiết lập khối lượng mục tiêu cho từng bài.</p>
+                    </div>
 
                     <Button variant="outline" size="sm" onClick={() => addExerciseToDay(dayIndex)}>
-                      Add Exercise
+                    Thêm bài tập
                     </Button>
                   </div>
 
                   {day.exercises.map((exercise, exerciseIndex) => (
-                    <div key={exerciseIndex} className="grid gap-3 rounded-xl border bg-white p-3 md:grid-cols-7">
-                      <select
-                        className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
-                        value={exercise.exerciseId || defaultExerciseId}
-                        onChange={(event) =>
-                          updateDayExercise(dayIndex, exerciseIndex, "exerciseId", event.target.value)
-                        }
-                      >
-                        {exercises.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name}
-                          </option>
-                        ))}
-                      </select>
+                    <div key={exerciseIndex} className="grid gap-3 rounded-xl border bg-white p-4 md:grid-cols-12">
+                      <FormField label="Bài tập" htmlFor={`plan-exercise-${dayIndex}-${exerciseIndex}`} className="md:col-span-4" required>
+                        <select
+                          id={`plan-exercise-${dayIndex}-${exerciseIndex}`}
+                          className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          value={exercise.exerciseId || defaultExerciseId}
+                          onChange={(event) =>
+                            updateDayExercise(dayIndex, exerciseIndex, "exerciseId", event.target.value)
+                          }
+                        >
+                          {exercises.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
+                          ))}
+                        </select>
+                      </FormField>
 
-                      <Input
-                        type="number"
-                        value={exercise.targetSets}
-                        onChange={(event) =>
-                          updateDayExercise(dayIndex, exerciseIndex, "targetSets", Number(event.target.value))
-                        }
-                        placeholder="Sets"
-                      />
+                      <FormField label="Số hiệp" htmlFor={`plan-sets-${dayIndex}-${exerciseIndex}`} hint="Số lượt thực hiện." className="md:col-span-2" required>
+                        <Input
+                          id={`plan-sets-${dayIndex}-${exerciseIndex}`}
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={exercise.targetSets}
+                          onChange={(event) =>
+                            updateDayExercise(dayIndex, exerciseIndex, "targetSets", Number(event.target.value))
+                          }
+                        />
+                      </FormField>
 
-                      <Input
-                        type="number"
-                        value={exercise.targetReps}
-                        onChange={(event) =>
-                          updateDayExercise(dayIndex, exerciseIndex, "targetReps", Number(event.target.value))
-                        }
-                        placeholder="Reps"
-                      />
+                      <FormField label="Lần lặp/hiệp" htmlFor={`plan-reps-${dayIndex}-${exerciseIndex}`} unit="reps" className="md:col-span-2" required>
+                        <Input
+                          id={`plan-reps-${dayIndex}-${exerciseIndex}`}
+                          type="number"
+                          min={1}
+                          max={100}
+                          value={exercise.targetReps}
+                          onChange={(event) =>
+                            updateDayExercise(dayIndex, exerciseIndex, "targetReps", Number(event.target.value))
+                          }
+                        />
+                      </FormField>
 
-                      <Input
-                        type="number"
-                        value={exercise.targetWeight}
-                        onChange={(event) =>
-                          updateDayExercise(dayIndex, exerciseIndex, "targetWeight", Number(event.target.value))
-                        }
-                        placeholder="Weight"
-                      />
+                      <FormField label="Mức tạ" htmlFor={`plan-weight-${dayIndex}-${exerciseIndex}`} unit="kg" className="md:col-span-2">
+                        <Input
+                          id={`plan-weight-${dayIndex}-${exerciseIndex}`}
+                          type="number"
+                          min={0}
+                          step={0.5}
+                          value={exercise.targetWeight}
+                          onChange={(event) =>
+                            updateDayExercise(dayIndex, exerciseIndex, "targetWeight", Number(event.target.value))
+                          }
+                        />
+                      </FormField>
 
-                      <Input
-                        type="number"
-                        value={exercise.targetRir}
-                        onChange={(event) =>
-                          updateDayExercise(dayIndex, exerciseIndex, "targetRir", Number(event.target.value))
-                        }
-                        placeholder="RIR"
-                      />
+                      <FormField label="RIR" htmlFor={`plan-rir-${dayIndex}-${exerciseIndex}`} hint="Số lần còn có thể lặp." className="md:col-span-2">
+                        <Input
+                          id={`plan-rir-${dayIndex}-${exerciseIndex}`}
+                          type="number"
+                          min={0}
+                          max={10}
+                          value={exercise.targetRir}
+                          onChange={(event) =>
+                            updateDayExercise(dayIndex, exerciseIndex, "targetRir", Number(event.target.value))
+                          }
+                        />
+                      </FormField>
 
                       <Button
                         variant="destructive"
                         size="sm"
+                        className="md:col-span-2 md:self-end"
                         onClick={() => removeExerciseFromDay(dayIndex, exerciseIndex)}
                         disabled={day.exercises.length === 1}
                       >
-                        Remove
+                        Xóa
                       </Button>
                     </div>
                   ))}
@@ -382,42 +417,52 @@ export default function WorkoutPlansPage() {
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={addDay}>
-              Add Day
+              Thêm ngày
             </Button>
 
             <Button onClick={handleCreate} disabled={createMutation.isPending || exercises.length === 0}>
-              {createMutation.isPending ? "Creating..." : "Create Plan"}
+              {createMutation.isPending ? "Đang tạo..." : "Tạo giáo án"}
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {plans.length === 0 ? (
-        <EmptyState title="No workout plans yet" description="Create a reusable workout plan to generate sessions faster." />
+        <EmptyState title="Chưa có giáo án" description="Tạo giáo án dùng lại để bắt đầu buổi tập nhanh hơn." />
       ) : (
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
-          {plans.map((plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan}
-              isDeleting={deleteMutation.isPending}
-              isGenerating={generateMutation.isPending}
-              onDelete={() => {
-                if (!window.confirm("Delete this workout plan?")) {
-                  return;
-                }
+        <div className="space-y-4">
+          <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+            {planPagination.paginatedItems.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                isDeleting={deleteMutation.isPending}
+                isGenerating={generateMutation.isPending}
+                onDelete={() => {
+                  if (!window.confirm("Bạn có chắc muốn xóa giáo án này?")) {
+                    return;
+                  }
 
-                deleteMutation.mutate(plan.id);
-              }}
-              onGenerate={(dayId, dayName) =>
-                generateMutation.mutate({
-                  planId: plan.id,
-                  dayId,
-                  note: `${plan.name} - ${dayName}`,
-                })
-              }
-            />
-          ))}
+                  deleteMutation.mutate(plan.id);
+                }}
+                onGenerate={(dayId, dayName) =>
+                  generateMutation.mutate({
+                    planId: plan.id,
+                    dayId,
+                    note: `${plan.name} - ${dayName}`,
+                  })
+                }
+              />
+            ))}
+          </div>
+          <DataPagination
+            page={planPagination.page}
+            pageSize={planPagination.pageSize}
+            totalItems={planPagination.totalItems}
+            totalPages={planPagination.totalPages}
+            onPageChange={planPagination.setPage}
+            onPageSizeChange={planPagination.setPageSize}
+          />
         </div>
       )}
     </div>
@@ -447,7 +492,7 @@ function PlanCard({
           </div>
 
           <Button variant="destructive" size="sm" onClick={onDelete} disabled={isDeleting}>
-            Delete
+            Xóa
           </Button>
         </div>
       </CardHeader>
@@ -457,11 +502,11 @@ function PlanCard({
           <div key={day.id} className="rounded-xl border p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h3 className="font-semibold">
-                Day {day.dayOrder}: {day.name}
+                Ngày {day.dayOrder}: {day.name}
               </h3>
 
               <Button size="sm" onClick={() => onGenerate(day.id, day.name)} disabled={isGenerating}>
-                Generate Session
+                Tạo buổi tập
               </Button>
             </div>
 
@@ -472,8 +517,8 @@ function PlanCard({
                     <TableRow key={exercise.id}>
                       <TableCell className="font-medium">{exercise.exerciseName}</TableCell>
                       <TableCell>{exercise.muscleGroup}</TableCell>
-                      <TableCell>{exercise.targetSets} sets</TableCell>
-                      <TableCell>{exercise.targetReps} reps</TableCell>
+                    <TableCell>{exercise.targetSets} hiệp</TableCell>
+                    <TableCell>{exercise.targetReps} lần</TableCell>
                       <TableCell>{exercise.targetWeight}kg</TableCell>
                       <TableCell>RIR {exercise.targetRir}</TableCell>
                     </TableRow>

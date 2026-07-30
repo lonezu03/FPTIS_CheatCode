@@ -1,6 +1,7 @@
 package com.fittrack.nutrition.repository;
 
 import com.fittrack.nutrition.entity.Food;
+import com.fittrack.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -13,5 +14,7 @@ public interface FoodRepository extends JpaRepository<Food, String> {
     List<Food> findByNameContainingIgnoreCaseOrderByNameAsc(String keyword);
 
     List<Food> findAllByOrderByNameAsc();
+
+    List<Food> findBySubmittedByOrderByCreatedAtDesc(User submittedBy);
 }
 

@@ -17,6 +17,14 @@ public class MealLogResponse {
     private Double totalProtein;
     private Double totalCarbs;
     private Double totalFat;
+    private Double totalFiber;
+    private Double totalSugar;
+    private Double totalSodium;
+    private Double totalPotassium;
+    private Double totalCalcium;
+    private Double totalIron;
+    private Double totalVitaminC;
+    private Double totalWater;
     private LocalDateTime createdAt;
     private String sourceType;
     private String sourceId;

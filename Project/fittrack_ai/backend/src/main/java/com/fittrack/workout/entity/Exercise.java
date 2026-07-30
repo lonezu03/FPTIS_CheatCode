@@ -1,5 +1,6 @@
 package com.fittrack.workout.entity;
 
+import com.fittrack.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -34,6 +35,20 @@ public class Exercise {
 
     private Boolean active;
 
+    // Existing exercises predate the approval workflow, so they are treated as
+    // approved when Hibernate adds this required column to an existing schema.
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'APPROVED'")
+    private String approvalStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "submitted_by_id")
+    private User submittedBy;
+
+    @Column(length = 500)
+    private String adminNote;
+
+    private LocalDateTime reviewedAt;
+
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -46,6 +61,10 @@ public class Exercise {
 
         if (this.active == null) {
             this.active = true;
+        }
+
+        if (this.approvalStatus == null) {
+            this.approvalStatus = "APPROVED";
         }
     }
 }

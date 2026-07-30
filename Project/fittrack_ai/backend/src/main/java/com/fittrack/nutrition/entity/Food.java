@@ -1,5 +1,6 @@
 package com.fittrack.nutrition.entity;
 
+import com.fittrack.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,6 +30,22 @@ public class Food {
 
     private Double fat;
 
+    private Double fiber;
+
+    private Double sugar;
+
+    private Double sodium;
+
+    private Double potassium;
+
+    private Double calcium;
+
+    private Double iron;
+
+    private Double vitaminC;
+
+    private Double water;
+
     private String unit;
 
     @Column(columnDefinition = "TEXT")
@@ -37,6 +54,21 @@ public class Food {
     private Boolean custom;
 
     private Boolean active;
+
+    // The database already contains foods created before moderation was added.
+    // A database default lets Hibernate add the NOT NULL column without
+    // invalidating those existing rows during an update migration.
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'APPROVED'")
+    private String approvalStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "submitted_by_id")
+    private User submittedBy;
+
+    @Column(length = 500)
+    private String adminNote;
+
+    private LocalDateTime reviewedAt;
 
     private LocalDateTime createdAt;
 
@@ -50,6 +82,10 @@ public class Food {
 
         if (this.active == null) {
             this.active = true;
+        }
+
+        if (this.approvalStatus == null) {
+            this.approvalStatus = "APPROVED";
         }
     }
 }

@@ -20,6 +20,9 @@ import PageHeader from "../components/PageHeader";
 import TableLoading from "../components/common/TableLoading";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
+import DataPagination from "../components/common/DataPagination";
+import { usePagination } from "../hooks/usePagination";
+import FormField from "../components/common/FormField";
 
 export default function WorkoutPage() {
   const queryClient = useQueryClient();
@@ -54,12 +57,14 @@ export default function WorkoutPage() {
 
   const exercises = exercisesQuery.data ?? [];
   const sessions = sessionsQuery.data ?? [];
+  const workoutRows = sessions.flatMap((session) => session.sets.map((set) => ({ session, set })));
+  const workoutPagination = usePagination(workoutRows);
   const selectedExerciseId = exerciseId || exercises[0]?.id || "";
 
   const createMutation = useMutation({
     mutationFn: createWorkoutSession,
     onSuccess: () => {
-      toast.success("Workout saved");
+      toast.success("Đã lưu buổi tập");
       queryClient.invalidateQueries({ queryKey: ["workout-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
@@ -69,14 +74,14 @@ export default function WorkoutPage() {
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot save workout");
+      toast.error(message || "Không thể lưu buổi tập");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteWorkoutSession,
     onSuccess: () => {
-      toast.success("Workout deleted");
+      toast.success("Đã xóa buổi tập");
       queryClient.invalidateQueries({ queryKey: ["workout-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
@@ -86,7 +91,7 @@ export default function WorkoutPage() {
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot delete workout");
+      toast.error(message || "Không thể xóa buổi tập");
     },
   });
 
@@ -109,7 +114,7 @@ export default function WorkoutPage() {
         rir: payload.rir,
       }),
     onSuccess: () => {
-      toast.success("Workout updated");
+      toast.success("Đã cập nhật buổi tập");
       setEditingWorkout(null);
       queryClient.invalidateQueries({ queryKey: ["workout-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
@@ -120,7 +125,7 @@ export default function WorkoutPage() {
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot update workout");
+      toast.error(message || "Không thể cập nhật buổi tập");
     },
   });
 
@@ -142,7 +147,7 @@ export default function WorkoutPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!window.confirm("Delete this workout session?")) {
+    if (!window.confirm("Bạn có chắc muốn xóa buổi tập này?")) {
       return;
     }
 
@@ -169,59 +174,63 @@ export default function WorkoutPage() {
   }
 
   if (exercisesQuery.isError || sessionsQuery.isError) {
-    return <ErrorState title="Cannot load workouts" message="Please try refreshing the page." />;
+    return <ErrorState title="Không thể tải buổi tập" message="Vui lòng tải lại trang." />;
   }
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <PageHeader title="Workout" description="Log your training sessions and track progressive overload." />
+      <PageHeader title="Buổi tập" description="Ghi lại buổi tập và theo dõi tiến bộ theo thời gian." />
 
       <Card>
         <CardHeader>
-          <CardTitle>Create Workout Session</CardTitle>
+          <CardTitle>Tạo buổi tập</CardTitle>
         </CardHeader>
 
-        <CardContent className="grid gap-4 md:grid-cols-6">
+        <CardContent className="grid gap-4 md:grid-cols-12">
           {exercises.length === 0 ? (
-            <div className="md:col-span-6">
+            <div className="md:col-span-12">
               <EmptyState
-                title="No exercises found"
-                description="Please seed exercises in backend before creating workout sessions."
+                title="Chưa có bài tập"
+                description="Hãy thêm bài tập trong kho trước khi tạo buổi tập."
               />
             </div>
           ) : (
             <>
-              <Input type="date" value={sessionDate} onChange={(event) => setSessionDate(event.target.value)} />
+              <FormField label="Ngày tập" htmlFor="workout-date" className="md:col-span-3" required>
+                <Input id="workout-date" type="date" value={sessionDate} onChange={(event) => setSessionDate(event.target.value)} />
+              </FormField>
+              <FormField label="Bài tập" htmlFor="workout-exercise" hint="Chọn động tác đã thực hiện." className="md:col-span-5" required>
+                <select
+                  id="workout-exercise"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={selectedExerciseId}
+                  onChange={(event) => setExerciseId(event.target.value)}
+                >
+                  {exercises.map((exercise) => (
+                    <option key={exercise.id} value={exercise.id}>
+                      {exercise.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField label="Thời lượng" htmlFor="workout-duration" unit="phút" className="md:col-span-4">
+                <Input id="workout-duration" type="number" min={1} max={600} value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} />
+              </FormField>
+              <FormField label="Mức tạ" htmlFor="workout-weight" unit="kg" hint="Nhập 0 nếu dùng trọng lượng cơ thể." className="md:col-span-3">
+                <Input id="workout-weight" type="number" min={0} step={0.5} value={weight} onChange={(event) => setWeight(Number(event.target.value))} />
+              </FormField>
+              <FormField label="Số lần lặp" htmlFor="workout-reps" unit="reps" className="md:col-span-3" required>
+                <Input id="workout-reps" type="number" min={1} max={500} value={reps} onChange={(event) => setReps(Number(event.target.value))} />
+              </FormField>
+              <FormField label="RIR" htmlFor="workout-rir" hint="Số lần bạn còn có thể lặp trước khi kiệt sức; 0 là sát ngưỡng." className="md:col-span-3">
+                <Input id="workout-rir" type="number" min={0} max={10} value={rir} onChange={(event) => setRir(Number(event.target.value))} />
+              </FormField>
+              <FormField label="Ghi chú" htmlFor="workout-note" hint="Ví dụ: tập vai buổi sáng, cảm giác mức tạ vừa sức." className="md:col-span-12">
+                <Input id="workout-note" value={note} onChange={(event) => setNote(event.target.value)} />
+              </FormField>
 
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-2"
-                value={selectedExerciseId}
-                onChange={(event) => setExerciseId(event.target.value)}
-              >
-                {exercises.map((exercise) => (
-                  <option key={exercise.id} value={exercise.id}>
-                    {exercise.name}
-                  </option>
-                ))}
-              </select>
-
-              <Input type="number" value={weight} onChange={(event) => setWeight(Number(event.target.value))} placeholder="Weight" />
-
-              <Input type="number" value={reps} onChange={(event) => setReps(Number(event.target.value))} placeholder="Reps" />
-
-              <Input type="number" value={rir} onChange={(event) => setRir(Number(event.target.value))} placeholder="RIR" />
-
-              <Input
-                type="number"
-                value={durationMinutes}
-                onChange={(event) => setDurationMinutes(Number(event.target.value))}
-                placeholder="Duration"
-              />
-
-              <Input className="md:col-span-5" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Note" />
-
-              <Button onClick={handleCreate} disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Saving..." : "Save"}
+              <Button className="md:col-span-12" onClick={handleCreate} disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Đang lưu..." : "Lưu buổi tập"}
               </Button>
             </>
           )}
@@ -230,33 +239,32 @@ export default function WorkoutPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Workout History</CardTitle>
+          <CardTitle>Lịch sử buổi tập</CardTitle>
         </CardHeader>
 
         <CardContent>
           {sessions.length === 0 ? (
             <EmptyState
-              title="No workout sessions yet"
-              description="Create your first workout session to start tracking progress."
+              title="Chưa có buổi tập"
+              description="Tạo buổi tập đầu tiên để bắt đầu theo dõi tiến độ."
             />
           ) : (
             <div className="w-full overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Exercise</TableHead>
-                  <TableHead>Weight</TableHead>
-                  <TableHead>Reps</TableHead>
+                  <TableHead>Ngày</TableHead>
+                  <TableHead>Bài tập</TableHead>
+                  <TableHead>Mức tạ</TableHead>
+                  <TableHead>Lần lặp</TableHead>
                   <TableHead>RIR</TableHead>
-                  <TableHead>Note</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>Ghi chú</TableHead>
+                  <TableHead>Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {sessions.flatMap((session) =>
-                  session.sets.map((set) => (
+                {workoutPagination.paginatedItems.map(({ session, set }) => (
                     <TableRow key={set.id}>
                       <TableCell>{session.sessionDate}</TableCell>
                       <TableCell>{set.exerciseName}</TableCell>
@@ -266,7 +274,7 @@ export default function WorkoutPage() {
                       <TableCell>{session.note}</TableCell>
                       <TableCell className="space-x-2">
                         <Button variant="outline" size="sm" onClick={() => openEditWorkout(session, set)}>
-                          Edit
+                          Sửa
                         </Button>
                         <Button
                           variant="destructive"
@@ -274,14 +282,21 @@ export default function WorkoutPage() {
                           onClick={() => handleDelete(session.id)}
                           disabled={deleteMutation.isPending}
                         >
-                          Delete
+                          Xóa
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
+            <DataPagination
+              page={workoutPagination.page}
+              pageSize={workoutPagination.pageSize}
+              totalItems={workoutPagination.totalItems}
+              totalPages={workoutPagination.totalPages}
+              onPageChange={workoutPagination.setPage}
+              onPageSizeChange={workoutPagination.setPageSize}
+            />
           </div>
           )}
         </CardContent>
@@ -297,7 +312,7 @@ export default function WorkoutPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Workout</DialogTitle>
+            <DialogTitle>Sửa buổi tập</DialogTitle>
           </DialogHeader>
 
           {editingWorkout && (
@@ -311,28 +326,28 @@ export default function WorkoutPage() {
               <Input
                 value={editingWorkout.note}
                 onChange={(event) => setEditingWorkout({ ...editingWorkout, note: event.target.value })}
-                placeholder="Note"
+                placeholder="Ghi chú"
               />
 
               <Input
                 type="number"
                 value={editingWorkout.durationMinutes}
                 onChange={(event) => setEditingWorkout({ ...editingWorkout, durationMinutes: Number(event.target.value) })}
-                placeholder="Duration"
+                placeholder="Thời lượng (phút)"
               />
 
               <Input
                 type="number"
                 value={editingWorkout.weight}
                 onChange={(event) => setEditingWorkout({ ...editingWorkout, weight: Number(event.target.value) })}
-                placeholder="Weight"
+                placeholder="Mức tạ"
               />
 
               <Input
                 type="number"
                 value={editingWorkout.reps}
                 onChange={(event) => setEditingWorkout({ ...editingWorkout, reps: Number(event.target.value) })}
-                placeholder="Reps"
+                placeholder="Số lần lặp"
               />
 
               <Input
@@ -343,7 +358,7 @@ export default function WorkoutPage() {
               />
 
               <Button className="w-full" onClick={() => updateMutation.mutate(editingWorkout)} disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                {updateMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
               </Button>
             </div>
           )}

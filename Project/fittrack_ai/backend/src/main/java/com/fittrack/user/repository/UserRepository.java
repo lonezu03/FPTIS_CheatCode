@@ -17,6 +17,10 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     List<User> findByRoleIgnoreCase(String role);
 
+    List<User> findByActiveTrue();
+
+    List<User> findByIdInAndActiveTrue(List<String> ids);
+
     long countByRoleIgnoreCaseAndActiveTrue(String role);
 
     @Query("""

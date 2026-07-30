@@ -31,5 +31,21 @@ public class MealItem {
     private Double carbs;
 
     private Double fat;
+
+    private Double fiber;
+
+    private Double sugar;
+
+    private Double sodium;
+
+    private Double potassium;
+
+    private Double calcium;
+
+    private Double iron;
+
+    private Double vitaminC;
+
+    private Double water;
 }
 

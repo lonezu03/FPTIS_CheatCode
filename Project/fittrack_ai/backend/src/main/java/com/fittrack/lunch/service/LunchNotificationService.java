@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +69,27 @@ public class LunchNotificationService {
             String referenceId
     ) {
         create(user, type, title, message, referenceType, referenceId);
+    }
+
+    @Transactional
+    public int broadcast(
+            String title,
+            String message,
+            boolean sendToAll,
+            List<String> recipientUserIds
+    ) {
+        List<User> recipients = sendToAll
+                ? userRepository.findByActiveTrue()
+                : userRepository.findByIdInAndActiveTrue(recipientUserIds);
+        recipients.forEach(user -> create(
+                user,
+                "ADMIN_ANNOUNCEMENT",
+                title,
+                message,
+                "ANNOUNCEMENT",
+                null
+        ));
+        return recipients.size();
     }
 
     private void create(

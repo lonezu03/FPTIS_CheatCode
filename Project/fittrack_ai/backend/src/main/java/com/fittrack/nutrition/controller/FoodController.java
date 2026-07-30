@@ -4,9 +4,12 @@ import com.fittrack.nutrition.dto.CreateFoodRequest;
 import com.fittrack.nutrition.dto.FoodResponse;
 import com.fittrack.nutrition.dto.UpdateFoodRequest;
 import com.fittrack.nutrition.service.FoodService;
+import com.fittrack.common.dto.CatalogReviewRequest;
+import com.fittrack.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.List;
 
@@ -19,15 +22,43 @@ public class FoodController {
 
     @GetMapping
     public List<FoodResponse> getFoods(
+            @AuthenticationPrincipal User user,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean includeInactive
     ) {
-        return foodService.getFoods(keyword, includeInactive);
+        boolean admin = "ADMIN".equalsIgnoreCase(user.getRole());
+        return foodService.getFoods(
+                keyword,
+                admin && Boolean.TRUE.equals(includeInactive)
+        );
+    }
+
+    @GetMapping("/mine")
+    public List<FoodResponse> getMySubmissions(
+            @AuthenticationPrincipal User user
+    ) {
+        return foodService.getMySubmissions(user);
     }
 
     @PostMapping
     public FoodResponse create(@Valid @RequestBody CreateFoodRequest request) {
         return foodService.create(request);
+    }
+
+    @PostMapping("/suggestions")
+    public FoodResponse suggest(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody CreateFoodRequest request
+    ) {
+        return foodService.createSuggestion(user, request);
+    }
+
+    @PatchMapping("/{id}/review")
+    public FoodResponse review(
+            @PathVariable String id,
+            @Valid @RequestBody CatalogReviewRequest request
+    ) {
+        return foodService.review(id, request);
     }
 
     @PutMapping("/{id}")

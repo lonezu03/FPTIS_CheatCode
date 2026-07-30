@@ -27,6 +27,18 @@ public class WorkoutMapper {
                 ))
                 .custom(exercise.getCustom())
                 .active(exercise.getActive())
+                .approvalStatus(exercise.getApprovalStatus())
+                .submittedById(
+                        exercise.getSubmittedBy() == null
+                                ? null
+                                : exercise.getSubmittedBy().getId()
+                )
+                .submittedByName(
+                        exercise.getSubmittedBy() == null
+                                ? null
+                                : exercise.getSubmittedBy().getFullName()
+                )
+                .adminNote(exercise.getAdminNote())
                 .build();
     }
 

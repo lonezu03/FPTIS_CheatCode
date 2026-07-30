@@ -52,13 +52,13 @@ export default function WeeklyReportPage() {
   return (
     <div className="space-y-4 md:space-y-6">
       <PageHeader
-        title="Weekly Report"
-        description="Review your weekly nutrition, training consistency and body progress."
+        title="Báo cáo tuần"
+        description="Đánh giá dinh dưỡng, mức độ luyện tập đều đặn và tiến độ cơ thể."
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Report Range</CardTitle>
+          <CardTitle>Khoảng báo cáo</CardTitle>
         </CardHeader>
 
         <CardContent className="grid gap-4 md:grid-cols-3">
@@ -81,7 +81,7 @@ export default function WeeklyReportPage() {
       {reportQuery.isLoading && <PageLoading />}
 
       {reportQuery.isError && (
-        <ErrorState title="Cannot load weekly report" message="Please check your connection or login again." />
+        <ErrorState title="Không thể tải báo cáo tuần" message="Vui lòng kiểm tra kết nối hoặc đăng nhập lại." />
       )}
 
       {report && <WeeklyReportContent report={report} recommendations={recommendations} />}
@@ -116,7 +116,7 @@ function WeeklyReportContent({
       icon: Utensils,
     },
     {
-      title: "Workouts",
+        title: "Buổi tập",
       value: report.totalWorkouts,
       suffix: "",
       icon: Dumbbell,
@@ -131,7 +131,7 @@ function WeeklyReportContent({
           {report.fromDate} - {report.toDate}
         </Badge>
 
-        <Badge variant="secondary">{report.workoutDays} workout days</Badge>
+          <Badge variant="secondary">{report.workoutDays} ngày luyện tập</Badge>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
@@ -195,12 +195,12 @@ function WeeklyReportContent({
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Daily Calories</CardTitle>
+            <CardTitle>Năng lượng mỗi ngày</CardTitle>
           </CardHeader>
 
           <CardContent className="h-[240px] md:h-[320px]">
             {report.dailyNutrition.length === 0 ? (
-              <EmptyState title="No nutrition data" description="Log meals during this range to see calorie trends." />
+              <EmptyState title="Chưa có dữ liệu dinh dưỡng" description="Ghi bữa ăn trong khoảng này để xem xu hướng năng lượng." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={report.dailyNutrition}>
@@ -217,12 +217,12 @@ function WeeklyReportContent({
 
         <Card>
           <CardHeader>
-            <CardTitle>Daily Protein</CardTitle>
+            <CardTitle>Chất đạm mỗi ngày</CardTitle>
           </CardHeader>
 
           <CardContent className="h-[240px] md:h-[320px]">
             {report.dailyNutrition.length === 0 ? (
-              <EmptyState title="No protein data" description="Log meals during this range to see protein trends." />
+              <EmptyState title="Chưa có dữ liệu chất đạm" description="Ghi bữa ăn trong khoảng này để xem xu hướng chất đạm." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={report.dailyNutrition}>
@@ -250,7 +250,7 @@ function WeeklyReportContent({
 
         <CardContent>
           {report.insights.length === 0 ? (
-            <EmptyState title="No insights yet" description="Add more nutrition, workout and body data for this range." />
+            <EmptyState title="Chưa có nhận xét" description="Thêm dữ liệu dinh dưỡng, buổi tập và cơ thể trong khoảng này." />
           ) : (
             <ul className="space-y-3">
               {report.insights.map((insight, index) => (
@@ -265,7 +265,7 @@ function WeeklyReportContent({
 
       <Card>
         <CardHeader>
-          <CardTitle>Smart Recommendations</CardTitle>
+          <CardTitle>Khuyến nghị thông minh</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -284,7 +284,7 @@ function WeeklyReportContent({
               </>
             )
           ) : (
-            <p className="text-sm text-muted-foreground">Loading recommendations...</p>
+          <p className="text-sm text-muted-foreground">Đang tải khuyến nghị...</p>
           )}
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 package com.fittrack.workout.repository;
 
 import com.fittrack.workout.entity.Exercise;
+import com.fittrack.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -13,4 +14,6 @@ public interface ExerciseRepository extends JpaRepository<Exercise, String> {
     List<Exercise> findByNameContainingIgnoreCaseOrderByNameAsc(String keyword);
 
     List<Exercise> findAllByOrderByNameAsc();
+
+    List<Exercise> findBySubmittedByOrderByCreatedAtDesc(User submittedBy);
 }

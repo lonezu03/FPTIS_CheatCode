@@ -49,6 +49,14 @@ public class NutritionService {
                 double protein = defaultZero(food.getProtein()) * quantity;
                 double carbs = defaultZero(food.getCarbs()) * quantity;
                 double fat = defaultZero(food.getFat()) * quantity;
+                double fiber = defaultZero(food.getFiber()) * quantity;
+                double sugar = defaultZero(food.getSugar()) * quantity;
+                double sodium = defaultZero(food.getSodium()) * quantity;
+                double potassium = defaultZero(food.getPotassium()) * quantity;
+                double calcium = defaultZero(food.getCalcium()) * quantity;
+                double iron = defaultZero(food.getIron()) * quantity;
+                double vitaminC = defaultZero(food.getVitaminC()) * quantity;
+                double water = defaultZero(food.getWater()) * quantity;
 
                 MealItem item = MealItem.builder()
                         .mealLog(mealLog)
@@ -58,6 +66,14 @@ public class NutritionService {
                         .protein(protein)
                         .carbs(carbs)
                         .fat(fat)
+                        .fiber(fiber)
+                        .sugar(sugar)
+                        .sodium(sodium)
+                        .potassium(potassium)
+                        .calcium(calcium)
+                        .iron(iron)
+                        .vitaminC(vitaminC)
+                        .water(water)
                         .build();
 
                 mealLog.getItems().add(item);
@@ -125,6 +141,14 @@ public class NutritionService {
                 double protein = defaultZero(food.getProtein()) * quantity;
                 double carbs = defaultZero(food.getCarbs()) * quantity;
                 double fat = defaultZero(food.getFat()) * quantity;
+                double fiber = defaultZero(food.getFiber()) * quantity;
+                double sugar = defaultZero(food.getSugar()) * quantity;
+                double sodium = defaultZero(food.getSodium()) * quantity;
+                double potassium = defaultZero(food.getPotassium()) * quantity;
+                double calcium = defaultZero(food.getCalcium()) * quantity;
+                double iron = defaultZero(food.getIron()) * quantity;
+                double vitaminC = defaultZero(food.getVitaminC()) * quantity;
+                double water = defaultZero(food.getWater()) * quantity;
 
                 MealItem item = MealItem.builder()
                         .mealLog(mealLog)
@@ -134,6 +158,14 @@ public class NutritionService {
                         .protein(protein)
                         .carbs(carbs)
                         .fat(fat)
+                        .fiber(fiber)
+                        .sugar(sugar)
+                        .sodium(sodium)
+                        .potassium(potassium)
+                        .calcium(calcium)
+                        .iron(iron)
+                        .vitaminC(vitaminC)
+                        .water(water)
                         .build();
 
                 mealLog.getItems().add(item);

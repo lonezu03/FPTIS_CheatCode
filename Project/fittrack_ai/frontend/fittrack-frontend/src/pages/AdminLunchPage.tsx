@@ -58,6 +58,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DataPagination from "@/components/common/DataPagination";
+import { usePagination } from "@/hooks/usePagination";
 import {
   formatCurrency,
   formatDate,
@@ -965,6 +967,7 @@ function OrdersTable({
   confirming: boolean;
   onConfirmExternal: (order: LunchOrder) => void;
 }) {
+  const pagination = usePagination(orders);
   return (
     <>
       <Card className="hidden md:block">
@@ -980,7 +983,7 @@ function OrdersTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => (
+              {pagination.paginatedItems.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell>
                     <div>
@@ -1030,7 +1033,7 @@ function OrdersTable({
       </Card>
 
       <div className="grid gap-3 md:hidden">
-        {orders.map((order) => (
+        {pagination.paginatedItems.map((order) => (
           <Card key={order.id} size="sm">
             <CardContent className="space-y-3">
               <div className="flex items-start justify-between gap-3">
@@ -1060,6 +1063,14 @@ function OrdersTable({
           </Card>
         ))}
       </div>
+      <DataPagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalItems={pagination.totalItems}
+        totalPages={pagination.totalPages}
+        onPageChange={pagination.setPage}
+        onPageSizeChange={pagination.setPageSize}
+      />
     </>
   );
 }
@@ -1071,6 +1082,7 @@ function MembersTable({
   members: LunchMember[];
   onSelect: (memberId: string) => void;
 }) {
+  const pagination = usePagination(members);
   return (
     <>
       <div className="hidden md:block">
@@ -1084,7 +1096,7 @@ function MembersTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {members.map((member) => (
+            {pagination.paginatedItems.map((member) => (
               <TableRow key={member.id}>
                 <TableCell>
                   <div>
@@ -1117,7 +1129,7 @@ function MembersTable({
       </div>
 
       <div className="grid gap-2 md:hidden">
-        {members.map((member) => (
+        {pagination.paginatedItems.map((member) => (
           <button
             key={member.id}
             type="button"
@@ -1137,6 +1149,14 @@ function MembersTable({
           </button>
         ))}
       </div>
+      <DataPagination
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalItems={pagination.totalItems}
+        totalPages={pagination.totalPages}
+        onPageChange={pagination.setPage}
+        onPageSizeChange={pagination.setPageSize}
+      />
     </>
   );
 }

@@ -13,6 +13,8 @@ import {
   type LunchPaymentSettings,
 } from "@/api/lunch.api";
 import ImagePreviewDialog from "@/components/common/ImagePreviewDialog";
+import DataPagination from "@/components/common/DataPagination";
+import { usePagination } from "@/hooks/usePagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,6 +70,10 @@ export default function AdminPaymentPanel() {
 
   const requests = requestsQuery.data ?? [];
   const pending = requests.filter((request) => request.status === "PENDING");
+  const sortedRequests = [...requests].sort(
+    (a, b) => Number(b.status === "PENDING") - Number(a.status === "PENDING"),
+  );
+  const requestPagination = usePagination(sortedRequests);
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(300px,0.75fr)_minmax(0,1.25fr)]">
@@ -153,7 +159,7 @@ export default function AdminPaymentPanel() {
             </p>
           ) : (
             <div className="space-y-3">
-              {[...requests].sort((a, b) => Number(b.status === "PENDING") - Number(a.status === "PENDING")).map((request) => (
+              {requestPagination.paginatedItems.map((request) => (
                 <div key={request.id} className="rounded-xl border p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -197,6 +203,14 @@ export default function AdminPaymentPanel() {
                   </div>
                 </div>
               ))}
+              <DataPagination
+                page={requestPagination.page}
+                pageSize={requestPagination.pageSize}
+                totalItems={requestPagination.totalItems}
+                totalPages={requestPagination.totalPages}
+                onPageChange={requestPagination.setPage}
+                onPageSizeChange={requestPagination.setPageSize}
+              />
             </div>
           )}
         </CardContent>

@@ -360,14 +360,14 @@ export async function rejectLunchPaymentRequest(id: string, note: string): Promi
 }
 
 export async function getLunchNotifications(): Promise<LunchNotificationList> {
-  const response = await api.get<LunchNotificationList>("/lunch/notifications");
+  const response = await api.get<LunchNotificationList>("/notifications");
   return response.data;
 }
 
 export async function markLunchNotificationRead(id: string): Promise<void> {
-  await api.patch(`/lunch/notifications/${id}/read`);
+  await api.patch(`/notifications/${id}/read`);
 }
 
 export async function markAllLunchNotificationsRead(): Promise<void> {
-  await api.post("/lunch/notifications/read-all");
+  await api.post("/notifications/read-all");
 }

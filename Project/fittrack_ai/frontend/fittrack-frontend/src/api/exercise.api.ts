@@ -9,6 +9,10 @@ export type Exercise = {
   imageUrl: string | null;
   custom: boolean;
   active: boolean;
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  submittedById?: string | null;
+  submittedByName?: string | null;
+  adminNote?: string | null;
 };
 
 export type ExercisePayload = {
@@ -33,6 +37,20 @@ export const getExercisesApi = async (keyword?: string, includeInactive?: boolea
 export const createExerciseApi = async (payload: ExercisePayload): Promise<Exercise> => {
   const response = await api.post("/exercises", payload);
 
+  return response.data;
+};
+
+export const suggestExerciseApi = async (payload: ExercisePayload): Promise<Exercise> => {
+  const response = await api.post("/exercises/suggestions", payload);
+  return response.data;
+};
+
+export const reviewExerciseApi = async (
+  id: string,
+  status: "APPROVED" | "REJECTED",
+  note = "",
+): Promise<Exercise> => {
+  const response = await api.patch(`/exercises/${id}/review`, { status, note });
   return response.data;
 };
 

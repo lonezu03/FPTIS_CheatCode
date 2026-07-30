@@ -1,6 +1,7 @@
 package com.fittrack.common.exception;
 
 import com.fittrack.common.response.ErrorResponse;
+import com.fittrack.auth.exception.EmailVerificationRequiredException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +47,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleExternalService(ExternalServiceException ex) {
         log.error("External service request failed", ex);
         return buildError(HttpStatus.BAD_GATEWAY, ex.getMessage());
+    }
+
+    @ExceptionHandler(EmailVerificationRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleEmailVerificationRequired(
+            EmailVerificationRequiredException ex
+    ) {
+        return buildError(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
     @ExceptionHandler(BadCredentialsException.class)

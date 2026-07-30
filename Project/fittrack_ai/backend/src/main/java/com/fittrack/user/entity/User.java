@@ -43,6 +43,21 @@ public class User {
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean active;
 
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean emailVerified;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean lunchEnabled;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean fitnessEnabled;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean healthEnabled;
+
+    @Column(nullable = false, columnDefinition = "boolean default true")
+    private Boolean chatbotEnabled;
+
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -55,6 +70,26 @@ public class User {
 
         if (this.active == null) {
             this.active = true;
+        }
+
+        if (this.emailVerified == null) {
+            this.emailVerified = true;
+        }
+
+        if (this.lunchEnabled == null) {
+            this.lunchEnabled = true;
+        }
+
+        if (this.fitnessEnabled == null) {
+            this.fitnessEnabled = true;
+        }
+
+        if (this.healthEnabled == null) {
+            this.healthEnabled = true;
+        }
+
+        if (this.chatbotEnabled == null) {
+            this.chatbotEnabled = true;
         }
     }
 }

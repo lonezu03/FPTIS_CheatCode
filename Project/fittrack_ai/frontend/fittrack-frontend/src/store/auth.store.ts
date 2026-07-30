@@ -5,6 +5,10 @@ export type AuthUser = {
   email: string;
   fullName: string;
   role: "USER" | "ADMIN";
+  lunchEnabled: boolean;
+  fitnessEnabled: boolean;
+  healthEnabled: boolean;
+  chatbotEnabled: boolean;
 };
 
 type AuthState = {
@@ -44,6 +48,10 @@ const readUserFromToken = (token: string | null): AuthUser | null => {
       email: payload.sub,
       fullName: payload.sub.split("@")[0],
       role: payload.role === "ADMIN" ? "ADMIN" : "USER",
+      lunchEnabled: true,
+      fitnessEnabled: true,
+      healthEnabled: true,
+      chatbotEnabled: true,
     };
   } catch {
     return null;

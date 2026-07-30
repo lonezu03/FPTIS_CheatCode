@@ -6,6 +6,11 @@ export type AdminUser = {
   fullName: string;
   role: "USER" | "ADMIN";
   active: boolean;
+  emailVerified: boolean;
+  lunchEnabled: boolean;
+  fitnessEnabled: boolean;
+  healthEnabled: boolean;
+  chatbotEnabled: boolean;
   createdAt: string;
 };
 
@@ -22,6 +27,10 @@ export async function updateAdminUser(
     fullName?: string;
     role?: "USER" | "ADMIN";
     active?: boolean;
+    lunchEnabled?: boolean;
+    fitnessEnabled?: boolean;
+    healthEnabled?: boolean;
+    chatbotEnabled?: boolean;
   },
 ): Promise<AdminUser> {
   const response = await api.patch<AdminUser>(`/admin/users/${id}`, payload);

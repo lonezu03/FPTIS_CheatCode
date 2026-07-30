@@ -8,12 +8,17 @@ import PageHeader from "../components/PageHeader";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import TableLoading from "../components/common/TableLoading";
+import DataPagination from "../components/common/DataPagination";
+import { usePagination } from "../hooks/usePagination";
+import FormField from "../components/common/FormField";
 
 import {
   createExerciseApi,
   deleteExerciseApi,
   getExercisesApi,
+  reviewExerciseApi,
   restoreExerciseApi,
+  suggestExerciseApi,
   updateExerciseApi,
   type Exercise,
 } from "../api/exercise.api";
@@ -52,10 +57,10 @@ export default function ExercisesPage() {
   const [includeInactive, setIncludeInactive] = useState(isAdmin);
 
   const [draft, setDraft] = useState<ExerciseDraft>({
-    name: "Dumbbell Bench Press",
-    muscleGroup: "Chest",
-    equipment: "Dumbbell",
-    description: "Press dumbbells while lying on bench or floor.",
+    name: "Đẩy ngực với tạ đơn",
+    muscleGroup: "Ngực",
+    equipment: "Tạ đơn",
+    description: "Đẩy tạ đơn khi nằm trên ghế hoặc sàn.",
     imageUrl: "",
   });
 
@@ -68,18 +73,33 @@ export default function ExercisesPage() {
   });
 
   const exercises = exercisesQuery.data ?? [];
+  const exercisePagination = usePagination(exercises);
 
   const createMutation = useMutation({
-    mutationFn: createExerciseApi,
+    mutationFn: isAdmin ? createExerciseApi : suggestExerciseApi,
     onSuccess: () => {
-      toast.success("Exercise created");
+      toast.success(isAdmin ? "Đã tạo bài tập" : "Đã gửi bài tập để admin duyệt");
       setDraft(emptyDraft);
       queryClient.invalidateQueries({ queryKey: ["exercises-management"] });
       queryClient.invalidateQueries({ queryKey: ["exercises"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot create exercise");
+      toast.error(message || "Không thể tạo bài tập");
+    },
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "APPROVED" | "REJECTED" }) =>
+      reviewExerciseApi(id, status),
+    onSuccess: () => {
+      toast.success("Đã xử lý đề xuất bài tập");
+      queryClient.invalidateQueries({ queryKey: ["exercises-management"] });
+      queryClient.invalidateQueries({ queryKey: ["exercises"] });
+    },
+    onError: (error) => {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
+      toast.error(message || "Không thể xử lý đề xuất");
     },
   });
 
@@ -93,46 +113,46 @@ export default function ExercisesPage() {
         imageUrl: payload.imageUrl?.trim() || null,
       }),
     onSuccess: () => {
-      toast.success("Exercise updated");
+      toast.success("Đã cập nhật bài tập");
       setEditingExercise(null);
       queryClient.invalidateQueries({ queryKey: ["exercises-management"] });
       queryClient.invalidateQueries({ queryKey: ["exercises"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot update exercise");
+      toast.error(message || "Không thể cập nhật bài tập");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteExerciseApi,
     onSuccess: () => {
-      toast.success("Exercise archived");
+      toast.success("Đã lưu trữ bài tập");
       queryClient.invalidateQueries({ queryKey: ["exercises-management"] });
       queryClient.invalidateQueries({ queryKey: ["exercises"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot delete exercise. It may already be used in workout data.");
+      toast.error(message || "Không thể xóa bài tập vì có thể đang được sử dụng.");
     },
   });
 
   const restoreMutation = useMutation({
     mutationFn: restoreExerciseApi,
     onSuccess: () => {
-      toast.success("Exercise restored");
+      toast.success("Đã khôi phục bài tập");
       queryClient.invalidateQueries({ queryKey: ["exercises-management"] });
       queryClient.invalidateQueries({ queryKey: ["exercises"] });
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot restore exercise");
+      toast.error(message || "Không thể khôi phục bài tập");
     },
   });
 
   const handleCreate = () => {
     if (!draft.name.trim()) {
-      toast.error("Exercise name is required");
+      toast.error("Vui lòng nhập tên bài tập");
       return;
     }
 
@@ -143,7 +163,7 @@ export default function ExercisesPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!window.confirm("Delete this exercise?")) {
+    if (!window.confirm("Bạn có chắc muốn lưu trữ bài tập này?")) {
       return;
     }
 
@@ -151,39 +171,32 @@ export default function ExercisesPage() {
   };
 
   if (exercisesQuery.isError) {
-    return <ErrorState title="Cannot load exercises" message="Please try refreshing the page." />;
+    return <ErrorState title="Không thể tải bài tập" message="Vui lòng tải lại trang." />;
   }
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <PageHeader title="Exercises" description="Create and manage exercises used in workout sessions and plans." />
+      <PageHeader title="Kho bài tập" description="Tạo và quản lý bài tập dùng trong buổi tập và giáo án." />
 
-      {isAdmin && (
+      {(
         <Card>
           <CardHeader>
-            <CardTitle>Create Exercise</CardTitle>
+            <CardTitle>{isAdmin ? "Tạo bài tập" : "Đề xuất bài tập mới"}</CardTitle>
           </CardHeader>
 
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Exercise name" />
-
-            <Input
-              value={draft.muscleGroup}
-              onChange={(event) => setDraft({ ...draft, muscleGroup: event.target.value })}
-              placeholder="Muscle group"
-            />
-
-            <Input
-              value={draft.equipment}
-              onChange={(event) => setDraft({ ...draft, equipment: event.target.value })}
-              placeholder="Equipment"
-            />
-
-            <Input
-              value={draft.description}
-              onChange={(event) => setDraft({ ...draft, description: event.target.value })}
-              placeholder="Description"
-            />
+            <FormField label="Tên bài tập" htmlFor="exercise-name" hint="Dùng tên phổ biến để mọi người dễ tìm." required>
+              <Input id="exercise-name" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Ví dụ: Đẩy vai với tạ đơn" />
+            </FormField>
+            <FormField label="Nhóm cơ chính" htmlFor="exercise-muscle" hint="Nhóm cơ chịu tải chính của động tác." required>
+              <Input id="exercise-muscle" value={draft.muscleGroup} onChange={(event) => setDraft({ ...draft, muscleGroup: event.target.value })} placeholder="Ví dụ: Vai" />
+            </FormField>
+            <FormField label="Dụng cụ" htmlFor="exercise-equipment" hint="Nhập 'Không' nếu là bài tập trọng lượng cơ thể.">
+              <Input id="exercise-equipment" value={draft.equipment} onChange={(event) => setDraft({ ...draft, equipment: event.target.value })} placeholder="Ví dụ: Tạ đơn" />
+            </FormField>
+            <FormField label="Hướng dẫn thực hiện" htmlFor="exercise-description" hint="Mô tả tư thế và chuyển động chính để tập an toàn.">
+              <Input id="exercise-description" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder="Ví dụ: Giữ lưng thẳng, đẩy tạ qua đầu..." />
+            </FormField>
 
             <div className="md:col-span-2">
               <ExerciseImageField
@@ -194,7 +207,7 @@ export default function ExercisesPage() {
             </div>
 
             <Button className="md:col-span-2" onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Creating..." : "Create Exercise"}
+              {createMutation.isPending ? "Đang gửi..." : isAdmin ? "Tạo bài tập" : "Gửi admin duyệt"}
             </Button>
           </CardContent>
         </Card>
@@ -202,15 +215,15 @@ export default function ExercisesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Exercise Library</CardTitle>
+          <CardTitle>Danh sách bài tập</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="flex flex-1 gap-2">
-              <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Search exercise..." />
+              <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm bài tập..." />
 
-              <Button onClick={() => setSearchKeyword(keyword)}>Search</Button>
+              <Button onClick={() => setSearchKeyword(keyword)}>Tìm kiếm</Button>
             </div>
 
             {isAdmin && (
@@ -220,7 +233,7 @@ export default function ExercisesPage() {
                   checked={includeInactive}
                   onChange={(event) => setIncludeInactive(event.target.checked)}
                 />
-                Show archived
+                Hiện mục đã lưu trữ
               </label>
             )}
           </div>
@@ -228,24 +241,24 @@ export default function ExercisesPage() {
           {exercisesQuery.isLoading ? (
             <TableLoading />
           ) : exercises.length === 0 ? (
-            <EmptyState title="No exercises found" description="Create a custom exercise or try another keyword." />
+            <EmptyState title="Không tìm thấy bài tập" description="Hãy thêm bài tập hoặc thử từ khóa khác." />
           ) : (
             <div className="w-full overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Image</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Muscle</TableHead>
-                    <TableHead>Equipment</TableHead>
-                    <TableHead>Custom</TableHead>
-                    <TableHead>Status</TableHead>
-                    {isAdmin && <TableHead>Action</TableHead>}
+                    <TableHead>Hình ảnh</TableHead>
+                    <TableHead>Tên</TableHead>
+                    <TableHead>Nhóm cơ</TableHead>
+                    <TableHead>Dụng cụ</TableHead>
+                    <TableHead>Tự tạo</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    {isAdmin && <TableHead>Thao tác</TableHead>}
                   </TableRow>
                 </TableHeader>
 
                 <TableBody>
-                  {exercises.map((exercise) => (
+                  {exercisePagination.paginatedItems.map((exercise) => (
                     <TableRow key={exercise.id} className={!exercise.active ? "opacity-50" : ""}>
                       <TableCell>
                         {exercise.imageUrl ? (
@@ -269,28 +282,43 @@ export default function ExercisesPage() {
                       <TableCell className="font-medium">{exercise.name}</TableCell>
                       <TableCell>{exercise.muscleGroup}</TableCell>
                       <TableCell>{exercise.equipment}</TableCell>
-                      <TableCell>{exercise.custom ? "Yes" : "No"}</TableCell>
+                      <TableCell>{exercise.custom ? "Có" : "Không"}</TableCell>
                       <TableCell>
-                        {exercise.active ? (
-                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">Active</span>
+                        {exercise.approvalStatus === "PENDING" ? (
+                          <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">Chờ duyệt</span>
+                        ) : exercise.approvalStatus === "REJECTED" ? (
+                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700">Từ chối</span>
+                        ) : exercise.active ? (
+                          <span className="rounded-full bg-green-100 px-2 py-1 text-xs text-green-700">Đang dùng</span>
                         ) : (
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">Archived</span>
+                          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">Đã lưu trữ</span>
                         )}
                       </TableCell>
                       {isAdmin && (
                         <TableCell className="space-x-2">
-                          <Button variant="outline" size="sm" onClick={() => setEditingExercise(exercise)} disabled={!exercise.active}>
-                            Edit
-                          </Button>
+                          {exercise.approvalStatus === "PENDING" ? (
+                            <>
+                              <Button size="sm" onClick={() => reviewMutation.mutate({ id: exercise.id, status: "APPROVED" })}>
+                                Duyệt
+                              </Button>
+                              <Button variant="destructive" size="sm" onClick={() => reviewMutation.mutate({ id: exercise.id, status: "REJECTED" })}>
+                                Từ chối
+                              </Button>
+                            </>
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={() => setEditingExercise(exercise)} disabled={!exercise.active}>
+                              Sửa
+                            </Button>
+                          )}
 
-                          {exercise.active ? (
+                          {exercise.approvalStatus !== "PENDING" && (exercise.active ? (
                             <Button
                               variant="destructive"
                               size="sm"
                               onClick={() => handleDelete(exercise.id)}
                               disabled={deleteMutation.isPending}
                             >
-                              Archive
+                              Lưu trữ
                             </Button>
                           ) : (
                             <Button
@@ -299,15 +327,23 @@ export default function ExercisesPage() {
                               onClick={() => restoreMutation.mutate(exercise.id)}
                               disabled={restoreMutation.isPending}
                             >
-                              Restore
+                              Khôi phục
                             </Button>
-                          )}
+                          ))}
                         </TableCell>
                       )}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              <DataPagination
+                page={exercisePagination.page}
+                pageSize={exercisePagination.pageSize}
+                totalItems={exercisePagination.totalItems}
+                totalPages={exercisePagination.totalPages}
+                onPageChange={exercisePagination.setPage}
+                onPageSizeChange={exercisePagination.setPageSize}
+              />
             </div>
           )}
         </CardContent>
@@ -323,7 +359,7 @@ export default function ExercisesPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Exercise</DialogTitle>
+            <DialogTitle>Sửa bài tập</DialogTitle>
           </DialogHeader>
 
           {editingExercise && (
@@ -331,25 +367,25 @@ export default function ExercisesPage() {
               <Input
                 value={editingExercise.name}
                 onChange={(event) => setEditingExercise({ ...editingExercise, name: event.target.value })}
-                placeholder="Name"
+                placeholder="Tên bài tập"
               />
 
               <Input
                 value={editingExercise.muscleGroup}
                 onChange={(event) => setEditingExercise({ ...editingExercise, muscleGroup: event.target.value })}
-                placeholder="Muscle group"
+                placeholder="Nhóm cơ"
               />
 
               <Input
                 value={editingExercise.equipment}
                 onChange={(event) => setEditingExercise({ ...editingExercise, equipment: event.target.value })}
-                placeholder="Equipment"
+                placeholder="Dụng cụ"
               />
 
               <Input
                 value={editingExercise.description}
                 onChange={(event) => setEditingExercise({ ...editingExercise, description: event.target.value })}
-                placeholder="Description"
+                placeholder="Mô tả"
               />
 
               <ExerciseImageField

@@ -21,41 +21,41 @@ export default function AchievementsPage() {
   }
 
   if (summaryQuery.isError || !summaryQuery.data) {
-    return <ErrorState title="Cannot load achievements" message="Please try refreshing the page." />;
+    return <ErrorState title="Không thể tải thành tích" message="Vui lòng tải lại trang." />;
   }
 
   const summary = summaryQuery.data;
 
   const stats = [
     {
-      title: "Meal Streak",
+      title: "Chuỗi ngày ghi bữa ăn",
       value: summary.mealLoggingStreak,
-      suffix: "days",
+      suffix: "ngày",
       icon: Utensils,
     },
     {
-      title: "Workout Streak",
+      title: "Chuỗi ngày tập",
       value: summary.workoutStreak,
-      suffix: "days",
+      suffix: "ngày",
       icon: Dumbbell,
     },
     {
-      title: "Protein Hit Days",
+      title: "Ngày đạt mục tiêu protein",
       value: summary.proteinHitDaysThisWeek,
-      suffix: "this week",
+      suffix: "trong tuần",
       icon: Target,
     },
     {
-      title: "Body Tracking Days",
+      title: "Ngày ghi chỉ số cơ thể",
       value: summary.bodyTrackingDaysThisWeek,
-      suffix: "this week",
+      suffix: "trong tuần",
       icon: Scale,
     },
   ];
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <PageHeader title="Achievements" description="Track consistency, streaks, and weekly progress milestones." />
+      <PageHeader title="Thành tích" description="Theo dõi tính đều đặn, chuỗi ngày và các cột mốc hàng tuần." />
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         {stats.map((stat) => {
@@ -80,7 +80,7 @@ export default function AchievementsPage() {
       </div>
 
       {summary.achievements.length === 0 ? (
-        <EmptyState title="No achievements yet" description="Keep logging meals, workouts and body measurements to unlock milestones." />
+          <EmptyState title="Chưa có thành tích" description="Tiếp tục ghi bữa ăn, buổi tập và chỉ số cơ thể để mở khóa cột mốc." />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 md:gap-6">
           {summary.achievements.map((achievement) => (

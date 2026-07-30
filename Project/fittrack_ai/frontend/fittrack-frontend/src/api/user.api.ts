@@ -5,6 +5,10 @@ export type UserProfile = {
   email: string;
   fullName: string;
   role: "USER" | "ADMIN";
+  lunchEnabled: boolean;
+  fitnessEnabled: boolean;
+  healthEnabled: boolean;
+  chatbotEnabled: boolean;
   gender: string;
   age: number;
   height: number;

@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Check, Dumbbell, Eye, EyeOff, Sparkles, UtensilsCrossed } from "lucide-react";
-import { loginApi, registerApi } from "../api/auth.api";
+import { loginApi, registerApi, resendVerificationApi } from "../api/auth.api";
 import { useAuthStore } from "../store/auth.store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const setSession = useAuthStore((state) => state.setSession);
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function LoginPage() {
     event.preventDefault();
     if (isSubmitting) return;
 
-    if (!email.trim() || password.length < 6 || (mode === "register" && !fullName.trim())) {
+    if (!email.trim() || password.length < 8 || (mode === "register" && !fullName.trim())) {
       setError("Vui lòng nhập đầy đủ thông tin. Mật khẩu cần ít nhất 6 ký tự.");
       return;
     }
@@ -33,10 +34,8 @@ export default function LoginPage() {
       setError("");
       setIsSubmitting(true);
 
-      const data =
-        mode === "login"
-          ? await loginApi(email.trim(), password)
-          : await registerApi({
+      if (mode === "register") {
+        const result = await registerApi({
               email: email.trim(),
               password,
               fullName: fullName.trim(),
@@ -44,12 +43,23 @@ export default function LoginPage() {
               weight: 60,
               goal: "MAINTAIN",
             });
+        setSuccess(result.message);
+        setMode("login");
+        setPassword("");
+        return;
+      }
+
+      const data = await loginApi(email.trim(), password);
 
       setSession(data.token, {
         userId: data.userId,
         email: data.email,
         fullName: data.fullName,
         role: data.role ?? "USER",
+        lunchEnabled: data.lunchEnabled,
+        fitnessEnabled: data.fitnessEnabled,
+        healthEnabled: data.healthEnabled,
+        chatbotEnabled: data.chatbotEnabled,
       });
       navigate("/dashboard", { replace: true });
     } catch (requestError) {
@@ -63,6 +73,25 @@ export default function LoginPage() {
   const switchMode = () => {
     setMode((current) => (current === "login" ? "register" : "login"));
     setError("");
+    setSuccess("");
+  };
+
+  const resendVerification = async () => {
+    if (!email.trim()) {
+      setError("Vui lòng nhập email cần xác thực.");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      await resendVerificationApi(email.trim());
+      setError("");
+      setSuccess("Nếu tài khoản đang chờ xác thực, email mới đã được gửi.");
+    } catch (requestError) {
+      const message = axios.isAxiosError(requestError) ? requestError.response?.data?.message : undefined;
+      setError(message || "Không thể gửi lại email xác thực.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -190,6 +219,25 @@ export default function LoginPage() {
               {error && (
                 <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {error}
+                </div>
+              )}
+              {success && (
+                <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  {success}
+                </div>
+              )}
+
+              {mode === "login" && error.toLowerCase().includes("email") && (
+                <Button type="button" variant="outline" className="w-full" onClick={resendVerification} disabled={isSubmitting}>
+                  Gửi lại email xác thực
+                </Button>
+              )}
+
+              {mode === "login" && (
+                <div className="text-right">
+                  <Link className="text-sm font-medium text-emerald-700 hover:underline" to="/forgot-password">
+                    Quên mật khẩu?
+                  </Link>
                 </div>
               )}
 

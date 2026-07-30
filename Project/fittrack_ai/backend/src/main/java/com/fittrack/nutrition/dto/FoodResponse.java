@@ -12,9 +12,21 @@ public class FoodResponse {
     private Double protein;
     private Double carbs;
     private Double fat;
+    private Double fiber;
+    private Double sugar;
+    private Double sodium;
+    private Double potassium;
+    private Double calcium;
+    private Double iron;
+    private Double vitaminC;
+    private Double water;
     private String unit;
     private String imageUrl;
     private Boolean custom;
     private Boolean active;
+    private String approvalStatus;
+    private String submittedById;
+    private String submittedByName;
+    private String adminNote;
 }
 

@@ -14,4 +14,8 @@ public class ExerciseResponse {
     private String imageUrl;
     private Boolean custom;
     private Boolean active;
+    private String approvalStatus;
+    private String submittedById;
+    private String submittedByName;
+    private String adminNote;
 }

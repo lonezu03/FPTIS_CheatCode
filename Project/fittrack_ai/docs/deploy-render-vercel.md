@@ -24,6 +24,13 @@ GEMINI_MODEL=gemini-3.6-flash
 ASSISTANT_REQUESTS_PER_MINUTE=6
 KEEP_ALIVE_ENABLED=true
 KEEP_ALIVE_INTERVAL_MS=600000
+APP_FRONTEND_URL=https://fptis-cheat-code.vercel.app
+MAIL_ENABLED=true
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=<smtp-account>
+MAIL_PASSWORD=<gmail-app-password-or-smtp-password>
+MAIL_FROM=<verified-sender-address>
 ```
 
 Use Aiven PostgreSQL for the database. Copy the host, port, database name, username, and password from the Aiven service Overview page.
@@ -32,6 +39,10 @@ Set Render's Health Check Path to `/api/health`. Render automatically provides
 `RENDER_EXTERNAL_URL`, which the optional keep-alive scheduler uses to call the
 health endpoint every 10 minutes. Do not put `GEMINI_API_KEY` in `render.yaml`,
 Git, Vercel, or any `VITE_` environment variable.
+
+`MAIL_PASSWORD` phải là mật khẩu ứng dụng SMTP, không dùng mật khẩu đăng nhập
+email thông thường. Nếu chưa cấu hình mail, đặt `MAIL_ENABLED=false`; đăng ký
+vẫn tạo tài khoản nhưng người dùng sẽ chưa nhận được liên kết xác thực.
 
 ## Frontend: Vercel
 

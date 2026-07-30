@@ -12,4 +12,8 @@ public class AuthResponse {
     private String email;
     private String fullName;
     private String role;
+    private Boolean lunchEnabled;
+    private Boolean fitnessEnabled;
+    private Boolean healthEnabled;
+    private Boolean chatbotEnabled;
 }

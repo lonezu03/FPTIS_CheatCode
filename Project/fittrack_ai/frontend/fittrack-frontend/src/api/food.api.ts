@@ -11,6 +11,18 @@ export type Food = {
   imageUrl: string | null;
   custom: boolean;
   active: boolean;
+  approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  submittedById?: string | null;
+  submittedByName?: string | null;
+  adminNote?: string | null;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  potassium: number;
+  calcium: number;
+  iron: number;
+  vitaminC: number;
+  water: number;
 };
 
 export type FoodPayload = {
@@ -19,6 +31,14 @@ export type FoodPayload = {
   protein: number;
   carbs: number;
   fat: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+  potassium?: number;
+  calcium?: number;
+  iron?: number;
+  vitaminC?: number;
+  water?: number;
   unit: string;
   imageUrl?: string | null;
 };
@@ -37,6 +57,20 @@ export const getFoodsManagementApi = async (keyword?: string, includeInactive?: 
 export const createFoodApi = async (payload: FoodPayload): Promise<Food> => {
   const response = await api.post("/foods", payload);
 
+  return response.data;
+};
+
+export const suggestFoodApi = async (payload: FoodPayload): Promise<Food> => {
+  const response = await api.post("/foods/suggestions", payload);
+  return response.data;
+};
+
+export const reviewFoodApi = async (
+  id: string,
+  status: "APPROVED" | "REJECTED",
+  note = "",
+): Promise<Food> => {
+  const response = await api.patch(`/foods/${id}/review`, { status, note });
   return response.data;
 };
 

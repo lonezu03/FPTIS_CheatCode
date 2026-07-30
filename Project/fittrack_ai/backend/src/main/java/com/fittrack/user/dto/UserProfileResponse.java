@@ -10,6 +10,10 @@ public class UserProfileResponse {
     private String email;
     private String fullName;
     private String role;
+    private Boolean lunchEnabled;
+    private Boolean fitnessEnabled;
+    private Boolean healthEnabled;
+    private Boolean chatbotEnabled;
     private String gender;
     private Integer age;
     private Double height;

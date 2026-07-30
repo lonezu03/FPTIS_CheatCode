@@ -56,6 +56,14 @@ public class LunchNutritionService {
                     .protein(protein)
                     .carbs(carbs)
                     .fat(fat)
+                    .fiber(0.0)
+                    .sugar(0.0)
+                    .sodium(0.0)
+                    .potassium(0.0)
+                    .calcium(0.0)
+                    .iron(0.0)
+                    .vitaminC(0.0)
+                    .water(0.0)
                     .build());
             mealLog.setTotalCalories(mealLog.getTotalCalories() + calories);
             mealLog.setTotalProtein(mealLog.getTotalProtein() + protein);
@@ -89,6 +97,9 @@ public class LunchNutritionService {
         food.setProtein(zero(item.getProtein()));
         food.setCarbs(zero(item.getCarbs()));
         food.setFat(zero(item.getFat()));
+        if (food.getApprovalStatus() == null) {
+            food.setApprovalStatus("APPROVED");
+        }
         Food saved = foodRepository.save(food);
         item.setNutritionFood(saved);
         return saved;

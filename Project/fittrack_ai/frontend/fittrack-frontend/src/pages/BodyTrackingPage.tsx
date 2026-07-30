@@ -15,6 +15,9 @@ import PageHeader from "../components/PageHeader";
 import TableLoading from "../components/common/TableLoading";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
+import DataPagination from "../components/common/DataPagination";
+import { usePagination } from "../hooks/usePagination";
+import FormField from "../components/common/FormField";
 
 export default function BodyTrackingPage() {
   const queryClient = useQueryClient();
@@ -42,11 +45,12 @@ export default function BodyTrackingPage() {
   });
 
   const items = measurementsQuery.data ?? [];
+  const measurementPagination = usePagination(items);
 
   const createMutation = useMutation({
     mutationFn: createBodyMeasurement,
     onSuccess: () => {
-      toast.success("Measurement saved");
+      toast.success("Đã lưu chỉ số");
       queryClient.invalidateQueries({ queryKey: ["body-measurements"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
@@ -55,14 +59,14 @@ export default function BodyTrackingPage() {
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot save measurement");
+      toast.error(message || "Không thể lưu chỉ số");
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteBodyMeasurement,
     onSuccess: () => {
-      toast.success("Measurement deleted");
+      toast.success("Đã xóa chỉ số");
       queryClient.invalidateQueries({ queryKey: ["body-measurements"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
       queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
@@ -71,7 +75,7 @@ export default function BodyTrackingPage() {
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot delete measurement");
+      toast.error(message || "Không thể xóa chỉ số");
     },
   });
 
@@ -94,7 +98,7 @@ export default function BodyTrackingPage() {
         recordDate: payload.recordDate,
       }),
     onSuccess: () => {
-      toast.success("Measurement updated");
+      toast.success("Đã cập nhật chỉ số");
       setEditingBody(null);
       queryClient.invalidateQueries({ queryKey: ["body-measurements"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
@@ -104,7 +108,7 @@ export default function BodyTrackingPage() {
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Cannot update measurement");
+      toast.error(message || "Không thể cập nhật chỉ số");
     },
   });
 
@@ -120,7 +124,7 @@ export default function BodyTrackingPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!window.confirm("Delete this measurement?")) {
+    if (!window.confirm("Bạn có chắc muốn xóa chỉ số này?")) {
       return;
     }
 
@@ -132,48 +136,60 @@ export default function BodyTrackingPage() {
   }
 
   if (measurementsQuery.isError) {
-    return <ErrorState title="Cannot load body measurements" message="Please try refreshing the page." />;
+    return <ErrorState title="Không thể tải chỉ số cơ thể" message="Vui lòng tải lại trang." />;
   }
 
   const chartData = [...items].reverse();
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <PageHeader title="Body Tracking" description="Track weight, waist and body measurements over time." />
+      <PageHeader title="Chỉ số cơ thể" description="Theo dõi cân nặng và các số đo cơ thể theo thời gian." />
 
       <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>Add Measurement</CardTitle>
+          <CardTitle>Thêm chỉ số</CardTitle>
           </CardHeader>
 
-          <CardContent className="space-y-3 sm:space-y-4">
-            <Input type="date" value={recordDate} onChange={(event) => setRecordDate(event.target.value)} />
+          <CardContent className="space-y-4">
+            <FormField label="Ngày đo" htmlFor="body-record-date" hint="Chọn ngày bạn thực hiện các phép đo này." required>
+              <Input id="body-record-date" type="date" value={recordDate} onChange={(event) => setRecordDate(event.target.value)} />
+            </FormField>
 
-            <Input type="number" value={weight} onChange={(event) => setWeight(Number(event.target.value))} placeholder="Weight" />
+            <FormField label="Cân nặng" htmlFor="body-weight" unit="kg" hint="Đo vào cùng một thời điểm trong ngày để dễ so sánh." required>
+              <Input id="body-weight" type="number" min={20} max={350} step={0.1} value={weight} onChange={(event) => setWeight(Number(event.target.value))} />
+            </FormField>
 
-            <Input type="number" value={waist} onChange={(event) => setWaist(Number(event.target.value))} placeholder="Waist" />
+            <FormField label="Vòng eo" htmlFor="body-waist" unit="cm" hint="Đo ngang rốn, thả lỏng bụng và không siết dây." required>
+              <Input id="body-waist" type="number" min={30} max={250} step={0.1} value={waist} onChange={(event) => setWaist(Number(event.target.value))} />
+            </FormField>
 
-            <Input type="number" value={chest} onChange={(event) => setChest(Number(event.target.value))} placeholder="Chest" />
+            <FormField label="Vòng ngực" htmlFor="body-chest" unit="cm" hint="Đo quanh phần đầy nhất của ngực, giữ thước song song mặt đất.">
+              <Input id="body-chest" type="number" min={30} max={250} step={0.1} value={chest} onChange={(event) => setChest(Number(event.target.value))} />
+            </FormField>
 
-            <Input type="number" value={arm} onChange={(event) => setArm(Number(event.target.value))} placeholder="Arm" />
+            <FormField label="Vòng bắp tay" htmlFor="body-arm" unit="cm" hint="Đo quanh phần lớn nhất của bắp tay khi thả lỏng.">
+              <Input id="body-arm" type="number" min={10} max={100} step={0.1} value={arm} onChange={(event) => setArm(Number(event.target.value))} />
+            </FormField>
 
-            <Input type="number" value={thigh} onChange={(event) => setThigh(Number(event.target.value))} placeholder="Thigh" />
+            <FormField label="Vòng đùi" htmlFor="body-thigh" unit="cm" hint="Đo quanh phần lớn nhất của đùi khi đứng thẳng.">
+              <Input id="body-thigh" type="number" min={20} max={150} step={0.1} value={thigh} onChange={(event) => setThigh(Number(event.target.value))} />
+            </FormField>
 
             <Button className="w-full" onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Saving..." : "Save Measurement"}
+            {createMutation.isPending ? "Đang lưu..." : "Lưu chỉ số"}
             </Button>
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Progress Chart</CardTitle>
+            <CardTitle>Biểu đồ tiến độ</CardTitle>
           </CardHeader>
 
           <CardContent className="h-[240px] md:h-[340px]">
             {chartData.length === 0 ? (
-              <EmptyState title="No body data yet" description="Add your first body measurement to see progress." />
+              <EmptyState title="Chưa có dữ liệu cơ thể" description="Thêm chỉ số đầu tiên để xem tiến độ." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
@@ -191,29 +207,29 @@ export default function BodyTrackingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>History</CardTitle>
+          <CardTitle>Lịch sử chỉ số</CardTitle>
         </CardHeader>
 
         <CardContent>
           {items.length === 0 ? (
-            <EmptyState title="No measurements yet" description="Save your first measurement to start tracking." />
+            <EmptyState title="Chưa có chỉ số" description="Lưu chỉ số đầu tiên để bắt đầu theo dõi." />
           ) : (
             <div className="w-full overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Weight</TableHead>
-                  <TableHead>Waist</TableHead>
-                  <TableHead>Chest</TableHead>
-                  <TableHead>Arm</TableHead>
-                  <TableHead>Thigh</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>Ngày</TableHead>
+                  <TableHead>Cân nặng</TableHead>
+                  <TableHead>Vòng eo</TableHead>
+                  <TableHead>Vòng ngực</TableHead>
+                  <TableHead>Vòng tay</TableHead>
+                  <TableHead>Vòng đùi</TableHead>
+                  <TableHead>Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {items.map((item) => (
+                {measurementPagination.paginatedItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.recordDate}</TableCell>
                     <TableCell>{item.weight}kg</TableCell>
@@ -237,7 +253,7 @@ export default function BodyTrackingPage() {
                           })
                         }
                       >
-                        Edit
+                        Sửa
                       </Button>
                       <Button
                         variant="destructive"
@@ -245,13 +261,21 @@ export default function BodyTrackingPage() {
                         onClick={() => handleDelete(item.id)}
                         disabled={deleteMutation.isPending}
                       >
-                        Delete
+                        Xóa
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            <DataPagination
+              page={measurementPagination.page}
+              pageSize={measurementPagination.pageSize}
+              totalItems={measurementPagination.totalItems}
+              totalPages={measurementPagination.totalPages}
+              onPageChange={measurementPagination.setPage}
+              onPageSizeChange={measurementPagination.setPageSize}
+            />
           </div>
           )}
         </CardContent>
@@ -267,54 +291,32 @@ export default function BodyTrackingPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Measurement</DialogTitle>
+            <DialogTitle>Sửa chỉ số</DialogTitle>
           </DialogHeader>
 
           {editingBody && (
-            <div className="space-y-3 sm:space-y-4">
-              <Input
-                type="date"
-                value={editingBody.recordDate}
-                onChange={(event) => setEditingBody({ ...editingBody, recordDate: event.target.value })}
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField label="Ngày đo" htmlFor="edit-body-date" className="sm:col-span-2" required>
+                <Input id="edit-body-date" type="date" value={editingBody.recordDate} onChange={(event) => setEditingBody({ ...editingBody, recordDate: event.target.value })} />
+              </FormField>
+              <FormField label="Cân nặng" htmlFor="edit-body-weight" unit="kg" required>
+                <Input id="edit-body-weight" type="number" step={0.1} value={editingBody.weight} onChange={(event) => setEditingBody({ ...editingBody, weight: Number(event.target.value) })} />
+              </FormField>
+              <FormField label="Vòng eo" htmlFor="edit-body-waist" unit="cm" required>
+                <Input id="edit-body-waist" type="number" step={0.1} value={editingBody.waist} onChange={(event) => setEditingBody({ ...editingBody, waist: Number(event.target.value) })} />
+              </FormField>
+              <FormField label="Vòng ngực" htmlFor="edit-body-chest" unit="cm">
+                <Input id="edit-body-chest" type="number" step={0.1} value={editingBody.chest} onChange={(event) => setEditingBody({ ...editingBody, chest: Number(event.target.value) })} />
+              </FormField>
+              <FormField label="Vòng bắp tay" htmlFor="edit-body-arm" unit="cm">
+                <Input id="edit-body-arm" type="number" step={0.1} value={editingBody.arm} onChange={(event) => setEditingBody({ ...editingBody, arm: Number(event.target.value) })} />
+              </FormField>
+              <FormField label="Vòng đùi" htmlFor="edit-body-thigh" unit="cm">
+                <Input id="edit-body-thigh" type="number" step={0.1} value={editingBody.thigh} onChange={(event) => setEditingBody({ ...editingBody, thigh: Number(event.target.value) })} />
+              </FormField>
 
-              <Input
-                type="number"
-                value={editingBody.weight}
-                onChange={(event) => setEditingBody({ ...editingBody, weight: Number(event.target.value) })}
-                placeholder="Weight"
-              />
-
-              <Input
-                type="number"
-                value={editingBody.waist}
-                onChange={(event) => setEditingBody({ ...editingBody, waist: Number(event.target.value) })}
-                placeholder="Waist"
-              />
-
-              <Input
-                type="number"
-                value={editingBody.chest}
-                onChange={(event) => setEditingBody({ ...editingBody, chest: Number(event.target.value) })}
-                placeholder="Chest"
-              />
-
-              <Input
-                type="number"
-                value={editingBody.arm}
-                onChange={(event) => setEditingBody({ ...editingBody, arm: Number(event.target.value) })}
-                placeholder="Arm"
-              />
-
-              <Input
-                type="number"
-                value={editingBody.thigh}
-                onChange={(event) => setEditingBody({ ...editingBody, thigh: Number(event.target.value) })}
-                placeholder="Thigh"
-              />
-
-              <Button className="w-full" onClick={() => updateMutation.mutate(editingBody)} disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              <Button className="w-full sm:col-span-2" onClick={() => updateMutation.mutate(editingBody)} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
               </Button>
             </div>
           )}
