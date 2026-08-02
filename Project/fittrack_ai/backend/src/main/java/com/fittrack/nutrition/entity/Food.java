@@ -42,6 +42,7 @@ public class Food {
 
     private Double iron;
 
+    @Column(name = "vitamin_c")
     private Double vitaminC;
 
     private Double water;

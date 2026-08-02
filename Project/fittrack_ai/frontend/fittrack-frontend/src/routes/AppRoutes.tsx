@@ -23,6 +23,7 @@ const LunchPage = lazy(() => import("../pages/LunchPage"));
 const AdminLunchPage = lazy(() => import("../pages/AdminLunchPage"));
 const AdminUsersPage = lazy(() => import("../pages/AdminUsersPage"));
 const AdminNotificationsPage = lazy(() => import("../pages/AdminNotificationsPage"));
+const ChangePasswordPage = lazy(() => import("../pages/ChangePasswordPage"));
 
 export default function AppRoutes() {
   return (
@@ -35,6 +36,7 @@ export default function AppRoutes() {
           <Route path="/reset-password" element={<AuthRecoveryPage />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route element={<AppLayout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />

@@ -25,6 +25,13 @@ export type AssistantExecuteResponse = {
   result: unknown;
 };
 
+export type AssistantPrivacyResponse = {
+  consented: boolean;
+  consentedAt: string | null;
+  dataCategories: string[];
+  retentionPolicy: string;
+};
+
 export async function chatWithAssistant(
   messages: AssistantApiMessage[],
 ): Promise<AssistantChatResponse> {
@@ -40,4 +47,20 @@ export async function executeAssistantAction(
     arguments: action.arguments,
   });
   return response.data;
+}
+
+export async function getAssistantPrivacy(): Promise<AssistantPrivacyResponse> {
+  const response = await api.get<AssistantPrivacyResponse>("/assistant/privacy");
+  return response.data;
+}
+
+export async function updateAssistantPrivacy(
+  consented: boolean,
+): Promise<AssistantPrivacyResponse> {
+  const response = await api.put<AssistantPrivacyResponse>("/assistant/privacy", { consented });
+  return response.data;
+}
+
+export async function deleteAssistantHistory(): Promise<void> {
+  await api.delete("/assistant/history");
 }

@@ -2,6 +2,8 @@ package com.fittrack.user.service;
 
 import com.fittrack.common.exception.ConflictException;
 import com.fittrack.common.exception.ResourceNotFoundException;
+import com.fittrack.auth.service.AuthTokenService;
+import com.fittrack.audit.service.AuditService;
 import com.fittrack.user.dto.AdminUserDtos.AdminUserResponse;
 import com.fittrack.user.dto.AdminUserDtos.ResetPasswordRequest;
 import com.fittrack.user.dto.AdminUserDtos.UpdateAdminUserRequest;
@@ -15,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Map;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +29,8 @@ public class AdminUserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthTokenService authTokenService;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<AdminUserResponse> getUsers(String keyword) {
@@ -32,6 +39,20 @@ public class AdminUserService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<AdminUserResponse> getUsersPage(
+            String keyword,
+            int page,
+            int size
+    ) {
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
+        var result = userRepository.searchForAdminPage(
+                normalizedKeyword,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        ).map(this::toResponse);
+        return PageResponse.from(result);
     }
 
     @Transactional
@@ -82,15 +103,29 @@ public class AdminUserService {
         if (request.chatbotEnabled() != null) {
             target.setChatbotEnabled(request.chatbotEnabled());
         }
-        return toResponse(userRepository.save(target));
+        AdminUserResponse response = toResponse(userRepository.save(target));
+        auditService.record(currentAdmin, "USER_UPDATED", "USER", target.getId(), Map.of(
+                "role", target.getRole(),
+                "active", Boolean.TRUE.equals(target.getActive()),
+                "lunchEnabled", Boolean.TRUE.equals(target.getLunchEnabled()),
+                "fitnessEnabled", Boolean.TRUE.equals(target.getFitnessEnabled()),
+                "healthEnabled", Boolean.TRUE.equals(target.getHealthEnabled()),
+                "chatbotEnabled", Boolean.TRUE.equals(target.getChatbotEnabled())
+        ));
+        return response;
     }
 
     @Transactional
-    public void resetPassword(String userId, ResetPasswordRequest request) {
+    public void resetPassword(User currentAdmin, String userId, ResetPasswordRequest request) {
         User target = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
         target.setPassword(passwordEncoder.encode(request.newPassword()));
+        target.setPasswordChangeRequired(true);
+        authTokenService.revokeAllSessions(target);
         userRepository.save(target);
+        auditService.record(currentAdmin, "USER_PASSWORD_RESET", "USER", target.getId(), Map.of(
+                "forceChange", true
+        ));
     }
 
     private AdminUserResponse toResponse(User user) {

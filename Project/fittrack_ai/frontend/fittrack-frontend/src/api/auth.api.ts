@@ -11,6 +11,7 @@ export type AuthResponse = {
   fitnessEnabled: boolean;
   healthEnabled: boolean;
   chatbotEnabled: boolean;
+  passwordChangeRequired: boolean;
 };
 
 export type RegistrationResponse = {
@@ -53,4 +54,21 @@ export const forgotPasswordApi = async (email: string): Promise<void> => {
 
 export const resetPasswordApi = async (token: string, newPassword: string): Promise<void> => {
   await api.post("/auth/reset-password", { token, newPassword });
+};
+
+export const refreshSessionApi = async (): Promise<AuthResponse> => {
+  const response = await api.post("/auth/refresh", {});
+  return response.data;
+};
+
+export const logoutApi = async (): Promise<void> => {
+  await api.post("/auth/logout", {});
+};
+
+export const changePasswordApi = async (
+  currentPassword: string,
+  newPassword: string,
+): Promise<AuthResponse> => {
+  const response = await api.post("/auth/change-password", { currentPassword, newPassword });
+  return response.data;
 };

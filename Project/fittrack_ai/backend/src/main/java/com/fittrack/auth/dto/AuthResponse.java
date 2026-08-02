@@ -16,4 +16,5 @@ public class AuthResponse {
     private Boolean fitnessEnabled;
     private Boolean healthEnabled;
     private Boolean chatbotEnabled;
+    private Boolean passwordChangeRequired;
 }

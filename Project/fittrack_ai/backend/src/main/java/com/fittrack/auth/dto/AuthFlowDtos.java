@@ -45,4 +45,16 @@ public final class AuthFlowDtos {
             String newPassword
     ) {
     }
+
+    public record ChangePasswordRequest(
+            @NotBlank(message = "Vui lòng nhập mật khẩu hiện tại")
+            String currentPassword,
+            @NotBlank(message = "Vui lòng nhập mật khẩu mới")
+            @Size(min = 8, max = 72, message = "Mật khẩu phải từ 8 đến 72 ký tự")
+            String newPassword
+    ) {
+    }
+
+    public record RefreshRequest(String refreshToken) {
+    }
 }

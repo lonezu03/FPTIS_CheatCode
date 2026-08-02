@@ -7,14 +7,18 @@ import com.fittrack.workout.entity.Exercise;
 import com.fittrack.workout.mapper.WorkoutMapper;
 import com.fittrack.workout.repository.ExerciseRepository;
 import com.fittrack.common.media.ImageReferences;
+import com.fittrack.common.media.MediaStorageService;
 import com.fittrack.common.dto.CatalogReviewRequest;
 import com.fittrack.lunch.service.LunchNotificationService;
 import com.fittrack.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
 
 import java.util.List;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +27,7 @@ public class ExerciseService {
     private final ExerciseRepository exerciseRepository;
     private final WorkoutMapper workoutMapper;
     private final LunchNotificationService notificationService;
+    private final MediaStorageService mediaStorageService;
 
     public List<ExerciseResponse> getExercises(String keyword, Boolean includeInactive) {
         boolean showInactive = Boolean.TRUE.equals(includeInactive);
@@ -52,7 +57,9 @@ public class ExerciseService {
                 .muscleGroup(request.getMuscleGroup())
                 .equipment(request.getEquipment())
                 .description(request.getDescription())
-                .imageUrl(ImageReferences.normalizeForStorage(request.getImageUrl()))
+                .imageUrl(mediaStorageService.storeNew(
+                        request.getImageUrl(), "exercises", UUID.randomUUID().toString()
+                ))
                 .custom(true)
                 .active(true)
                 .approvalStatus("APPROVED")
@@ -61,6 +68,20 @@ public class ExerciseService {
         Exercise saved = exerciseRepository.save(exercise);
 
         return workoutMapper.toExerciseResponse(saved);
+    }
+
+    public PageResponse<ExerciseResponse> getExercisesPage(
+            String keyword,
+            boolean includeInactive,
+            int page,
+            int size
+    ) {
+        var result = exerciseRepository.searchPage(
+                keyword == null ? "" : keyword.trim(),
+                includeInactive,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        ).map(workoutMapper::toExerciseResponse);
+        return PageResponse.from(result);
     }
 
     public ExerciseResponse createSuggestion(
@@ -72,11 +93,9 @@ public class ExerciseService {
                 .muscleGroup(request.getMuscleGroup())
                 .equipment(request.getEquipment())
                 .description(request.getDescription())
-                .imageUrl(
-                        ImageReferences.normalizeForStorage(
-                                request.getImageUrl()
-                        )
-                )
+                .imageUrl(mediaStorageService.storeNew(
+                        request.getImageUrl(), "exercises", UUID.randomUUID().toString()
+                ))
                 .custom(true)
                 .active(false)
                 .approvalStatus("PENDING")
@@ -143,10 +162,12 @@ public class ExerciseService {
         exercise.setMuscleGroup(request.getMuscleGroup());
         exercise.setEquipment(request.getEquipment());
         exercise.setDescription(request.getDescription());
-        exercise.setImageUrl(ImageReferences.resolveStoredValue(
+        exercise.setImageUrl(mediaStorageService.store(
                 exercise.getImageUrl(),
                 request.getImageUrl(),
-                ImageReferences.exercisePath(exercise.getId())
+                ImageReferences.exercisePath(exercise.getId()),
+                "exercises",
+                exercise.getId()
         ));
 
         Exercise saved = exerciseRepository.save(exercise);

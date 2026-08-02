@@ -1,5 +1,6 @@
 import api from "./axios";
 import type { WorkoutSession } from "./workout.api";
+import type { PageResponse } from "./pagination";
 
 export type WorkoutPlanExercise = {
   id: string;
@@ -31,6 +32,16 @@ export type WorkoutPlan = {
 export const getWorkoutPlans = async (): Promise<WorkoutPlan[]> => {
   const response = await api.get("/workout-plans");
 
+  return response.data;
+};
+
+export const getWorkoutPlansPage = async (
+  page = 0,
+  size = 12,
+): Promise<PageResponse<WorkoutPlan>> => {
+  const response = await api.get<PageResponse<WorkoutPlan>>("/workout-plans/page", {
+    params: { page, size },
+  });
   return response.data;
 };
 

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.util.List;
+import com.fittrack.common.dto.PageResponse;
 
 @RestController
 @RequestMapping("/api/foods")
@@ -30,6 +31,23 @@ public class FoodController {
         return foodService.getFoods(
                 keyword,
                 admin && Boolean.TRUE.equals(includeInactive)
+        );
+    }
+
+    @GetMapping("/page")
+    public PageResponse<FoodResponse> getFoodsPage(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Boolean includeInactive,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        boolean admin = "ADMIN".equalsIgnoreCase(user.getRole());
+        return foodService.getFoodsPage(
+                keyword,
+                admin && Boolean.TRUE.equals(includeInactive),
+                page,
+                size
         );
     }
 

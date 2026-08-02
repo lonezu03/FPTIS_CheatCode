@@ -125,6 +125,23 @@ export default function ProfilePage() {
             </select>
           </FormField>
 
+          <label className="flex items-start gap-3 rounded-xl border p-4 md:col-span-2">
+            <input
+              type="checkbox"
+              className="mt-1 size-4 accent-emerald-700"
+              checked={profile.emailNotificationsEnabled ?? false}
+              onChange={(event) =>
+                setDraft({ ...profile, emailNotificationsEnabled: event.target.checked })
+              }
+            />
+            <span>
+              <span className="block font-medium">Nhận thông báo qua email</span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                Gửi nhắc nhở sức khỏe, thông báo quản trị và cập nhật thanh toán ngay cả khi bạn đã đóng trình duyệt.
+              </span>
+            </span>
+          </label>
+
           <Button onClick={handleSave} className="md:col-span-2" disabled={updateMutation.isPending}>
             {updateMutation.isPending ? "Đang lưu..." : "Lưu hồ sơ"}
           </Button>

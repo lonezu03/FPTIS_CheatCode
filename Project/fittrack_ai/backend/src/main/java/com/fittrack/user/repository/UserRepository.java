@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
@@ -32,6 +34,19 @@ public interface UserRepository extends JpaRepository<User, String> {
             order by user.createdAt desc
             """)
     List<User> searchForAdmin(@Param("keyword") String keyword);
+
+    @Query("""
+            select user
+            from User user
+            where :keyword = ''
+               or lower(user.email) like lower(concat('%', :keyword, '%'))
+               or lower(coalesce(user.fullName, '')) like lower(concat('%', :keyword, '%'))
+            order by user.createdAt desc
+            """)
+    Page<User> searchForAdminPage(
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select user from User user where user.id = :id")

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.fittrack.common.dto.PageResponse;
 
 @RestController
 @RequestMapping("/api/lunch/admin")
@@ -106,6 +107,14 @@ public class LunchAdminController {
     @GetMapping("/payment-requests")
     public List<PaymentRequestResponse> getPaymentRequests() {
         return paymentService.getAll();
+    }
+
+    @GetMapping("/payment-requests/page")
+    public PageResponse<PaymentRequestResponse> getPaymentRequestsPage(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return paymentService.getAllPage(page, size);
     }
 
     @PostMapping("/payment-requests/{id}/approve")

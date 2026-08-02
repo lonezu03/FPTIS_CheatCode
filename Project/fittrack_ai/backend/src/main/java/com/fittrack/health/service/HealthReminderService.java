@@ -8,6 +8,8 @@ import com.fittrack.lunch.service.LunchNotificationService;
 import com.fittrack.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,9 @@ public class HealthReminderService {
 
     private final HealthReminderRepository reminderRepository;
     private final LunchNotificationService notificationService;
+
+    @Value("${app.scheduler.internal-enabled:true}")
+    private boolean internalSchedulerEnabled;
 
     @Transactional(readOnly = true)
     public List<ReminderResponse> getMine(User user) {
@@ -69,18 +74,30 @@ public class HealthReminderService {
     @Scheduled(cron = "0 * * * * *", zone = "Asia/Ho_Chi_Minh")
     @Transactional
     public void dispatchDueReminders() {
-        ZonedDateTime now = ZonedDateTime.now(BUSINESS_ZONE);
-        LocalDate today = now.toLocalDate();
-        LocalTime currentMinute = now.toLocalTime().withSecond(0).withNano(0);
+        if (!internalSchedulerEnabled) {
+            return;
+        }
+        dispatchDueRemindersNow();
+    }
 
-        reminderRepository.findByEnabledTrue().forEach(reminder -> {
-            Set<DayOfWeek> days = parseDays(reminder.getDaysOfWeek());
-            if (!days.contains(now.getDayOfWeek())
-                    || !reminder.getReminderTime().equals(currentMinute)
-                    || today.equals(reminder.getLastTriggeredDate())) {
-                return;
+    @Transactional
+    public int dispatchDueRemindersNow() {
+        ZonedDateTime now = ZonedDateTime.now(BUSINESS_ZONE);
+        LocalDateTime localNow = now.toLocalDateTime();
+        int dispatched = 0;
+        List<HealthReminder> reminders = reminderRepository.findDueForUpdate(
+                localNow,
+                PageRequest.of(0, 100)
+        );
+        for (HealthReminder reminder : reminders) {
+            if (reminder.getNextRunAt() == null) {
+                reminder.setNextRunAt(calculateNextRun(reminder, localNow.minusMinutes(1)));
+                if (reminder.getNextRunAt().isAfter(localNow)) {
+                    continue;
+                }
             }
-            notificationService.notifyUser(
+            LocalDateTime scheduledFor = reminder.getNextRunAt();
+            boolean created = notificationService.notifyUserOnce(
                     reminder.getUser(),
                     "HEALTH_REMINDER",
                     reminder.getTitle(),
@@ -89,10 +106,17 @@ public class HealthReminderService {
                             ? "Đã đến giờ thực hiện kế hoạch sức khỏe của bạn."
                             : reminder.getMessage(),
                     "REMINDER",
-                    reminder.getId()
+                    reminder.getId(),
+                    "health-reminder:" + reminder.getId() + ':' + scheduledFor
             );
-            reminder.setLastTriggeredDate(today);
-        });
+            reminder.setLastTriggeredDate(scheduledFor.toLocalDate());
+            reminder.setLastTriggeredAt(localNow);
+            reminder.setNextRunAt(calculateNextRun(reminder, localNow));
+            if (created) {
+                dispatched++;
+            }
+        }
+        return dispatched;
     }
 
     private void apply(
@@ -117,6 +141,9 @@ public class HealthReminderService {
         reminder.setEnabled(
                 request.enabled() == null || request.enabled()
         );
+        reminder.setNextRunAt(Boolean.TRUE.equals(reminder.getEnabled())
+                ? calculateNextRun(reminder, LocalDateTime.now(BUSINESS_ZONE))
+                : null);
     }
 
     private ReminderResponse toResponse(HealthReminder reminder) {
@@ -140,5 +167,20 @@ public class HealthReminderService {
         return Arrays.stream(value.split(","))
                 .map(DayOfWeek::valueOf)
                 .collect(Collectors.toSet());
+    }
+
+    private LocalDateTime calculateNextRun(
+            HealthReminder reminder,
+            LocalDateTime after
+    ) {
+        Set<DayOfWeek> days = parseDays(reminder.getDaysOfWeek());
+        for (int offset = 0; offset <= 7; offset++) {
+            LocalDate date = after.toLocalDate().plusDays(offset);
+            LocalDateTime candidate = LocalDateTime.of(date, reminder.getReminderTime());
+            if (days.contains(date.getDayOfWeek()) && candidate.isAfter(after)) {
+                return candidate;
+            }
+        }
+        throw new IllegalArgumentException("Lịch nhắc chưa có ngày hợp lệ");
     }
 }

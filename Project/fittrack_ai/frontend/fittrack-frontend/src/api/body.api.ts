@@ -1,4 +1,5 @@
 import api from "./axios";
+import type { PageResponse } from "./pagination";
 
 export type BodyMeasurement = {
   id: string;
@@ -14,6 +15,16 @@ export type BodyMeasurement = {
 export const getBodyMeasurements = async (): Promise<BodyMeasurement[]> => {
   const response = await api.get("/body-measurements");
 
+  return response.data;
+};
+
+export const getBodyMeasurementsPage = async (
+  page = 0,
+  size = 20,
+): Promise<PageResponse<BodyMeasurement>> => {
+  const response = await api.get<PageResponse<BodyMeasurement>>("/body-measurements/page", {
+    params: { page, size },
+  });
   return response.data;
 };
 

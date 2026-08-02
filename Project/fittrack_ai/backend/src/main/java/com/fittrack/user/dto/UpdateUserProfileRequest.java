@@ -13,5 +13,6 @@ public class UpdateUserProfileRequest {
     private Double weight;
     private String goal;
     private String activityLevel;
+    private Boolean emailNotificationsEnabled;
 }
 

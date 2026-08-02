@@ -28,8 +28,8 @@ import {
 } from "lucide-react";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import AssistantChat from "@/components/assistant/AssistantChat";
-import BackendKeepAlive from "@/components/BackendKeepAlive";
 import { canUseFeature, type FeaturePermission } from "@/lib/feature-access";
+import { logoutApi } from "@/api/auth.api";
 
 type NavItem = {
   to: string;
@@ -105,6 +105,7 @@ export default function AppLayout() {
         fitnessEnabled: profile.fitnessEnabled,
         healthEnabled: profile.healthEnabled,
         chatbotEnabled: profile.chatbotEnabled,
+        passwordChangeRequired: profile.passwordChangeRequired,
       });
       return profile;
     },
@@ -142,7 +143,12 @@ export default function AppLayout() {
     year: "numeric",
   }).format(new Date());
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutApi();
+    } catch {
+      // Clearing the local session remains safe when the server is unavailable.
+    }
     logout();
     queryClient.clear();
     navigate("/login", { replace: true });
@@ -277,7 +283,6 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
-      <BackendKeepAlive />
       {canUseFeature(authUser, "chatbotEnabled") && <AssistantChat />}
     </div>
   );

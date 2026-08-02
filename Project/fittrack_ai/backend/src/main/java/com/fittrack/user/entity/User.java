@@ -58,6 +58,20 @@ public class User {
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean chatbotEnabled;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean passwordChangeRequired;
+
+    @Column(nullable = false, columnDefinition = "bigint default 0")
+    private Long tokenVersion;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean assistantConsent;
+
+    private LocalDateTime assistantConsentAt;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean emailNotificationsEnabled;
+
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -90,6 +104,22 @@ public class User {
 
         if (this.chatbotEnabled == null) {
             this.chatbotEnabled = true;
+        }
+
+        if (this.passwordChangeRequired == null) {
+            this.passwordChangeRequired = false;
+        }
+
+        if (this.tokenVersion == null) {
+            this.tokenVersion = 0L;
+        }
+
+        if (this.assistantConsent == null) {
+            this.assistantConsent = false;
+        }
+
+        if (this.emailNotificationsEnabled == null) {
+            this.emailNotificationsEnabled = false;
         }
     }
 }

@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.fittrack.common.dto.PageResponse;
 
 @RestController
 @RequestMapping("/api/lunch")
@@ -41,9 +42,31 @@ public class LunchController {
         return lunchService.getWalletTransactions(currentUser(authentication));
     }
 
+    @GetMapping("/wallet/transactions/page")
+    public PageResponse<WalletTransactionResponse> getWalletTransactionsPage(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return lunchService.getWalletTransactionsPage(
+                currentUser(authentication), page, size
+        );
+    }
+
     @GetMapping("/orders/history")
     public List<OrderResponse> getOrderHistory(Authentication authentication) {
         return lunchService.getOrderHistory(currentUser(authentication));
+    }
+
+    @GetMapping("/orders/history/page")
+    public PageResponse<OrderResponse> getOrderHistoryPage(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return lunchService.getOrderHistoryPage(
+                currentUser(authentication), page, size
+        );
     }
 
     @PostMapping("/orders")
@@ -106,9 +129,27 @@ public class LunchController {
         return paymentService.getMine(currentUser(authentication));
     }
 
+    @GetMapping("/payment-requests/mine/page")
+    public PageResponse<PaymentRequestResponse> getMyPaymentRequestsPage(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return paymentService.getMinePage(currentUser(authentication), page, size);
+    }
+
     @GetMapping("/notifications")
     public NotificationListResponse getNotifications(Authentication authentication) {
         return notificationService.getMine(currentUser(authentication));
+    }
+
+    @GetMapping("/notifications/page")
+    public PageResponse<NotificationResponse> getNotificationsPage(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return notificationService.getMinePage(currentUser(authentication), page, size);
     }
 
     @PatchMapping("/notifications/{id}/read")

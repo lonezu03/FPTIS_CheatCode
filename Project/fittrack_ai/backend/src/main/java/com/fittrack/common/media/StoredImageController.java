@@ -39,6 +39,7 @@ public class StoredImageController {
     private final LunchPaymentSettingsRepository paymentSettingsRepository;
     private final FoodRepository foodRepository;
     private final ExerciseRepository exerciseRepository;
+    private final MediaStorageService mediaStorageService;
 
     @GetMapping("/lunch-items/{id}")
     public ResponseEntity<byte[]> lunchItem(@PathVariable String id) {
@@ -63,10 +64,19 @@ public class StoredImageController {
 
     @GetMapping("/payment-qr")
     public ResponseEntity<byte[]> paymentQr() {
-        return imageResponse(paymentSettingsRepository
+        String storedValue = paymentSettingsRepository
                 .findById(LunchPaymentSettings.DEFAULT_ID)
                 .map(LunchPaymentSettings::getQrImageUrl)
-                .orElse(null));
+                .orElse(null);
+        if (storedValue != null && storedValue.startsWith("https://")) {
+            MediaStorageService.DownloadedImage image = mediaStorageService.downloadProtected(storedValue);
+            return ResponseEntity.ok()
+                    .header("X-Content-Type-Options", "nosniff")
+                    .header("Cache-Control", "private, max-age=300")
+                    .contentType(MediaType.parseMediaType(image.mimeType()))
+                    .body(image.bytes());
+        }
+        return imageResponse(storedValue);
     }
 
     private ResponseEntity<byte[]> imageResponse(String storedValue) {

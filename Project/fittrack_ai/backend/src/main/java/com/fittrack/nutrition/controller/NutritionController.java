@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.fittrack.common.dto.PageResponse;
 
 @RestController
 @RequestMapping("/api/nutrition")
@@ -52,6 +53,18 @@ public class NutritionController {
         }
 
         return nutritionService.getMyMealLogs(user);
+    }
+
+    @GetMapping("/meal-logs/page")
+    public PageResponse<MealLogResponse> getMealLogsPage(
+            Authentication authentication,
+            @RequestParam(required = false) LocalDate date,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return nutritionService.getMyMealLogsPage(
+                (User) authentication.getPrincipal(), date, page, size
+        );
     }
 
     @PutMapping("/meal-logs/{id}")

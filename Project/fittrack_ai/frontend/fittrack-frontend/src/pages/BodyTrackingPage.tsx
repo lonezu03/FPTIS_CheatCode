@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { createBodyMeasurement, deleteBodyMeasurement, getBodyMeasurements, updateBodyMeasurement } from "../api/body.api";
+import { createBodyMeasurement, deleteBodyMeasurement, getBodyMeasurementsPage, updateBodyMeasurement } from "../api/body.api";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toLocalDateInput } from "../lib/format";
@@ -16,7 +16,7 @@ import TableLoading from "../components/common/TableLoading";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import DataPagination from "../components/common/DataPagination";
-import { usePagination } from "../hooks/usePagination";
+import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
 
 export default function BodyTrackingPage() {
@@ -38,14 +38,21 @@ export default function BodyTrackingPage() {
     thigh: number;
     recordDate: string;
   } | null>(null);
+  const measurementPager = useServerPagination(20);
 
   const measurementsQuery = useQuery({
-    queryKey: ["body-measurements"],
-    queryFn: getBodyMeasurements,
+    queryKey: ["body-measurements", measurementPager.page, measurementPager.pageSize],
+    queryFn: () => getBodyMeasurementsPage(measurementPager.page - 1, measurementPager.pageSize),
+    placeholderData: (previous) => previous,
   });
 
-  const items = measurementsQuery.data ?? [];
-  const measurementPagination = usePagination(items);
+  const items = measurementsQuery.data?.content ?? [];
+  const measurementPagination = {
+    ...measurementPager,
+    paginatedItems: items,
+    totalItems: measurementsQuery.data?.totalElements ?? 0,
+    totalPages: Math.max(1, measurementsQuery.data?.totalPages ?? 1),
+  };
 
   const createMutation = useMutation({
     mutationFn: createBodyMeasurement,

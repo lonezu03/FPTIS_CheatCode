@@ -1,17 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bot,
   Check,
   ChevronDown,
   LoaderCircle,
   Send,
+  ShieldCheck,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 import {
   chatWithAssistant,
+  deleteAssistantHistory,
   executeAssistantAction,
+  getAssistantPrivacy,
+  updateAssistantPrivacy,
   type AssistantApiMessage,
   type AssistantProposedAction,
   type AssistantRole,
@@ -41,7 +46,28 @@ export default function AssistantChat() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<UiMessage[]>([greeting]);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+
+  const privacyQuery = useQuery({
+    queryKey: ["assistant-privacy"],
+    queryFn: getAssistantPrivacy,
+    enabled: open,
+  });
+
+  const privacyMutation = useMutation({
+    mutationFn: updateAssistantPrivacy,
+    onSuccess: (privacy) => {
+      queryClient.setQueryData(["assistant-privacy"], privacy);
+      setShowPrivacy(!privacy.consented);
+      if (!privacy.consented) setMessages([greeting]);
+    },
+  });
+
+  const clearHistoryMutation = useMutation({
+    mutationFn: deleteAssistantHistory,
+    onSuccess: () => setMessages([greeting]),
+  });
 
   useEffect(() => {
     if (open) {
@@ -136,7 +162,7 @@ export default function AssistantChat() {
 
   const sendMessage = () => {
     const content = input.trim();
-    if (!content || chatMutation.isPending) {
+    if (!privacyQuery.data?.consented || !content || chatMutation.isPending) {
       return;
     }
     const userMessage: UiMessage = {
@@ -187,6 +213,17 @@ export default function AssistantChat() {
               variant="ghost"
               size="icon"
               className="text-white hover:bg-white/10 hover:text-white"
+              onClick={() => setShowPrivacy((value) => !value)}
+              aria-label="Quyền riêng tư của trợ lý AI"
+              title="Quyền riêng tư"
+            >
+              <ShieldCheck />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/10 hover:text-white"
               onClick={() => setOpen(false)}
               aria-label="Đóng chatbot"
             >
@@ -195,7 +232,59 @@ export default function AssistantChat() {
           </header>
 
           <div className="flex-1 space-y-4 overflow-y-auto bg-muted/25 p-4">
-            {messages.map((message) => (
+            {(showPrivacy || privacyQuery.data?.consented === false) && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
+                <div className="flex items-center gap-2 font-semibold">
+                  <ShieldCheck className="size-4" />
+                  Quyền riêng tư và dữ liệu AI
+                </div>
+                <p className="mt-2 leading-5">
+                  FitTrack chỉ gửi dữ liệu cần thiết cho câu hỏi hiện tại tới Gemini. Không gửi email
+                  hoặc tên của bạn.
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
+                  {(privacyQuery.data?.dataCategories ?? []).map((category) => (
+                    <li key={category}>{category}</li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs leading-5 text-emerald-900/75">
+                  {privacyQuery.data?.retentionPolicy}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {privacyQuery.data?.consented ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      disabled={privacyMutation.isPending}
+                      onClick={() => privacyMutation.mutate(false)}
+                    >
+                      Tắt trợ lý AI
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={privacyMutation.isPending || privacyQuery.isLoading}
+                      onClick={() => privacyMutation.mutate(true)}
+                    >
+                      Tôi đồng ý và tiếp tục
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={clearHistoryMutation.isPending}
+                    onClick={() => clearHistoryMutation.mutate()}
+                  >
+                    <Trash2 />
+                    Xóa cuộc trò chuyện
+                  </Button>
+                </div>
+              </div>
+            )}
+            {privacyQuery.data?.consented && !showPrivacy && messages.map((message) => (
               <div
                 key={message.id}
                 className={message.role === "user" ? "flex justify-end" : "flex justify-start"}
@@ -225,7 +314,7 @@ export default function AssistantChat() {
               </div>
             ))}
 
-            {chatMutation.isPending && (
+            {privacyQuery.data?.consented && !showPrivacy && chatMutation.isPending && (
               <div className="flex justify-start">
                 <div className="flex items-center gap-2 rounded-2xl rounded-bl-md border bg-background px-3.5 py-2.5 text-sm text-muted-foreground">
                   <LoaderCircle className="size-4 animate-spin" />
@@ -249,6 +338,7 @@ export default function AssistantChat() {
                 }}
                 rows={2}
                 maxLength={4_000}
+                disabled={!privacyQuery.data?.consented}
                 placeholder="Ví dụ: Tạo buổi tập chân 45 phút hôm nay..."
                 className="min-h-12 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
               />
@@ -256,14 +346,16 @@ export default function AssistantChat() {
                 type="button"
                 size="icon"
                 onClick={sendMessage}
-                disabled={!input.trim() || chatMutation.isPending}
+                disabled={!privacyQuery.data?.consented || !input.trim() || chatMutation.isPending}
                 aria-label="Gửi tin nhắn"
               >
                 <Send />
               </Button>
             </div>
             <p className="mt-2 text-center text-[0.65rem] text-muted-foreground">
-              AI có thể sai. Hãy kiểm tra đề xuất trước khi xác nhận.
+              {privacyQuery.data?.consented
+                ? "AI có thể sai. Hãy kiểm tra đề xuất trước khi xác nhận."
+                : "Bạn cần đồng ý với phạm vi dữ liệu trước khi gửi tin nhắn."}
             </p>
           </footer>
         </section>

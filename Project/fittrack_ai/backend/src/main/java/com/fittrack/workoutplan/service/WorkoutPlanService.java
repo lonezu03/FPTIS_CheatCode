@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -77,6 +79,18 @@ public class WorkoutPlanService {
         return workoutPlanMapper.toResponseList(
                 workoutPlanRepository.findByUserOrderByCreatedAtDesc(user)
         );
+    }
+
+    public PageResponse<WorkoutPlanResponse> getMyPlansPage(
+            User user,
+            int page,
+            int size
+    ) {
+        var result = workoutPlanRepository.findByUserOrderByCreatedAtDesc(
+                user,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        ).map(workoutPlanMapper::toResponse);
+        return PageResponse.from(result);
     }
 
     public WorkoutPlanResponse getPlanDetail(User user, String planId) {

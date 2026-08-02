@@ -9,6 +9,8 @@ import com.fittrack.lunch.repository.*;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.repository.UserRepository;
 import com.fittrack.common.media.ImageReferences;
+import com.fittrack.common.media.MediaStorageService;
+import com.fittrack.audit.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,8 @@ public class LunchAdminService {
     private final LunchMenuItemRepository menuItemRepository;
     private final LunchAccountService accountService;
     private final LunchNutritionService nutritionService;
+    private final AuditService auditService;
+    private final MediaStorageService mediaStorageService;
 
     @Transactional
     public MenuResponse importMenu(User admin, ImportMenuRequest request) {
@@ -77,6 +81,11 @@ public class LunchAdminService {
         }
 
         LunchMenu saved = menuRepository.save(menu);
+        auditService.record(admin, "LUNCH_MENU_IMPORTED", "LUNCH_MENU", saved.getId(), Map.of(
+                "menuDate", saved.getMenuDate().toString(),
+                "itemCount", saved.getItems().size(),
+                "price", saved.getPrice()
+        ));
         return mapper.toMenuResponse(saved, 0, 0, now());
     }
 
@@ -132,6 +141,9 @@ public class LunchAdminService {
             menu.setSummarizedAt(now());
             menu.setSummaryOrderText(textFormatter.summaryText(menu, orders));
             menuRepository.save(menu);
+            auditService.record(admin, "LUNCH_MENU_SUMMARIZED", "LUNCH_MENU", menu.getId(), Map.of(
+                    "orderCount", orders.size()
+            ));
         }
 
         return buildSummary(menu, orders);
@@ -211,6 +223,10 @@ public class LunchAdminService {
                 admin,
                 textFormatter.sanitizeNote(request.note())
         );
+        auditService.record(admin, "LUNCH_FUND_TOP_UP", "USER", member.getId(), Map.of(
+                "amount", request.amount(),
+                "transactionId", transaction.getId()
+        ));
         return mapper.toTransactionResponse(transaction);
     }
 
@@ -224,10 +240,12 @@ public class LunchAdminService {
         if (request.name() != null && !request.name().isBlank()) {
             item.setName(request.name().trim());
         }
-        item.setImageUrl(ImageReferences.resolveStoredValue(
+        item.setImageUrl(mediaStorageService.store(
                 item.getImageUrl(),
                 request.imageUrl(),
-                ImageReferences.lunchItemPath(item.getId())
+                ImageReferences.lunchItemPath(item.getId()),
+                "lunch-items",
+                item.getId()
         ));
         item.setCalories(request.calories());
         item.setProtein(request.protein());
@@ -264,7 +282,12 @@ public class LunchAdminService {
         order.setExternalPaymentNote(
                 request == null ? null : textFormatter.sanitizeNote(request.note())
         );
-        return mapper.toOrderResponse(orderRepository.save(order));
+        LunchOrder saved = orderRepository.save(order);
+        auditService.record(admin, "LUNCH_EXTERNAL_PAYMENT_CONFIRMED", "LUNCH_ORDER", saved.getId(), Map.of(
+                "beneficiaryId", saved.getBeneficiary().getId(),
+                "amount", saved.getPrice()
+        ));
+        return mapper.toOrderResponse(saved);
     }
 
     private SummaryResponse buildSummary(

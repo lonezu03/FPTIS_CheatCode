@@ -51,6 +51,13 @@ public class HealthReminder {
 
     private LocalDate lastTriggeredDate;
 
+    private LocalDateTime lastTriggeredAt;
+
+    private LocalDateTime nextRunAt;
+
+    @Version
+    private Long version;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

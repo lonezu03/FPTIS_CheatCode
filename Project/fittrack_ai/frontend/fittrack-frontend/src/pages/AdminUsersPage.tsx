@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, KeyRound, Search, ShieldCheck, UserCog, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getAdminUsers,
+  getAdminUsersPage,
   resetAdminUserPassword,
   updateAdminUser,
   type AdminUser,
@@ -14,7 +14,7 @@ import PageHeader from "@/components/PageHeader";
 import EmptyState from "@/components/common/EmptyState";
 import TableLoading from "@/components/common/TableLoading";
 import DataPagination from "@/components/common/DataPagination";
-import { usePagination } from "@/hooks/usePagination";
+import { useServerPagination } from "@/hooks/useServerPagination";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,10 +55,12 @@ export default function AdminUsersPage() {
   const [keyword, setKeyword] = useState("");
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [resetUser, setResetUser] = useState<AdminUser | null>(null);
+  const userPager = useServerPagination(20);
 
   const usersQuery = useQuery({
-    queryKey: ["admin-users", keyword],
-    queryFn: () => getAdminUsers(keyword),
+    queryKey: ["admin-users", keyword, userPager.page, userPager.pageSize],
+    queryFn: () => getAdminUsersPage(keyword, userPager.page - 1, userPager.pageSize),
+    placeholderData: (previous) => previous,
   });
 
   const updateMutation = useMutation({
@@ -91,8 +93,13 @@ export default function AdminUsersPage() {
     },
   });
 
-  const users = usersQuery.data ?? [];
-  const userPagination = usePagination(users);
+  const users = usersQuery.data?.content ?? [];
+  const userPagination = {
+    ...userPager,
+    paginatedItems: users,
+    totalItems: usersQuery.data?.totalElements ?? 0,
+    totalPages: Math.max(1, usersQuery.data?.totalPages ?? 1),
+  };
   const activeUsers = users.filter((user) => user.active).length;
   const admins = users.filter((user) => user.role === "ADMIN" && user.active).length;
 
@@ -117,6 +124,7 @@ export default function AdminUsersPage() {
               className="flex w-full gap-2 sm:max-w-md"
               onSubmit={(event) => {
                 event.preventDefault();
+                userPager.resetPage();
                 setKeyword(searchInput.trim());
               }}
             >

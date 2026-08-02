@@ -2,6 +2,7 @@ package com.fittrack.common.security;
 
 import com.fittrack.user.entity.User;
 import com.fittrack.user.repository.UserRepository;
+import com.fittrack.auth.service.AuthCookieService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +25,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final AuthCookieService authCookieService;
 
     @Override
     protected void doFilterInternal(
@@ -33,13 +35,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        String token = authHeader != null && authHeader.startsWith("Bearer ")
+                ? authHeader.substring(7).trim()
+                : authCookieService.readAccessToken(request);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (token == null || token.isBlank()) {
             filterChain.doFilter(request, response);
             return;
         }
-
-        String token = authHeader.substring(7).trim();
         if (!token.isEmpty()) {
             try {
                 String email = jwtService.extractEmail(token);

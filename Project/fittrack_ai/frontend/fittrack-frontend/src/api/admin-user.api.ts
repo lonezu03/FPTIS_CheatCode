@@ -1,4 +1,5 @@
 import api from "./axios";
+import type { PageResponse } from "./pagination";
 
 export type AdminUser = {
   id: string;
@@ -17,6 +18,17 @@ export type AdminUser = {
 export async function getAdminUsers(keyword = ""): Promise<AdminUser[]> {
   const response = await api.get<AdminUser[]>("/admin/users", {
     params: keyword.trim() ? { keyword: keyword.trim() } : {},
+  });
+  return response.data;
+}
+
+export async function getAdminUsersPage(
+  keyword = "",
+  page = 0,
+  size = 20,
+): Promise<PageResponse<AdminUser>> {
+  const response = await api.get<PageResponse<AdminUser>>("/admin/users/page", {
+    params: { keyword: keyword.trim(), page, size },
   });
   return response.data;
 }

@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.fittrack.common.dto.PageResponse;
 
 @RestController
 @RequestMapping("/api/workout-plans")
@@ -34,6 +35,17 @@ public class WorkoutPlanController {
         User user = (User) authentication.getPrincipal();
 
         return workoutPlanService.getMyPlans(user);
+    }
+
+    @GetMapping("/page")
+    public PageResponse<WorkoutPlanResponse> getMyPlansPage(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size
+    ) {
+        return workoutPlanService.getMyPlansPage(
+                (User) authentication.getPrincipal(), page, size
+        );
     }
 
     @GetMapping("/{id}")

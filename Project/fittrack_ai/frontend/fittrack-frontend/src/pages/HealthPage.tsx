@@ -124,7 +124,8 @@ export default function HealthPage() {
                 <li key={insight} className="rounded-xl bg-emerald-50 p-3 text-emerald-900">{insight}</li>
               ))}
             </ul>
-            <p className="mt-4 text-xs text-muted-foreground">{summary.disclaimer}</p>
+            <p className="mt-4 text-xs text-muted-foreground">{summary.targetBasis}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{summary.disclaimer}</p>
           </CardContent>
         </Card>
 

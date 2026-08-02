@@ -1,4 +1,5 @@
 import api from "./axios";
+import type { PageResponse } from "./pagination";
 
 export type Exercise = {
   id: string;
@@ -37,6 +38,18 @@ export const getExercisesApi = async (keyword?: string, includeInactive?: boolea
 export const createExerciseApi = async (payload: ExercisePayload): Promise<Exercise> => {
   const response = await api.post("/exercises", payload);
 
+  return response.data;
+};
+
+export const getExercisesPageApi = async (
+  keyword = "",
+  includeInactive = false,
+  page = 0,
+  size = 20,
+): Promise<PageResponse<Exercise>> => {
+  const response = await api.get<PageResponse<Exercise>>("/exercises/page", {
+    params: { keyword, includeInactive, page, size },
+  });
   return response.data;
 };
 

@@ -9,13 +9,13 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import TableLoading from "../components/common/TableLoading";
 import DataPagination from "../components/common/DataPagination";
-import { usePagination } from "../hooks/usePagination";
+import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
 
 import {
   archiveFoodApi,
   createFoodApi,
-  getFoodsManagementApi,
+  getFoodsManagementPageApi,
   reviewFoodApi,
   restoreFoodApi,
   suggestFoodApi,
@@ -96,14 +96,26 @@ export default function FoodsPage() {
 
   const [editingFood, setEditingFood] = useState<Food | null>(null);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+  const foodPager = useServerPagination(20);
 
   const foodsQuery = useQuery({
-    queryKey: ["foods-management", searchKeyword, isAdmin && includeInactive],
-    queryFn: () => getFoodsManagementApi(searchKeyword, isAdmin && includeInactive),
+    queryKey: ["foods-management", searchKeyword, isAdmin && includeInactive, foodPager.page, foodPager.pageSize],
+    queryFn: () => getFoodsManagementPageApi(
+      searchKeyword,
+      isAdmin && includeInactive,
+      foodPager.page - 1,
+      foodPager.pageSize,
+    ),
+    placeholderData: (previous) => previous,
   });
 
-  const foods = foodsQuery.data ?? [];
-  const foodPagination = usePagination(foods);
+  const foods = foodsQuery.data?.content ?? [];
+  const foodPagination = {
+    ...foodPager,
+    paginatedItems: foods,
+    totalItems: foodsQuery.data?.totalElements ?? 0,
+    totalPages: Math.max(1, foodsQuery.data?.totalPages ?? 1),
+  };
 
   const createMutation = useMutation({
     mutationFn: isAdmin ? createFoodApi : suggestFoodApi,
@@ -297,7 +309,7 @@ export default function FoodsPage() {
             <div className="flex flex-1 gap-2">
               <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm thực phẩm..." />
 
-              <Button onClick={() => setSearchKeyword(keyword)}>Tìm kiếm</Button>
+              <Button onClick={() => { foodPager.resetPage(); setSearchKeyword(keyword); }}>Tìm kiếm</Button>
             </div>
 
             {isAdmin && (
@@ -305,7 +317,7 @@ export default function FoodsPage() {
                 <input
                   type="checkbox"
                   checked={includeInactive}
-                  onChange={(event) => setIncludeInactive(event.target.checked)}
+                  onChange={(event) => { foodPager.resetPage(); setIncludeInactive(event.target.checked); }}
                 />
                 Hiện mục đã lưu trữ
               </label>

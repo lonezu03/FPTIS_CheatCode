@@ -9,7 +9,7 @@ import {
   createWorkoutPlan,
   deleteWorkoutPlan,
   generateSessionFromPlan,
-  getWorkoutPlans,
+  getWorkoutPlansPage,
   type WorkoutPlan,
 } from "../api/workout-plan.api";
 
@@ -18,7 +18,7 @@ import TableLoading from "../components/common/TableLoading";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import DataPagination from "../components/common/DataPagination";
-import { usePagination } from "../hooks/usePagination";
+import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
 
 import { Button } from "@/components/ui/button";
@@ -70,15 +70,22 @@ export default function WorkoutPlansPage() {
     queryKey: ["exercises"],
     queryFn: getExercises,
   });
+  const planPager = useServerPagination(12);
 
   const plansQuery = useQuery({
-    queryKey: ["workout-plans"],
-    queryFn: getWorkoutPlans,
+    queryKey: ["workout-plans", planPager.page, planPager.pageSize],
+    queryFn: () => getWorkoutPlansPage(planPager.page - 1, planPager.pageSize),
+    placeholderData: (previous) => previous,
   });
 
   const exercises = exercisesQuery.data ?? [];
-  const plans = plansQuery.data ?? [];
-  const planPagination = usePagination(plans, 10);
+  const plans = plansQuery.data?.content ?? [];
+  const planPagination = {
+    ...planPager,
+    paginatedItems: plans,
+    totalItems: plansQuery.data?.totalElements ?? 0,
+    totalPages: Math.max(1, plansQuery.data?.totalPages ?? 1),
+  };
   const defaultExerciseId = exercises[0]?.id ?? "";
 
   const createMutation = useMutation({

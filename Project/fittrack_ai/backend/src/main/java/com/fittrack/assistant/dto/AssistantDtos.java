@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
+import java.time.LocalDateTime;
 import tools.jackson.databind.JsonNode;
 
 public final class AssistantDtos {
@@ -56,6 +57,19 @@ public final class AssistantDtos {
             String type,
             String message,
             Object result
+    ) {
+    }
+
+    public record PrivacyResponse(
+            boolean consented,
+            LocalDateTime consentedAt,
+            List<String> dataCategories,
+            String retentionPolicy
+    ) {
+    }
+
+    public record UpdatePrivacyRequest(
+            boolean consented
     ) {
     }
 }

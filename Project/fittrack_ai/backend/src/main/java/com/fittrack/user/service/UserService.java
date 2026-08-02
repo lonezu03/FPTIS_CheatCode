@@ -27,6 +27,9 @@ public class UserService {
         user.setWeight(request.getWeight());
         user.setGoal(request.getGoal());
         user.setActivityLevel(request.getActivityLevel());
+        if (request.getEmailNotificationsEnabled() != null) {
+            user.setEmailNotificationsEnabled(request.getEmailNotificationsEnabled());
+        }
 
         User saved = userRepository.save(user);
 

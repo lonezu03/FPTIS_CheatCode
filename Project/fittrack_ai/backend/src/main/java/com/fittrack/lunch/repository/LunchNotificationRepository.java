@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,6 +20,13 @@ public interface LunchNotificationRepository extends JpaRepository<LunchNotifica
     long countByRecipientAndReadAtIsNull(User recipient);
 
     Optional<LunchNotification> findByIdAndRecipient(String id, User recipient);
+
+    boolean existsByDeduplicationKey(String deduplicationKey);
+
+    Page<LunchNotification> findByRecipientOrderByCreatedAtDesc(
+            User recipient,
+            Pageable pageable
+    );
 
     @Modifying
     @Query("""

@@ -49,6 +49,9 @@ public class LunchNotification {
 
     private LocalDateTime readAt;
 
+    @Column(length = 180, unique = true)
+    private String deduplicationKey;
+
     @PrePersist
     public void onCreate() {
         if (createdAt == null) {

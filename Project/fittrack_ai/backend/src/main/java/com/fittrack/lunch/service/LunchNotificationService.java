@@ -13,6 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
+import com.fittrack.lunch.dto.LunchDtos.NotificationResponse;
+import com.fittrack.auth.service.ApplicationMailService;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +25,7 @@ public class LunchNotificationService {
     private final LunchNotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final LunchMapper mapper;
+    private final ApplicationMailService mailService;
 
     @Transactional(readOnly = true)
     public NotificationListResponse getMine(User user) {
@@ -31,6 +36,14 @@ public class LunchNotificationService {
                         .map(mapper::toNotificationResponse)
                         .toList()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<NotificationResponse> getMinePage(User user, int page, int size) {
+        return PageResponse.from(notificationRepository.findByRecipientOrderByCreatedAtDesc(
+                user,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        ).map(mapper::toNotificationResponse));
     }
 
     @Transactional
@@ -72,6 +85,23 @@ public class LunchNotificationService {
     }
 
     @Transactional
+    public boolean notifyUserOnce(
+            User user,
+            String type,
+            String title,
+            String message,
+            String referenceType,
+            String referenceId,
+            String deduplicationKey
+    ) {
+        if (notificationRepository.existsByDeduplicationKey(deduplicationKey)) {
+            return false;
+        }
+        create(user, type, title, message, referenceType, referenceId, deduplicationKey);
+        return true;
+    }
+
+    @Transactional
     public int broadcast(
             String title,
             String message,
@@ -100,6 +130,18 @@ public class LunchNotificationService {
             String referenceType,
             String referenceId
     ) {
+        create(recipient, type, title, message, referenceType, referenceId, null);
+    }
+
+    private void create(
+            User recipient,
+            String type,
+            String title,
+            String message,
+            String referenceType,
+            String referenceId,
+            String deduplicationKey
+    ) {
         notificationRepository.save(LunchNotification.builder()
                 .recipient(recipient)
                 .type(type)
@@ -107,6 +149,12 @@ public class LunchNotificationService {
                 .message(message)
                 .referenceType(referenceType)
                 .referenceId(referenceId)
+                .deduplicationKey(deduplicationKey)
                 .build());
+        if (Boolean.TRUE.equals(recipient.getEmailNotificationsEnabled())) {
+            mailService.sendNotificationEmail(
+                    recipient.getEmail(), recipient.getFullName(), title, message
+            );
+        }
     }
 }

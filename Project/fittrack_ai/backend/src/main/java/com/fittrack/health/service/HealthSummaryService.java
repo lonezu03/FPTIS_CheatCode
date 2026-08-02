@@ -49,10 +49,11 @@ public class HealthSummaryService {
         List<MealItem> mealItems = meals.stream()
                 .flatMap(meal -> meal.getItems().stream())
                 .toList();
+        double targetCalories = goalCalculatorService.calculateTargetCalories(user);
 
         List<NutrientMetric> nutrients = List.of(
                 metric("calories", "Năng lượng", sum(meals, MealLog::getTotalCalories) / divisor,
-                        goalCalculatorService.calculateTargetCalories(user), "kcal", false),
+                        targetCalories, "kcal", false),
                 metric("protein", "Chất đạm", sum(meals, MealLog::getTotalProtein) / divisor,
                         goalCalculatorService.calculateProtein(user), "g", false),
                 metric("carbs", "Tinh bột", sum(meals, MealLog::getTotalCarbs) / divisor,
@@ -60,21 +61,21 @@ public class HealthSummaryService {
                 metric("fat", "Chất béo", sum(meals, MealLog::getTotalFat) / divisor,
                         goalCalculatorService.calculateFat(user), "g", false),
                 metric("fiber", "Chất xơ", sumItems(mealItems, MealItem::getFiber) / divisor,
-                        25, "g", false),
+                        fiberTarget(user), "g", false),
                 metric("sugar", "Đường", sumItems(mealItems, MealItem::getSugar) / divisor,
-                        50, "g", true),
+                        Math.max(25, targetCalories * 0.10 / 4), "g", true),
                 metric("sodium", "Natri", sumItems(mealItems, MealItem::getSodium) / divisor,
                         2300, "mg", true),
                 metric("potassium", "Kali", sumItems(mealItems, MealItem::getPotassium) / divisor,
-                        3500, "mg", false),
+                        isFemale(user) ? 2600 : 3400, "mg", false),
                 metric("calcium", "Canxi", sumItems(mealItems, MealItem::getCalcium) / divisor,
-                        1000, "mg", false),
+                        calciumTarget(user), "mg", false),
                 metric("iron", "Sắt", sumItems(mealItems, MealItem::getIron) / divisor,
-                        18, "mg", false),
+                        ironTarget(user), "mg", false),
                 metric("vitaminC", "Vitamin C", sumItems(mealItems, MealItem::getVitaminC) / divisor,
-                        75, "mg", false),
+                        isFemale(user) ? 75 : 90, "mg", false),
                 metric("water", "Nước", sumItems(mealItems, MealItem::getWater) / divisor,
-                        2000, "ml", false)
+                        waterTarget(user), "ml", false)
         );
 
         Double currentWeight = body.isEmpty()
@@ -123,8 +124,34 @@ public class HealthSummaryService {
                 activeDays,
                 nutrients,
                 insights,
+                "Mục tiêu được ước tính từ tuổi, giới tính sinh học, cân nặng và mục tiêu năng lượng trong hồ sơ.",
                 "Các chỉ số chỉ mang tính tham khảo, không thay thế chẩn đoán hoặc tư vấn của nhân viên y tế."
         );
+    }
+
+    private double fiberTarget(User user) {
+        int age = user.getAge() == null ? 30 : user.getAge();
+        if (isFemale(user)) return age > 50 ? 21 : 25;
+        return age > 50 ? 30 : 38;
+    }
+
+    private double calciumTarget(User user) {
+        int age = user.getAge() == null ? 30 : user.getAge();
+        return age >= 71 || (isFemale(user) && age >= 51) ? 1200 : 1000;
+    }
+
+    private double ironTarget(User user) {
+        int age = user.getAge() == null ? 30 : user.getAge();
+        return isFemale(user) && age < 51 ? 18 : 8;
+    }
+
+    private double waterTarget(User user) {
+        double weight = user.getWeight() == null || user.getWeight() <= 0 ? 60 : user.getWeight();
+        return Math.max(1500, Math.min(4000, weight * 35));
+    }
+
+    private boolean isFemale(User user) {
+        return "FEMALE".equalsIgnoreCase(user.getGender());
     }
 
     private List<String> buildInsights(

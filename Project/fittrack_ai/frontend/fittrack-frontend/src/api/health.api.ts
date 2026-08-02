@@ -25,6 +25,7 @@ export type HealthSummary = {
   activeDays: number;
   nutrients: NutrientMetric[];
   insights: string[];
+  targetBasis: string;
   disclaimer: string;
 };
 

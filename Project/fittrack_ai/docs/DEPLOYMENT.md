@@ -32,10 +32,17 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://<AIVEN_HOST>:<AIVEN_PORT>/<AIVEN_DATABAS
 SPRING_DATASOURCE_USERNAME=avnadmin
 SPRING_DATASOURCE_PASSWORD=<aiven-password>
 JWT_SECRET=<very-long-secret>
-JWT_EXPIRATION_MS=604800000
+SPRING_PROFILES_ACTIVE=prod
+JWT_EXPIRATION_MS=900000
+JWT_REFRESH_EXPIRATION_DAYS=30
 ADMIN_EMAILS=admin@gmail.com
 CORS_ALLOWED_ORIGINS=https://your-vercel-app.vercel.app
-JPA_DDL_AUTO=update
+JPA_DDL_AUTO=validate
+FLYWAY_ENABLED=true
+SWAGGER_ENABLED=false
+INTERNAL_SCHEDULER_ENABLED=false
+KEEP_ALIVE_ENABLED=false
+JOB_SECRET=<random-job-secret>
 JPA_SHOW_SQL=false
 ```
 
@@ -85,7 +92,7 @@ Output directory: dist
 VITE_API_URL=https://your-render-service.onrender.com/api
 ```
 
-The frontend Axios client reads `VITE_API_URL`. If the variable is missing, it falls back to the Render API URL. Local development uses `.env.development`.
+Vercel dùng proxy cùng origin, vì vậy đặt `VITE_API_URL=/api`. Production build sẽ báo lỗi nếu biến bị thiếu hoặc trỏ về localhost. Local development dùng `.env.development`.
 
 ## Deployment Checklist
 
@@ -96,4 +103,7 @@ The frontend Axios client reads `VITE_API_URL`. If the variable is missing, it f
 5. Deploy frontend on Vercel with `Project/fittrack_ai/frontend` as root directory.
 6. Set `VITE_API_URL` to the Render backend API URL.
 7. Set `CORS_ALLOWED_ORIGINS` on Render backend to the Vercel frontend URL.
-8. Register/login and test demo seed.
+8. Cấu hình cron ngoài gọi `/api/health` và job nhắc nhở như hướng dẫn vận hành.
+9. Register/login and test demo seed.
+
+Quy trình backup, Flyway, Cloudinary, xoay secret và xử lý sự cố đầy đủ nằm trong [OPERATIONS.md](OPERATIONS.md).

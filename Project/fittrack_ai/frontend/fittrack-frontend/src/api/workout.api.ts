@@ -1,4 +1,5 @@
 import api from "./axios";
+import type { PageResponse } from "./pagination";
 
 export type Exercise = {
   id: string;
@@ -37,6 +38,16 @@ export const getExercises = async (): Promise<Exercise[]> => {
 export const getWorkoutSessions = async (): Promise<WorkoutSession[]> => {
   const response = await api.get("/workouts/sessions");
 
+  return response.data;
+};
+
+export const getWorkoutSessionsPage = async (
+  page = 0,
+  size = 20,
+): Promise<PageResponse<WorkoutSession>> => {
+  const response = await api.get<PageResponse<WorkoutSession>>("/workouts/sessions/page", {
+    params: { page, size },
+  });
   return response.data;
 };
 

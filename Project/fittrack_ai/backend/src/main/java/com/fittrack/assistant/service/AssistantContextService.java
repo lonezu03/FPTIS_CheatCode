@@ -21,6 +21,8 @@ import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.text.Normalizer;
+import java.util.Locale;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -39,13 +41,20 @@ public class AssistantContextService {
     private final LunchService lunchService;
 
     @Transactional(readOnly = true)
-    public String buildContext(User user) {
+    public String buildContext(User user, String question) {
         var profile = userMapper.toProfileResponse(user);
-        TodayResponse today = lunchService.getToday(user);
+        String intent = normalize(question);
+        boolean lunchIntent = containsAny(intent, "com", "lunch", "menu", "mon an", "dat mon", "dat ho", "tra ho");
+        boolean peopleIntent = containsAny(intent, "dat ho", "tra ho", "nguoi khac", "dong nghiep");
+        boolean workoutIntent = containsAny(intent, "tap", "workout", "exercise", "giao an", "buoi tap", "bai tap");
+        boolean nutritionIntent = lunchIntent || containsAny(
+                intent, "dinh duong", "calo", "calorie", "protein", "carb", "chat beo", "bua an", "meal", "food"
+        );
+        boolean historyIntent = containsAny(intent, "gan day", "lich su", "tien do", "bao cao", "tuan", "hom qua");
         Map<String, Object> context = new LinkedHashMap<>();
         context.put("currentDate", LocalDate.now(BUSINESS_ZONE));
+        context.put("privacyNotice", "Chỉ sử dụng dữ liệu tối thiểu cho câu hỏi hiện tại; không có email hoặc tên người dùng.");
         context.put("profile", Map.ofEntries(
-                Map.entry("fullName", valueOrEmpty(profile.getFullName())),
                 Map.entry("gender", valueOrEmpty(profile.getGender())),
                 Map.entry("age", valueOrZero(profile.getAge())),
                 Map.entry("height", valueOrZero(profile.getHeight())),
@@ -57,38 +66,45 @@ public class AssistantContextService {
                 Map.entry("targetCarbs", valueOrZero(profile.getTargetCarbs())),
                 Map.entry("targetFat", valueOrZero(profile.getTargetFat()))
         ));
-        context.put("todayLunch", todayContext(today));
-        context.put(
-                "peopleAvailableForLunchOrder",
-                lunchService.getPeople(user).stream()
-                        .map(person -> Map.of(
-                                "id", person.id(),
-                                "fullName", valueOrEmpty(person.fullName())
-                        ))
-                        .toList()
-        );
-        context.put(
-                "exerciseCatalog",
-                exerciseRepository.findByActiveTrueOrderByNameAsc()
-                        .stream()
-                        .map(this::exerciseContext)
-                        .toList()
-        );
-        context.put(
-                "foodCatalog",
-                foodRepository.findByActiveTrueOrderByNameAsc()
-                        .stream()
-                        .map(this::foodContext)
-                        .toList()
-        );
-        context.put(
-                "recentWorkoutSessions",
-                workoutService.getMySessions(user).stream().limit(10).toList()
-        );
-        context.put(
-                "recentMealLogs",
-                nutritionService.getMyMealLogs(user).stream().limit(10).toList()
-        );
+        if (lunchIntent) {
+            TodayResponse today = lunchService.getToday(user);
+            context.put("todayLunch", todayContext(today));
+        }
+        if (peopleIntent) {
+            context.put(
+                    "peopleAvailableForLunchOrder",
+                    lunchService.getPeople(user).stream()
+                            .map(person -> Map.of(
+                                    "id", person.id(),
+                                    "fullName", valueOrEmpty(person.fullName())
+                            ))
+                            .toList()
+            );
+        }
+        if (workoutIntent) {
+            context.put(
+                    "exerciseCatalog",
+                    exerciseRepository.findByActiveTrueOrderByNameAsc()
+                            .stream().limit(100)
+                            .map(this::exerciseContext)
+                            .toList()
+            );
+            if (historyIntent) {
+                context.put("recentWorkoutSessions", workoutService.getMySessions(user).stream().limit(10).toList());
+            }
+        }
+        if (nutritionIntent) {
+            context.put(
+                    "foodCatalog",
+                    foodRepository.findByActiveTrueOrderByNameAsc()
+                            .stream().limit(100)
+                            .map(this::foodContext)
+                            .toList()
+            );
+            if (historyIntent) {
+                context.put("recentMealLogs", nutritionService.getMyMealLogs(user).stream().limit(10).toList());
+            }
+        }
 
         try {
             return objectMapper.writeValueAsString(context);
@@ -98,6 +114,19 @@ public class AssistantContextService {
                     exception
             );
         }
+    }
+
+    private String normalize(String value) {
+        String withoutMarks = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return withoutMarks.toLowerCase(Locale.ROOT).replace('đ', 'd');
+    }
+
+    private boolean containsAny(String value, String... terms) {
+        for (String term : terms) {
+            if (value.contains(term)) return true;
+        }
+        return false;
     }
 
     private Map<String, Object> exerciseContext(Exercise exercise) {

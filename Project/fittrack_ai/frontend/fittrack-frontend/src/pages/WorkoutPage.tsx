@@ -4,7 +4,7 @@ import {
   createWorkoutSession,
   deleteWorkoutSession,
   getExercises,
-  getWorkoutSessions,
+  getWorkoutSessionsPage,
   updateWorkoutSession,
 } from "../api/workout.api";
 import { toast } from "sonner";
@@ -21,7 +21,7 @@ import TableLoading from "../components/common/TableLoading";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import DataPagination from "../components/common/DataPagination";
-import { usePagination } from "../hooks/usePagination";
+import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
 
 export default function WorkoutPage() {
@@ -49,16 +49,23 @@ export default function WorkoutPage() {
     queryKey: ["exercises"],
     queryFn: getExercises,
   });
+  const workoutPager = useServerPagination(20);
 
   const sessionsQuery = useQuery({
-    queryKey: ["workout-sessions"],
-    queryFn: getWorkoutSessions,
+    queryKey: ["workout-sessions", workoutPager.page, workoutPager.pageSize],
+    queryFn: () => getWorkoutSessionsPage(workoutPager.page - 1, workoutPager.pageSize),
+    placeholderData: (previous) => previous,
   });
 
   const exercises = exercisesQuery.data ?? [];
-  const sessions = sessionsQuery.data ?? [];
+  const sessions = sessionsQuery.data?.content ?? [];
   const workoutRows = sessions.flatMap((session) => session.sets.map((set) => ({ session, set })));
-  const workoutPagination = usePagination(workoutRows);
+  const workoutPagination = {
+    ...workoutPager,
+    paginatedItems: workoutRows,
+    totalItems: sessionsQuery.data?.totalElements ?? 0,
+    totalPages: Math.max(1, sessionsQuery.data?.totalPages ?? 1),
+  };
   const selectedExerciseId = exerciseId || exercises[0]?.id || "";
 
   const createMutation = useMutation({

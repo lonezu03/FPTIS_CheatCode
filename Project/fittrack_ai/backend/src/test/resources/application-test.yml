@@ -9,8 +9,15 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+  flyway:
+    enabled: false
 
 logging:
   level:
     root: WARN
     org.hibernate.SQL: WARN
+
+app:
+  media:
+    provider: database
+    allowed-hosts: example.com,res.cloudinary.com

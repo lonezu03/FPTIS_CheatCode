@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.fittrack.common.dto.PageResponse;
 
 @RestController
 @RequestMapping("/api/workouts")
@@ -40,6 +41,17 @@ public class WorkoutController {
     public List<WorkoutSessionResponse> getMySessions(Authentication authentication) {
         User user = (User) authentication.getPrincipal();
         return workoutService.getMySessions(user);
+    }
+
+    @GetMapping("/sessions/page")
+    public PageResponse<WorkoutSessionResponse> getSessionsPage(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return workoutService.getMySessionsPage(
+                (User) authentication.getPrincipal(), page, size
+        );
     }
 
     @PutMapping("/sessions/{id}")

@@ -1,4 +1,5 @@
 import api from "./axios";
+import type { PageResponse } from "./pagination";
 
 export type Food = {
   id: string;
@@ -57,6 +58,18 @@ export const getFoodsManagementApi = async (keyword?: string, includeInactive?: 
 export const createFoodApi = async (payload: FoodPayload): Promise<Food> => {
   const response = await api.post("/foods", payload);
 
+  return response.data;
+};
+
+export const getFoodsManagementPageApi = async (
+  keyword = "",
+  includeInactive = false,
+  page = 0,
+  size = 20,
+): Promise<PageResponse<Food>> => {
+  const response = await api.get<PageResponse<Food>>("/foods/page", {
+    params: { keyword, includeInactive, page, size },
+  });
   return response.data;
 };
 

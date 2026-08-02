@@ -1,4 +1,5 @@
 import api from "./axios";
+import type { PageResponse } from "./pagination";
 
 export type Food = {
   id: string;
@@ -49,6 +50,17 @@ export const getMealLogs = async (date?: string): Promise<MealLog[]> => {
     params: date ? { date } : {},
   });
 
+  return response.data;
+};
+
+export const getMealLogsPage = async (
+  date?: string,
+  page = 0,
+  size = 20,
+): Promise<PageResponse<MealLog>> => {
+  const response = await api.get<PageResponse<MealLog>>("/nutrition/meal-logs/page", {
+    params: { ...(date ? { date } : {}), page, size },
+  });
   return response.data;
 };
 

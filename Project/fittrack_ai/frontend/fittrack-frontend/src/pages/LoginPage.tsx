@@ -65,8 +65,9 @@ export default function LoginPage() {
         fitnessEnabled: data.fitnessEnabled,
         healthEnabled: data.healthEnabled,
         chatbotEnabled: data.chatbotEnabled,
+        passwordChangeRequired: data.passwordChangeRequired,
       });
-      navigate("/dashboard", { replace: true });
+      navigate(data.passwordChangeRequired ? "/change-password" : "/dashboard", { replace: true });
     } catch (requestError) {
       const message = axios.isAxiosError(requestError) ? requestError.response?.data?.message : undefined;
       setError(message || "Không thể đăng nhập. Vui lòng kiểm tra lại thông tin.");

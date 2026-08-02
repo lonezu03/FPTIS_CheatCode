@@ -14,6 +14,9 @@ public class UserProfileResponse {
     private Boolean fitnessEnabled;
     private Boolean healthEnabled;
     private Boolean chatbotEnabled;
+    private Boolean passwordChangeRequired;
+    private Boolean assistantConsent;
+    private Boolean emailNotificationsEnabled;
     private String gender;
     private Integer age;
     private Double height;

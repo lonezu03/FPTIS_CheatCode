@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -195,6 +197,22 @@ public class NutritionService {
 
     private double defaultZero(Double value) {
         return value == null ? 0.0 : value;
+    }
+
+    public PageResponse<MealLogResponse> getMyMealLogsPage(
+            User user,
+            LocalDate date,
+            int page,
+            int size
+    ) {
+        PageRequest pageable = PageRequest.of(
+                Math.max(page, 0), Math.min(Math.max(size, 1), 100)
+        );
+        var result = (date == null
+                ? mealLogRepository.findByUserOrderByLogDateDescCreatedAtDesc(user, pageable)
+                : mealLogRepository.findByUserAndLogDateOrderByCreatedAtDesc(user, date, pageable))
+                .map(nutritionMapper::toMealLogResponse);
+        return PageResponse.from(result);
     }
 
     private void ensureManual(MealLog mealLog) {

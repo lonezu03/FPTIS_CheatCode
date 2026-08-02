@@ -15,15 +15,20 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://<AIVEN_HOST>:<AIVEN_PORT>/<AIVEN_DATABAS
 SPRING_DATASOURCE_USERNAME=avnadmin
 SPRING_DATASOURCE_PASSWORD=<set-in-render-dashboard>
 JWT_SECRET=<set-in-render-dashboard>
-JWT_EXPIRATION_MS=604800000
+SPRING_PROFILES_ACTIVE=prod
+JWT_EXPIRATION_MS=900000
+JWT_REFRESH_EXPIRATION_DAYS=30
 CORS_ALLOWED_ORIGINS=https://fptis-cheat-code.vercel.app
-JPA_DDL_AUTO=update
+JPA_DDL_AUTO=validate
+FLYWAY_ENABLED=true
+SWAGGER_ENABLED=false
 JPA_SHOW_SQL=false
 GEMINI_API_KEY=<new-key-set-only-in-render-dashboard>
 GEMINI_MODEL=gemini-3.6-flash
 ASSISTANT_REQUESTS_PER_MINUTE=6
-KEEP_ALIVE_ENABLED=true
-KEEP_ALIVE_INTERVAL_MS=600000
+KEEP_ALIVE_ENABLED=false
+INTERNAL_SCHEDULER_ENABLED=false
+JOB_SECRET=<random-secret-used-by-external-cron>
 APP_FRONTEND_URL=https://fptis-cheat-code.vercel.app
 MAIL_ENABLED=true
 MAIL_HOST=smtp.gmail.com
@@ -35,9 +40,9 @@ MAIL_FROM=<verified-sender-address>
 
 Use Aiven PostgreSQL for the database. Copy the host, port, database name, username, and password from the Aiven service Overview page.
 
-Set Render's Health Check Path to `/api/health`. Render automatically provides
-`RENDER_EXTERNAL_URL`, which the optional keep-alive scheduler uses to call the
-health endpoint every 10 minutes. Do not put `GEMINI_API_KEY` in `render.yaml`,
+Set Render's Health Check Path to `/api/health`. Dùng cron/UptimeRobot bên ngoài
+để gọi health và `/api/internal/jobs/reminders`; backend không thể tự đánh thức
+chính nó khi Render đã cho ngủ. Do not put `GEMINI_API_KEY` in `render.yaml`,
 Git, Vercel, or any `VITE_` environment variable.
 
 `MAIL_PASSWORD` phải là mật khẩu ứng dụng SMTP, không dùng mật khẩu đăng nhập
@@ -54,8 +59,7 @@ vẫn tạo tài khoản nhưng người dùng sẽ chưa nhận được liên 
 Environment variables:
 
 ```env
-VITE_API_URL=https://your-render-service.onrender.com/api
-VITE_KEEP_ALIVE_MINUTES=10
+VITE_API_URL=/api
 ```
 
 Backend production:

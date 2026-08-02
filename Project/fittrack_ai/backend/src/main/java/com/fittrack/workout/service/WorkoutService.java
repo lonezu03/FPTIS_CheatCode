@@ -15,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -59,6 +61,20 @@ public class WorkoutService {
         List<WorkoutSession> sessions = workoutSessionRepository.findByUserOrderBySessionDateDesc(user);
 
         return workoutMapper.toWorkoutSessionResponseList(sessions);
+    }
+
+    public PageResponse<WorkoutSessionResponse> getMySessionsPage(
+            User user,
+            int page,
+            int size
+    ) {
+        var result = workoutSessionRepository
+                .findByUserOrderBySessionDateDescCreatedAtDesc(
+                        user,
+                        PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+                )
+                .map(workoutMapper::toWorkoutSessionResponse);
+        return PageResponse.from(result);
     }
 
     public WorkoutSessionResponse updateSession(

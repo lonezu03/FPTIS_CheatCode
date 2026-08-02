@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +39,18 @@ public class BodyMeasurementService {
 
     public List<BodyMeasurementResponse> getMyMeasurements(User user) {
         return mapper.toResponseList(repository.findByUserOrderByRecordDateDesc(user));
+    }
+
+    public PageResponse<BodyMeasurementResponse> getMyMeasurementsPage(
+            User user,
+            int page,
+            int size
+    ) {
+        var result = repository.findByUserOrderByRecordDateDescCreatedAtDesc(
+                user,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        ).map(mapper::toResponse);
+        return PageResponse.from(result);
     }
 
     public void delete(User user, String id) {

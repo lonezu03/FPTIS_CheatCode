@@ -11,15 +11,27 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:fittrack_user}
     password: ${SPRING_DATASOURCE_PASSWORD:fittrack_password}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:5}
+      minimum-idle: ${DB_POOL_MIN_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:10000}
+      validation-timeout: ${DB_VALIDATION_TIMEOUT_MS:3000}
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: false
+    open-in-view: false
+
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-migration-naming: true
 
   jackson:
     time-zone: Asia/Ho_Chi_Minh
@@ -40,8 +52,13 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:https://fptis-cheat-code.vercel.app,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}
   jwt:
-    secret: ${JWT_SECRET:fittrack_super_secret_key_fittrack_super_secret_key_2026}
-    expiration-ms: ${JWT_EXPIRATION_MS:604800000}
+    secret: ${JWT_SECRET:local-development-only-jwt-key-never-use-in-production-2026}
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}
+    refresh-expiration-days: ${JWT_REFRESH_EXPIRATION_DAYS:30}
+
+  auth:
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+    cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
 
   gemini:
     api-key: ${GEMINI_API_KEY:}
@@ -56,12 +73,54 @@ app:
   mail:
     enabled: ${MAIL_ENABLED:false}
     from: ${MAIL_FROM:${MAIL_USERNAME:}}
+    registration-requires-email: ${REGISTRATION_REQUIRES_EMAIL:false}
 
   keep-alive:
     enabled: ${KEEP_ALIVE_ENABLED:false}
     url: ${KEEP_ALIVE_URL:${RENDER_EXTERNAL_URL:}}
     interval-ms: ${KEEP_ALIVE_INTERVAL_MS:600000}
 
+  scheduler:
+    internal-enabled: ${INTERNAL_SCHEDULER_ENABLED:true}
+    job-secret: ${JOB_SECRET:}
+
+  media:
+    # Local development can keep legacy Base64 values. Production should use
+    # Cloudinary so PostgreSQL only stores a short HTTPS URL.
+    provider: ${MEDIA_PROVIDER:database}
+    allowed-hosts: ${MEDIA_ALLOWED_HOSTS:res.cloudinary.com}
+    cloudinary:
+      cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+      api-key: ${CLOUDINARY_API_KEY:}
+      api-secret: ${CLOUDINARY_API_SECRET:}
+
 springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
   swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
     path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+  tracing:
+    sampling:
+      probability: ${OTEL_TRACING_SAMPLE_RATE:0.1}
+    export:
+      otlp:
+        enabled: ${OTEL_EXPORT_ENABLED:false}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+logging:
+  pattern:
+    level: "%5p [requestId=%X{requestId:-}]"

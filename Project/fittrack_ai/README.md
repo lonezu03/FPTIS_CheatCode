@@ -8,7 +8,7 @@ The application helps users track workouts, nutrition, body measurements, weekly
 
 ### Authentication
 - User registration and login
-- JWT-based authentication
+- Access/refresh authentication using secure HttpOnly cookies
 - Protected frontend routes
 - Axios token interceptor
 - Admin-only account management with role assignment, account lock/unlock, and password reset
@@ -96,6 +96,7 @@ The application helps users track workouts, nutrition, body measurements, weekly
 - Can propose workout sessions, meal logs, and lunch orders
 - Requires explicit user confirmation before any proposed action is saved
 - Keeps the Gemini API key out of the browser and source control
+- Requires explicit consent and only sends context relevant to the current question
 
 ### Achievements
 - Meal logging streak
@@ -118,8 +119,8 @@ The application helps users track workouts, nutrition, body measurements, weekly
 - JWT Authentication
 - Spring Data JPA
 - Hibernate
-- H2 for local quick start
-- PostgreSQL-ready configuration
+- H2 for isolated unit tests
+- PostgreSQL with versioned Flyway migrations
 - Swagger / OpenAPI
 - Maven
 
@@ -377,17 +378,17 @@ export ASSISTANT_REQUESTS_PER_MINUTE="6"
 ```
 
 The public `GET /api/health` endpoint verifies both the application and its
-database connection. On Render, the optional keep-alive scheduler calls this
-endpoint every 10 minutes:
+database connection. Use an external cron/uptime monitor because a sleeping
+Render process cannot wake itself:
 
 ```bash
-export KEEP_ALIVE_ENABLED="true"
-export KEEP_ALIVE_INTERVAL_MS="600000"
+export KEEP_ALIVE_ENABLED="false"
+export INTERNAL_SCHEDULER_ENABLED="false"
+export JOB_SECRET="replace-with-random-secret"
 ```
 
-Render provides `RENDER_EXTERNAL_URL` automatically. For other hosts, set
-`KEEP_ALIVE_URL` to the public backend URL. Keep-alive is disabled by default
-outside production.
+See [docs/OPERATIONS.md](docs/OPERATIONS.md) for backup, Flyway, Cloudinary,
+external scheduler, secret rotation and incident procedures.
 
 ### Frontend Setup
 
@@ -411,7 +412,7 @@ Example:
 
 ```txt
 email: test@gmail.com
-password: 123456
+password: use-at-least-8-characters
 ```
 
 After login, call the demo seed endpoint to generate sample data:

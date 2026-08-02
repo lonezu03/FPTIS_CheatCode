@@ -40,6 +40,11 @@ public final class ImageReferences {
         return mediaPath + "?v=" + Integer.toUnsignedString(storedValue.hashCode(), 36);
     }
 
+    public static String protectedResponseUrl(String storedValue, String mediaPath) {
+        if (storedValue == null || storedValue.isBlank()) return null;
+        return mediaPath + "?v=" + Integer.toUnsignedString(storedValue.hashCode(), 36);
+    }
+
     public static String resolveStoredValue(
             String currentValue,
             String requestedValue,

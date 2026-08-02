@@ -5,7 +5,7 @@ import {
   createMealLog,
   deleteMealLog,
   getFoods,
-  getMealLogs,
+  getMealLogsPage,
   updateMealLog,
   type MealLog,
 } from "../api/nutrition.api";
@@ -20,7 +20,7 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import TableLoading from "../components/common/TableLoading";
 import DataPagination from "../components/common/DataPagination";
-import { usePagination } from "../hooks/usePagination";
+import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
 
 import { Button } from "@/components/ui/button";
@@ -73,10 +73,12 @@ export default function NutritionPage() {
     queryKey: ["foods", searchKeyword],
     queryFn: () => getFoods(searchKeyword),
   });
+  const mealPager = useServerPagination(20);
 
   const mealLogsQuery = useQuery({
-    queryKey: ["meal-logs", logDate],
-    queryFn: () => getMealLogs(logDate),
+    queryKey: ["meal-logs", logDate, mealPager.page, mealPager.pageSize],
+    queryFn: () => getMealLogsPage(logDate, mealPager.page - 1, mealPager.pageSize),
+    placeholderData: (previous) => previous,
   });
 
   const dashboardQuery = useQuery({
@@ -85,8 +87,13 @@ export default function NutritionPage() {
   });
 
   const foods = foodsQuery.data ?? [];
-  const logs = mealLogsQuery.data ?? [];
-  const mealPagination = usePagination(logs);
+  const logs = mealLogsQuery.data?.content ?? [];
+  const mealPagination = {
+    ...mealPager,
+    paginatedItems: logs,
+    totalItems: mealLogsQuery.data?.totalElements ?? 0,
+    totalPages: Math.max(1, mealLogsQuery.data?.totalPages ?? 1),
+  };
   const dashboard = dashboardQuery.data;
   const defaultFoodId = foods[0]?.id ?? "";
 
@@ -349,7 +356,7 @@ export default function NutritionPage() {
                 </select>
               </FormField>
               <FormField label="Ngày ăn" htmlFor="meal-date" hint="Ngày thực tế bạn dùng bữa." required>
-                <Input id="meal-date" type="date" value={logDate} onChange={(event) => setLogDate(event.target.value)} />
+                <Input id="meal-date" type="date" value={logDate} onChange={(event) => { mealPager.resetPage(); setLogDate(event.target.value); }} />
               </FormField>
             </div>
 

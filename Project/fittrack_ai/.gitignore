@@ -32,3 +32,6 @@ build/
 
 # Misc
 coverage/
+backups/
+playwright-report/
+test-results/

@@ -49,6 +49,18 @@ public class GlobalExceptionHandler {
         return buildError(HttpStatus.BAD_GATEWAY, ex.getMessage());
     }
 
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailable(ServiceUnavailableException ex) {
+        return buildError(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyRequests(TooManyRequestsException ex) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(errorBody(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+    }
+
     @ExceptionHandler(EmailVerificationRequiredException.class)
     public ResponseEntity<ErrorResponse> handleEmailVerificationRequired(
             EmailVerificationRequiredException ex
@@ -87,14 +99,16 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> buildError(HttpStatus status, String message) {
-        ErrorResponse error = ErrorResponse.builder()
+        return ResponseEntity.status(status).body(errorBody(status, message));
+    }
+
+    private ErrorResponse errorBody(HttpStatus status, String message) {
+        return ErrorResponse.builder()
                 .status(status.value())
                 .error(status.getReasonPhrase())
                 .message(message)
                 .timestamp(LocalDateTime.now())
                 .build();
-
-        return ResponseEntity.status(status).body(error);
     }
 }
 

@@ -1,6 +1,8 @@
 package com.fittrack.user.service;
 
 import com.fittrack.common.exception.ConflictException;
+import com.fittrack.auth.service.AuthTokenService;
+import com.fittrack.audit.service.AuditService;
 import com.fittrack.user.dto.AdminUserDtos.UpdateAdminUserRequest;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.repository.UserRepository;
@@ -25,11 +27,17 @@ class AdminUserServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private AuthTokenService authTokenService;
+
+    @Mock
+    private AuditService auditService;
+
     private AdminUserService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminUserService(userRepository, passwordEncoder);
+        service = new AdminUserService(userRepository, passwordEncoder, authTokenService, auditService);
     }
 
     @Test

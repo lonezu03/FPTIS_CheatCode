@@ -27,9 +27,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fittrack_db
       SPRING_DATASOURCE_USERNAME: fittrack_user
       SPRING_DATASOURCE_PASSWORD: fittrack_password
-      JPA_DDL_AUTO: update
+      JPA_DDL_AUTO: validate
+      FLYWAY_ENABLED: true
       JPA_SHOW_SQL: false
-      JWT_SECRET: fittrack_super_secret_key_fittrack_super_secret_key_2026_change_me
+      JWT_SECRET: local-development-only-jwt-key-never-use-in-production-2026
       JWT_EXPIRATION_MS: 604800000
       CORS_ALLOWED_ORIGINS: https://fptis-cheat-code.vercel.app,http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}

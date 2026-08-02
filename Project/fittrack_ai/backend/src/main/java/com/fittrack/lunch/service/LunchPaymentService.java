@@ -10,12 +10,17 @@ import com.fittrack.lunch.repository.LunchPaymentSettingsRepository;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.repository.UserRepository;
 import com.fittrack.common.media.ImageReferences;
+import com.fittrack.common.media.MediaStorageService;
+import com.fittrack.audit.service.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +33,8 @@ public class LunchPaymentService {
     private final LunchTextFormatter textFormatter;
     private final LunchMapper mapper;
     private final UserRepository userRepository;
+    private final AuditService auditService;
+    private final MediaStorageService mediaStorageService;
 
     @Transactional(readOnly = true)
     public PaymentSettingsResponse getSettings() {
@@ -47,10 +54,12 @@ public class LunchPaymentService {
                 .orElseGet(() -> LunchPaymentSettings.builder()
                         .id(LunchPaymentSettings.DEFAULT_ID)
                         .build());
-        settings.setQrImageUrl(ImageReferences.resolveStoredValue(
+        settings.setQrImageUrl(mediaStorageService.store(
                 settings.getQrImageUrl(),
                 request.qrImageUrl(),
-                ImageReferences.paymentQrPath()
+                ImageReferences.paymentQrPath(),
+                "payment",
+                "qr"
         ));
         settings.setBankName(blankToNull(request.bankName()));
         settings.setAccountName(blankToNull(request.accountName()));
@@ -114,6 +123,23 @@ public class LunchPaymentService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentRequestResponse> getMinePage(
+            User user, int page, int size
+    ) {
+        return PageResponse.from(requestRepository.findByUserOrderByCreatedAtDesc(
+                user,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        ).map(mapper::toPaymentRequestResponse));
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentRequestResponse> getAllPage(int page, int size) {
+        return PageResponse.from(requestRepository.findAllByOrderByCreatedAtDesc(
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        ).map(mapper::toPaymentRequestResponse));
+    }
+
     @Transactional
     public PaymentRequestResponse approve(
             User admin,
@@ -146,6 +172,11 @@ public class LunchPaymentService {
                 "PAYMENT_REQUEST",
                 request.getId()
         );
+        auditService.record(admin, "PAYMENT_APPROVED", "PAYMENT_REQUEST", request.getId(), Map.of(
+                "userId", request.getUser().getId(),
+                "type", request.getType().name(),
+                "amount", request.getAmount()
+        ));
         return mapper.toPaymentRequestResponse(saved);
     }
 
@@ -171,6 +202,11 @@ public class LunchPaymentService {
                 "PAYMENT_REQUEST",
                 request.getId()
         );
+        auditService.record(admin, "PAYMENT_REJECTED", "PAYMENT_REQUEST", request.getId(), Map.of(
+                "userId", request.getUser().getId(),
+                "type", request.getType().name(),
+                "amount", request.getAmount()
+        ));
         return mapper.toPaymentRequestResponse(saved);
     }
 
@@ -185,7 +221,7 @@ public class LunchPaymentService {
 
     private PaymentSettingsResponse toSettingsResponse(LunchPaymentSettings settings) {
         return new PaymentSettingsResponse(
-                ImageReferences.responseUrl(
+                ImageReferences.protectedResponseUrl(
                         settings.getQrImageUrl(),
                         ImageReferences.paymentQrPath()
                 ),

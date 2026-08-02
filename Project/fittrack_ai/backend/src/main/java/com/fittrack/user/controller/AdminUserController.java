@@ -12,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.fittrack.common.dto.PageResponse;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -25,6 +26,15 @@ public class AdminUserController {
             @RequestParam(required = false) String keyword
     ) {
         return adminUserService.getUsers(keyword);
+    }
+
+    @GetMapping("/page")
+    public PageResponse<AdminUserResponse> getUsersPage(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return adminUserService.getUsersPage(keyword, page, size);
     }
 
     @PatchMapping("/{id}")
@@ -43,9 +53,10 @@ public class AdminUserController {
     @PostMapping("/{id}/reset-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetPassword(
+            Authentication authentication,
             @PathVariable String id,
             @Valid @RequestBody ResetPasswordRequest request
     ) {
-        adminUserService.resetPassword(id, request);
+        adminUserService.resetPassword((User) authentication.getPrincipal(), id, request);
     }
 }

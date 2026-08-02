@@ -9,13 +9,13 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import TableLoading from "../components/common/TableLoading";
 import DataPagination from "../components/common/DataPagination";
-import { usePagination } from "../hooks/usePagination";
+import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
 
 import {
   createExerciseApi,
   deleteExerciseApi,
-  getExercisesApi,
+  getExercisesPageApi,
   reviewExerciseApi,
   restoreExerciseApi,
   suggestExerciseApi,
@@ -65,15 +65,27 @@ export default function ExercisesPage() {
   });
 
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const exercisePager = useServerPagination(20);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   const exercisesQuery = useQuery({
-    queryKey: ["exercises-management", searchKeyword, isAdmin && includeInactive],
-    queryFn: () => getExercisesApi(searchKeyword, isAdmin && includeInactive),
+    queryKey: ["exercises-management", searchKeyword, isAdmin && includeInactive, exercisePager.page, exercisePager.pageSize],
+    queryFn: () => getExercisesPageApi(
+      searchKeyword,
+      isAdmin && includeInactive,
+      exercisePager.page - 1,
+      exercisePager.pageSize,
+    ),
+    placeholderData: (previous) => previous,
   });
 
-  const exercises = exercisesQuery.data ?? [];
-  const exercisePagination = usePagination(exercises);
+  const exercises = exercisesQuery.data?.content ?? [];
+  const exercisePagination = {
+    ...exercisePager,
+    paginatedItems: exercises,
+    totalItems: exercisesQuery.data?.totalElements ?? 0,
+    totalPages: Math.max(1, exercisesQuery.data?.totalPages ?? 1),
+  };
 
   const createMutation = useMutation({
     mutationFn: isAdmin ? createExerciseApi : suggestExerciseApi,
@@ -223,7 +235,7 @@ export default function ExercisesPage() {
             <div className="flex flex-1 gap-2">
               <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm bài tập..." />
 
-              <Button onClick={() => setSearchKeyword(keyword)}>Tìm kiếm</Button>
+              <Button onClick={() => { exercisePager.resetPage(); setSearchKeyword(keyword); }}>Tìm kiếm</Button>
             </div>
 
             {isAdmin && (
@@ -231,7 +243,7 @@ export default function ExercisesPage() {
                 <input
                   type="checkbox"
                   checked={includeInactive}
-                  onChange={(event) => setIncludeInactive(event.target.checked)}
+                  onChange={(event) => { exercisePager.resetPage(); setIncludeInactive(event.target.checked); }}
                 />
                 Hiện mục đã lưu trữ
               </label>

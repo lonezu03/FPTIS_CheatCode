@@ -9,6 +9,8 @@ services:
     envVars:
       - key: SERVER_PORT
         value: 8080
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
       - key: SPRING_DATASOURCE_URL
         sync: false
       - key: SPRING_DATASOURCE_USERNAME
@@ -18,7 +20,9 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRATION_MS
-        value: 604800000
+        value: 900000
+      - key: JWT_REFRESH_EXPIRATION_DAYS
+        value: 30
       - key: ADMIN_EMAILS
         sync: false
       - key: GEMINI_API_KEY
@@ -28,15 +32,21 @@ services:
       - key: ASSISTANT_REQUESTS_PER_MINUTE
         value: 6
       - key: KEEP_ALIVE_ENABLED
-        value: true
+        value: false
       - key: KEEP_ALIVE_INTERVAL_MS
         value: 600000
+      - key: INTERNAL_SCHEDULER_ENABLED
+        value: false
+      - key: JOB_SECRET
+        sync: false
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: APP_FRONTEND_URL
         value: https://fptis-cheat-code.vercel.app
       - key: MAIL_ENABLED
         sync: false
+      - key: REGISTRATION_REQUIRES_EMAIL
+        value: true
       - key: MAIL_HOST
         value: smtp.gmail.com
       - key: MAIL_PORT
@@ -48,6 +58,26 @@ services:
       - key: MAIL_FROM
         sync: false
       - key: JPA_DDL_AUTO
-        value: update
+        value: validate
+      - key: FLYWAY_ENABLED
+        value: true
+      - key: SWAGGER_ENABLED
+        value: false
       - key: JPA_SHOW_SQL
         value: false
+      - key: DB_POOL_MAX_SIZE
+        value: 5
+      - key: OTEL_EXPORT_ENABLED
+        value: false
+      - key: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+        sync: false
+      - key: MEDIA_PROVIDER
+        value: cloudinary
+      - key: MEDIA_ALLOWED_HOSTS
+        value: res.cloudinary.com
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

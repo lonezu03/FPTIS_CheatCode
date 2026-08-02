@@ -14,6 +14,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Set;
 import tools.jackson.core.JacksonException;
@@ -34,6 +35,7 @@ public class AssistantService {
     private final Validator validator;
 
     public ChatResponse chat(User user, ChatRequest request) {
+        requireConsent(user);
         int totalCharacters = request.messages()
                 .stream()
                 .mapToInt(message -> message.content().length())
@@ -46,7 +48,12 @@ public class AssistantService {
                     "Bạn gửi yêu cầu quá nhanh, vui lòng thử lại sau một phút"
             );
         }
-        String context = contextService.buildContext(user);
+        String currentQuestion = request.messages().stream()
+                .filter(message -> "user".equals(message.role()))
+                .reduce((first, second) -> second)
+                .map(ChatMessage::content)
+                .orElse("");
+        String context = contextService.buildContext(user, currentQuestion);
         AiResult result = geminiClient.respond(request.messages(), context);
         ProposedAction action = toProposedAction(result.toolCall());
         String reply = result.reply();
@@ -60,6 +67,7 @@ public class AssistantService {
             User user,
             ExecuteActionRequest request
     ) {
+        requireConsent(user);
         try {
             return switch (request.type()) {
                 case "create_workout_session" -> {
@@ -104,6 +112,14 @@ public class AssistantService {
             };
         } catch (JacksonException exception) {
             throw new IllegalArgumentException("Dữ liệu thao tác chatbot không hợp lệ");
+        }
+    }
+
+    private void requireConsent(User user) {
+        if (!Boolean.TRUE.equals(user.getAssistantConsent())) {
+            throw new AccessDeniedException(
+                    "Bạn cần đồng ý chia sẻ dữ liệu cần thiết trước khi sử dụng trợ lý AI"
+            );
         }
     }
 

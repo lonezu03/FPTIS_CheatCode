@@ -34,6 +34,7 @@ public class JwtService {
                 .subject(user.getEmail())
                 .claim("userId", user.getId())
                 .claim("role", user.getRole())
+                .claim("ver", user.getTokenVersion() == null ? 0L : user.getTokenVersion())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -46,7 +47,19 @@ public class JwtService {
 
     public boolean isTokenValid(String token, User user) {
         String email = extractEmail(token);
-        return email.equals(user.getEmail()) && !isTokenExpired(token);
+        long userVersion = user.getTokenVersion() == null ? 0L : user.getTokenVersion();
+        return email.equals(user.getEmail())
+                && extractTokenVersion(token) == userVersion
+                && !isTokenExpired(token);
+    }
+
+    public long getExpirationMs() {
+        return jwtExpirationMs;
+    }
+
+    private long extractTokenVersion(String token) {
+        Object value = extractClaims(token).get("ver");
+        return value instanceof Number number ? number.longValue() : 0L;
     }
 
     private boolean isTokenExpired(String token) {

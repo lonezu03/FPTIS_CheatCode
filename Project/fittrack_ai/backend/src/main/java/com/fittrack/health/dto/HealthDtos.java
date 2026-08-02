@@ -40,6 +40,7 @@ public final class HealthDtos {
             int activeDays,
             List<NutrientMetric> nutrients,
             List<String> insights,
+            String targetBasis,
             String disclaimer
     ) {
     }

@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.fittrack.common.dto.PageResponse;
 
 @RestController
 @RequestMapping("/api/body-measurements")
@@ -33,6 +34,17 @@ public class BodyMeasurementController {
         User user = (User) authentication.getPrincipal();
 
         return service.getMyMeasurements(user);
+    }
+
+    @GetMapping("/page")
+    public PageResponse<BodyMeasurementResponse> getMyMeasurementsPage(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return service.getMyMeasurementsPage(
+                (User) authentication.getPrincipal(), page, size
+        );
     }
 
     @PutMapping("/{id}")

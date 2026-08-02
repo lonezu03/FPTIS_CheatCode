@@ -65,6 +65,15 @@ public class ApplicationMailService {
         );
     }
 
+    public boolean sendNotificationEmail(
+            String recipient,
+            String fullName,
+            String subject,
+            String content
+    ) {
+        return send(recipient, "FitTrack - " + subject, greeting(fullName) + "\n\n" + content);
+    }
+
     private boolean send(String recipient, String subject, String body) {
         if (!enabled) {
             log.warn(

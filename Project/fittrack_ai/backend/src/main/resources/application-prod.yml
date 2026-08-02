@@ -3,8 +3,25 @@ spring:
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:validate}
     show-sql: false
+  flyway:
+    enabled: true
+
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
 
 server:
   error:
     include-message: never
     include-stacktrace: never
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  auth:
+    cookie-secure: true
+    cookie-same-site: Lax
+  mail:
+    registration-requires-email: true

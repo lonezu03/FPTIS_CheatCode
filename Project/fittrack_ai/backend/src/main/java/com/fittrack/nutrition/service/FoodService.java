@@ -7,14 +7,18 @@ import com.fittrack.nutrition.entity.Food;
 import com.fittrack.nutrition.mapper.NutritionMapper;
 import com.fittrack.nutrition.repository.FoodRepository;
 import com.fittrack.common.media.ImageReferences;
+import com.fittrack.common.media.MediaStorageService;
 import com.fittrack.common.dto.CatalogReviewRequest;
 import com.fittrack.lunch.service.LunchNotificationService;
 import com.fittrack.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
 
 import java.util.List;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +27,7 @@ public class FoodService {
     private final FoodRepository foodRepository;
     private final NutritionMapper nutritionMapper;
     private final LunchNotificationService notificationService;
+    private final MediaStorageService mediaStorageService;
 
     public List<FoodResponse> getFoods(String keyword, Boolean includeInactive) {
         boolean showInactive = Boolean.TRUE.equals(includeInactive);
@@ -62,7 +67,9 @@ public class FoodService {
                 .vitaminC(defaultZero(request.getVitaminC()))
                 .water(defaultZero(request.getWater()))
                 .unit(request.getUnit())
-                .imageUrl(ImageReferences.normalizeForStorage(request.getImageUrl()))
+                .imageUrl(mediaStorageService.storeNew(
+                        request.getImageUrl(), "foods", UUID.randomUUID().toString()
+                ))
                 .custom(true)
                 .active(true)
                 .approvalStatus("APPROVED")
@@ -71,6 +78,20 @@ public class FoodService {
         Food saved = foodRepository.save(food);
 
         return nutritionMapper.toFoodResponse(saved);
+    }
+
+    public PageResponse<FoodResponse> getFoodsPage(
+            String keyword,
+            boolean includeInactive,
+            int page,
+            int size
+    ) {
+        var result = foodRepository.searchPage(
+                keyword == null ? "" : keyword.trim(),
+                includeInactive,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        ).map(nutritionMapper::toFoodResponse);
+        return PageResponse.from(result);
     }
 
     public FoodResponse createSuggestion(
@@ -92,11 +113,9 @@ public class FoodService {
                 .vitaminC(defaultZero(request.getVitaminC()))
                 .water(defaultZero(request.getWater()))
                 .unit(request.getUnit())
-                .imageUrl(
-                        ImageReferences.normalizeForStorage(
-                                request.getImageUrl()
-                        )
-                )
+                .imageUrl(mediaStorageService.storeNew(
+                        request.getImageUrl(), "foods", UUID.randomUUID().toString()
+                ))
                 .custom(true)
                 .active(false)
                 .approvalStatus("PENDING")
@@ -173,10 +192,12 @@ public class FoodService {
         food.setVitaminC(defaultZero(request.getVitaminC()));
         food.setWater(defaultZero(request.getWater()));
         food.setUnit(request.getUnit());
-        food.setImageUrl(ImageReferences.resolveStoredValue(
+        food.setImageUrl(mediaStorageService.store(
                 food.getImageUrl(),
                 request.getImageUrl(),
-                ImageReferences.foodPath(food.getId())
+                ImageReferences.foodPath(food.getId()),
+                "foods",
+                food.getId()
         ));
 
         Food saved = foodRepository.save(food);

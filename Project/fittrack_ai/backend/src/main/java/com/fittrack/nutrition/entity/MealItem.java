@@ -44,6 +44,7 @@ public class MealItem {
 
     private Double iron;
 
+    @Column(name = "vitamin_c")
     private Double vitaminC;
 
     private Double water;

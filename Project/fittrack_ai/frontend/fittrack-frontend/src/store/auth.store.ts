@@ -9,12 +9,15 @@ export type AuthUser = {
   fitnessEnabled: boolean;
   healthEnabled: boolean;
   chatbotEnabled: boolean;
+  passwordChangeRequired: boolean;
 };
 
 type AuthState = {
   token: string | null;
   user: AuthUser | null;
+  initialized: boolean;
   setSession: (token: string, user: AuthUser) => void;
+  setInitialized: (initialized: boolean) => void;
   updateUser: (user: Partial<AuthUser>) => void;
   logout: () => void;
 };
@@ -29,47 +32,23 @@ const readStoredUser = (): AuthUser | null => {
   }
 };
 
-const readUserFromToken = (token: string | null): AuthUser | null => {
-  if (!token) return null;
-
-  try {
-    const encodedPayload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const paddedPayload = encodedPayload.padEnd(Math.ceil(encodedPayload.length / 4) * 4, "=");
-    const payload = JSON.parse(atob(paddedPayload)) as {
-      userId?: string;
-      sub?: string;
-      role?: string;
-    };
-
-    if (!payload.userId || !payload.sub) return null;
-
-    return {
-      userId: payload.userId,
-      email: payload.sub,
-      fullName: payload.sub.split("@")[0],
-      role: payload.role === "ADMIN" ? "ADMIN" : "USER",
-      lunchEnabled: true,
-      fitnessEnabled: true,
-      healthEnabled: true,
-      chatbotEnabled: true,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const initialToken = localStorage.getItem("token");
-const initialUser = readStoredUser() ?? readUserFromToken(initialToken);
+// Access tokens are kept in memory only. Remove the legacy persistent token
+// once so an XSS issue cannot reuse it after a browser restart.
+localStorage.removeItem("token");
+const initialToken: string | null = null;
+const initialUser = readStoredUser();
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: initialToken,
   user: initialUser,
+  initialized: false,
 
   setSession: (token, user) => {
-    localStorage.setItem("token", token);
     localStorage.setItem("fittrack-user", JSON.stringify(user));
     set({ token, user });
   },
+
+  setInitialized: (initialized) => set({ initialized }),
 
   updateUser: (partialUser) => {
     set((state) => {
@@ -81,7 +60,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
-    localStorage.removeItem("token");
     localStorage.removeItem("fittrack-user");
     set({ token: null, user: null });
   },

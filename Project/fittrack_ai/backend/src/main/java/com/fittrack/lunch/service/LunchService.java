@@ -16,6 +16,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import com.fittrack.common.dto.PageResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -127,6 +130,32 @@ public class LunchService {
                 .stream()
                 .map(mapper::toOrderResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<WalletTransactionResponse> getWalletTransactionsPage(
+            User user, int page, int size
+    ) {
+        PageRequest pageable = PageRequest.of(
+                Math.max(page, 0), Math.min(Math.max(size, 1), 100)
+        );
+        Page<WalletTransactionResponse> result = accountRepository.findByUser(user)
+                .map(account -> transactionRepository
+                        .findByAccountOrderByCreatedAtDesc(account, pageable)
+                        .map(mapper::toTransactionResponse))
+                .orElseGet(() -> Page.empty(pageable));
+        return PageResponse.from(result);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<OrderResponse> getOrderHistoryPage(
+            User user, int page, int size
+    ) {
+        var result = orderRepository.findHistoryForUser(
+                user,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        ).map(mapper::toOrderResponse);
+        return PageResponse.from(result);
     }
 
     @Transactional

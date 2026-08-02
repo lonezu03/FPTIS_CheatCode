@@ -10,7 +10,7 @@ import { getWeeklyRecommendations } from "../api/recommendation.api";
 import { useAuthStore } from "../store/auth.store";
 import ErrorState from "../components/common/ErrorState";
 import PageLoading from "../components/common/PageLoading";
-import FitnessTrendCharts from "../components/FitnessTrendCharts";
+import DeferredFitnessTrendCharts from "../components/DeferredFitnessTrendCharts";
 import MacroProgressCard from "../components/MacroProgressCard";
 import PageHeader from "../components/PageHeader";
 import RecommendationCard from "../components/RecommendationCard";
@@ -225,7 +225,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      <FitnessTrendCharts points={points} />
+      <DeferredFitnessTrendCharts points={points} />
 
       <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-white">
         <CardHeader>

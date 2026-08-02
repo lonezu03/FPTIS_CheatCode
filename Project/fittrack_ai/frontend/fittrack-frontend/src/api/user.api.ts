@@ -9,6 +9,9 @@ export type UserProfile = {
   fitnessEnabled: boolean;
   healthEnabled: boolean;
   chatbotEnabled: boolean;
+  passwordChangeRequired: boolean;
+  assistantConsent: boolean;
+  emailNotificationsEnabled: boolean;
   gender: string;
   age: number;
   height: number;

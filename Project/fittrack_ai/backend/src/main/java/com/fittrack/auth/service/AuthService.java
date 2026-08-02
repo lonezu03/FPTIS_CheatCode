@@ -6,10 +6,12 @@ import com.fittrack.auth.dto.LoginRequest;
 import com.fittrack.auth.dto.RegisterRequest;
 import com.fittrack.auth.exception.EmailVerificationRequiredException;
 import com.fittrack.common.exception.ConflictException;
+import com.fittrack.common.exception.ServiceUnavailableException;
 import com.fittrack.common.security.JwtService;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,9 @@ public class AuthService {
     private final AuthTokenService authTokenService;
     private final ApplicationMailService mailService;
 
+    @Value("${app.mail.registration-requires-email:false}")
+    private boolean registrationRequiresEmail;
+
     @Transactional
     public RegistrationResponse register(RegisterRequest request) {
         String email = normalizeEmail(request.getEmail());
@@ -34,6 +39,11 @@ public class AuthService {
             throw new ConflictException("Email đã được sử dụng");
         }
 
+        if (registrationRequiresEmail && !mailService.isEnabled()) {
+            throw new ServiceUnavailableException(
+                    "Đăng ký tạm thời đóng vì dịch vụ xác thực email chưa được cấu hình"
+            );
+        }
         boolean verificationRequired = mailService.isEnabled();
         User user = User.builder()
                 .email(email)
@@ -79,7 +89,8 @@ public class AuthService {
         );
     }
 
-    public AuthResponse login(LoginRequest request) {
+    @Transactional
+    public AuthSession login(LoginRequest request) {
         User user = userRepository.findByEmail(normalizeEmail(request.getEmail()))
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
 
@@ -102,9 +113,54 @@ public class AuthService {
             throw new BadCredentialsException("Invalid email or password");
         }
 
-        String token = jwtService.generateToken(user);
+        if ("ADMIN".equalsIgnoreCase(user.getRole())
+                && "123456".equals(request.getPassword())) {
+            user.setPasswordChangeRequired(true);
+        }
 
-        return buildAuthResponse(user, token);
+        String token = jwtService.generateToken(user);
+        String refreshToken = authTokenService.createRefreshToken(user);
+
+        return new AuthSession(buildAuthResponse(user, token), refreshToken);
+    }
+
+    @Transactional
+    public AuthSession refresh(String rawRefreshToken) {
+        AuthTokenService.RotatedRefreshToken rotated =
+                authTokenService.rotateRefreshToken(rawRefreshToken);
+        User user = rotated.user();
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            throw new BadCredentialsException("Invalid refresh token");
+        }
+        return new AuthSession(
+                buildAuthResponse(user, jwtService.generateToken(user)),
+                rotated.rawToken()
+        );
+    }
+
+    @Transactional
+    public AuthSession changePassword(
+            User user,
+            com.fittrack.auth.dto.AuthFlowDtos.ChangePasswordRequest request
+    ) {
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Mật khẩu hiện tại không chính xác");
+        }
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordChangeRequired(false);
+        authTokenService.revokeAllSessions(user);
+        return new AuthSession(
+                buildAuthResponse(user, jwtService.generateToken(user)),
+                authTokenService.createRefreshToken(user)
+        );
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        authTokenService.revokeRefreshToken(refreshToken);
     }
 
     private AuthResponse buildAuthResponse(User user, String token) {
@@ -119,7 +175,11 @@ public class AuthService {
                 .fitnessEnabled(Boolean.TRUE.equals(user.getFitnessEnabled()))
                 .healthEnabled(Boolean.TRUE.equals(user.getHealthEnabled()))
                 .chatbotEnabled(Boolean.TRUE.equals(user.getChatbotEnabled()))
+                .passwordChangeRequired(Boolean.TRUE.equals(user.getPasswordChangeRequired()))
                 .build();
+    }
+
+    public record AuthSession(AuthResponse response, String refreshToken) {
     }
 
     private String normalizeEmail(String email) {
