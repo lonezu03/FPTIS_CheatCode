@@ -18,14 +18,30 @@ import io.jsonwebtoken.JwtException;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    private static final Set<String> PUBLIC_AUTH_PATHS = Set.of(
+            "/api/auth/login",
+            "/api/auth/register",
+            "/api/auth/refresh",
+            "/api/auth/verify-email",
+            "/api/auth/resend-verification",
+            "/api/auth/forgot-password",
+            "/api/auth/reset-password"
+    );
+
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final AuthCookieService authCookieService;
+
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        return PUBLIC_AUTH_PATHS.contains(request.getRequestURI());
+    }
 
     @Override
     protected void doFilterInternal(

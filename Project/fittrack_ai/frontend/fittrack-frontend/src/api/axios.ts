@@ -25,6 +25,21 @@ const api = axios.create({
   headers: { "X-Requested-With": "XMLHttpRequest" },
 });
 
+const PUBLIC_AUTH_PATHS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/refresh",
+  "/auth/verify-email",
+  "/auth/resend-verification",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+];
+
+function isPublicAuthUrl(url?: string): boolean {
+  if (!url) return false;
+  return PUBLIC_AUTH_PATHS.some((path) => url.includes(path));
+}
+
 export function resolveApiAssetUrl(value: string): string {
   if (!value.startsWith("/api/")) {
     return value;
@@ -36,8 +51,10 @@ export function resolveApiAssetUrl(value: string): string {
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
 
-  if (token) {
+  if (token && !isPublicAuthUrl(config.url)) {
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    delete config.headers.Authorization;
   }
 
   return config;
@@ -49,7 +66,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const original = error.config as (typeof error.config & { _retried?: boolean }) | undefined;
-    const isAuthRequest = original?.url?.includes("/auth/login") || original?.url?.includes("/auth/refresh");
+    const isAuthRequest = isPublicAuthUrl(original?.url);
 
     if (error.response?.status === 401 && original && !original._retried && !isAuthRequest) {
       original._retried = true;

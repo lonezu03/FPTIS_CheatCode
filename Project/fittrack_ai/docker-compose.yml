@@ -32,7 +32,7 @@ services:
       JPA_SHOW_SQL: false
       JWT_SECRET: local-development-only-jwt-key-never-use-in-production-2026
       JWT_EXPIRATION_MS: 604800000
-      CORS_ALLOWED_ORIGINS: https://fptis-cheat-code.vercel.app,http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173
+      CORS_ALLOWED_ORIGINS: https://datcom-nhalam.vercel.app,http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
       ASSISTANT_REQUESTS_PER_MINUTE: ${ASSISTANT_REQUESTS_PER_MINUTE:-6}
