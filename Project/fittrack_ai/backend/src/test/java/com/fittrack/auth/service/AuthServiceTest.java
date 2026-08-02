@@ -1,5 +1,6 @@
 package com.fittrack.auth.service;
 
+import com.fittrack.auth.dto.AuthFlowDtos.ChangePasswordRequest;
 import com.fittrack.auth.dto.RegisterRequest;
 import com.fittrack.common.security.JwtService;
 import com.fittrack.user.entity.User;
@@ -86,6 +87,57 @@ class AuthServiceTest {
         verify(userRepository).save(argThat(
                 user -> !Boolean.TRUE.equals(user.getEmailVerified())
         ));
+    }
+
+    @Test
+    void changePasswordReloadsManagedUserBeforeUpdatingCredentials() {
+        User detachedPrincipal = User.builder()
+                .id("user-1")
+                .email("admin@gmail.com")
+                .password("old-hash-from-filter")
+                .active(true)
+                .role("ADMIN")
+                .passwordChangeRequired(true)
+                .tokenVersion(0L)
+                .build();
+        User managedUser = User.builder()
+                .id("user-1")
+                .email("admin@gmail.com")
+                .password("persisted-old-hash")
+                .active(true)
+                .role("ADMIN")
+                .passwordChangeRequired(true)
+                .tokenVersion(0L)
+                .build();
+
+        when(userRepository.findByIdForUpdate("user-1"))
+                .thenReturn(java.util.Optional.of(managedUser));
+        when(passwordEncoder.matches("123456", "persisted-old-hash"))
+                .thenReturn(true);
+        when(passwordEncoder.matches("NewPassword123!", "persisted-old-hash"))
+                .thenReturn(false);
+        when(passwordEncoder.encode("NewPassword123!"))
+                .thenReturn("persisted-new-hash");
+        doAnswer(invocation -> {
+            User target = invocation.getArgument(0);
+            target.setTokenVersion(target.getTokenVersion() + 1L);
+            return null;
+        }).when(authTokenService).revokeAllSessions(managedUser);
+        when(jwtService.generateToken(managedUser)).thenReturn("new-access-token");
+        when(authTokenService.createRefreshToken(managedUser))
+                .thenReturn("new-refresh-token");
+
+        var session = service.changePassword(
+                detachedPrincipal,
+                new ChangePasswordRequest("123456", "NewPassword123!")
+        );
+
+        assertEquals("persisted-new-hash", managedUser.getPassword());
+        assertFalse(managedUser.getPasswordChangeRequired());
+        assertEquals(1L, managedUser.getTokenVersion());
+        assertEquals("new-access-token", session.response().getToken());
+        verify(userRepository).findByIdForUpdate("user-1");
+        verify(authTokenService).revokeAllSessions(managedUser);
     }
 
     private RegisterRequest request() {

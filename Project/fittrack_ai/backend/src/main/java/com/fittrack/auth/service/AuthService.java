@@ -143,18 +143,22 @@ public class AuthService {
             User user,
             com.fittrack.auth.dto.AuthFlowDtos.ChangePasswordRequest request
     ) {
-        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+        User managedUser = userRepository.findByIdForUpdate(user.getId())
+                .filter(candidate -> Boolean.TRUE.equals(candidate.getActive()))
+                .orElseThrow(() -> new BadCredentialsException("Tài khoản không còn khả dụng"));
+
+        if (!passwordEncoder.matches(request.currentPassword(), managedUser.getPassword())) {
             throw new BadCredentialsException("Mật khẩu hiện tại không chính xác");
         }
-        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+        if (passwordEncoder.matches(request.newPassword(), managedUser.getPassword())) {
             throw new IllegalArgumentException("Mật khẩu mới phải khác mật khẩu hiện tại");
         }
-        user.setPassword(passwordEncoder.encode(request.newPassword()));
-        user.setPasswordChangeRequired(false);
-        authTokenService.revokeAllSessions(user);
+        managedUser.setPassword(passwordEncoder.encode(request.newPassword()));
+        managedUser.setPasswordChangeRequired(false);
+        authTokenService.revokeAllSessions(managedUser);
         return new AuthSession(
-                buildAuthResponse(user, jwtService.generateToken(user)),
-                authTokenService.createRefreshToken(user)
+                buildAuthResponse(managedUser, jwtService.generateToken(managedUser)),
+                authTokenService.createRefreshToken(managedUser)
         );
     }
 
