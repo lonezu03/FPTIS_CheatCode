@@ -4,15 +4,20 @@ import { useAuthStore, type AuthUser } from "../store/auth.store";
 // Mirrors the backend's local default: SERVER_PORT falls back to 8081.
 const DEFAULT_API_URL = "http://localhost:8082/api";
 const envApiUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+const apiMode = (import.meta.env.VITE_API_MODE as string | undefined)?.trim().toLowerCase();
+const useSameOriginProxy = import.meta.env.PROD && apiMode !== "direct";
 
-if (import.meta.env.PROD && !envApiUrl) {
+if (import.meta.env.PROD && !useSameOriginProxy && !envApiUrl) {
   throw new Error("Thiếu VITE_API_URL cho bản dựng production");
 }
-if (import.meta.env.PROD && envApiUrl && /(^|\/)localhost(?::\d+)?(\/|$)/i.test(envApiUrl)) {
+if (import.meta.env.PROD && !useSameOriginProxy && envApiUrl && /(^|\/)localhost(?::\d+)?(\/|$)/i.test(envApiUrl)) {
   throw new Error("VITE_API_URL production không được trỏ tới localhost");
 }
 
-export const baseURL = envApiUrl || DEFAULT_API_URL;
+// Vercel uses its /api rewrite so refresh cookies remain first-party and CSP
+// can stay restricted to connect-src 'self'. Direct mode is only for the
+// standalone Docker frontend, whose nginx CSP allows the configured backend.
+export const baseURL = useSameOriginProxy ? "/api" : envApiUrl || DEFAULT_API_URL;
 
 const api = axios.create({
   baseURL,

@@ -89,10 +89,11 @@ Output directory: dist
 ### Frontend Environment Variables
 
 ```txt
-VITE_API_URL=https://your-render-service.onrender.com/api
+VITE_API_MODE=proxy
+VITE_API_URL=/api
 ```
 
-Vercel dùng proxy cùng origin, vì vậy đặt `VITE_API_URL=/api`. Production build sẽ báo lỗi nếu biến bị thiếu hoặc trỏ về localhost. Local development dùng `.env.development`.
+Vercel dùng proxy cùng origin. `VITE_API_MODE=proxy` buộc frontend gọi `/api`, kể cả khi project còn lưu một `VITE_API_URL` tuyệt đối cũ. Local development dùng `.env.development`; image Docker frontend dùng `VITE_API_MODE=direct`.
 
 ## Deployment Checklist
 
@@ -101,7 +102,7 @@ Vercel dùng proxy cùng origin, vì vậy đặt `VITE_API_URL=/api`. Productio
 3. Set Aiven database and backend environment variables in Render.
 4. Confirm `/api/health` returns `UP`.
 5. Deploy frontend on Vercel with `Project/fittrack_ai/frontend` as root directory.
-6. Set `VITE_API_URL` to the Render backend API URL.
+6. Set `VITE_API_MODE=proxy` và `VITE_API_URL=/api` trên Vercel.
 7. Set `CORS_ALLOWED_ORIGINS` on Render backend to the Vercel frontend URL.
 8. Cấu hình cron ngoài gọi `/api/health` và job nhắc nhở như hướng dẫn vận hành.
 9. Register/login and test demo seed.

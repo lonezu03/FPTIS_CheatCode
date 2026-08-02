@@ -84,7 +84,7 @@ cho tới khi `remaining` bằng `0`. Giữ backup trước khi chạy. QR thanh
 
 Root Directory chính thức của Vercel là `Project/fittrack_ai/frontend`. File `frontend/vercel.json` proxy `/api/*` về Render và rewrite mọi route khác về `index.html`, nên refresh `/foods`, `/workouts`, `/health` không còn 404. `frontend/fittrack-frontend/vercel.json` được giữ đồng bộ chỉ để chạy/deploy trực tiếp ứng dụng con khi cần.
 
-Production dùng `VITE_API_URL=/api`; build sẽ thất bại nếu cấu hình rỗng hoặc trỏ localhost. Cách này giữ cookie cùng origin qua Vercel proxy và không đưa secret backend vào bundle.
+Production Vercel dùng `VITE_API_MODE=proxy`; frontend luôn gọi `/api` qua rewrite cùng origin, kể cả khi dashboard Vercel còn giữ một `VITE_API_URL` tuyệt đối cũ. Cách này giữ refresh cookie cùng origin, phù hợp với CSP `connect-src 'self'` và không đưa secret backend vào bundle. Chỉ đặt `VITE_API_MODE=direct` cho image Docker frontend có CSP và backend URL riêng.
 
 ## Quan sát và xử lý lỗi
 

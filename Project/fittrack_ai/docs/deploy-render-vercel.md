@@ -59,6 +59,7 @@ vẫn tạo tài khoản nhưng người dùng sẽ chưa nhận được liên 
 Environment variables:
 
 ```env
+VITE_API_MODE=proxy
 VITE_API_URL=/api
 ```
 
