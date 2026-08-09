@@ -61,7 +61,13 @@ class AuthServiceTest {
                 .createEmailVerificationToken(any(User.class));
         verify(mailService, never())
                 .sendVerificationEmail(anyString(), any(), anyString());
-        verify(userRepository).save(argThat(User::getEmailVerified));
+        verify(userRepository).save(argThat(user ->
+                Boolean.TRUE.equals(user.getEmailVerified())
+                        && Boolean.TRUE.equals(user.getLunchEnabled())
+                        && Boolean.FALSE.equals(user.getFitnessEnabled())
+                        && Boolean.FALSE.equals(user.getHealthEnabled())
+                        && Boolean.FALSE.equals(user.getChatbotEnabled())
+        ));
     }
 
     @Test
@@ -86,6 +92,10 @@ class AuthServiceTest {
         assertTrue(response.emailSent());
         verify(userRepository).save(argThat(
                 user -> !Boolean.TRUE.equals(user.getEmailVerified())
+                        && Boolean.TRUE.equals(user.getLunchEnabled())
+                        && Boolean.FALSE.equals(user.getFitnessEnabled())
+                        && Boolean.FALSE.equals(user.getHealthEnabled())
+                        && Boolean.FALSE.equals(user.getChatbotEnabled())
         ));
     }
 

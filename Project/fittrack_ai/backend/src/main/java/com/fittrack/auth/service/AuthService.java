@@ -56,6 +56,10 @@ public class AuthService {
                 .goal(request.getGoal())
                 .activityLevel(request.getActivityLevel())
                 .role("USER")
+                .lunchEnabled(true)
+                .fitnessEnabled(false)
+                .healthEnabled(false)
+                .chatbotEnabled(false)
                 .emailVerified(!verificationRequired)
                 .build();
 

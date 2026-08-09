@@ -49,13 +49,13 @@ public class User {
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean lunchEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default true")
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean fitnessEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default true")
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean healthEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default true")
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean chatbotEnabled;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
@@ -95,15 +95,15 @@ public class User {
         }
 
         if (this.fitnessEnabled == null) {
-            this.fitnessEnabled = true;
+            this.fitnessEnabled = false;
         }
 
         if (this.healthEnabled == null) {
-            this.healthEnabled = true;
+            this.healthEnabled = false;
         }
 
         if (this.chatbotEnabled == null) {
-            this.chatbotEnabled = true;
+            this.chatbotEnabled = false;
         }
 
         if (this.passwordChangeRequired == null) {
