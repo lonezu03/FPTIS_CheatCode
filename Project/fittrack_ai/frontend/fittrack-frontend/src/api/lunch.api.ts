@@ -139,6 +139,13 @@ export type LunchSummary = {
   dishCounts: LunchDishCount[];
 };
 
+export type LunchMenuNotificationResult = {
+  message: string;
+  recipientCount: number;
+  emailSentCount: number;
+  emailFailedCount: number;
+};
+
 export type LunchMember = {
   id: string;
   fullName: string;
@@ -254,6 +261,11 @@ export async function getAdminLunchMenus(from: string, to: string): Promise<Lunc
 
 export async function importLunchMenu(payload: ImportLunchMenuInput): Promise<LunchMenu> {
   const response = await api.post<LunchMenu>("/lunch/admin/menus/import", payload);
+  return response.data;
+}
+
+export async function notifyLunchMenu(menuId: string): Promise<LunchMenuNotificationResult> {
+  const response = await api.post<LunchMenuNotificationResult>(`/lunch/admin/menus/${menuId}/notify`);
   return response.data;
 }
 

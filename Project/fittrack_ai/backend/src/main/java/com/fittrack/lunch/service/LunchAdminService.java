@@ -38,6 +38,7 @@ public class LunchAdminService {
     private final LunchNutritionService nutritionService;
     private final AuditService auditService;
     private final MediaStorageService mediaStorageService;
+    private final LunchNotificationService notificationService;
 
     @Transactional
     public MenuResponse importMenu(User admin, ImportMenuRequest request) {
@@ -87,6 +88,26 @@ public class LunchAdminService {
                 "price", saved.getPrice()
         ));
         return mapper.toMenuResponse(saved, 0, 0, now());
+    }
+
+    public MenuNotificationResponse notifyMenu(User admin, String menuId) {
+        LunchMenu menu = menuRepository.findById(menuId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thực đơn"));
+        LunchNotificationService.DeliverySummary result =
+                notificationService.broadcastMenuAvailable(menu);
+        auditService.record(admin, "LUNCH_MENU_NOTIFIED", "LUNCH_MENU", menu.getId(), Map.of(
+                "recipientCount", result.recipientCount(),
+                "emailSentCount", result.emailSentCount(),
+                "emailFailedCount", result.emailFailedCount()
+        ));
+        return new MenuNotificationResponse(
+                result.emailFailedCount() == 0
+                        ? "Đã thông báo menu qua ứng dụng và email"
+                        : "Đã tạo thông báo; một số email gửi thất bại",
+                result.recipientCount(),
+                result.emailSentCount(),
+                result.emailFailedCount()
+        );
     }
 
     @Transactional(readOnly = true)

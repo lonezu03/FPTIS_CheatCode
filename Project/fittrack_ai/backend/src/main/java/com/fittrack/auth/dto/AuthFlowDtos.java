@@ -34,8 +34,15 @@ public final class AuthFlowDtos {
     }
 
     public record ResetPasswordRequest(
-            @NotBlank(message = "Mã đặt lại mật khẩu không hợp lệ")
-            String token,
+            @Email(message = "Email không hợp lệ")
+            @NotBlank(message = "Vui lòng nhập email đăng ký")
+            String email,
+            @NotBlank(message = "Vui lòng nhập mã OTP")
+            @jakarta.validation.constraints.Pattern(
+                    regexp = "\\d{6}",
+                    message = "Mã OTP phải gồm đúng 6 chữ số"
+            )
+            String otp,
             @NotBlank(message = "Vui lòng nhập mật khẩu mới")
             @Size(
                     min = 8,

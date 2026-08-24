@@ -60,6 +60,57 @@ Response:
 }
 ```
 
+### Quên mật khẩu bằng OTP email
+
+Yêu cầu OTP. API luôn trả thông báo chung để không làm lộ email nào đã đăng ký:
+
+```http
+POST /auth/forgot-password
+```
+
+```json
+{
+  "email": "test@gmail.com"
+}
+```
+
+Đặt lại mật khẩu bằng mã OTP 6 chữ số nhận tại đúng email đã đăng ký. OTP có
+hiệu lực 10 phút, chỉ dùng một lần và bị khóa sau 5 lần nhập sai:
+
+```http
+POST /auth/reset-password
+```
+
+```json
+{
+  "email": "test@gmail.com",
+  "otp": "123456",
+  "newPassword": "NewPassword123!"
+}
+```
+
+Sau khi đổi mật khẩu, toàn bộ access/refresh token cũ của tài khoản bị thu hồi.
+
+### Kiểm tra dịch vụ email (Admin)
+
+```http
+GET  /admin/notifications/mail-status
+POST /admin/notifications/test-email
+```
+
+Email thử chỉ được gửi đến email đăng ký của chính admin đang đăng nhập; API
+không nhận địa chỉ người nhận từ request.
+
+### Thông báo menu trưa (Admin)
+
+Sau khi import menu, admin gọi API dưới đây (hoặc bấm **Thông báo menu** trên
+màn hình điều phối cơm) để tạo thông báo trong ứng dụng và gửi email đến toàn bộ
+tài khoản đang active:
+
+```http
+POST /lunch/admin/menus/{menuId}/notify
+```
+
 ## User Profile
 
 ```http

@@ -3,6 +3,7 @@ import type { ElementType } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  BellRing,
   CalendarDays,
   CreditCard,
   CheckCircle2,
@@ -28,6 +29,7 @@ import {
   getAdminLunchOrders,
   importLunchMenu,
   lunchKeys,
+  notifyLunchMenu,
   reopenLunchMenu,
   summarizeLunchMenu,
   topUpLunchFund,
@@ -168,6 +170,22 @@ export default function AdminLunchPage() {
     },
     onError: (error: unknown) => {
       toast.error(getApiErrorMessage(error, "Không thể thay đổi trạng thái menu."));
+    },
+  });
+
+  const notifyMenuMutation = useMutation({
+    mutationFn: notifyLunchMenu,
+    onSuccess: (result) => {
+      if (result.emailFailedCount > 0) {
+        toast.warning(
+          `Đã tạo thông báo cho ${result.recipientCount} tài khoản; gửi email thành công ${result.emailSentCount}, thất bại ${result.emailFailedCount}.`,
+        );
+      } else {
+        toast.success(`Đã gửi thông báo và email tới ${result.recipientCount} tài khoản đang hoạt động.`);
+      }
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, "Không thể thông báo menu."));
     },
   });
 
@@ -506,9 +524,16 @@ export default function AdminLunchPage() {
             loading={menusQuery.isLoading}
             summarizing={summaryMutation.isPending}
             changingStatus={menuActionMutation.isPending}
+            notifying={notifyMenuMutation.isPending}
             onSummarize={() => activeMenu && summaryMutation.mutate(activeMenu.id)}
             onClose={() => activeMenu && setMenuAction({ menu: activeMenu, action: "close" })}
             onReopen={() => activeMenu && setMenuAction({ menu: activeMenu, action: "reopen" })}
+            onNotify={() => {
+              if (!activeMenu) return;
+              if (window.confirm("Gửi thông báo trong ứng dụng và email menu này tới toàn bộ tài khoản đang hoạt động?")) {
+                notifyMenuMutation.mutate(activeMenu.id);
+              }
+            }}
             onCopy={copySummary}
           />
           {activeMenu && <AdminMenuItemEditor menu={activeMenu} />}
@@ -781,9 +806,11 @@ function ActiveMenuPanel({
   loading,
   summarizing,
   changingStatus,
+  notifying,
   onSummarize,
   onClose,
   onReopen,
+  onNotify,
   onCopy,
 }: {
   menu: LunchMenu | null;
@@ -791,9 +818,11 @@ function ActiveMenuPanel({
   loading: boolean;
   summarizing: boolean;
   changingStatus: boolean;
+  notifying: boolean;
   onSummarize: () => void;
   onClose: () => void;
   onReopen: () => void;
+  onNotify: () => void;
   onCopy: (text: string) => Promise<void>;
 }) {
   if (loading) {
@@ -824,6 +853,15 @@ function ActiveMenuPanel({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onNotify}
+              disabled={notifying}
+            >
+              <BellRing aria-hidden="true" />
+              {notifying ? "Đang gửi email..." : "Thông báo menu"}
+            </Button>
             {menu.acceptingOrders ? (
               <Button type="button" variant="outline" onClick={onClose} disabled={changingStatus || summarizing}>
                 <LockKeyhole aria-hidden="true" />

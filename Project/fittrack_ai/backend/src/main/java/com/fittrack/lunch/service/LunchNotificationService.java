@@ -17,6 +17,11 @@ import org.springframework.data.domain.PageRequest;
 import com.fittrack.common.dto.PageResponse;
 import com.fittrack.lunch.dto.LunchDtos.NotificationResponse;
 import com.fittrack.auth.service.ApplicationMailService;
+import com.fittrack.lunch.entity.LunchMenu;
+
+import java.time.format.DateTimeFormatter;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -122,6 +127,47 @@ public class LunchNotificationService {
         return recipients.size();
     }
 
+    public DeliverySummary broadcastMenuAvailable(LunchMenu menu) {
+        List<User> recipients = userRepository.findByActiveTrue();
+        String title = "Thực đơn trưa "
+                + menu.getMenuDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                + " đã mở";
+        String message = "Menu " + menu.getVendorName()
+                + " đã sẵn sàng. Giá "
+                + NumberFormat.getIntegerInstance(Locale.forLanguageTag("vi-VN"))
+                        .format(menu.getPrice())
+                + "đ/phần, chốt lúc "
+                + menu.getCutoffAt().format(DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy"))
+                + ". Vào FitTrack để chọn món.";
+
+        notificationRepository.saveAll(recipients.stream()
+                .map(user -> LunchNotification.builder()
+                        .recipient(user)
+                        .type("LUNCH_MENU_AVAILABLE")
+                        .title(title)
+                        .message(message)
+                        .referenceType("LUNCH_MENU")
+                        .referenceId(menu.getId())
+                        .build())
+                .toList());
+
+        String emailContent = message
+                + "\n\nDanh sách món:\n"
+                + menu.getRawMenuText();
+        int sent = 0;
+        for (User recipient : recipients) {
+            if (mailService.sendLunchMenuEmail(
+                    recipient.getEmail(),
+                    recipient.getFullName(),
+                    title,
+                    emailContent
+            )) {
+                sent++;
+            }
+        }
+        return new DeliverySummary(recipients.size(), sent, recipients.size() - sent);
+    }
+
     private void create(
             User recipient,
             String type,
@@ -156,5 +202,12 @@ public class LunchNotificationService {
                     recipient.getEmail(), recipient.getFullName(), title, message
             );
         }
+    }
+
+    public record DeliverySummary(
+            int recipientCount,
+            int emailSentCount,
+            int emailFailedCount
+    ) {
     }
 }

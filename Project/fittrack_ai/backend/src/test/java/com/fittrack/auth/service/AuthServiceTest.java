@@ -50,7 +50,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encoded");
         when(userRepository.save(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        when(mailService.isEnabled()).thenReturn(false);
+        when(mailService.isConfigured()).thenReturn(false);
 
         var response = service.register(request);
 
@@ -77,7 +77,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encoded");
         when(userRepository.save(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        when(mailService.isEnabled()).thenReturn(true);
+        when(mailService.isConfigured()).thenReturn(true);
         when(authTokenService.createEmailVerificationToken(any(User.class)))
                 .thenReturn("verification-token");
         when(mailService.sendVerificationEmail(

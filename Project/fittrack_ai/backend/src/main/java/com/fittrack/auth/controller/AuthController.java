@@ -9,6 +9,7 @@ import com.fittrack.auth.service.AuthTokenService;
 import com.fittrack.auth.service.ApplicationMailService;
 import com.fittrack.auth.service.AuthCookieService;
 import com.fittrack.auth.service.AuthRateLimitService;
+import com.fittrack.common.exception.ServiceUnavailableException;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.repository.UserRepository;
 import jakarta.validation.Valid;
@@ -119,12 +120,17 @@ public class AuthController {
             @Valid @RequestBody EmailRequest request,
             HttpServletRequest servletRequest
     ) {
+        if (!mailService.isConfigured()) {
+            throw new ServiceUnavailableException(
+                    "Dịch vụ email chưa được cấu hình. Vui lòng liên hệ quản trị viên"
+            );
+        }
         rateLimitService.check(
                 "resend", clientAddress(servletRequest), request.email(),
                 5, Duration.ofMinutes(15)
         );
         userRepository.findByEmail(request.email().trim().toLowerCase())
-                .filter(User::getActive)
+                .filter(user -> Boolean.TRUE.equals(user.getActive()))
                 .filter(user -> !Boolean.TRUE.equals(user.getEmailVerified()))
                 .ifPresent(user -> {
                     String token =
@@ -145,23 +151,28 @@ public class AuthController {
             @Valid @RequestBody EmailRequest request,
             HttpServletRequest servletRequest
     ) {
+        if (!mailService.isConfigured()) {
+            throw new ServiceUnavailableException(
+                    "Dịch vụ email chưa được cấu hình. Vui lòng liên hệ quản trị viên"
+            );
+        }
         rateLimitService.check(
                 "forgot", clientAddress(servletRequest), request.email(),
                 5, Duration.ofMinutes(15)
         );
         userRepository.findByEmail(request.email().trim().toLowerCase())
-                .filter(User::getActive)
+                .filter(user -> Boolean.TRUE.equals(user.getActive()))
                 .filter(user -> Boolean.TRUE.equals(user.getEmailVerified()))
                 .ifPresent(user -> {
-                    String token = authTokenService.createPasswordResetToken(user);
-                    mailService.sendPasswordResetEmail(
+                    String otp = authTokenService.createPasswordResetOtp(user);
+                    mailService.sendPasswordResetOtpEmail(
                             user.getEmail(),
                             user.getFullName(),
-                            token
+                            otp
                     );
                 });
         return new MessageResponse(
-                "Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi."
+                "Nếu email tồn tại, mã OTP đặt lại mật khẩu đã được gửi."
         );
     }
 
@@ -172,11 +183,20 @@ public class AuthController {
             HttpServletResponse servletResponse
     ) {
         rateLimitService.check(
-                "reset", clientAddress(servletRequest), request.token(),
-                10, Duration.ofMinutes(15)
+                "reset", clientAddress(servletRequest), request.email(),
+                5, Duration.ofMinutes(15)
         );
-        authTokenService.resetPassword(
-                request.token(),
+        User user = userRepository.findByEmail(
+                        request.email().trim().toLowerCase()
+                )
+                .filter(User::getActive)
+                .filter(candidate -> Boolean.TRUE.equals(candidate.getEmailVerified()))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Email hoặc mã OTP không hợp lệ"
+                ));
+        authTokenService.resetPasswordWithOtp(
+                user,
+                request.otp(),
                 request.newPassword()
         );
         cookieService.clearSession(servletResponse);

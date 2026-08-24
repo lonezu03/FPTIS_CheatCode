@@ -40,6 +40,9 @@ public class UserAuthToken {
 
     private LocalDateTime usedAt;
 
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private Integer failedAttempts;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -47,6 +50,9 @@ public class UserAuthToken {
     public void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (failedAttempts == null) {
+            failedAttempts = 0;
         }
     }
 }

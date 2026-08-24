@@ -3,6 +3,10 @@ package com.fittrack.notification.controller;
 import com.fittrack.lunch.service.LunchNotificationService;
 import com.fittrack.notification.dto.NotificationDtos.BroadcastRequest;
 import com.fittrack.notification.dto.NotificationDtos.BroadcastResponse;
+import com.fittrack.notification.dto.NotificationDtos.TestEmailResponse;
+import com.fittrack.auth.service.ApplicationMailService;
+import com.fittrack.common.exception.ExternalServiceException;
+import com.fittrack.common.exception.ServiceUnavailableException;
 import jakarta.validation.Valid;
 import com.fittrack.audit.service.AuditService;
 import com.fittrack.user.entity.User;
@@ -20,6 +24,29 @@ public class AdminNotificationController {
 
     private final LunchNotificationService notificationService;
     private final AuditService auditService;
+    private final ApplicationMailService mailService;
+
+    @GetMapping("/mail-status")
+    public ApplicationMailService.MailStatus mailStatus() {
+        return mailService.status();
+    }
+
+    @PostMapping("/test-email")
+    public TestEmailResponse testEmail(Authentication authentication) {
+        User admin = (User) authentication.getPrincipal();
+        if (!mailService.isConfigured()) {
+            throw new ServiceUnavailableException(mailService.status().message());
+        }
+        if (!mailService.sendTestEmail(admin.getEmail(), admin.getFullName())) {
+            throw new ExternalServiceException(
+                    "SMTP từ chối email thử. Kiểm tra log Render và MAIL_PASSWORD"
+            );
+        }
+        return new TestEmailResponse(
+                "Đã gửi email thử tới tài khoản admin",
+                admin.getEmail()
+        );
+    }
 
     @PostMapping("/broadcast")
     public BroadcastResponse broadcast(

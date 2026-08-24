@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BellRing, Send } from "lucide-react";
+import { BellRing, MailCheck, Send } from "lucide-react";
 import { toast } from "sonner";
 import { getAdminUsers } from "@/api/admin-user.api";
-import { broadcastNotification } from "@/api/notification.api";
+import { broadcastNotification, getMailStatus, sendTestEmail } from "@/api/notification.api";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ export default function AdminNotificationsPage() {
   const [sendToAll, setSendToAll] = useState(true);
   const [recipients, setRecipients] = useState<string[]>([]);
   const usersQuery = useQuery({ queryKey: ["admin-users", "notification"], queryFn: () => getAdminUsers() });
+  const mailStatusQuery = useQuery({ queryKey: ["admin", "mail-status"], queryFn: getMailStatus });
   const users = (usersQuery.data ?? []).filter((user) => user.active);
 
   const mutation = useMutation({
@@ -30,6 +31,12 @@ export default function AdminNotificationsPage() {
     onError: (error) => toast.error(getApiErrorMessage(error, "Không thể gửi thông báo")),
   });
 
+  const testMailMutation = useMutation({
+    mutationFn: sendTestEmail,
+    onSuccess: (result) => toast.success(`${result.message}: ${result.recipient}`),
+    onError: (error) => toast.error(getApiErrorMessage(error, "Không thể gửi email thử")),
+  });
+
   const toggleRecipient = (id: string) => {
     setRecipients((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
@@ -39,6 +46,35 @@ export default function AdminNotificationsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Gửi thông báo" description="Gửi thông báo tới toàn bộ hệ thống hoặc các thành viên được chọn." />
+      <Card className="max-w-3xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MailCheck className="size-5 text-emerald-700" />
+            Trạng thái gửi email
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm">
+            <p className={mailStatusQuery.data?.configured ? "font-medium text-emerald-700" : "font-medium text-amber-700"}>
+              {mailStatusQuery.isLoading ? "Đang kiểm tra cấu hình..." : mailStatusQuery.data?.message || "Không đọc được cấu hình email"}
+            </p>
+            {mailStatusQuery.data && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {mailStatusQuery.data.host}:{mailStatusQuery.data.port} · {mailStatusQuery.data.maskedSender || "chưa có người gửi"}
+              </p>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!mailStatusQuery.data?.configured || testMailMutation.isPending}
+            onClick={() => testMailMutation.mutate()}
+          >
+            <MailCheck />
+            {testMailMutation.isPending ? "Đang gửi..." : "Gửi email thử cho tôi"}
+          </Button>
+        </CardContent>
+      </Card>
       <Card className="max-w-3xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

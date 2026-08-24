@@ -23,6 +23,7 @@ public class AuthTokenService {
 
     public static final String EMAIL_VERIFICATION = "EMAIL_VERIFICATION";
     public static final String PASSWORD_RESET = "PASSWORD_RESET";
+    public static final String PASSWORD_RESET_OTP = "PASSWORD_RESET_OTP";
     public static final String REFRESH = "REFRESH";
 
     private final UserAuthTokenRepository tokenRepository;
@@ -40,6 +41,20 @@ public class AuthTokenService {
     @Transactional
     public String createPasswordResetToken(User user) {
         return create(user, PASSWORD_RESET, 15);
+    }
+
+    @Transactional
+    public String createPasswordResetOtp(User user) {
+        tokenRepository.deleteByUserAndTypeAndUsedAtIsNull(user, PASSWORD_RESET_OTP);
+        String otp = String.format("%06d", secureRandom.nextInt(1_000_000));
+        tokenRepository.save(UserAuthToken.builder()
+                .user(user)
+                .tokenHash(passwordEncoder.encode(otp))
+                .type(PASSWORD_RESET_OTP)
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .failedAttempts(0)
+                .build());
+        return otp;
     }
 
     @Transactional
@@ -86,6 +101,51 @@ public class AuthTokenService {
         token.getUser().setPasswordChangeRequired(false);
         revokeAllSessions(token.getUser());
         token.setUsedAt(LocalDateTime.now());
+    }
+
+    @Transactional(noRollbackFor = InvalidOtpException.class)
+    public void resetPasswordWithOtp(User user, String rawOtp, String newPassword) {
+        UserAuthToken token = tokenRepository
+                .findFirstByUserAndTypeAndUsedAtIsNullOrderByCreatedAtDesc(
+                        user,
+                        PASSWORD_RESET_OTP
+                )
+                .orElseThrow(() -> new InvalidOtpException(
+                        "Email hoặc mã OTP không hợp lệ"
+                ));
+        LocalDateTime now = LocalDateTime.now();
+        if (token.getExpiresAt().isBefore(now)) {
+            token.setUsedAt(now);
+            throw new InvalidOtpException(
+                    "Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới"
+            );
+        }
+        int failedAttempts = token.getFailedAttempts() == null
+                ? 0
+                : token.getFailedAttempts();
+        if (failedAttempts >= 5) {
+            token.setUsedAt(now);
+            throw new InvalidOtpException(
+                    "Mã OTP đã bị khóa. Vui lòng yêu cầu mã mới"
+            );
+        }
+        if (!passwordEncoder.matches(rawOtp, token.getTokenHash())) {
+            int nextAttempts = failedAttempts + 1;
+            token.setFailedAttempts(nextAttempts);
+            if (nextAttempts >= 5) {
+                token.setUsedAt(now);
+            }
+            throw new InvalidOtpException(
+                    nextAttempts >= 5
+                            ? "Mã OTP đã bị khóa. Vui lòng yêu cầu mã mới"
+                            : "Email hoặc mã OTP không hợp lệ"
+            );
+        }
+
+        token.getUser().setPassword(passwordEncoder.encode(newPassword));
+        token.getUser().setPasswordChangeRequired(false);
+        token.setUsedAt(now);
+        revokeAllSessions(token.getUser());
     }
 
     private String create(User user, String type, int validityMinutes) {
@@ -145,6 +205,12 @@ public class AuthTokenService {
     }
 
     public record RotatedRefreshToken(User user, String rawToken) {
+    }
+
+    private static final class InvalidOtpException extends IllegalArgumentException {
+        private InvalidOtpException(String message) {
+            super(message);
+        }
     }
 
     private String hash(String value) {

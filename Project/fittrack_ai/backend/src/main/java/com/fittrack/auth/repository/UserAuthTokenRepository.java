@@ -23,6 +23,12 @@ public interface UserAuthTokenRepository
     void deleteByUserAndTypeAndUsedAtIsNull(User user, String type);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<UserAuthToken> findFirstByUserAndTypeAndUsedAtIsNullOrderByCreatedAtDesc(
+            User user,
+            String type
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select token from UserAuthToken token
             join fetch token.user

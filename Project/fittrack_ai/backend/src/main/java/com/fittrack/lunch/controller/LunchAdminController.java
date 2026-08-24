@@ -39,6 +39,14 @@ public class LunchAdminController {
         return lunchAdminService.importMenu(currentUser(authentication), request);
     }
 
+    @PostMapping("/menus/{id}/notify")
+    public MenuNotificationResponse notifyMenu(
+            Authentication authentication,
+            @PathVariable String id
+    ) {
+        return lunchAdminService.notifyMenu(currentUser(authentication), id);
+    }
+
     @GetMapping("/menus/{id}/orders")
     public List<OrderResponse> getMenuOrders(@PathVariable String id) {
         return lunchAdminService.getMenuOrders(id);

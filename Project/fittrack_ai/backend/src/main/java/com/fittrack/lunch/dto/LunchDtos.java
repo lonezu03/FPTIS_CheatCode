@@ -121,6 +121,14 @@ public final class LunchDtos {
     ) {
     }
 
+    public record MenuNotificationResponse(
+            String message,
+            int recipientCount,
+            int emailSentCount,
+            int emailFailedCount
+    ) {
+    }
+
     public record TopUpRequest(
             @NotBlank String userId,
             @NotNull @Positive Long amount,

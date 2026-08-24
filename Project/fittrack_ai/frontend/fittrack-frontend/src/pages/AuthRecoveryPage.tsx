@@ -17,15 +17,18 @@ export default function AuthRecoveryPage() {
   const token = searchParams.get("token") ?? "";
   const mode = location.pathname.includes("verify-email")
     ? "verify"
-    : location.pathname.includes("reset-password")
-      ? "reset"
-      : "forgot";
+    : "recovery";
   const startedVerification = useRef(false);
 
   const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [otpRequested, setOtpRequested] = useState(
+    location.pathname.includes("reset-password"),
+  );
   const [pending, setPending] = useState(mode === "verify" && Boolean(token));
+  const [info, setInfo] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState(
     mode === "verify" && !token ? "Liên kết xác thực không hợp lệ." : "",
@@ -47,22 +50,27 @@ export default function AuthRecoveryPage() {
     setError("");
     setMessage("");
 
-    if (mode === "forgot" && !email.trim()) {
+    if (mode === "recovery" && !email.trim()) {
       setError("Vui lòng nhập email.");
       return;
     }
-    if (mode === "reset" && (!token || password.length < 8 || password !== confirmPassword)) {
+    if (mode === "recovery" && otpRequested && !/^\d{6}$/.test(otp)) {
+      setError("Mã OTP phải gồm đúng 6 chữ số.");
+      return;
+    }
+    if (mode === "recovery" && otpRequested && (password.length < 8 || password !== confirmPassword)) {
       setError("Mật khẩu cần ít nhất 8 ký tự và hai ô phải trùng nhau.");
       return;
     }
 
     try {
       setPending(true);
-      if (mode === "forgot") {
+      if (!otpRequested) {
         await forgotPasswordApi(email.trim());
-        setMessage("Nếu email tồn tại, FitTrack đã gửi liên kết đặt lại mật khẩu.");
+        setOtpRequested(true);
+        setInfo("Nếu email tồn tại, FitTrack đã gửi mã OTP gồm 6 chữ số. Mã có hiệu lực trong 10 phút.");
       } else {
-        await resetPasswordApi(token, password);
+        await resetPasswordApi(email.trim(), otp, password);
         setMessage("Đã đặt lại mật khẩu. Bạn có thể đăng nhập bằng mật khẩu mới.");
       }
     } catch (requestError) {
@@ -75,40 +83,53 @@ export default function AuthRecoveryPage() {
   const title =
     mode === "verify"
       ? "Xác thực email"
-      : mode === "reset"
-        ? "Đặt lại mật khẩu"
+      : otpRequested
+        ? "Nhập OTP và mật khẩu mới"
         : "Quên mật khẩu";
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f5f7f3] p-4">
       <section className="w-full max-w-md rounded-3xl border bg-white p-6 shadow-xl shadow-emerald-950/10 sm:p-8">
         <div className="mb-6 grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-800">
-          {mode === "forgot" ? <Mail /> : <ShieldCheck />}
+          {mode === "recovery" && !otpRequested ? <Mail /> : <ShieldCheck />}
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {mode === "verify"
             ? "FitTrack đang kiểm tra liên kết xác thực của bạn."
-            : mode === "reset"
-              ? "Tạo mật khẩu mới an toàn cho tài khoản."
-              : "Nhập email đăng ký để nhận liên kết đặt lại mật khẩu."}
+            : otpRequested
+              ? "Nhập đúng email đăng ký và mã OTP đã nhận để tạo mật khẩu mới."
+              : "Nhập email đã đăng ký để nhận mã OTP đặt lại mật khẩu."}
         </p>
 
         {mode !== "verify" && !message && (
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            {mode === "forgot" ? (
-              <div className="space-y-2">
-                <Label htmlFor="recovery-email">Email</Label>
-                <Input
-                  id="recovery-email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </div>
-            ) : (
+            <div className="space-y-2">
+              <Label htmlFor="recovery-email">Email đã đăng ký</Label>
+              <Input
+                id="recovery-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+            {otpRequested && (
               <>
+                <div className="space-y-2">
+                  <Label htmlFor="recovery-otp">Mã OTP</Label>
+                  <Input
+                    id="recovery-otp"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    className="text-center font-mono text-lg tracking-[0.35em]"
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-password">Mật khẩu mới</Label>
                   <Input
@@ -131,9 +152,32 @@ export default function AuthRecoveryPage() {
                 </div>
               </>
             )}
+            {info && <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800">{info}</p>}
             <Button className="w-full" type="submit" disabled={pending}>
-              {pending ? "Đang xử lý..." : mode === "forgot" ? "Gửi liên kết" : "Đổi mật khẩu"}
+              {pending ? "Đang xử lý..." : otpRequested ? "Xác nhận đổi mật khẩu" : "Gửi mã OTP"}
             </Button>
+            {otpRequested && (
+              <Button
+                className="w-full"
+                type="button"
+                variant="outline"
+                disabled={pending || !email.trim()}
+                onClick={async () => {
+                  setError("");
+                  try {
+                    setPending(true);
+                    await forgotPasswordApi(email.trim());
+                    setInfo("Nếu email tồn tại, một mã OTP mới đã được gửi. Mã cũ không còn hiệu lực.");
+                  } catch (requestError) {
+                    setError(getMessage(requestError, "Không thể gửi lại mã OTP."));
+                  } finally {
+                    setPending(false);
+                  }
+                }}
+              >
+                Gửi lại mã OTP
+              </Button>
+            )}
           </form>
         )}
 

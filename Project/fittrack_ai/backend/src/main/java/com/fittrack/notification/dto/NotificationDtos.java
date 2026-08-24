@@ -34,4 +34,10 @@ public final class NotificationDtos {
             int recipientCount
     ) {
     }
+
+    public record TestEmailResponse(
+            String message,
+            String recipient
+    ) {
+    }
 }

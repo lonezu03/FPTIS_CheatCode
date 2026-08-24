@@ -39,12 +39,12 @@ public class AuthService {
             throw new ConflictException("Email đã được sử dụng");
         }
 
-        if (registrationRequiresEmail && !mailService.isEnabled()) {
+        if (registrationRequiresEmail && !mailService.isConfigured()) {
             throw new ServiceUnavailableException(
                     "Đăng ký tạm thời đóng vì dịch vụ xác thực email chưa được cấu hình"
             );
         }
-        boolean verificationRequired = mailService.isEnabled();
+        boolean verificationRequired = mailService.isConfigured();
         User user = User.builder()
                 .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))

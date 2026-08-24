@@ -36,6 +36,9 @@ MAIL_PORT=587
 MAIL_USERNAME=<smtp-account>
 MAIL_PASSWORD=<gmail-app-password-or-smtp-password>
 MAIL_FROM=<verified-sender-address>
+MAIL_CONNECTION_TIMEOUT_MS=10000
+MAIL_READ_TIMEOUT_MS=10000
+MAIL_WRITE_TIMEOUT_MS=10000
 ```
 
 Use Aiven PostgreSQL for the database. Copy the host, port, database name, username, and password from the Aiven service Overview page.
@@ -46,8 +49,14 @@ chính nó khi Render đã cho ngủ. Do not put `GEMINI_API_KEY` in `render.yam
 Git, Vercel, or any `VITE_` environment variable.
 
 `MAIL_PASSWORD` phải là mật khẩu ứng dụng SMTP, không dùng mật khẩu đăng nhập
-email thông thường. Nếu chưa cấu hình mail, đặt `MAIL_ENABLED=false`; đăng ký
-vẫn tạo tài khoản nhưng người dùng sẽ chưa nhận được liên kết xác thực.
+email thông thường. Với Gmail, tài khoản gửi phải bật xác minh hai bước rồi tạo
+App Password. Nên đặt `MAIL_FROM` trùng `MAIL_USERNAME`.
+
+Production yêu cầu email để xác thực đăng ký. Vì vậy nếu `MAIL_ENABLED=false`
+hoặc thiếu host/username/password/from, đăng ký và quên mật khẩu sẽ trả `503`
+thay vì âm thầm tạo tài khoản không thể xác thực. Sau khi deploy, đăng nhập admin
+và dùng **Quản lý thông báo > Gửi email thử cho tôi**; nếu SMTP từ chối, Render
+log sẽ ghi rõ loại lỗi nhưng không ghi mật khẩu.
 
 ## Frontend: Vercel
 
