@@ -4,12 +4,13 @@ FROM maven:3.9.9-eclipse-temurin-21 AS build
 
 WORKDIR /app
 
-COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 mvn -B -DskipTests dependency:go-offline
+COPY pom.xml docker-maven-retry.sh ./
+RUN chmod +x docker-maven-retry.sh \
+    && ./docker-maven-retry.sh -DskipTests dependency:go-offline
 
 COPY src ./src
 
-RUN --mount=type=cache,target=/root/.m2 mvn -B clean package -DskipTests
+RUN ./docker-maven-retry.sh clean package -DskipTests
 
 # Runtime stage
 FROM eclipse-temurin:21-jre
