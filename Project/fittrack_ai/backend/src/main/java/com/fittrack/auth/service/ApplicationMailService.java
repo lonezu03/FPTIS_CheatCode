@@ -14,12 +14,19 @@ import org.springframework.stereotype.Service;
 public class ApplicationMailService {
 
     private final JavaMailSender mailSender;
+    private final BrevoMailClient brevoMailClient;
 
     @Value("${app.mail.enabled:false}")
     private boolean enabled;
 
     @Value("${app.mail.from:}")
     private String from;
+
+    @Value("${app.mail.provider:smtp}")
+    private String provider;
+
+    @Value("${app.mail.sender-name:FitTrack}")
+    private String senderName;
 
     @Value("${spring.mail.host:}")
     private String host;
@@ -41,23 +48,43 @@ public class ApplicationMailService {
     }
 
     public boolean isConfigured() {
-        return enabled
-                && hasText(host)
-                && hasText(username)
-                && hasText(password)
-                && hasText(from);
+        if (!enabled || !hasText(from)) {
+            return false;
+        }
+        return switch (normalizedProvider()) {
+            case "brevo" -> brevoMailClient.isConfigured();
+            case "smtp" -> hasText(host)
+                    && hasText(username)
+                    && hasText(password);
+            default -> false;
+        };
     }
 
     public MailStatus status() {
+        String activeProvider = normalizedProvider();
         String message;
         if (!enabled) {
             message = "Dịch vụ email đang tắt (MAIL_ENABLED=false)";
         } else if (!isConfigured()) {
-            message = "Thiếu MAIL_HOST, MAIL_USERNAME, MAIL_PASSWORD hoặc MAIL_FROM";
+            message = switch (activeProvider) {
+                case "brevo" -> "Thiếu BREVO_API_KEY hoặc MAIL_FROM, hoặc BREVO_API_URL không dùng HTTPS";
+                case "smtp" -> "Thiếu MAIL_HOST, MAIL_USERNAME, MAIL_PASSWORD hoặc MAIL_FROM";
+                default -> "MAIL_PROVIDER không được hỗ trợ; chỉ chấp nhận brevo hoặc smtp";
+            };
+        } else if ("brevo".equals(activeProvider)) {
+            message = "Brevo Email API đã được cấu hình; hãy gửi email thử để kiểm tra sender";
         } else {
             message = "Cấu hình SMTP đã đầy đủ; hãy gửi email thử để kiểm tra đăng nhập SMTP";
         }
-        return new MailStatus(enabled, isConfigured(), host, port, maskEmail(from), message);
+        return new MailStatus(
+                enabled,
+                isConfigured(),
+                activeProvider,
+                "brevo".equals(activeProvider) ? brevoMailClient.endpointHost() : host,
+                "brevo".equals(activeProvider) ? 443 : port,
+                maskEmail(from),
+                message
+        );
     }
 
     public boolean sendVerificationEmail(
@@ -139,15 +166,33 @@ public class ApplicationMailService {
             return false;
         }
         if (!isConfigured()) {
+            boolean brevoConfigured = "brevo".equals(normalizedProvider())
+                    && brevoMailClient.isConfigured();
             log.error(
-                    "Email configuration is incomplete: host={}, port={}, usernamePresent={}, passwordPresent={}, fromPresent={}",
+                    "Email configuration is incomplete: provider={}, host={}, port={}, usernamePresent={}, passwordPresent={}, fromPresent={}, brevoConfigured={}",
+                    normalizedProvider(),
                     host,
                     port,
                     hasText(username),
                     hasText(password),
-                    hasText(from)
+                    hasText(from),
+                    brevoConfigured
             );
             return false;
+        }
+        if ("brevo".equals(normalizedProvider())) {
+            boolean sent = brevoMailClient.send(
+                    from,
+                    senderName,
+                    recipient,
+                    null,
+                    subject,
+                    body
+            );
+            if (sent) {
+                log.info("Email sent through Brevo to {} with subject '{}'", maskEmail(recipient), subject);
+            }
+            return sent;
         }
         try {
             SimpleMailMessage message = new SimpleMailMessage();
@@ -158,12 +203,12 @@ public class ApplicationMailService {
             message.setSubject(subject);
             message.setText(body);
             mailSender.send(message);
-            log.info("Email sent to {} with subject '{}'", recipient, subject);
+            log.info("Email sent through SMTP to {} with subject '{}'", maskEmail(recipient), subject);
             return true;
         } catch (MailException exception) {
             log.error(
                     "Could not send email to {} through {}:{}: {}",
-                    recipient,
+                    maskEmail(recipient),
                     host,
                     port,
                     exception.getMessage(),
@@ -184,6 +229,16 @@ public class ApplicationMailService {
         return value != null && !value.isBlank();
     }
 
+    private String normalizedProvider() {
+        return provider == null ? "smtp" : provider.trim().toLowerCase();
+    }
+
+    public String deliveryFailureMessage() {
+        return "brevo".equals(normalizedProvider())
+                ? "Brevo không gửi được email. Kiểm tra BREVO_API_KEY và sender đã xác minh"
+                : "Không kết nối được SMTP. Render Free chặn các cổng 25, 465 và 587";
+    }
+
     private String maskEmail(String value) {
         if (!hasText(value) || !value.contains("@")) {
             return "";
@@ -199,6 +254,7 @@ public class ApplicationMailService {
     public record MailStatus(
             boolean enabled,
             boolean configured,
+            String provider,
             String host,
             int port,
             String maskedSender,

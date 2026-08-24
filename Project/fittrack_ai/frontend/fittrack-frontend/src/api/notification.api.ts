@@ -3,6 +3,7 @@ import api from "./axios";
 export type MailStatus = {
   enabled: boolean;
   configured: boolean;
+  provider: "smtp" | "brevo" | string;
   host: string;
   port: number;
   maskedSender: string;

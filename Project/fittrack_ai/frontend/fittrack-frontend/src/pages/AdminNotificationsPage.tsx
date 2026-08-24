@@ -60,7 +60,7 @@ export default function AdminNotificationsPage() {
             </p>
             {mailStatusQuery.data && (
               <p className="mt-1 text-xs text-muted-foreground">
-                {mailStatusQuery.data.host}:{mailStatusQuery.data.port} · {mailStatusQuery.data.maskedSender || "chưa có người gửi"}
+                Nhà cung cấp: {mailStatusQuery.data.provider.toUpperCase()} · {mailStatusQuery.data.host}:{mailStatusQuery.data.port} · {mailStatusQuery.data.maskedSender || "chưa có người gửi"}
               </p>
             )}
           </div>

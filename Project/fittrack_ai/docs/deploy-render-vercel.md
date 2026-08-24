@@ -31,14 +31,13 @@ INTERNAL_SCHEDULER_ENABLED=false
 JOB_SECRET=<random-secret-used-by-external-cron>
 APP_FRONTEND_URL=https://datcom-nhalam.vercel.app
 MAIL_ENABLED=true
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=<smtp-account>
-MAIL_PASSWORD=<gmail-app-password-or-smtp-password>
+MAIL_PROVIDER=brevo
+BREVO_API_KEY=<set-only-in-render-dashboard>
+BREVO_API_URL=https://api.brevo.com/v3/smtp/email
 MAIL_FROM=<verified-sender-address>
-MAIL_CONNECTION_TIMEOUT_MS=10000
-MAIL_READ_TIMEOUT_MS=10000
-MAIL_WRITE_TIMEOUT_MS=10000
+MAIL_SENDER_NAME=FitTrack
+MAIL_API_CONNECT_TIMEOUT_MS=10000
+MAIL_API_READ_TIMEOUT_MS=15000
 ```
 
 Use Aiven PostgreSQL for the database. Copy the host, port, database name, username, and password from the Aiven service Overview page.
@@ -48,15 +47,21 @@ Set Render's Health Check Path to `/api/health`. Dùng cron/UptimeRobot bên ngo
 chính nó khi Render đã cho ngủ. Do not put `GEMINI_API_KEY` in `render.yaml`,
 Git, Vercel, or any `VITE_` environment variable.
 
-`MAIL_PASSWORD` phải là mật khẩu ứng dụng SMTP, không dùng mật khẩu đăng nhập
-email thông thường. Với Gmail, tài khoản gửi phải bật xác minh hai bước rồi tạo
-App Password. Nên đặt `MAIL_FROM` trùng `MAIL_USERNAME`.
+Render Free chặn outbound SMTP trên các cổng `25`, `465` và `587`, vì vậy production
+phải dùng Brevo Email API qua HTTPS. Tạo tài khoản Brevo, thêm sender, nhập mã xác
+minh gửi về địa chỉ sender, tạo API key rồi đặt `BREVO_API_KEY` trên Render.
+`MAIL_FROM` phải trùng sender đã xác minh trong Brevo. Không đưa API key vào Git,
+Vercel hoặc biến môi trường `VITE_*`.
+
+SMTP vẫn dùng được khi chạy local hoặc trên Render trả phí bằng cách đặt
+`MAIL_PROVIDER=smtp` cùng `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`,
+`MAIL_PASSWORD` và `MAIL_FROM`.
 
 Production yêu cầu email để xác thực đăng ký. Vì vậy nếu `MAIL_ENABLED=false`
-hoặc thiếu host/username/password/from, đăng ký và quên mật khẩu sẽ trả `503`
+hoặc thiếu API key/sender, đăng ký và quên mật khẩu sẽ trả `503`
 thay vì âm thầm tạo tài khoản không thể xác thực. Sau khi deploy, đăng nhập admin
-và dùng **Quản lý thông báo > Gửi email thử cho tôi**; nếu SMTP từ chối, Render
-log sẽ ghi rõ loại lỗi nhưng không ghi mật khẩu.
+và dùng **Quản lý thông báo > Gửi email thử cho tôi**; nếu Brevo từ chối, Render
+log sẽ ghi HTTP status và thông báo an toàn nhưng không ghi API key.
 
 ## Frontend: Vercel
 

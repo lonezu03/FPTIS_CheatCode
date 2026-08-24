@@ -39,7 +39,7 @@ public class AdminNotificationController {
         }
         if (!mailService.sendTestEmail(admin.getEmail(), admin.getFullName())) {
             throw new ExternalServiceException(
-                    "SMTP từ chối email thử. Kiểm tra log Render và MAIL_PASSWORD"
+                    mailService.deliveryFailureMessage()
             );
         }
         return new TestEmailResponse(

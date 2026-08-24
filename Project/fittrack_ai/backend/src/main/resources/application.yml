@@ -76,8 +76,15 @@ app:
 
   mail:
     enabled: ${MAIL_ENABLED:false}
+    provider: ${MAIL_PROVIDER:smtp}
     from: ${MAIL_FROM:${MAIL_USERNAME:}}
+    sender-name: ${MAIL_SENDER_NAME:FitTrack}
     registration-requires-email: ${REGISTRATION_REQUIRES_EMAIL:false}
+    api-connect-timeout-ms: ${MAIL_API_CONNECT_TIMEOUT_MS:10000}
+    api-read-timeout-ms: ${MAIL_API_READ_TIMEOUT_MS:15000}
+    brevo:
+      api-key: ${BREVO_API_KEY:}
+      api-url: ${BREVO_API_URL:https://api.brevo.com/v3/smtp/email}
 
   keep-alive:
     enabled: ${KEEP_ALIVE_ENABLED:false}

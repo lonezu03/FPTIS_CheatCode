@@ -44,19 +44,19 @@ services:
       - key: APP_FRONTEND_URL
         value: https://datcom-nhalam.vercel.app
       - key: MAIL_ENABLED
-        sync: false
+        value: true
+      - key: MAIL_PROVIDER
+        value: brevo
       - key: REGISTRATION_REQUIRES_EMAIL
         value: true
-      - key: MAIL_HOST
-        value: smtp.gmail.com
-      - key: MAIL_PORT
-        value: 587
-      - key: MAIL_USERNAME
+      - key: BREVO_API_KEY
         sync: false
-      - key: MAIL_PASSWORD
-        sync: false
+      - key: BREVO_API_URL
+        value: https://api.brevo.com/v3/smtp/email
       - key: MAIL_FROM
         sync: false
+      - key: MAIL_SENDER_NAME
+        value: FitTrack
       - key: JPA_DDL_AUTO
         value: validate
       - key: FLYWAY_ENABLED
