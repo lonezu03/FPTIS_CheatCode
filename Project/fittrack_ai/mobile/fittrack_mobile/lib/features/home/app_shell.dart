@@ -10,6 +10,7 @@ import '../lunch/lunch_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../profile/profile_screen.dart';
 import 'dashboard_screen.dart';
+import 'more_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -34,6 +35,12 @@ class _Destination {
 
 class _AppShellState extends State<AppShell> {
   int index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _offerNotifications());
+  }
 
   List<_Destination> _destinations(AuthUser user) => [
     const _Destination(
@@ -85,13 +92,92 @@ class _AppShellState extends State<AppShell> {
     ),
   ];
 
+  List<_Destination> _phoneDestinations(AuthUser user) => [
+    const _Destination(
+      'Tổng quan',
+      Icons.dashboard_outlined,
+      Icons.dashboard,
+      DashboardScreen(),
+    ),
+    if (user.lunchEnabled || user.isAdmin)
+      const _Destination(
+        'Đặt cơm',
+        Icons.lunch_dining_outlined,
+        Icons.lunch_dining,
+        LunchScreen(),
+      ),
+    if (user.fitnessEnabled || user.isAdmin)
+      const _Destination(
+        'Luyện tập',
+        Icons.fitness_center_outlined,
+        Icons.fitness_center,
+        FitnessScreen(),
+      ),
+    if (user.healthEnabled || user.isAdmin)
+      const _Destination(
+        'Sức khỏe',
+        Icons.favorite_outline,
+        Icons.favorite,
+        HealthScreen(),
+      ),
+    _Destination(
+      'Thêm',
+      Icons.apps_outlined,
+      Icons.apps,
+      MoreScreen(user: user),
+      notification: true,
+    ),
+  ];
+
+  Future<void> _offerNotifications() async {
+    final notifications = context.read<NotificationCenter>();
+    final enabled = await notifications.refreshPermissionStatus();
+    if (enabled || !mounted) return;
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.notifications_active_outlined, size: 42),
+        title: const Text('Bật thông báo FitTrack?'),
+        content: const Text(
+          'Nhận menu cơm mới, thông báo chốt đơn, thanh toán và lời nhắc sức khỏe ngay trên điện thoại.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Để sau'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Tiếp tục'),
+          ),
+        ],
+      ),
+    );
+    if (accepted != true || !mounted) return;
+    final granted = await notifications.requestPermission();
+    if (!granted && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Quyền thông báo đang bị tắt. Bạn có thể bật trong Cài đặt.',
+          ),
+          action: SnackBarAction(
+            label: 'Mở cài đặt',
+            onPressed: notifications.openPermissionSettings,
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthSession>().user!;
     final unreadCount = context.watch<NotificationCenter>().unreadCount;
-    final destinations = _destinations(user);
-    if (index >= destinations.length) index = 0;
     final wide = MediaQuery.sizeOf(context).width >= 760;
+    final destinations = wide ? _destinations(user) : _phoneDestinations(user);
+    if (index >= destinations.length) index = 0;
     final content = IndexedStack(
       index: index,
       children: destinations.map((item) => item.page).toList(),
@@ -125,10 +211,17 @@ class _AppShellState extends State<AppShell> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: Center(
-              child: Text(
-                user.fullName,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+            child: Tooltip(
+              message: user.fullName,
+              child: CircleAvatar(
+                radius: 17,
+                child: Text(
+                  _initials(user.fullName),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
           ),
@@ -191,4 +284,12 @@ class _AppShellState extends State<AppShell> {
       child: icon,
     );
   }
+
+  String _initials(String name) => name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .take(2)
+      .map((part) => part[0].toUpperCase())
+      .join();
 }

@@ -15,6 +15,7 @@ class NotificationCenter extends ChangeNotifier {
   Timer? _timer;
   bool _started = false;
   bool loading = false;
+  bool? permissionGranted;
   int unreadCount = 0;
   List<Map<String, dynamic>> items = const [];
   Object? error;
@@ -23,10 +24,26 @@ class NotificationCenter extends ChangeNotifier {
     if (_started) return;
     _started = true;
     await NativeNotificationService.initialize();
-    await NativeNotificationService.requestPermission();
+    await refreshPermissionStatus();
     await registerNotificationBackgroundTask();
     await refresh();
     _timer = Timer.periodic(const Duration(minutes: 1), (_) => refresh());
+  }
+
+  Future<bool> refreshPermissionStatus() async {
+    permissionGranted = await NativeNotificationService.notificationsEnabled();
+    notifyListeners();
+    return permissionGranted ?? false;
+  }
+
+  Future<bool> requestPermission() async {
+    permissionGranted = await NativeNotificationService.requestPermission();
+    notifyListeners();
+    return permissionGranted ?? false;
+  }
+
+  Future<void> openPermissionSettings() async {
+    await NativeNotificationService.openNotificationSettings();
   }
 
   Future<void> stop({bool cancelBackground = false}) async {

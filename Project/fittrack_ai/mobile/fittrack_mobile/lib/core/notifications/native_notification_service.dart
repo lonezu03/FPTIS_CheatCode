@@ -44,6 +44,46 @@ class NativeNotificationService {
     return false;
   }
 
+  static Future<bool> notificationsEnabled() async {
+    if (kIsWeb) return false;
+    await initialize();
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return await _plugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >()
+              ?.areNotificationsEnabled() ??
+          false;
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final permissions = await _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.checkPermissions();
+      return permissions?.isEnabled ?? false;
+    }
+    return true;
+  }
+
+  static Future<void> openNotificationSettings() async {
+    if (kIsWeb) return;
+    await initialize();
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.openAppNotificationSettings();
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      await _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.openAppNotificationSettings();
+    }
+  }
+
   static Future<void> show(Map<String, dynamic> notification) async {
     if (kIsWeb) return;
     await initialize();

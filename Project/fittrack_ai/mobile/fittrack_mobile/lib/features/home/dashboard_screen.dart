@@ -73,43 +73,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             )
           else
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _MetricCard(
-                  label: 'Năng lượng',
-                  value: _value(data!, [
-                    'calories',
-                    'caloriesToday',
-                    'totalCalories',
-                  ], suffix: ' kcal'),
-                  icon: Icons.local_fire_department_outlined,
-                ),
-                _MetricCard(
-                  label: 'Chất đạm',
-                  value: _value(data!, [
-                    'protein',
-                    'proteinToday',
-                    'totalProtein',
-                  ], suffix: ' g'),
-                  icon: Icons.egg_alt_outlined,
-                ),
-                _MetricCard(
-                  label: 'Buổi tập',
-                  value: _value(data!, [
-                    'workouts',
-                    'workoutCount',
-                    'sessions',
-                  ]),
-                  icon: Icons.fitness_center,
-                ),
-                _MetricCard(
-                  label: 'Bữa ăn',
-                  value: _value(data!, ['meals', 'mealCount']),
-                  icon: Icons.restaurant_outlined,
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = constraints.maxWidth >= 720 ? 4 : 2;
+                return GridView.count(
+                  crossAxisCount: columns,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: columns == 2 ? 1.28 : 1.35,
+                  children: [
+                    _MetricCard(
+                      label: 'Năng lượng',
+                      value: _value(data!, [
+                        'calories',
+                        'caloriesToday',
+                        'totalCalories',
+                      ], suffix: ' kcal'),
+                      icon: Icons.local_fire_department_outlined,
+                    ),
+                    _MetricCard(
+                      label: 'Chất đạm',
+                      value: _value(data!, [
+                        'protein',
+                        'proteinToday',
+                        'totalProtein',
+                      ], suffix: ' g'),
+                      icon: Icons.egg_alt_outlined,
+                    ),
+                    _MetricCard(
+                      label: 'Buổi tập',
+                      value: _value(data!, [
+                        'workouts',
+                        'workoutCount',
+                        'sessions',
+                      ]),
+                      icon: Icons.fitness_center,
+                    ),
+                    _MetricCard(
+                      label: 'Bữa ăn',
+                      value: _value(data!, ['meals', 'mealCount']),
+                      icon: Icons.restaurant_outlined,
+                    ),
+                  ],
+                );
+              },
             ),
           const SizedBox(height: 20),
           Card(
@@ -171,24 +180,32 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 168,
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 12),
-            Text(
+  Widget build(BuildContext context) => Card(
+    margin: EdgeInsets.zero,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary),
+          const Spacer(),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
               value,
               style: Theme.of(context).textTheme.titleLarge
                   ?.copyWith(fontWeight: FontWeight.w800),
             ),
-            Text(label, style: const TextStyle(color: Colors.black54)),
-          ],
-        ),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.black54),
+          ),
+        ],
       ),
     ),
   );

@@ -35,7 +35,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthSession>().user!;
+    final auth = context.watch<AuthSession>().user;
+    if (auth == null) return const SizedBox.shrink();
     if (error != null) {
       return ErrorView(message: displayError(error!), onRetry: _load);
     }
@@ -125,7 +126,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 20),
         OutlinedButton.icon(
-          onPressed: () => context.read<AuthSession>().logout(),
+          onPressed: () async {
+            await context.read<AuthSession>().logout();
+            if (context.mounted) {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            }
+          },
           icon: const Icon(Icons.logout),
           label: const Text('Đăng xuất'),
         ),

@@ -1,10 +1,11 @@
 import 'package:dio/dio.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message, {this.statusCode});
+  const ApiException(this.message, {this.statusCode, this.requestId});
 
   final String message;
   final int? statusCode;
+  final String? requestId;
 
   factory ApiException.fromDio(DioException error) {
     final data = error.response?.data;
@@ -18,9 +19,17 @@ class ApiException implements Exception {
       message =
           'Không kết nối được backend tại ${error.requestOptions.baseUrl}.';
     }
-    return ApiException(message, statusCode: error.response?.statusCode);
+    final requestId = error.response?.headers.value('x-request-id');
+    return ApiException(
+      message,
+      statusCode: error.response?.statusCode,
+      requestId: requestId,
+    );
   }
 
   @override
-  String toString() => message;
+  String toString() {
+    final id = requestId;
+    return id == null || id.isEmpty ? message : '$message\nMã yêu cầu: $id';
+  }
 }

@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -273,13 +276,43 @@ class _MenuImportTabState extends State<_MenuImportTab> {
     }
   }
 
+  Future<void> _pickMenuFile() async {
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['txt', 'csv'],
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      final content = utf8.decode(bytes, allowMalformed: true).trim();
+      if (content.isEmpty) {
+        if (mounted) {
+          showMessage(context, 'Tệp không có nội dung menu.', error: true);
+        }
+        return;
+      }
+      raw.text = content;
+      if (mounted) {
+        showMessage(context, 'Đã đọc menu từ ${file.name}.');
+      }
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.all(18),
     children: [
       const Text(
-        'Dán nguyên nội dung quán gửi. Các món phía trên dấu + là nhóm cơm 2 món; phía dưới là món đơn.',
+        'Dán nguyên nội dung quán gửi hoặc chọn tệp TXT/CSV. Các món phía trên dấu + là nhóm cơm 2 món; phía dưới là món đơn.',
         style: TextStyle(color: Colors.black54),
+      ),
+      const SizedBox(height: 14),
+      OutlinedButton.icon(
+        onPressed: busy ? null : _pickMenuFile,
+        icon: const Icon(Icons.folder_open_outlined),
+        label: const Text('Chọn tệp menu từ thiết bị'),
       ),
       const SizedBox(height: 14),
       TextField(

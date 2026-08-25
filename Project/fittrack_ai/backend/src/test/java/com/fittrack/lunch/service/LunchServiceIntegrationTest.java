@@ -88,6 +88,19 @@ class LunchServiceIntegrationTest {
     }
 
     @Test
+    void todayForNewUserWithoutMenuOrFundAccountReturnsEmptyState() {
+        User user = saveUser("today-empty");
+
+        var today = assertDoesNotThrow(() -> lunchService.getToday(user));
+
+        assertNull(today.menu());
+        assertEquals(0L, today.walletBalance());
+        assertEquals(0L, today.outstandingDebt());
+        assertFalse(today.canOrder());
+        assertEquals("Chưa có thực đơn hôm nay", today.blockReason());
+    }
+
+    @Test
     void payingForAnotherUserDebitsAuthenticatedPayerAndCancelRefundsThatPayer() {
         User payer = saveUser("payer");
         User beneficiary = saveUser("beneficiary");
