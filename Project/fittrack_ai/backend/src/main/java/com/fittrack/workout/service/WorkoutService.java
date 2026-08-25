@@ -13,6 +13,7 @@ import com.fittrack.workout.repository.ExerciseRepository;
 import com.fittrack.workout.repository.WorkoutSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +27,7 @@ public class WorkoutService {
     private final ExerciseRepository exerciseRepository;
     private final WorkoutMapper workoutMapper;
 
+    @Transactional
     public WorkoutSessionResponse createSession(User user, CreateWorkoutSessionRequest request) {
         WorkoutSession session = WorkoutSession.builder()
                 .user(user)
@@ -57,12 +59,14 @@ public class WorkoutService {
         return workoutMapper.toWorkoutSessionResponse(savedSession);
     }
 
+    @Transactional(readOnly = true)
     public List<WorkoutSessionResponse> getMySessions(User user) {
         List<WorkoutSession> sessions = workoutSessionRepository.findByUserOrderBySessionDateDesc(user);
 
         return workoutMapper.toWorkoutSessionResponseList(sessions);
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<WorkoutSessionResponse> getMySessionsPage(
             User user,
             int page,
@@ -77,6 +81,7 @@ public class WorkoutService {
         return PageResponse.from(result);
     }
 
+    @Transactional
     public WorkoutSessionResponse updateSession(
             User user,
             String sessionId,
@@ -101,6 +106,7 @@ public class WorkoutService {
         return workoutMapper.toWorkoutSessionResponse(saved);
     }
 
+    @Transactional
     public void deleteSession(User user, String sessionId) {
         WorkoutSession session = workoutSessionRepository.findByIdAndUser(sessionId, user)
                 .orElseThrow(() -> new IllegalArgumentException("Workout session not found"));

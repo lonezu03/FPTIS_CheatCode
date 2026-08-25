@@ -92,12 +92,14 @@ public class NutritionService {
         return nutritionMapper.toMealLogResponse(savedMealLog);
     }
 
+    @Transactional(readOnly = true)
     public List<MealLogResponse> getMyMealLogsByDate(User user, LocalDate date) {
         return nutritionMapper.toMealLogResponseList(
                 mealLogRepository.findByUserAndLogDateOrderByCreatedAtDesc(user, date)
         );
     }
 
+    @Transactional(readOnly = true)
     public List<MealLogResponse> getMyMealLogs(User user) {
         return nutritionMapper.toMealLogResponseList(
                 mealLogRepository.findByUserOrderByLogDateDesc(user)
@@ -199,6 +201,7 @@ public class NutritionService {
         return value == null ? 0.0 : value;
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<MealLogResponse> getMyMealLogsPage(
             User user,
             LocalDate date,

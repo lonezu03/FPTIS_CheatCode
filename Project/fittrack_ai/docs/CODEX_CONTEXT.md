@@ -34,6 +34,8 @@ Backend and infrastructure:
 - Workout, workout plan, exercise approval, nutrition/food approval, body metrics,
   health summary, reminders, dashboard, weekly reports, achievements, and Gemini
   assistant endpoints.
+- Workout and meal-history DTO mapping now runs inside read-only service
+  transactions, so lazy sets/items can be loaded while `open-in-view=false`.
 
 Web:
 
@@ -70,10 +72,17 @@ Committed in `a91ae9aa`:
 - `mobile/fittrack_mobile/pubspec.yaml` and `pubspec.lock`
 - `backend/src/test/java/com/fittrack/lunch/service/LunchServiceIntegrationTest.java`
 
+Current fitness fix (pending Render deployment):
+
+- `backend/src/main/java/com/fittrack/workout/service/WorkoutService.java`
+- `backend/src/main/java/com/fittrack/nutrition/service/NutritionService.java`
+- `backend/src/test/java/com/fittrack/fitness/service/FitnessHistoryIntegrationTest.java`
+
 ## Verification completed this session
 
-- Backend: `38` tests passed with Maven, including Flyway/PostgreSQL and the new
-  empty-menu/new-user lunch regression test.
+- Backend: `40` tests passed with Maven, including Flyway/PostgreSQL, the
+  empty-menu/new-user lunch regression test, and two fitness-history lazy-loading
+  regression tests.
 - Mobile: `flutter analyze` returned no issues.
 - Mobile: all Flutter widget tests passed.
 - Android release APK built successfully:
@@ -93,8 +102,10 @@ Committed in `a91ae9aa`:
 - File import uses the operating system document picker and grants access only to
   the selected file. Do not request whole-device storage permission.
 - A production `500` must be diagnosed using its request ID and Render stack trace.
-  The screenshot reported as a lunch error actually highlighted **Luyện tập**;
-  `/lunch/today` passes clean-database integration coverage.
+  Request `30264db4-62fc-44d1-9eab-879ade910453` exposed lazy loading in both
+  `/workouts/sessions` and `/nutrition/meal-logs`; the fix keeps query and DTO
+  mapping in one read-only transaction. `/lunch/today` separately passes
+  clean-database integration coverage.
 - Production mail remains Brevo REST API because Render Free blocks conventional
   outbound SMTP ports.
 - A sleeping Render Free instance must be called by an external uptime/cron
@@ -102,11 +113,11 @@ Committed in `a91ae9aa`:
 
 ## Known issues and risks
 
-- The new Android APK still needs hands-on testing on the user's physical device
-  with an admin account that has all module permissions.
-- If lunch or fitness still returns `500` in production, capture the displayed
-  request ID and search the same ID in Render logs. Do not treat the generic UI
-  message as a confirmed lunch-service defect.
+- The new Android APK still needs complete hands-on testing on the user's physical
+  device with an admin account that has all module permissions.
+- The fitness lazy-loading fix is pending a Render deployment. If a `500` remains
+  after that deploy, capture the new request ID and search the same ID in Render
+  logs.
 - Android background work is scheduled periodically, but the operating system may
   delay it; it is not exact push delivery. True immediate remote notification
   would require FCM/APNs integration.
@@ -120,20 +131,17 @@ Committed in `a91ae9aa`:
 
 ## Current task
 
-Install and validate mobile release `1.1.2+4` on a real Android device, then
-record the device-test result and any production request IDs in this document.
+Deploy the backend fitness-history transaction fix, then validate the Luyện tập
+tab with mobile release `1.1.2+4`.
 
 ## Exact next steps
 
-1. Install `mobile/fittrack_mobile/build/app/outputs/flutter-apk/app-release.apk`.
-2. Log in with a full-permission admin and confirm the bottom bar has no more than
-   five items and **Thêm** opens Notifications, Admin, Profile, and app permissions.
-3. Accept the notification explanation and Android system permission; verify its
-   state in **Thêm > Quyền ứng dụng**.
-4. In Admin menu import, select a `.txt` or `.csv` file through the system picker,
-   then import and send the menu notification.
-5. Test lunch and fitness separately. If either fails, record `X-Request-Id` from
-   the app error and correlate it with Render logs.
-6. If device testing passes, record the accepted version here. If a production
-   API fails, fix it in a separate focused commit with regression coverage.
-7. Update and push this document after the test result or any new diagnosis.
+1. Push the fitness-fix commit to `main`.
+2. Wait for the Render backend Docker deployment to become healthy at
+   `/api/health`. No database migration and no new APK are required.
+3. In APK `1.1.2+4`, open **Luyện tập** and verify both **Buổi tập** and
+   **Nhật ký ăn** load existing records.
+4. If the module still fails, record the new `X-Request-Id` shown by the app and
+   correlate it with Render logs; the old request ID belongs to the pre-fix build.
+5. Continue the remaining notification/file-picker device checks and record the
+   accepted mobile version here.
