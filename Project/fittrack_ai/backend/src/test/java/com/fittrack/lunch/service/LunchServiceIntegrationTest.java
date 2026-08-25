@@ -60,6 +60,9 @@ class LunchServiceIntegrationTest {
     private LunchFundTransactionRepository transactionRepository;
 
     @Autowired
+    private LunchNotificationRepository notificationRepository;
+
+    @Autowired
     private MealLogRepository mealLogRepository;
 
     @Test
@@ -207,6 +210,21 @@ class LunchServiceIntegrationTest {
         );
         assertEquals(LunchMenuStatus.CLOSED, menu.getStatus());
         assertNotNull(menu.getSummarizedAt());
+        assertEquals(
+                1,
+                notificationRepository.findTop50ByRecipientOrderByCreatedAtDesc(admin)
+                        .stream()
+                        .filter(notification -> "LUNCH_MENU_CLOSED".equals(notification.getType()))
+                        .count()
+        );
+        lunchAdminService.summarize(admin, menu.getId());
+        assertEquals(
+                1,
+                notificationRepository.findTop50ByRecipientOrderByCreatedAtDesc(admin)
+                        .stream()
+                        .filter(notification -> "LUNCH_MENU_CLOSED".equals(notification.getType()))
+                        .count()
+        );
         assertThrows(
                 ConflictException.class,
                 () -> lunchAdminService.reopenMenu(menu.getId())

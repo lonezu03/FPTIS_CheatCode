@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
+import 'auth_storage_keys.dart';
 
 class AuthUser {
   const AuthUser({
@@ -55,10 +57,8 @@ class AuthSession extends ChangeNotifier {
   AuthSession(this.api, {FlutterSecureStorage? storage})
     : _storage = storage ?? const FlutterSecureStorage() {
     api.onUnauthorized = _handleUnauthorized;
+    api.onSessionRefreshed = _persistRefreshedSession;
   }
-
-  static const _tokenKey = 'fittrack_access_token';
-  static const _userKey = 'fittrack_user';
 
   final ApiClient api;
   final FlutterSecureStorage _storage;
@@ -70,11 +70,24 @@ class AuthSession extends ChangeNotifier {
 
   Future<void> restore() async {
     try {
-      final token = await _storage.read(key: _tokenKey);
-      final rawUser = await _storage.read(key: _userKey);
-      if (token != null && rawUser != null) {
+      final token = await _storage.read(key: AuthStorageKeys.accessToken);
+      final refreshToken = await _storage.read(
+        key: AuthStorageKeys.refreshToken,
+      );
+      final rawUser = await _storage.read(key: AuthStorageKeys.user);
+      if (token != null && refreshToken != null && rawUser != null) {
         api.accessToken = token;
+        api.refreshToken = refreshToken;
         user = AuthUser.fromJson(jsonDecode(rawUser) as Map<String, dynamic>);
+        try {
+          await api.refreshSession();
+        } on ApiException catch (error) {
+          if (error.statusCode != null &&
+              error.statusCode! >= 400 &&
+              error.statusCode! < 500) {
+            await _clear();
+          }
+        }
       }
     } catch (_) {
       await _clear();
@@ -122,7 +135,7 @@ class AuthSession extends ChangeNotifier {
 
   Future<void> logout() async {
     try {
-      await api.post('/auth/logout');
+      await api.post('/auth/logout', data: {'refreshToken': api.refreshToken});
     } catch (_) {
       // Xóa phiên cục bộ kể cả khi backend đang ngủ hoặc mất mạng.
     }
@@ -132,20 +145,40 @@ class AuthSession extends ChangeNotifier {
 
   Future<void> _setSession(Map<String, dynamic> data) async {
     final token = data['token']?.toString();
+    final refreshToken = data['refreshToken']?.toString();
     if (token == null || token.isEmpty) {
       throw const FormatException('Backend không trả access token.');
     }
     api.accessToken = token;
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      api.refreshToken = refreshToken;
+    }
     user = AuthUser.fromJson(data);
-    await _storage.write(key: _tokenKey, value: token);
-    await _storage.write(key: _userKey, value: jsonEncode(user!.toJson()));
+    await _storage.write(key: AuthStorageKeys.accessToken, value: token);
+    if (api.refreshToken != null) {
+      await _storage.write(
+        key: AuthStorageKeys.refreshToken,
+        value: api.refreshToken,
+      );
+    }
+    await _storage.write(
+      key: AuthStorageKeys.user,
+      value: jsonEncode(user!.toJson()),
+    );
+  }
+
+  Future<void> _persistRefreshedSession(Map<String, dynamic> data) async {
+    await _setSession(data);
+    notifyListeners();
   }
 
   Future<void> _clear() async {
     api.accessToken = null;
+    api.refreshToken = null;
     user = null;
-    await _storage.delete(key: _tokenKey);
-    await _storage.delete(key: _userKey);
+    await _storage.delete(key: AuthStorageKeys.accessToken);
+    await _storage.delete(key: AuthStorageKeys.refreshToken);
+    await _storage.delete(key: AuthStorageKeys.user);
   }
 
   void _handleUnauthorized() {

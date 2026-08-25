@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/notifications/notification_center.dart';
 import '../admin/admin_screen.dart';
 import '../auth/auth_session.dart';
 import '../fitness/fitness_screen.dart';
@@ -17,11 +18,18 @@ class AppShell extends StatefulWidget {
 }
 
 class _Destination {
-  const _Destination(this.label, this.icon, this.selectedIcon, this.page);
+  const _Destination(
+    this.label,
+    this.icon,
+    this.selectedIcon,
+    this.page, {
+    this.notification = false,
+  });
   final String label;
   final IconData icon;
   final IconData selectedIcon;
   final Widget page;
+  final bool notification;
 }
 
 class _AppShellState extends State<AppShell> {
@@ -60,6 +68,7 @@ class _AppShellState extends State<AppShell> {
       Icons.notifications_outlined,
       Icons.notifications,
       NotificationsScreen(),
+      notification: true,
     ),
     if (user.isAdmin)
       const _Destination(
@@ -79,6 +88,7 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthSession>().user!;
+    final unreadCount = context.watch<NotificationCenter>().unreadCount;
     final destinations = _destinations(user);
     if (index >= destinations.length) index = 0;
     final wide = MediaQuery.sizeOf(context).width >= 760;
@@ -135,8 +145,12 @@ class _AppShellState extends State<AppShell> {
                   destinations: destinations
                       .map(
                         (item) => NavigationRailDestination(
-                          icon: Icon(item.icon),
-                          selectedIcon: Icon(item.selectedIcon),
+                          icon: _destinationIcon(item, false, unreadCount),
+                          selectedIcon: _destinationIcon(
+                            item,
+                            true,
+                            unreadCount,
+                          ),
                           label: Text(item.label),
                         ),
                       )
@@ -155,13 +169,26 @@ class _AppShellState extends State<AppShell> {
               destinations: destinations
                   .map(
                     (item) => NavigationDestination(
-                      icon: Icon(item.icon),
-                      selectedIcon: Icon(item.selectedIcon),
+                      icon: _destinationIcon(item, false, unreadCount),
+                      selectedIcon: _destinationIcon(item, true, unreadCount),
                       label: item.label,
                     ),
                   )
                   .toList(),
             ),
+    );
+  }
+
+  Widget _destinationIcon(
+    _Destination destination,
+    bool selected,
+    int unreadCount,
+  ) {
+    final icon = Icon(selected ? destination.selectedIcon : destination.icon);
+    if (!destination.notification || unreadCount <= 0) return icon;
+    return Badge(
+      label: Text(unreadCount > 99 ? '99+' : unreadCount.toString()),
+      child: icon,
     );
   }
 }

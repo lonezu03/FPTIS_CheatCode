@@ -44,8 +44,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/change-password",
-                                "/api/auth/logout"
+                                "/api/auth/change-password"
                         ).authenticated()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/actuator/**").hasRole("ADMIN")

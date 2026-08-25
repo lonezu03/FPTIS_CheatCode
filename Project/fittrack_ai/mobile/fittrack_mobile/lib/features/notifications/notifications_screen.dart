@@ -2,79 +2,47 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/network/api_client.dart';
+import '../../core/notifications/notification_center.dart';
 import '../../core/widgets/common_widgets.dart';
 
-class NotificationsScreen extends StatefulWidget {
+class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
-  @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
-}
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<Map<String, dynamic>> items = [];
-  bool loading = true;
-  Object? error;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      loading = true;
-      error = null;
-    });
+  Future<void> _markAll(BuildContext context) async {
     try {
-      final raw = await context.read<ApiClient>().get('/notifications');
-      final values = raw is Map
-          ? (raw['notifications'] ?? raw['content'])
-          : raw;
-      if (mounted) {
-        setState(
-          () => items = values is List
-              ? values.map((e) => Map<String, dynamic>.from(e as Map)).toList()
-              : [],
-        );
+      await context.read<NotificationCenter>().markAllRead();
+    } catch (error) {
+      if (context.mounted) {
+        showMessage(context, displayError(error), error: true);
       }
-    } catch (e) {
-      if (mounted) setState(() => error = e);
-    } finally {
-      if (mounted) setState(() => loading = false);
     }
   }
 
-  Future<void> _markAll() async {
+  Future<void> _mark(BuildContext context, Map<String, dynamic> item) async {
+    if (item['readAt'] != null) return;
     try {
-      await context.read<ApiClient>().post('/notifications/read-all');
-      await _load();
-    } catch (e) {
-      if (mounted) showMessage(context, displayError(e), error: true);
-    }
-  }
-
-  Future<void> _mark(Map<String, dynamic> item) async {
-    if (item['read'] == true || item['readAt'] != null) return;
-    try {
-      await context.read<ApiClient>().patch(
-        '/notifications/${item['id']}/read',
-      );
-      await _load();
-    } catch (e) {
-      if (mounted) showMessage(context, displayError(e), error: true);
+      await context.read<NotificationCenter>().markRead(item['id'].toString());
+    } catch (error) {
+      if (context.mounted) {
+        showMessage(context, displayError(error), error: true);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const LoadingView(label: 'Đang tải thông báo...');
-    if (error != null) {
-      return ErrorView(message: displayError(error!), onRetry: _load);
+    final center = context.watch<NotificationCenter>();
+    if (center.loading && center.items.isEmpty) {
+      return const LoadingView(label: 'Đang tải thông báo...');
+    }
+    if (center.error != null && center.items.isEmpty) {
+      return ErrorView(
+        message: displayError(center.error!),
+        onRetry: center.refresh,
+      );
     }
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: center.refresh,
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
@@ -84,33 +52,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               const Expanded(
                 child: PageIntro(
                   title: 'Thông báo',
-                  subtitle:
-                      'Cập nhật từ admin, menu trưa, thanh toán và hệ thống.',
+                  subtitle: 'App kiểm tra cập nhật khi đang mở và định kỳ ở chế độ nền.',
                 ),
               ),
               TextButton.icon(
-                onPressed: items.isEmpty ? null : _markAll,
+                onPressed: center.items.isEmpty
+                    ? null
+                    : () => _markAll(context),
                 icon: const Icon(Icons.done_all),
                 label: const Text('Đọc hết'),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          if (items.isEmpty)
+          if (center.items.isEmpty)
             const EmptyView(
               icon: Icons.notifications_none,
               title: 'Không có thông báo',
               subtitle: 'Thông báo mới sẽ xuất hiện tại đây.',
             )
           else
-            ...items.map((item) {
-              final unread = item['read'] != true && item['readAt'] == null;
+            ...center.items.map((item) {
+              final unread = item['readAt'] == null;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Card(
                   color: unread ? const Color(0xFFEAF9F1) : Colors.white,
                   child: ListTile(
-                    onTap: () => _mark(item),
+                    onTap: () => _mark(context, item),
                     leading: CircleAvatar(child: Icon(_icon(item['type']))),
                     title: Text(
                       item['title']?.toString() ?? 'Thông báo',

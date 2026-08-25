@@ -165,6 +165,7 @@ public class LunchAdminService {
             auditService.record(admin, "LUNCH_MENU_SUMMARIZED", "LUNCH_MENU", menu.getId(), Map.of(
                     "orderCount", orders.size()
             ));
+            notificationService.broadcastMenuClosed(menu);
         }
 
         return buildSummary(menu, orders);
@@ -173,8 +174,12 @@ public class LunchAdminService {
     @Transactional
     public MenuResponse closeMenu(String menuId) {
         LunchMenu menu = getMenuForUpdate(menuId);
+        boolean newlyClosed = menu.getStatus() != LunchMenuStatus.CLOSED;
         menu.setStatus(LunchMenuStatus.CLOSED);
         LunchMenu saved = menuRepository.save(menu);
+        if (newlyClosed) {
+            notificationService.broadcastMenuClosed(saved);
+        }
         return mapper.toMenuResponse(
                 saved,
                 activeOrderCount(saved),

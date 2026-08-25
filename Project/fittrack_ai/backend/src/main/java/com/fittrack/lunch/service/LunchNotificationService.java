@@ -168,6 +168,35 @@ public class LunchNotificationService {
         return new DeliverySummary(recipients.size(), sent, recipients.size() - sent);
     }
 
+    @Transactional
+    public int broadcastMenuClosed(LunchMenu menu) {
+        List<User> recipients = userRepository.findByActiveTrue();
+        String menuDate = menu.getMenuDate()
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String title = "Đã chốt đặt cơm ngày " + menuDate;
+        String message = "Menu " + menu.getVendorName()
+                + " đã chốt nhận đơn. Quản trị viên đang tổng hợp danh sách gửi quán.";
+        int created = 0;
+
+        for (User recipient : recipients) {
+            String deduplicationKey = "LUNCH_MENU_CLOSED:"
+                    + menu.getId() + ":" + recipient.getId();
+            if (!notificationRepository.existsByDeduplicationKey(deduplicationKey)) {
+                create(
+                        recipient,
+                        "LUNCH_MENU_CLOSED",
+                        title,
+                        message,
+                        "LUNCH_MENU",
+                        menu.getId(),
+                        deduplicationKey
+                );
+                created++;
+            }
+        }
+        return created;
+    }
+
     private void create(
             User recipient,
             String type,

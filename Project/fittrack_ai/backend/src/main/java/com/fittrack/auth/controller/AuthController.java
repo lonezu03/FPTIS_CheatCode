@@ -26,6 +26,8 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final String MOBILE_CLIENT_HEADER = "X-FitTrack-Client";
+
     private final AuthService authService;
     private final AuthTokenService authTokenService;
     private final ApplicationMailService mailService;
@@ -57,7 +59,7 @@ public class AuthController {
         );
         AuthService.AuthSession session = authService.login(request);
         cookieService.writeSession(servletResponse, session);
-        return session.response();
+        return responseForClient(servletRequest, session);
     }
 
     @PostMapping("/refresh")
@@ -79,15 +81,20 @@ public class AuthController {
         }
         AuthService.AuthSession session = authService.refresh(rawToken);
         cookieService.writeSession(servletResponse, session);
-        return session.response();
+        return responseForClient(servletRequest, session);
     }
 
     @PostMapping("/logout")
     public MessageResponse logout(
+            @RequestBody(required = false) RefreshRequest request,
             HttpServletRequest servletRequest,
             HttpServletResponse servletResponse
     ) {
-        authService.logout(cookieService.readRefreshToken(servletRequest));
+        String rawToken = cookieService.readRefreshToken(servletRequest);
+        if ((rawToken == null || rawToken.isBlank()) && request != null) {
+            rawToken = request.refreshToken();
+        }
+        authService.logout(rawToken);
         cookieService.clearSession(servletResponse);
         return new MessageResponse("Đã đăng xuất");
     }
@@ -96,13 +103,14 @@ public class AuthController {
     public AuthResponse changePassword(
             Authentication authentication,
             @Valid @RequestBody ChangePasswordRequest request,
+            HttpServletRequest servletRequest,
             HttpServletResponse servletResponse
     ) {
         AuthService.AuthSession session = authService.changePassword(
                 (User) authentication.getPrincipal(), request
         );
         cookieService.writeSession(servletResponse, session);
-        return session.response();
+        return responseForClient(servletRequest, session);
     }
 
     @PostMapping("/verify-email")
@@ -211,5 +219,17 @@ public class AuthController {
             return forwarded.split(",", 2)[0].trim();
         }
         return request.getRemoteAddr();
+    }
+
+    private AuthResponse responseForClient(
+            HttpServletRequest request,
+            AuthService.AuthSession session
+    ) {
+        if (!"mobile".equalsIgnoreCase(request.getHeader(MOBILE_CLIENT_HEADER))) {
+            return session.response();
+        }
+        return session.response().toBuilder()
+                .refreshToken(session.refreshToken())
+                .build();
     }
 }

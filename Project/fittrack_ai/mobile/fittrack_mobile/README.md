@@ -9,8 +9,17 @@
 - Fitness: nhật ký buổi tập và nhật ký dinh dưỡng.
 - Sức khỏe: tổng hợp 30 ngày, chỉ số cơ thể và lời nhắc.
 - Thông báo trong ứng dụng.
+- Notification native trên Android/iOS: đồng bộ mỗi phút khi app mở và định kỳ
+  khoảng 15 phút khi chạy nền (thời điểm thực tế do hệ điều hành quyết định).
+- Menu mới dùng âm thanh `HangVe`; khi chốt hoặc chốt và tổng hợp đơn cơm dùng
+  âm thanh `Video Project 1`.
+- Phiên mobile được lưu trong Keystore/Keychain và tự xoay refresh token; đăng
+  xuất sẽ thu hồi refresh token và xóa phiên trên thiết bị.
 - Admin: quyền tài khoản, import menu/gửi email và gửi thông báo toàn công ty.
 - Chatbot chưa được tích hợp trong bản này.
+
+Tài khoản đăng ký mới mặc định chỉ có quyền đặt cơm. Fitness, chăm sóc sức khỏe
+và chatbot đều tắt cho tới khi admin cấp quyền.
 
 ## Chạy với backend local
 
