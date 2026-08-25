@@ -9,8 +9,9 @@ Last updated: 2026-08-25
 - Production web: `https://datcom-nhalam.vercel.app`.
 - Production backend API:
   `https://https-github-com-lonezu03-fptis.onrender.com/api`.
-- The worktree currently contains uncommitted mobile UI/permission changes and
-  one backend lunch regression test. Preserve them when switching machines.
+- Commit `41558501` adds the shared Codex instructions/context. Commit `a91ae9aa`
+  contains the mobile UI/permission release and lunch regression test described
+  below; both are on `origin/main`.
 - `backend/demo/` is an untracked nested legacy repository and is not the active
   backend. Do not stage it accidentally.
 
@@ -54,7 +55,9 @@ Mobile:
   request broad storage access.
 - API errors preserve `X-Request-Id` for Render log correlation.
 
-## Current uncommitted change set
+## Latest implementation change set
+
+Committed in `a91ae9aa`:
 
 - `mobile/fittrack_mobile/lib/features/home/app_shell.dart`
 - `mobile/fittrack_mobile/lib/features/home/dashboard_screen.dart`
@@ -118,7 +121,7 @@ Mobile:
 ## Current task
 
 Install and validate mobile release `1.1.2+4` on a real Android device, then
-commit the mobile change set separately after acceptance.
+record the device-test result and any production request IDs in this document.
 
 ## Exact next steps
 
@@ -131,6 +134,6 @@ commit the mobile change set separately after acceptance.
    then import and send the menu notification.
 5. Test lunch and fitness separately. If either fails, record `X-Request-Id` from
    the app error and correlate it with Render logs.
-6. If device testing passes, stage only the listed mobile files and the lunch
-   regression test, commit them, and push `main`.
-7. Update this document after the test result or any new production diagnosis.
+6. If device testing passes, record the accepted version here. If a production
+   API fails, fix it in a separate focused commit with regression coverage.
+7. Update and push this document after the test result or any new diagnosis.
