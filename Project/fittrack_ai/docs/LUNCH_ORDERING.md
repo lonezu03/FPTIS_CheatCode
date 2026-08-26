@@ -18,8 +18,8 @@ Tiền trong module được lưu theo số nguyên Việt Nam đồng. Đơn gi
 ### User
 
 - Xem thực đơn hôm nay, giờ chốt và đơn giá.
-- Chọn một phần cho bản thân.
-- Đặt hộ một đồng nghiệp; người đặt là người trả hộ nếu quỹ còn đủ.
+- Tạo một hoặc nhiều phần cho bản thân trong cùng một lần đặt.
+- Đặt nhiều phần hộ đồng nghiệp; người đặt là người trả hộ nếu quỹ còn đủ.
 - Sửa hoặc hủy phần mình phụ trách trước giờ chốt.
 - Xem lịch sử đơn, trạng thái thanh toán, số dư và sổ giao dịch quỹ.
 - Tự đối soát tiền với đồng nghiệp ở bên ngoài khi đặt hộ.
@@ -29,6 +29,7 @@ Tiền trong module được lưu theo số nguyên Việt Nam đồng. Đơn gi
 Admin có toàn bộ quyền của user và thêm các quyền:
 
 - Import thực đơn hằng ngày.
+- Sửa toàn bộ danh sách món hoặc xóa menu nháp để import lại trước khi có đơn.
 - Chọn nhãn đơn, tên quán, ngày áp dụng, giờ chốt và đơn giá.
 - Đóng đơn sớm hoặc mở lại đơn.
 - Xem tất cả phần ăn và các đơn chưa thanh toán.
@@ -71,9 +72,17 @@ Quy tắc parse:
 - Nếu có dấu `+`, phía sau phải có ít nhất một món đặc biệt.
 - Nhóm món thường có đúng một món là không hợp lệ vì không thể tạo phần hai món.
 - Thực đơn rỗng hoặc chỉ có dấu `+` là không hợp lệ.
-- Mỗi ngày chỉ có một thực đơn. Import trùng ngày phải bị từ chối để tránh hai danh sách nhận đơn song song.
+- Mỗi ngày chỉ có một thực đơn. Import trùng ngày bị từ chối để tránh hai danh sách nhận đơn song song; admin có thể dùng chức năng **Sửa menu** để thay thế menu đó trước khi có đơn.
 
 Khi import thành công, thực đơn ở trạng thái `OPEN`. Tuy nhiên, user chỉ đặt được khi thực đơn vừa `OPEN` vừa chưa tới `cutoffAt`.
+
+### Sửa, xóa và import lại menu
+
+- Admin có thể thay thế ngày, giờ chốt, tên quán, giá và toàn bộ danh sách món của menu đã import bằng **Sửa menu**.
+- Admin có thể xóa menu nháp để import lại từ đầu.
+- Hai thao tác này chỉ được thực hiện khi menu chưa phát sinh bất kỳ đơn nào và chưa được tổng hợp. Điều này bảo toàn lịch sử món đã chọn, công nợ, giao dịch quỹ và dữ liệu dinh dưỡng.
+- Khi thay menu nháp đã đóng thủ công, hệ thống mở lại menu nếu giờ chốt mới vẫn còn trong tương lai; admin không cần mở lại lần thứ hai.
+- Sau khi có đơn, admin vẫn có thể chỉnh tên/ảnh/dinh dưỡng từng món; thay đổi cấu trúc trước/sau dấu `+` phải bị chặn.
 
 ## 4. Quy tắc chọn món
 
@@ -103,7 +112,7 @@ Ba khái niệm được lưu riêng:
 
 ### Đặt cho bản thân
 
-Nếu user không chọn đồng nghiệp, cả ba vai trò là chính user đó. Một user chỉ có tối đa một phần đang hoạt động trong một thực đơn.
+Nếu user không chọn đồng nghiệp, cả ba vai trò là chính user đó. Một user có thể có nhiều phần đang hoạt động trong một thực đơn; mỗi phần là một đơn độc lập để dễ sửa, hủy, tính nợ và tổng hợp.
 
 ### Đặt hộ đồng nghiệp
 
@@ -113,7 +122,7 @@ Nếu user A chọn user B làm người nhận:
 - A là người tạo đơn và là người trả hộ nếu quỹ của A đủ.
 - Hệ thống trừ đúng một đơn giá từ quỹ của A.
 - A và B tự hoàn tiền/đối soát với nhau bên ngoài hệ thống.
-- B vẫn chỉ có tối đa một phần trong ngày; nếu người khác đã đặt cho B, yêu cầu tiếp theo phải bị từ chối thay vì tạo phần trùng.
+- B có thể nhận nhiều phần trong ngày. Mỗi phần vẫn được lưu và tính tiền riêng; các bên tự đối soát tiền trả hộ bên ngoài hệ thống.
 
 ## 6. Quỹ và trạng thái thanh toán
 
@@ -160,7 +169,7 @@ Một người nhận có đơn `UNPAID` từ ngày trước sẽ không đượ
 - Đơn chuyển từ `ACTIVE` sang `CANCELLED`; dữ liệu cũ được giữ để kiểm tra.
 - Nếu đơn đã `PAID_FUND`, hệ thống hoàn đúng số tiền đã trừ cho người trả bằng giao dịch `ORDER_REFUND`.
 - Nếu đơn là `UNPAID`, không phát sinh hoàn quỹ.
-- Hủy hoặc gửi lại đồng thời không được tạo hai phần cho cùng người nhận.
+- Hủy chỉ tác động đến đúng phần được chọn; các phần khác của cùng người nhận vẫn giữ nguyên.
 
 ## 7. Giờ chốt và đóng/mở đơn
 
@@ -279,7 +288,8 @@ Tất cả endpoint dùng prefix `/api` và yêu cầu JWT, trừ các endpoint 
 | `GET` | `/lunch/people` | Danh sách người có thể đặt hộ |
 | `GET` | `/lunch/orders/history` | Lịch sử phần ăn |
 | `GET` | `/lunch/wallet/transactions` | Sổ giao dịch quỹ |
-| `POST` | `/lunch/orders` | Tạo phần cho mình hoặc đồng nghiệp |
+| `POST` | `/lunch/orders` | Tạo một phần cho mình hoặc đồng nghiệp |
+| `POST` | `/lunch/orders/batch` | Tạo nhiều phần trong một giao dịch nguyên tử |
 | `PUT` | `/lunch/orders/{id}` | Sửa món/ghi chú trước cutoff |
 | `DELETE` | `/lunch/orders/{id}` | Hủy phần trước cutoff |
 
@@ -289,6 +299,8 @@ Tất cả endpoint dùng prefix `/api` và yêu cầu JWT, trừ các endpoint 
 | --- | --- | --- |
 | `GET` | `/lunch/admin/menus` | Tra cứu menu theo khoảng ngày |
 | `POST` | `/lunch/admin/menus/import` | Import menu dạng văn bản |
+| `PUT` | `/lunch/admin/menus/{id}` | Thay thế menu nháp trước khi có đơn |
+| `DELETE` | `/lunch/admin/menus/{id}` | Xóa menu nháp trước khi có đơn |
 | `GET` | `/lunch/admin/menus/{id}/orders` | Xem các phần của một menu |
 | `POST` | `/lunch/admin/menus/{id}/close` | Đóng nhận đơn |
 | `POST` | `/lunch/admin/menus/{id}/reopen` | Mở lại menu |
@@ -296,4 +308,3 @@ Tất cả endpoint dùng prefix `/api` và yêu cầu JWT, trừ các endpoint 
 | `GET` | `/lunch/admin/members` | Xem số dư và số đơn chưa trả của thành viên |
 | `POST` | `/lunch/admin/funds/top-up` | Ghi nhận nạp quỹ |
 | `POST` | `/lunch/admin/orders/{id}/confirm-external` | Xác nhận đã thu tiền ngoài |
-

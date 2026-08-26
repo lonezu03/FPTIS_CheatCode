@@ -111,6 +111,48 @@ tài khoản đang active:
 POST /lunch/admin/menus/{menuId}/notify
 ```
 
+### Đặt nhiều phần cơm trong một lần
+
+Mỗi phần `COMBO` chọn đúng hai món thường; mỗi phần `SINGLE` chọn một món đặc biệt.
+Toàn bộ request được xử lý trong một transaction: nếu một phần không hợp lệ hoặc phần trả hộ không đủ quỹ, không phần nào được tạo.
+`clientRequestId` phải do client tạo, giữ nguyên khi người dùng gửi lại cùng giỏ vì mất kết nối; backend trả lại batch cũ thay vì ghi thêm nợ.
+
+```http
+POST /lunch/orders/batch
+```
+
+```json
+{
+  "menuId": "menu-id",
+  "clientRequestId": "f6c0e174-1a3a-4a67-a52d-9b9408c75de8",
+  "portions": [
+    {
+      "selectionType": "COMBO",
+      "itemIds": ["regular-item-1", "regular-item-2"],
+      "note": "Cơm thêm"
+    },
+    {
+      "beneficiaryUserId": "optional-colleague-id",
+      "selectionType": "SINGLE",
+      "itemIds": ["special-item-1"],
+      "note": ""
+    }
+  ]
+}
+```
+
+### Sửa hoặc xóa menu nháp (Admin)
+
+```http
+PUT    /lunch/admin/menus/{menuId}
+DELETE /lunch/admin/menus/{menuId}
+```
+
+`PUT` dùng cùng payload với import menu. Hai thao tác chỉ được chấp nhận khi menu
+chưa có bất kỳ đơn nào và chưa được tổng hợp; nếu không API trả `409 Conflict` để
+bảo toàn lịch sử đơn, công nợ và dữ liệu dinh dưỡng. Khi thay thế một menu nháp đã
+đóng thủ công, menu được mở lại để nhận đơn theo giờ chốt mới.
+
 ## User Profile
 
 ```http

@@ -39,6 +39,24 @@ public class LunchAdminController {
         return lunchAdminService.importMenu(currentUser(authentication), request);
     }
 
+    @PutMapping("/menus/{id}")
+    public MenuResponse updateMenu(
+            Authentication authentication,
+            @PathVariable String id,
+            @Valid @RequestBody UpdateMenuRequest request
+    ) {
+        return lunchAdminService.updateMenu(currentUser(authentication), id, request);
+    }
+
+    @DeleteMapping("/menus/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMenu(
+            Authentication authentication,
+            @PathVariable String id
+    ) {
+        lunchAdminService.deleteMenu(currentUser(authentication), id);
+    }
+
     @PostMapping("/menus/{id}/notify")
     public MenuNotificationResponse notifyMenu(
             Authentication authentication,

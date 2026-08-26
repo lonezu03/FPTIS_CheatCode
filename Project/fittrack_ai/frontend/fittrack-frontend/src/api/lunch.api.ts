@@ -42,6 +42,8 @@ export type LunchMenu = {
   status: LunchMenuStatus;
   acceptingOrders: boolean;
   summarized: boolean;
+  /** Whole-menu replacement is only safe before any historical order exists. */
+  canReplace: boolean;
   regularItems: LunchMenuItem[];
   specialItems: LunchMenuItem[];
   totalOrders: number;
@@ -87,6 +89,8 @@ export type LunchTodayResponse = {
   canOrder: boolean;
   blockReason: string | null;
   myMealOrder: LunchOrder | null;
+  /** Kept optional while older backends are being rolled out. */
+  myMealOrders?: LunchOrder[];
   ordersPlacedByMe: LunchOrder[];
 };
 
@@ -107,6 +111,20 @@ export type LunchOrderInput = {
   selectionType: LunchSelectionType;
   itemIds: string[];
   note: string;
+};
+
+export type LunchOrderPortionInput = Omit<LunchOrderInput, "menuId">;
+
+export type LunchOrderBatchInput = {
+  menuId: string;
+  /** Stable through a retry of the same checkout; prevents duplicate debt. */
+  clientRequestId: string;
+  portions: LunchOrderPortionInput[];
+};
+
+export type LunchOrderBatchResult = {
+  orders: LunchOrder[];
+  totalPrice: number;
 };
 
 export type LunchOrderUpdateInput = {
@@ -243,6 +261,13 @@ export async function createLunchOrder(payload: LunchOrderInput): Promise<LunchO
   return response.data;
 }
 
+export async function createLunchOrderBatch(
+  payload: LunchOrderBatchInput,
+): Promise<LunchOrderBatchResult> {
+  const response = await api.post<LunchOrderBatchResult>("/lunch/orders/batch", payload);
+  return response.data;
+}
+
 export async function updateLunchOrder(orderId: string, payload: LunchOrderUpdateInput): Promise<LunchOrder> {
   const response = await api.put<LunchOrder>(`/lunch/orders/${orderId}`, payload);
   return response.data;
@@ -262,6 +287,18 @@ export async function getAdminLunchMenus(from: string, to: string): Promise<Lunc
 export async function importLunchMenu(payload: ImportLunchMenuInput): Promise<LunchMenu> {
   const response = await api.post<LunchMenu>("/lunch/admin/menus/import", payload);
   return response.data;
+}
+
+export async function updateLunchMenu(
+  menuId: string,
+  payload: ImportLunchMenuInput,
+): Promise<LunchMenu> {
+  const response = await api.put<LunchMenu>(`/lunch/admin/menus/${menuId}`, payload);
+  return response.data;
+}
+
+export async function deleteLunchMenu(menuId: string): Promise<void> {
+  await api.delete(`/lunch/admin/menus/${menuId}`);
 }
 
 export async function notifyLunchMenu(menuId: string): Promise<LunchMenuNotificationResult> {

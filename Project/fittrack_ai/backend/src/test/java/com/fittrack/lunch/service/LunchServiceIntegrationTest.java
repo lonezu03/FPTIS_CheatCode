@@ -3,8 +3,11 @@ package com.fittrack.lunch.service;
 import com.fittrack.FittrackBackendApplication;
 import com.fittrack.common.exception.ConflictException;
 import com.fittrack.lunch.dto.LunchDtos.CreateOrderRequest;
+import com.fittrack.lunch.dto.LunchDtos.CreateOrderBatchRequest;
+import com.fittrack.lunch.dto.LunchDtos.OrderPortionRequest;
 import com.fittrack.lunch.dto.LunchDtos.OrderResponse;
 import com.fittrack.lunch.dto.LunchDtos.SummaryResponse;
+import com.fittrack.lunch.dto.LunchDtos.UpdateMenuRequest;
 import com.fittrack.lunch.dto.LunchDtos.CreatePaymentRequest;
 import com.fittrack.lunch.dto.LunchDtos.ReviewPaymentRequest;
 import com.fittrack.lunch.dto.LunchDtos.UpdatePaymentSettingsRequest;
@@ -22,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -275,6 +279,144 @@ class LunchServiceIntegrationTest {
         assertEquals(5, review.rating());
         assertEquals("Rất ngon", review.comment());
         assertEquals(menu.getItems().getFirst().getId(), review.menuItemId());
+    }
+
+    @Test
+    void userCanCreateMultiplePortionsForSameMenuInOneAtomicBatch() {
+        User user = saveUser("batch-user");
+        LunchMenu menu = saveMenu(user, LocalDate.of(2099, 1, 17));
+
+        var response = lunchService.createOrderBatch(
+                user,
+                new CreateOrderBatchRequest(
+                        menu.getId(),
+                        "batch-idempotency-123456",
+                        List.of(
+                                new OrderPortionRequest(
+                                        null,
+                                        LunchSelectionType.COMBO,
+                                        List.of(menu.getItems().get(0).getId(), menu.getItems().get(1).getId()),
+                                        "Cơm thêm"
+                                ),
+                                new OrderPortionRequest(
+                                        null,
+                                        LunchSelectionType.SINGLE,
+                                        List.of(menu.getItems().get(2).getId()),
+                                        null
+                                )
+                        )
+                )
+        );
+
+        assertEquals(2, response.orders().size());
+        assertEquals(70_000L, response.totalPrice());
+        assertEquals(
+                2,
+                orderRepository.findByMenuAndBeneficiaryAndStatusOrderByCreatedAtAsc(
+                        menu,
+                        user,
+                        LunchOrderStatus.ACTIVE
+                ).size()
+        );
+        LunchFundAccount account = accountRepository.findByUser(user).orElseThrow();
+        assertEquals(70_000L, account.getDebt());
+        assertEquals(2, transactionRepository.findByAccountOrderByCreatedAtDesc(account).size());
+
+        var retryResponse = lunchService.createOrderBatch(
+                user,
+                new CreateOrderBatchRequest(
+                        menu.getId(),
+                        "batch-idempotency-123456",
+                        List.of(new OrderPortionRequest(
+                                null,
+                                LunchSelectionType.COMBO,
+                                List.of(menu.getItems().get(0).getId(), menu.getItems().get(1).getId()),
+                                "Retry must not create another order"
+                        ))
+                )
+        );
+        assertEquals(2, retryResponse.orders().size());
+        assertEquals(70_000L, retryResponse.totalPrice());
+        assertEquals(2, orderRepository.findByMenuAndBeneficiaryAndStatusOrderByCreatedAtAsc(
+                menu,
+                user,
+                LunchOrderStatus.ACTIVE
+        ).size());
+        assertEquals(70_000L, account.getDebt());
+        assertEquals(2, transactionRepository.findByAccountOrderByCreatedAtDesc(account).size());
+
+        SummaryResponse summary = lunchAdminService.summarize(user, menu.getId());
+        assertEquals(2, summary.totalOrders());
+        assertEquals(70_000L, summary.totalAmount());
+        assertTrue(summary.orderText().contains(": 2 phần"));
+    }
+
+    @Test
+    void adminCanReplaceOrDeleteDraftMenuButCannotChangeMenuWithOrders() {
+        User admin = saveUser("menu-editor");
+        LunchMenu draft = saveMenu(admin, LocalDate.of(2099, 1, 18));
+        draft.setStatus(LunchMenuStatus.CLOSED);
+        menuRepository.saveAndFlush(draft);
+
+        var updated = lunchAdminService.updateMenu(
+                admin,
+                draft.getId(),
+                new UpdateMenuRequest(
+                        draft.getMenuDate(),
+                        "Vũ - bản đã sửa",
+                        "Quán mới",
+                        draft.getMenuDate().atTime(11, 0),
+                        40_000L,
+                        "Gà kho\nCá chiên\n+\nBún bò"
+                )
+        );
+
+        assertEquals(draft.getId(), updated.id());
+        assertEquals("Vũ - bản đã sửa", updated.orderLabel());
+        assertEquals(2, updated.regularItems().size());
+        assertEquals(1, updated.specialItems().size());
+        assertEquals(40_000L, updated.price());
+        assertEquals("OPEN", updated.status());
+        assertTrue(updated.canReplace());
+
+        LunchMenu removable = saveMenu(admin, LocalDate.of(2099, 1, 19));
+        lunchAdminService.deleteMenu(admin, removable.getId());
+        assertFalse(menuRepository.existsById(removable.getId()));
+
+        lunchService.createOrder(admin, comboRequest(draft, null));
+        assertThrows(
+                ConflictException.class,
+                () -> lunchAdminService.updateMenu(
+                        admin,
+                        draft.getId(),
+                        new UpdateMenuRequest(
+                                draft.getMenuDate(),
+                                "Không được lưu",
+                                "Quán mới",
+                                draft.getMenuDate().atTime(11, 0),
+                                40_000L,
+                                "Gà kho\nCá chiên\n+\nBún bò"
+                        )
+                )
+        );
+    }
+
+    @Test
+    void batchRejectsNullPortionWithBadRequestInsteadOfServerError() {
+        User user = saveUser("invalid-batch-user");
+        LunchMenu menu = saveMenu(user, LocalDate.of(2099, 1, 20));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> lunchService.createOrderBatch(
+                        user,
+                        new CreateOrderBatchRequest(
+                                menu.getId(),
+                                "invalid-batch-123456",
+                                Collections.singletonList(null)
+                        )
+                )
+        );
     }
 
     private User saveUser(String prefix) {

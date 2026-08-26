@@ -16,13 +16,13 @@ import java.util.Optional;
 
 public interface LunchOrderRepository extends JpaRepository<LunchOrder, String> {
 
-    Optional<LunchOrder> findByMenuAndBeneficiary(LunchMenu menu, User beneficiary);
-
-    Optional<LunchOrder> findByMenuAndBeneficiaryAndStatus(
+    List<LunchOrder> findByMenuAndBeneficiaryAndStatusOrderByCreatedAtAsc(
             LunchMenu menu,
             User beneficiary,
             LunchOrderStatus status
     );
+
+    boolean existsByMenu(LunchMenu menu);
 
     List<LunchOrder> findByMenuAndStatusOrderByCreatedAtAsc(
             LunchMenu menu,
@@ -33,6 +33,11 @@ public interface LunchOrderRepository extends JpaRepository<LunchOrder, String> 
             LunchMenu menu,
             User orderedBy,
             LunchOrderStatus status
+    );
+
+    List<LunchOrder> findByOrderedByAndBatchRequestIdOrderByCreatedAtAsc(
+            User orderedBy,
+            String batchRequestId
     );
 
     List<LunchOrder> findDistinctByItems_MenuItemAndStatus(
@@ -85,18 +90,6 @@ public interface LunchOrderRepository extends JpaRepository<LunchOrder, String> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select lunchOrder from LunchOrder lunchOrder where lunchOrder.id = :id")
     Optional<LunchOrder> findByIdForUpdate(@Param("id") String id);
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("""
-            select lunchOrder
-            from LunchOrder lunchOrder
-            where lunchOrder.menu = :menu
-              and lunchOrder.beneficiary = :beneficiary
-            """)
-    Optional<LunchOrder> findByMenuAndBeneficiaryForUpdate(
-            @Param("menu") LunchMenu menu,
-            @Param("beneficiary") User beneficiary
-    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

@@ -2,6 +2,7 @@ package com.fittrack.lunch.dto;
 
 import com.fittrack.lunch.entity.LunchSelectionType;
 import com.fittrack.lunch.entity.LunchPaymentRequestType;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
@@ -51,6 +52,7 @@ public final class LunchDtos {
             String status,
             boolean summarized,
             boolean acceptingOrders,
+            boolean canReplace,
             List<MenuItemResponse> regularItems,
             List<MenuItemResponse> specialItems,
             long totalOrders,
@@ -89,6 +91,7 @@ public final class LunchDtos {
             Long walletBalance,
             Long outstandingDebt,
             OrderResponse myMealOrder,
+            List<OrderResponse> myMealOrders,
             List<OrderResponse> ordersPlacedByMe,
             boolean canOrder,
             String blockReason
@@ -104,6 +107,31 @@ public final class LunchDtos {
     ) {
     }
 
+    /**
+     * Creates multiple lunch portions in one atomic request.  Each portion keeps
+     * its own payment, nutrition log and cancellation lifecycle.
+     */
+    public record CreateOrderBatchRequest(
+            @NotBlank String menuId,
+            @NotBlank @Pattern(regexp = "[A-Za-z0-9_-]{8,64}") String clientRequestId,
+            @NotEmpty @Size(max = 20) List<@NotNull @Valid OrderPortionRequest> portions
+    ) {
+    }
+
+    public record OrderPortionRequest(
+            String beneficiaryUserId,
+            @NotNull LunchSelectionType selectionType,
+            @NotEmpty List<@NotBlank String> itemIds,
+            @Size(max = 500) String note
+    ) {
+    }
+
+    public record OrderBatchResponse(
+            List<OrderResponse> orders,
+            long totalPrice
+    ) {
+    }
+
     public record UpdateOrderRequest(
             @NotNull LunchSelectionType selectionType,
             @NotEmpty List<@NotBlank String> itemIds,
@@ -112,6 +140,20 @@ public final class LunchDtos {
     }
 
     public record ImportMenuRequest(
+            @NotNull LocalDate menuDate,
+            @Size(max = 255) String orderLabel,
+            @Size(max = 255) String vendorName,
+            @NotNull LocalDateTime cutoffAt,
+            @Positive Long price,
+            @NotBlank String rawMenuText
+    ) {
+    }
+
+    /**
+     * Replaces a draft menu's metadata and parsed item list while preserving the
+     * menu id.  The service only accepts this before any order exists.
+     */
+    public record UpdateMenuRequest(
             @NotNull LocalDate menuDate,
             @Size(max = 255) String orderLabel,
             @Size(max = 255) String vendorName,

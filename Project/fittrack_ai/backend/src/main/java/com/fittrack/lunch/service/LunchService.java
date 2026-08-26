@@ -52,14 +52,21 @@ public class LunchService {
                     outstandingDebt,
                     null,
                     List.of(),
+                    List.of(),
                     false,
                     "Chưa có thực đơn hôm nay"
             );
         }
 
-        LunchOrder myOrder = orderRepository
-                .findByMenuAndBeneficiaryAndStatus(menu, user, LunchOrderStatus.ACTIVE)
-                .orElse(null);
+        List<OrderResponse> myMealOrders = orderRepository
+                .findByMenuAndBeneficiaryAndStatusOrderByCreatedAtAsc(
+                        menu,
+                        user,
+                        LunchOrderStatus.ACTIVE
+                )
+                .stream()
+                .map(mapper::toOrderResponse)
+                .toList();
         List<OrderResponse> placedForOthers = orderRepository
                 .findByMenuAndOrderedByAndStatusOrderByCreatedAtAsc(
                         menu,
@@ -91,7 +98,8 @@ public class LunchService {
                 menuResponse,
                 walletBalance,
                 outstandingDebt,
-                myOrder == null ? null : mapper.toOrderResponse(myOrder),
+                myMealOrders.isEmpty() ? null : myMealOrders.getFirst(),
+                myMealOrders,
                 placedForOthers,
                 blockReason == null,
                 blockReason
@@ -163,29 +171,108 @@ public class LunchService {
         LunchMenu menu = getMenuForUpdate(request.menuId());
         ensureAcceptingOrders(menu);
 
-        User beneficiary = resolveBeneficiary(actor, request.beneficiaryUserId());
-        boolean selfOrder = sameUser(actor, beneficiary);
-        List<LunchMenuItem> selectedItems = resolveSelectedItems(menu, request.itemIds());
-        orderRules.validateSelection(request.selectionType(), selectedItems);
+        return createOrder(
+                actor,
+                menu,
+                request.beneficiaryUserId(),
+                request.selectionType(),
+                request.itemIds(),
+                request.note(),
+                null,
+                null
+        );
+    }
 
-        Optional<LunchOrder> existing = orderRepository
-                .findByMenuAndBeneficiaryForUpdate(menu, beneficiary);
-        if (existing.isPresent() && existing.get().getStatus() == LunchOrderStatus.ACTIVE) {
-            throw new ConflictException("Người này đã có một phần ăn trong ngày");
+    /**
+     * Creates every selected portion in a single transaction. Any invalid item
+     * or failed sponsored payment rolls back the entire cart.
+     */
+    @Transactional
+    public OrderBatchResponse createOrderBatch(
+            User actor,
+            CreateOrderBatchRequest request
+    ) {
+        LunchMenu menu = getMenuForUpdate(request.menuId());
+
+        OrderBatchResponse priorBatch = findExistingBatch(
+                actor,
+                request.clientRequestId(),
+                menu.getId()
+        );
+        if (priorBatch != null) {
+            return priorBatch;
+        }
+        ensureAcceptingOrders(menu);
+
+        List<PreparedPortion> portions = new ArrayList<>();
+        for (OrderPortionRequest portion : request.portions()) {
+            if (portion == null) {
+                throw new IllegalArgumentException("Danh sách phần ăn có dữ liệu không hợp lệ");
+            }
+            User beneficiary = resolveBeneficiary(actor, portion.beneficiaryUserId());
+            List<LunchMenuItem> selectedItems = resolveSelectedItems(menu, portion.itemIds());
+            orderRules.validateSelection(portion.selectionType(), selectedItems);
+            portions.add(new PreparedPortion(
+                    portions.size(),
+                    beneficiary,
+                    portion.selectionType(),
+                    selectedItems,
+                    portion.note()
+            ));
         }
 
-        LunchOrder order = existing.orElseGet(() -> LunchOrder.builder()
+        List<OrderResponse> created = new ArrayList<>();
+        long totalPrice = 0L;
+        // Deduct sponsored portions first. A self-order may legitimately create
+        // debt, but it must not consume the balance needed to pay for a colleague.
+        for (PreparedPortion portion : portions.stream()
+                .sorted(Comparator.comparing(portion -> sameUser(actor, portion.beneficiary())))
+                .toList()) {
+            OrderResponse order = createOrder(
+                    actor,
+                    menu,
+                    portion.beneficiary().getId(),
+                    portion.selectionType(),
+                    portion.itemIds(),
+                    portion.note(),
+                    request.clientRequestId(),
+                    portion.position()
+            );
+            created.add(order);
+            totalPrice = Math.addExact(totalPrice, order.price());
+        }
+        return new OrderBatchResponse(List.copyOf(created), totalPrice);
+    }
+
+    private OrderResponse createOrder(
+            User actor,
+            LunchMenu menu,
+            String beneficiaryUserId,
+            LunchSelectionType selectionType,
+            List<String> itemIds,
+            String note,
+            String batchRequestId,
+            Integer batchPosition
+    ) {
+        User beneficiary = resolveBeneficiary(actor, beneficiaryUserId);
+        boolean selfOrder = sameUser(actor, beneficiary);
+        List<LunchMenuItem> selectedItems = resolveSelectedItems(menu, itemIds);
+        orderRules.validateSelection(selectionType, selectedItems);
+
+        LunchOrder order = LunchOrder.builder()
                 .menu(menu)
                 .beneficiary(beneficiary)
-                .build());
+                .batchRequestId(batchRequestId)
+                .batchPosition(batchPosition)
+                .build();
         resetOrder(
                 order,
                 actor,
                 beneficiary,
                 menu,
-                request.selectionType(),
+                selectionType,
                 selectedItems,
-                request.note(),
+                note,
                 true
         );
         LunchOrder saved = orderRepository.save(order);
@@ -200,6 +287,44 @@ public class LunchService {
         nutritionService.syncOrder(saved);
 
         return mapper.toOrderResponse(saved);
+    }
+
+    /**
+     * The menu row is already locked by the caller. Therefore two retrying
+     * requests for the same checkout cannot both observe an empty batch.
+     */
+    private OrderBatchResponse findExistingBatch(
+            User actor,
+            String clientRequestId,
+            String expectedMenuId
+    ) {
+        List<LunchOrder> existing = orderRepository
+                .findByOrderedByAndBatchRequestIdOrderByCreatedAtAsc(actor, clientRequestId);
+        if (existing.isEmpty()) {
+            return null;
+        }
+        if (existing.stream().anyMatch(order -> !Objects.equals(
+                order.getMenu().getId(),
+                expectedMenuId
+        ))) {
+            throw new ConflictException("Mã gửi đơn này đã được dùng cho thực đơn khác");
+        }
+
+        List<OrderResponse> orders = existing.stream().map(mapper::toOrderResponse).toList();
+        long totalPrice = orders.stream().mapToLong(OrderResponse::price).sum();
+        return new OrderBatchResponse(orders, totalPrice);
+    }
+
+    private record PreparedPortion(
+            int position,
+            User beneficiary,
+            LunchSelectionType selectionType,
+            List<LunchMenuItem> selectedItems,
+            String note
+    ) {
+        List<String> itemIds() {
+            return selectedItems.stream().map(LunchMenuItem::getId).toList();
+        }
     }
 
     @Transactional

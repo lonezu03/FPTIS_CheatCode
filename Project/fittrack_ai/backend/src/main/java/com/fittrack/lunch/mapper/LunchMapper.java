@@ -29,6 +29,16 @@ public class LunchMapper {
             long unpaidOrders,
             LocalDateTime now
     ) {
+        return toMenuResponse(menu, totalOrders, unpaidOrders, now, false);
+    }
+
+    public MenuResponse toMenuResponse(
+            LunchMenu menu,
+            long totalOrders,
+            long unpaidOrders,
+            LocalDateTime now,
+            boolean canReplace
+    ) {
         Map<String, ReviewStats> reviewStats = reviewStatsFor(menu.getItems());
         List<MenuItemResponse> regularItems = menu.getItems().stream()
                 .filter(item -> item.getType() == LunchMenuItemType.REGULAR)
@@ -61,6 +71,7 @@ public class LunchMapper {
                 menu.getStatus().name(),
                 menu.getSummarizedAt() != null,
                 acceptingOrders,
+                canReplace,
                 regularItems,
                 specialItems,
                 totalOrders,

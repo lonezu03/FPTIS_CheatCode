@@ -78,6 +78,15 @@ public class LunchController {
         return lunchService.createOrder(currentUser(authentication), request);
     }
 
+    @PostMapping("/orders/batch")
+    @ResponseStatus(HttpStatus.CREATED)
+    public OrderBatchResponse createOrderBatch(
+            Authentication authentication,
+            @Valid @RequestBody CreateOrderBatchRequest request
+    ) {
+        return lunchService.createOrderBatch(currentUser(authentication), request);
+    }
+
     @PutMapping("/orders/{id}")
     public OrderResponse updateOrder(
             Authentication authentication,

@@ -87,7 +87,65 @@ public class LunchAdminService {
                 "itemCount", saved.getItems().size(),
                 "price", saved.getPrice()
         ));
-        return mapper.toMenuResponse(saved, 0, 0, now());
+        return mapper.toMenuResponse(saved, 0, 0, now(), true);
+    }
+
+    /**
+     * Replaces an imported menu before it has any order. The menu id is kept so
+     * notifications and the admin's current selection do not become stale.
+     */
+    @Transactional
+    public MenuResponse updateMenu(
+            User admin,
+            String menuId,
+            UpdateMenuRequest request
+    ) {
+        LunchMenu menu = getMenuForUpdate(menuId);
+        ensureMenuCanBeReplaced(menu);
+        validateMenuTiming(request.menuDate(), request.cutoffAt());
+
+        menuRepository.findByMenuDate(request.menuDate())
+                .filter(other -> !Objects.equals(other.getId(), menu.getId()))
+                .ifPresent(other -> {
+                    throw new ConflictException("Ngày này đã có thực đơn");
+                });
+
+        LunchMenuParser.ParsedMenu parsed = menuParser.parse(request.rawMenuText());
+        menu.setMenuDate(request.menuDate());
+        menu.setOrderLabel(defaultOrderLabel(admin, request.orderLabel()));
+        menu.setVendorName(defaultVendorName(request.vendorName()));
+        menu.setCutoffAt(request.cutoffAt());
+        menu.setPrice(request.price() == null ? DEFAULT_PRICE : request.price());
+        menu.setRawMenuText(request.rawMenuText().trim());
+        menu.setSummaryOrderText(null);
+        menu.setSummarizedAt(null);
+        // A valid replacement is a fresh draft. Reopen a manually closed,
+        // order-free menu so the just-updated menu can receive orders.
+        menu.setStatus(LunchMenuStatus.OPEN);
+        replaceMenuItems(menu, parsed);
+
+        LunchMenu saved = menuRepository.save(menu);
+        auditService.record(admin, "LUNCH_MENU_UPDATED", "LUNCH_MENU", saved.getId(), Map.of(
+                "menuDate", saved.getMenuDate().toString(),
+                "itemCount", saved.getItems().size(),
+                "price", saved.getPrice()
+        ));
+        return mapper.toMenuResponse(saved, 0, 0, now(), true);
+    }
+
+    /**
+     * Deletes a draft menu only. Historical menus must remain intact because
+     * orders, payment transactions and nutrition logs refer to them.
+     */
+    @Transactional
+    public void deleteMenu(User admin, String menuId) {
+        LunchMenu menu = getMenuForUpdate(menuId);
+        ensureMenuCanBeReplaced(menu);
+        auditService.record(admin, "LUNCH_MENU_DELETED", "LUNCH_MENU", menu.getId(), Map.of(
+                "menuDate", menu.getMenuDate().toString(),
+                "itemCount", menu.getItems().size()
+        ));
+        menuRepository.delete(menu);
     }
 
     public MenuNotificationResponse notifyMenu(User admin, String menuId) {
@@ -133,7 +191,8 @@ public class LunchAdminService {
                         menu,
                         activeOrderCount(menu),
                         unpaidOrderCount(menu),
-                        currentTime
+                        currentTime,
+                        canReplaceMenu(menu)
                 ))
                 .toList();
     }
@@ -184,7 +243,8 @@ public class LunchAdminService {
                 saved,
                 activeOrderCount(saved),
                 unpaidOrderCount(saved),
-                now()
+                now(),
+                canReplaceMenu(saved)
         );
     }
 
@@ -203,7 +263,8 @@ public class LunchAdminService {
                 saved,
                 activeOrderCount(saved),
                 unpaidOrderCount(saved),
-                now()
+                now(),
+                canReplaceMenu(saved)
         );
     }
 
@@ -357,6 +418,47 @@ public class LunchAdminService {
         );
     }
 
+    private void ensureMenuCanBeReplaced(LunchMenu menu) {
+        if (!canReplaceMenu(menu)) {
+            throw new ConflictException(
+                    "Menu đã có đơn hoặc đã tổng hợp nên không thể thay thế/xóa. "
+                            + "Hãy giữ lịch sử đơn và chỉ chỉnh sửa từng món khi cần."
+            );
+        }
+    }
+
+    private boolean canReplaceMenu(LunchMenu menu) {
+        return menu.getSummarizedAt() == null && !orderRepository.existsByMenu(menu);
+    }
+
+    private void validateMenuTiming(LocalDate menuDate, LocalDateTime cutoffAt) {
+        if (!cutoffAt.toLocalDate().equals(menuDate)) {
+            throw new IllegalArgumentException("Giờ chốt món phải cùng ngày với thực đơn");
+        }
+        if (!cutoffAt.isAfter(now())) {
+            throw new IllegalArgumentException("Giờ chốt món phải ở tương lai");
+        }
+    }
+
+    private void replaceMenuItems(
+            LunchMenu menu,
+            LunchMenuParser.ParsedMenu parsed
+    ) {
+        menu.getItems().clear();
+        // The database protects (menu_id, sort_order). Flush orphan removals
+        // before adding the replacement list, otherwise Hibernate may insert a
+        // new item at sort order 0 before deleting the old one.
+        menuRepository.flush();
+        for (LunchMenuParser.ParsedItem parsedItem : parsed.allItems()) {
+            menu.getItems().add(LunchMenuItem.builder()
+                    .menu(menu)
+                    .name(parsedItem.name())
+                    .type(parsedItem.type())
+                    .sortOrder(parsedItem.sortOrder())
+                    .build());
+        }
+    }
+
     private LunchMenu getMenuForUpdate(String menuId) {
         return menuRepository.findByIdForUpdate(menuId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thực đơn"));
@@ -379,6 +481,16 @@ public class LunchAdminService {
             return admin.getFullName().trim();
         }
         return "Đặt cơm";
+    }
+
+    private String defaultOrderLabel(User admin, String requestedLabel) {
+        String label = blankToNull(requestedLabel);
+        return label == null ? defaultOrderLabel(admin) : label;
+    }
+
+    private String defaultVendorName(String requestedVendorName) {
+        String vendorName = blankToNull(requestedVendorName);
+        return vendorName == null ? "Quán cơm" : vendorName;
     }
 
     private String blankToNull(String value) {

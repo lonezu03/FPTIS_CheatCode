@@ -11,13 +11,13 @@ import java.util.List;
 @Entity
 @Table(
         name = "lunch_orders",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_lunch_orders_menu_beneficiary",
-                columnNames = {"menu_id", "beneficiary_id"}
-        ),
         indexes = {
                 @Index(name = "idx_lunch_orders_payment_status", columnList = "payment_status"),
-                @Index(name = "idx_lunch_orders_created_at", columnList = "created_at")
+                @Index(name = "idx_lunch_orders_created_at", columnList = "created_at"),
+                @Index(
+                        name = "idx_lunch_orders_menu_beneficiary_status_created_at",
+                        columnList = "menu_id, beneficiary_id, status, created_at"
+                )
         }
 )
 @Getter
@@ -64,6 +64,16 @@ public class LunchOrder {
 
     @Column(length = 500)
     private String note;
+
+    /**
+     * Client-generated idempotency key for a multi-portion checkout. Null for
+     * the original single-portion endpoint and legacy orders.
+     */
+    @Column(name = "batch_request_id", length = 64)
+    private String batchRequestId;
+
+    @Column(name = "batch_position")
+    private Integer batchPosition;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "external_confirmed_by_id")

@@ -28,6 +28,8 @@ Backend and infrastructure:
   and password reset.
 - Flyway-managed PostgreSQL schema (`V1` through `V7`), Aiven SSL deployment,
   request IDs, health check, audit support, and Render Docker deployment.
+- Pending change set adds Flyway `V8` to allow multiple lunch portions per
+  beneficiary/menu while preserving each portion's own payment and nutrition log.
 - New accounts default to lunch-only access (`V6`).
 - Lunch menu import, order/cancel, debt accounting, pay-for-another-user flow,
   top-up/debt payment requests, admin approval/rejection, close/reopen, summary,
@@ -48,6 +50,9 @@ Mobile:
 
 - Flutter app covers authentication, persistent secure session, lunch, basic
   fitness/nutrition, health, notifications, administration, and profile/logout.
+- Pending mobile source update adds a multi-portion lunch cart and reads the
+  plural `myMealOrders` API field with a legacy fallback. Do not build a new APK
+  until the user explicitly asks; more mobile updates are expected.
 - Custom Android/iOS notification sounds exist for menu import and lunch closing.
 - Android release `1.1.2+4` was built against the Render API.
 - Phone navigation is limited to five destinations; notification, admin, and
@@ -137,7 +142,7 @@ production Render health was confirmed after the push:
   and rotated. Keep replacements only in Render, Vercel, Aiven, Gemini/Brevo, and
   local ignored environment files.
 
-## Current task
+## Previous mobile task
 
 Validate the **Luyện tập** tab and remaining permission/file-picker behavior on a
 physical device with mobile release `1.1.2+4`.
@@ -150,3 +155,39 @@ physical device with mobile release `1.1.2+4`.
    correlate it with Render logs; the old request ID belongs to the pre-fix build.
 3. Continue the remaining notification/file-picker device checks and record the
    accepted mobile version here.
+
+## Current task
+
+Complete the uncommitted lunch menu/editor and multi-portion ordering change set.
+
+## Completed in the current uncommitted change set
+
+- Backend: `POST /lunch/orders/batch`, plural `myMealOrders`, and removal of the
+  one-beneficiary/one-menu unique constraint through Flyway `V8`.
+- Backend: admin `PUT`/`DELETE /lunch/admin/menus/{id}`. Full replacement or
+  deletion is allowed only before any order exists; item edits remain available
+  afterward without altering history.
+- Web: a clear multi-portion cart, atomic checkout, individual removal, stronger
+  sponsored-payment feedback, and admin edit/delete/import-again menu UX.
+- Mobile source: matching self-order cart, plural-order display, correct menu
+  field names, and clearer selection guidance. No APK build was created.
+- Documentation updated in `docs/LUNCH_ORDERING.md` and `docs/API.md`.
+
+## Verification for the current change set
+
+- Backend: `mvnw.cmd test` passed — 42 tests, 0 failures, 2 PostgreSQL
+  Testcontainers tests skipped because Docker was unavailable. The new lunch
+  integration coverage checks a two-portion batch and draft-menu replacement/
+  deletion protection.
+- Web: `npm run lint`, `npm test -- --run`, and `npm run build` passed.
+- Mobile: `dart analyze lib/features/lunch/lunch_screen.dart` and `flutter test`
+  passed. No Android/iOS package build was run.
+
+## Exact next steps
+
+1. Review, stage and commit only this change set; never include `backend/demo/`.
+2. Deploy the backend first so Flyway `V8` and the new APIs exist, then deploy
+   the Vercel web client.
+3. Manually verify: import → edit or delete/reimport before orders; create two
+   portions in one cart; edit/cancel only one portion; summarize counts both.
+4. Keep the mobile source changes unbuilt until the user requests an APK.

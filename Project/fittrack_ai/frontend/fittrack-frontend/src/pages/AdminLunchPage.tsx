@@ -11,8 +11,10 @@ import {
   Copy,
   HandCoins,
   LockKeyhole,
+  Pencil,
   RefreshCw,
   RotateCcw,
+  Trash2,
   Upload,
   Users,
   UtensilsCrossed,
@@ -24,6 +26,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   closeLunchMenu,
   confirmLunchExternalPayment,
+  deleteLunchMenu,
   getAdminLunchMembers,
   getAdminLunchMenus,
   getAdminLunchOrders,
@@ -33,6 +36,7 @@ import {
   reopenLunchMenu,
   summarizeLunchMenu,
   topUpLunchFund,
+  updateLunchMenu,
   type ImportLunchMenuInput,
   type LunchMember,
   type LunchMenu,
@@ -101,9 +105,11 @@ export default function AdminLunchPage() {
   const [cutoffAt, setCutoffAt] = useState(defaultCutoff);
   const [price, setPrice] = useState(DEFAULT_PRICE);
   const [rawMenuText, setRawMenuText] = useState("");
+  const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
 
   const [summaryResult, setSummaryResult] = useState<{ menuId: string; summary: LunchSummary } | null>(null);
   const [menuAction, setMenuAction] = useState<MenuAction | null>(null);
+  const [deleteMenuTarget, setDeleteMenuTarget] = useState<LunchMenu | null>(null);
   const [confirmPaymentTarget, setConfirmPaymentTarget] = useState<LunchOrder | null>(null);
 
   const [selectedMemberId, setSelectedMemberId] = useState("");
@@ -157,6 +163,48 @@ export default function AdminLunchPage() {
       toast.error(getApiErrorMessage(error, "Không thể nhập menu."));
     },
   });
+
+  const updateMenuMutation = useMutation({
+    mutationFn: ({ menuId, payload }: { menuId: string; payload: ImportLunchMenuInput }) =>
+      updateLunchMenu(menuId, payload),
+    onSuccess: (menu) => {
+      toast.success("Đã cập nhật menu. Danh sách món mới đã sẵn sàng để thông báo.");
+      setEditingMenuId(null);
+      setFromDate(menu.menuDate);
+      setToDate(menu.menuDate);
+      setSelectedMenuId(menu.id);
+      setRawMenuText("");
+      setSummaryResult(null);
+      void queryClient.invalidateQueries({ queryKey: lunchKeys.admin() });
+      void queryClient.invalidateQueries({ queryKey: lunchKeys.today() });
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, "Không thể cập nhật menu."));
+    },
+  });
+
+  const deleteMenuMutation = useMutation({
+    mutationFn: deleteLunchMenu,
+    onSuccess: () => {
+      toast.success("Đã xóa menu nháp. Bạn có thể import lại menu mới.");
+      const deletedId = deleteMenuTarget?.id;
+      setDeleteMenuTarget(null);
+      setSummaryResult(null);
+      if (editingMenuId === deletedId) {
+        resetMenuEditor();
+      }
+      if (selectedMenuId === deletedId) {
+        setSelectedMenuId("");
+      }
+      void queryClient.invalidateQueries({ queryKey: lunchKeys.admin() });
+      void queryClient.invalidateQueries({ queryKey: lunchKeys.today() });
+    },
+    onError: (error: unknown) => {
+      toast.error(getApiErrorMessage(error, "Không thể xóa menu. Menu có thể đã phát sinh đơn."));
+    },
+  });
+
+  const isSavingMenu = importMutation.isPending || updateMenuMutation.isPending;
 
   const menuActionMutation = useMutation({
     mutationFn: ({ menu, action }: MenuAction) =>
@@ -258,7 +306,38 @@ export default function AdminLunchPage() {
       return;
     }
 
+    if (editingMenuId) {
+      updateMenuMutation.mutate({ menuId: editingMenuId, payload });
+      return;
+    }
+
     importMutation.mutate(payload);
+  }
+
+  function startEditingMenu(menu: LunchMenu) {
+    setEditingMenuId(menu.id);
+    setMenuDate(menu.menuDate);
+    setOrderLabel(menu.orderLabel);
+    setVendorName(menu.vendorName);
+    setCutoffAt(menu.cutoffAt.slice(0, 16));
+    setPrice(menu.price);
+    setRawMenuText([
+      ...menu.regularItems.map((item) => item.name),
+      "+",
+      ...menu.specialItems.map((item) => item.name),
+    ].join("\n"));
+    setSummaryResult(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetMenuEditor() {
+    setEditingMenuId(null);
+    setMenuDate(defaultMenuDate);
+    setOrderLabel("");
+    setVendorName("");
+    setCutoffAt(defaultCutoff);
+    setPrice(DEFAULT_PRICE);
+    setRawMenuText("");
   }
 
   function handleTopUp() {
@@ -393,11 +472,20 @@ export default function AdminLunchPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Upload className="h-5 w-5" aria-hidden="true" />
-                  Nhập menu mới
+                  {editingMenuId ? <Pencil className="h-5 w-5" aria-hidden="true" /> : <Upload className="h-5 w-5" aria-hidden="true" />}
+                  {editingMenuId ? "Sửa menu đã import" : "Nhập menu mới"}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {editingMenuId && (
+                  <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+                    <AlertTriangle />
+                    <AlertTitle>Bạn đang thay thế toàn bộ danh sách món</AlertTitle>
+                    <AlertDescription>
+                      Chỉ có thể lưu khi menu chưa phát sinh phần ăn. Sau khi có đơn, hãy dùng phần sửa từng món bên dưới để bảo toàn lịch sử.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Ngày bán" htmlFor="lunch-menu-date">
                     <Input
@@ -470,14 +558,21 @@ export default function AdminLunchPage() {
                   <p className="text-xs text-muted-foreground">
                     Mỗi dòng là một món. Nếu có món đơn, dùng dòng “+” để tách khỏi nhóm cơm 2 món.
                   </p>
-                  <Button
-                    type="button"
-                    onClick={handleImportMenu}
-                    disabled={importMutation.isPending || !parsedMenu.isValid}
-                  >
-                    <Upload aria-hidden="true" />
-                    {importMutation.isPending ? "Đang nhập..." : "Nhập & mở menu"}
-                  </Button>
+                  <div className="flex gap-2 self-end sm:self-auto">
+                    {editingMenuId && (
+                      <Button type="button" variant="outline" onClick={resetMenuEditor} disabled={isSavingMenu}>
+                        Hủy sửa
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      onClick={handleImportMenu}
+                      disabled={isSavingMenu || !parsedMenu.isValid}
+                    >
+                      {editingMenuId ? <Pencil aria-hidden="true" /> : <Upload aria-hidden="true" />}
+                      {isSavingMenu ? "Đang lưu..." : editingMenuId ? "Lưu menu đã sửa" : "Nhập & mở menu"}
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -525,9 +620,12 @@ export default function AdminLunchPage() {
             summarizing={summaryMutation.isPending}
             changingStatus={menuActionMutation.isPending}
             notifying={notifyMenuMutation.isPending}
+            deleting={deleteMenuMutation.isPending}
             onSummarize={() => activeMenu && summaryMutation.mutate(activeMenu.id)}
             onClose={() => activeMenu && setMenuAction({ menu: activeMenu, action: "close" })}
             onReopen={() => activeMenu && setMenuAction({ menu: activeMenu, action: "reopen" })}
+            onEdit={() => activeMenu && startEditingMenu(activeMenu)}
+            onDelete={() => activeMenu && setDeleteMenuTarget(activeMenu)}
             onNotify={() => {
               if (!activeMenu) return;
               if (window.confirm("Gửi thông báo trong ứng dụng và email menu này tới toàn bộ tài khoản đang hoạt động?")) {
@@ -767,6 +865,44 @@ export default function AdminLunchPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!deleteMenuTarget} onOpenChange={(open) => !open && setDeleteMenuTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa menu đã import?</DialogTitle>
+            <DialogDescription>
+              {deleteMenuTarget
+                ? `Menu “${deleteMenuTarget.orderLabel}” ngày ${formatDate(deleteMenuTarget.menuDate)} sẽ bị xóa. Bạn chỉ nên làm việc này khi chưa có ai đặt phần.`
+                : "Menu sẽ bị xóa nếu chưa phát sinh phần ăn."}
+            </DialogDescription>
+          </DialogHeader>
+          <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+            <AlertTriangle />
+            <AlertDescription>
+              Nếu menu đã có đơn, hệ thống sẽ từ chối xóa để bảo vệ lịch sử công nợ và dinh dưỡng.
+            </AlertDescription>
+          </Alert>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteMenuTarget(null)}
+              disabled={deleteMenuMutation.isPending}
+            >
+              Giữ lại menu
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => deleteMenuTarget && deleteMenuMutation.mutate(deleteMenuTarget.id)}
+              disabled={!deleteMenuTarget || deleteMenuMutation.isPending}
+            >
+              <Trash2 aria-hidden="true" />
+              {deleteMenuMutation.isPending ? "Đang xóa..." : "Xóa menu"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!confirmPaymentTarget} onOpenChange={(open) => !open && setConfirmPaymentTarget(null)}>
         <DialogContent>
           <DialogHeader>
@@ -807,9 +943,12 @@ function ActiveMenuPanel({
   summarizing,
   changingStatus,
   notifying,
+  deleting,
   onSummarize,
   onClose,
   onReopen,
+  onEdit,
+  onDelete,
   onNotify,
   onCopy,
 }: {
@@ -819,9 +958,12 @@ function ActiveMenuPanel({
   summarizing: boolean;
   changingStatus: boolean;
   notifying: boolean;
+  deleting: boolean;
   onSummarize: () => void;
   onClose: () => void;
   onReopen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
   onNotify: () => void;
   onCopy: (text: string) => Promise<void>;
 }) {
@@ -839,6 +981,8 @@ function ActiveMenuPanel({
     );
   }
 
+  const canReplaceMenu = menu.canReplace === true;
+
   return (
     <Card>
       <CardHeader>
@@ -853,6 +997,27 @@ function ActiveMenuPanel({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onEdit}
+              disabled={deleting || !canReplaceMenu}
+              title={canReplaceMenu ? "Sửa toàn bộ menu trước khi có đơn." : "Menu đã có đơn hoặc đã tổng hợp nên không thể thay thế."}
+            >
+              <Pencil aria-hidden="true" />
+              Sửa menu
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+              onClick={onDelete}
+              disabled={deleting || !canReplaceMenu}
+              title={canReplaceMenu ? "Chỉ xóa được menu chưa có đơn." : "Menu đã có đơn hoặc đã tổng hợp nên không thể xóa."}
+            >
+              <Trash2 aria-hidden="true" />
+              Xóa menu
+            </Button>
             <Button
               type="button"
               variant="outline"

@@ -5,10 +5,13 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   CalendarDays,
+  CirclePlus,
   CreditCard,
   History,
   ReceiptText,
   RefreshCw,
+  ShoppingCart,
+  Trash2,
   UserRound,
   UtensilsCrossed,
   Wallet,
@@ -17,7 +20,7 @@ import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 
 import {
-  createLunchOrder,
+  createLunchOrderBatch,
   deleteLunchOrder,
   getLunchOrderHistory,
   getLunchPeople,
@@ -26,6 +29,7 @@ import {
   lunchKeys,
   updateLunchOrder,
   type LunchOrder,
+  type LunchOrderPortionInput,
   type LunchOrderUpdateInput,
   type LunchSelectionType,
 } from "@/api/lunch.api";
@@ -54,6 +58,10 @@ import { useAuthStore } from "@/store/auth.store";
 
 const NOTE_SUGGESTIONS = ["Cơm thêm", "Rau thêm"];
 
+type CartPortion = LunchOrderPortionInput & {
+  id: string;
+};
+
 export default function LunchPage() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -66,6 +74,8 @@ export default function LunchPage() {
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [beneficiaryUserId, setBeneficiaryUserId] = useState("");
   const [note, setNote] = useState("");
+  const [cartPortions, setCartPortions] = useState<CartPortion[]>([]);
+  const [cartRequestId, setCartRequestId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<LunchOrder | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<LunchOrder | null>(null);
   const [reviewTarget, setReviewTarget] = useState<LunchOrder | null>(null);
@@ -109,10 +119,14 @@ export default function LunchPage() {
     ]);
   };
 
-  const createMutation = useMutation({
-    mutationFn: createLunchOrder,
-    onSuccess: (order) => {
-      toast.success(`Đặt cơm thành công. Sổ công nợ đã ghi ${formatCurrency(-order.price)}.`);
+  const batchMutation = useMutation({
+    mutationFn: createLunchOrderBatch,
+    onSuccess: (result) => {
+      toast.success(
+        `Đã đặt ${result.orders.length} phần. Sổ công nợ đã ghi ${formatCurrency(-result.totalPrice)}.`,
+      );
+      setCartPortions([]);
+      setCartRequestId(null);
       resetOrderForm();
       refreshLunchData();
     },
@@ -156,8 +170,9 @@ export default function LunchPage() {
   const todayOrders = useMemo(() => {
     const byId = new Map<string, LunchOrder>();
 
-    if (today?.myMealOrder) {
-      byId.set(today.myMealOrder.id, today.myMealOrder);
+    const myOrders = today?.myMealOrders ?? (today?.myMealOrder ? [today.myMealOrder] : []);
+    for (const order of myOrders) {
+      byId.set(order.id, order);
     }
 
     for (const order of today?.ordersPlacedByMe ?? []) {
@@ -187,10 +202,15 @@ export default function LunchPage() {
   );
   const walletBalance = today?.walletBalance ?? 0;
   const insufficientBalance = !!menu && walletBalance < menu.price;
-  const cannotSponsor = !!beneficiaryUserId && insufficientBalance;
-  const hasExistingSelfOrder = !editingOrder && !beneficiaryUserId && !!today?.myMealOrder;
+  const sponsoredCartTotal = cartPortions
+    .filter((portion) => !!portion.beneficiaryUserId)
+    .reduce((total) => total + (menu?.price ?? 0), 0);
+  const currentPortionIsSponsored = !!beneficiaryUserId;
+  const cannotSponsor = currentPortionIsSponsored && walletBalance < sponsoredCartTotal + (menu?.price ?? 0);
+  const cannotSubmitCart = sponsoredCartTotal > walletBalance;
+  const cartTotal = cartPortions.length * (menu?.price ?? 0);
   const requiredItemCount = selectionType === "COMBO" ? 2 : 1;
-  const isBusy = createMutation.isPending || updateMutation.isPending;
+  const isBusy = batchMutation.isPending || updateMutation.isPending;
 
   function resetOrderForm() {
     setSelectionType("COMBO");
@@ -221,7 +241,7 @@ export default function LunchPage() {
     setNote(nextParts.join(" + "));
   }
 
-  function submitOrder() {
+  function saveCurrentPortion() {
     if (!menu || !menu.acceptingOrders) {
       toast.error("Menu đã chốt hoặc chưa mở nhận đơn.");
       return;
@@ -237,13 +257,8 @@ export default function LunchPage() {
       return;
     }
 
-    if (hasExistingSelfOrder) {
-      toast.error("Bạn đã có phần ăn hôm nay. Hãy sửa đơn hiện tại hoặc chọn đặt hộ người khác.");
-      return;
-    }
-
     if (cannotSponsor) {
-      toast.error("Số dư quỹ không đủ để trả hộ phần ăn này.");
+      toast.error("Số dư quỹ không đủ để trả hộ các phần đang có trong giỏ.");
       return;
     }
 
@@ -259,12 +274,38 @@ export default function LunchPage() {
       return;
     }
 
-    createMutation.mutate({
-      menuId: menu.id,
+    setCartPortions((current) => [
+      ...current,
+      {
+        id: createCartPortionId(),
       beneficiaryUserId: beneficiaryUserId || undefined,
       selectionType,
       itemIds: selectedItemIds,
       note: note.trim(),
+      },
+    ]);
+    setCartRequestId(null);
+    toast.success("Đã thêm phần ăn vào giỏ. Bạn có thể chọn thêm phần khác hoặc đặt tất cả cùng lúc.");
+    resetOrderForm();
+  }
+
+  function submitCart() {
+    if (!menu || cartPortions.length === 0) {
+      return;
+    }
+    const clientRequestId = cartRequestId ?? createCartRequestId();
+    if (!cartRequestId) {
+      setCartRequestId(clientRequestId);
+    }
+    batchMutation.mutate({
+      menuId: menu.id,
+      clientRequestId,
+      portions: cartPortions.map((portion) => ({
+        beneficiaryUserId: portion.beneficiaryUserId,
+        selectionType: portion.selectionType,
+        itemIds: portion.itemIds,
+        note: portion.note,
+      })),
     });
   }
 
@@ -346,7 +387,7 @@ export default function LunchPage() {
             <LunchMetric
               label="Phần bạn đã đặt"
               value={todayOrders.length}
-              hint={today.myMealOrder ? "Đã có phần cho bạn" : "Bạn chưa đặt phần của mình"}
+              hint={todayOrders.length > 0 ? "Bạn có thể đặt thêm phần nếu cần" : "Bạn chưa đặt phần nào"}
             />
             <LunchMetric
               label="Công nợ hiện tại"
@@ -391,9 +432,18 @@ export default function LunchPage() {
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.8fr)] lg:gap-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>{editingOrder ? `Sửa phần của ${editingOrder.beneficiary.fullName}` : "Chọn phần ăn"}</CardTitle>
+                    <CardTitle>{editingOrder ? `Sửa phần của ${editingOrder.beneficiary.fullName}` : "Tạo phần ăn"}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-5">
+                    {!editingOrder && (
+                      <Alert className="border-emerald-200 bg-emerald-50/70 text-emerald-950">
+                        <ShoppingCart />
+                        <AlertTitle>Mỗi phần cơm chọn đúng 2 món</AlertTitle>
+                        <AlertDescription>
+                          Thêm từng phần vào giỏ, sau đó đặt tất cả cùng lúc. Bạn có thể tạo nhiều phần cho mình hoặc đặt hộ đồng nghiệp.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     {!editingOrder && (
                       <div className="space-y-2">
                         <Label htmlFor="lunch-beneficiary">Người nhận phần ăn</Label>
@@ -469,7 +519,7 @@ export default function LunchPage() {
 
                 <Card className="h-fit lg:sticky lg:top-6">
                   <CardHeader>
-                    <CardTitle>Xác nhận phần ăn</CardTitle>
+                    <CardTitle>{editingOrder ? "Xác nhận chỉnh sửa" : "Phần đang tạo"}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2 rounded-xl bg-slate-50 p-3">
@@ -507,14 +557,6 @@ export default function LunchPage() {
                       </div>
                     )}
 
-                    {hasExistingSelfOrder && (
-                      <Alert>
-                        <AlertTriangle />
-                        <AlertTitle>Bạn đã đặt phần của mình</AlertTitle>
-                        <AlertDescription>Chọn “Sửa món” ở đơn bên dưới hoặc chọn một đồng nghiệp để đặt hộ.</AlertDescription>
-                      </Alert>
-                    )}
-
                     {insufficientBalance && !editingOrder && (
                       <Alert className="border-amber-200 bg-amber-50 text-amber-900">
                         <AlertTriangle />
@@ -532,13 +574,12 @@ export default function LunchPage() {
                         type="button"
                         size="lg"
                         className="w-full"
-                        onClick={submitOrder}
+                        onClick={saveCurrentPortion}
                         disabled={
                           !menu.acceptingOrders ||
                           !today.canOrder ||
                           isBusy ||
                           selectedItemIds.length !== requiredItemCount ||
-                          hasExistingSelfOrder ||
                           cannotSponsor
                         }
                       >
@@ -547,10 +588,10 @@ export default function LunchPage() {
                           : editingOrder
                             ? "Lưu thay đổi"
                             : insufficientBalance && !beneficiaryUserId
-                              ? "Đặt và ghi nợ"
+                              ? "Thêm phần vào giỏ (ghi nợ)"
                               : beneficiaryUserId
-                                ? "Xác nhận đặt hộ"
-                                : "Xác nhận đặt cơm"}
+                                ? "Thêm phần đặt hộ vào giỏ"
+                                : "Thêm phần vào giỏ"}
                       </Button>
                       {editingOrder && (
                         <Button type="button" variant="ghost" onClick={resetOrderForm} disabled={isBusy}>
@@ -558,6 +599,94 @@ export default function LunchPage() {
                         </Button>
                       )}
                     </div>
+
+                    {!editingOrder && (
+                      <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <ShoppingCart className="size-4 text-emerald-700" aria-hidden="true" />
+                            <p className="text-sm font-semibold">Giỏ đặt cơm</p>
+                          </div>
+                          <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                            {cartPortions.length} phần
+                          </span>
+                        </div>
+
+                        {cartPortions.length === 0 ? (
+                          <p className="rounded-lg border border-dashed border-emerald-200 bg-white/70 p-3 text-xs text-muted-foreground">
+                            Chưa có phần nào trong giỏ. Chọn món rồi bấm “Thêm phần vào giỏ”.
+                          </p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {cartPortions.map((portion, index) => {
+                              const recipient = portion.beneficiaryUserId
+                                ? people.find((person) => person.id === portion.beneficiaryUserId)?.fullName ?? "Đồng nghiệp"
+                                : "Tôi";
+                              const dishes = portion.itemIds
+                                .map((itemId) => [...menu.regularItems, ...menu.specialItems].find((item) => item.id === itemId)?.name)
+                                .filter(Boolean)
+                                .join(" + ");
+                              return (
+                                <li key={portion.id} className="flex gap-2 rounded-lg border bg-white p-2.5">
+                                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-800">
+                                    {index + 1}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-semibold">{recipient} · {portion.selectionType === "COMBO" ? "Cơm 2 món" : "Món đơn"}</p>
+                                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{dishes}</p>
+                                    {portion.note && <p className="mt-0.5 text-[11px] text-muted-foreground">Ghi chú: {portion.note}</p>}
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="size-7 text-red-600 hover:text-red-700"
+                                    aria-label={`Bỏ phần ${index + 1} khỏi giỏ`}
+                                    onClick={() => {
+                                      setCartPortions((current) => current.filter((item) => item.id !== portion.id));
+                                      setCartRequestId(null);
+                                    }}
+                                    disabled={isBusy}
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+
+                        {cannotSubmitCart && cartPortions.length > 0 && (
+                          <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+                            <AlertTriangle />
+                            <AlertDescription>
+                              Quỹ hiện không đủ để trả hộ tất cả phần trong giỏ. Bỏ bớt phần đặt hộ hoặc nạp thêm quỹ trước khi đặt.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Tạm tính</span>
+                          <strong>{formatCurrency(cartTotal)}</strong>
+                        </div>
+                        <Button
+                          type="button"
+                          className="w-full"
+                          size="lg"
+                          onClick={submitCart}
+                          disabled={
+                            cartPortions.length === 0 ||
+                            !menu.acceptingOrders ||
+                            !today.canOrder ||
+                            isBusy ||
+                            cannotSubmitCart
+                          }
+                        >
+                          <CirclePlus aria-hidden="true" />
+                          {isBusy ? "Đang gửi đơn..." : `Đặt ${cartPortions.length} phần · ${formatCurrency(cartTotal)}`}
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -746,6 +875,18 @@ export default function LunchPage() {
       </Dialog>
     </div>
   );
+}
+
+function createCartPortionId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function createCartRequestId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `order_${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
 }
 
 function SummaryRow({
