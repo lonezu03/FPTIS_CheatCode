@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 ## Repository state
 
@@ -11,7 +11,8 @@ Last updated: 2026-08-25
   `https://https-github-com-lonezu03-fptis.onrender.com/api`.
 - Commit `41558501` adds the shared Codex instructions/context. Commit `a91ae9aa`
   contains the mobile UI/permission release and lunch regression test described
-  below; both are on `origin/main`.
+  below. Commit `43405745` contains the fitness-history transaction fix; all
+  three are on `origin/main`.
 - `backend/demo/` is an untracked nested legacy repository and is not the active
   backend. Do not stage it accidentally.
 
@@ -72,7 +73,8 @@ Committed in `a91ae9aa`:
 - `mobile/fittrack_mobile/pubspec.yaml` and `pubspec.lock`
 - `backend/src/test/java/com/fittrack/lunch/service/LunchServiceIntegrationTest.java`
 
-Current fitness fix (pending Render deployment):
+Fitness-history transaction fix committed in `43405745` and pushed to `main`;
+production Render health was confirmed after the push:
 
 - `backend/src/main/java/com/fittrack/workout/service/WorkoutService.java`
 - `backend/src/main/java/com/fittrack/nutrition/service/NutritionService.java`
@@ -92,6 +94,11 @@ Current fitness fix (pending Render deployment):
   `B169470E67159011B494B741E10E0E90223A67280CECCD230E249659E6C88ADE`.
 - APK manifest contains `android.permission.POST_NOTIFICATIONS`.
 - Web checks were not rerun because this change set did not modify web source.
+- Remote `main` was confirmed to contain
+  `434057458b358e7a9acebb298bc500942246a4a8`.
+- On 2026-08-26, production `GET /api/health` returned HTTP `200` with
+  application and database status both `UP`; response request ID was
+  `aecbaf98-3389-4336-94f9-b53741a7e0e9`.
 
 ## Important decisions
 
@@ -115,9 +122,10 @@ Current fitness fix (pending Render deployment):
 
 - The new Android APK still needs complete hands-on testing on the user's physical
   device with an admin account that has all module permissions.
-- The fitness lazy-loading fix is pending a Render deployment. If a `500` remains
-  after that deploy, capture the new request ID and search the same ID in Render
-  logs.
+- The fitness fix is pushed and production is healthy, but the public health
+  response does not expose the running commit. Its authenticated workout and
+  meal-history paths still need validation on the physical device. If a `500`
+  remains, capture the new request ID and search the same ID in Render logs.
 - Android background work is scheduled periodically, but the operating system may
   delay it; it is not exact push delivery. True immediate remote notification
   would require FCM/APNs integration.
@@ -131,17 +139,14 @@ Current fitness fix (pending Render deployment):
 
 ## Current task
 
-Deploy the backend fitness-history transaction fix, then validate the Luyện tập
-tab with mobile release `1.1.2+4`.
+Validate the **Luyện tập** tab and remaining permission/file-picker behavior on a
+physical device with mobile release `1.1.2+4`.
 
 ## Exact next steps
 
-1. Push the fitness-fix commit to `main`.
-2. Wait for the Render backend Docker deployment to become healthy at
-   `/api/health`. No database migration and no new APK are required.
-3. In APK `1.1.2+4`, open **Luyện tập** and verify both **Buổi tập** and
+1. In APK `1.1.2+4`, open **Luyện tập** and verify both **Buổi tập** and
    **Nhật ký ăn** load existing records.
-4. If the module still fails, record the new `X-Request-Id` shown by the app and
+2. If the module still fails, record the new `X-Request-Id` shown by the app and
    correlate it with Render logs; the old request ID belongs to the pre-fix build.
-5. Continue the remaining notification/file-picker device checks and record the
+3. Continue the remaining notification/file-picker device checks and record the
    accepted mobile version here.
