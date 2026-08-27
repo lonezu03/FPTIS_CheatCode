@@ -257,6 +257,15 @@ Exact next steps for the next assistant:
 4. Lock a test user and use the admin UI to delete it; confirm it disappears from admin search while historical records remain queryable.
 5. Register a new account and confirm the response allows immediate login without email verification. Keep password-reset OTP tests unchanged.
 
+## Android release build 2026-08-28
+
+- Built the current mobile source with `tool/build_android.ps1 -Mode release`.
+- APK: `mobile/fittrack_mobile/build/app/outputs/flutter-apk/app-release.apk` (40.4 MB), configured with the production Render API URL through `--dart-define=API_BASE_URL`.
+- SHA-256: `0E1C6CD245630E9CF0F011810E12272FC88064F6F8E8092EBFC90BFEAC24F074`.
+- SHA-1 sidecar: `42df28734557104ee6e6fd5f0285ad6b64853c9b`.
+- Build completed successfully. Flutter reported only the existing `workmanager_android` Kotlin plugin migration warning and an Android SDK XML version warning; no build errors.
+- This is a generated artifact and must not be committed. Rebuild after the next mobile source update.
+
 
 ## Feature batch 2026-08-27: email preference, editable playbooks, grouped workout history, multi-menu lunch
 
