@@ -52,6 +52,12 @@ const navGroups: NavGroup[] = [
     items: [
       { to: "/dashboard", label: "Tổng quan", description: "Hôm nay", icon: LayoutDashboard },
       { to: "/lunch", label: "Đặt cơm", description: "Menu hằng ngày", icon: Soup, highlight: true, feature: "lunchEnabled" },
+      { to: "/todos", label: "Việc cần làm", description: "Task cá nhân", icon: ListPlus, feature: "todoEnabled" },
+      { to: "/schedule", label: "Thời khóa biểu", description: "Lịch & nhắc việc", icon: CalendarDays, feature: "scheduleEnabled" },
+      { to: "/todos", label: "Việc cần làm", description: "Task cá nhân", icon: ListPlus, feature: "todoEnabled" },
+      { to: "/schedule", label: "Thời khóa biểu", description: "Lịch & nhắc việc", icon: CalendarDays, feature: "scheduleEnabled" },
+      { to: "/todos", label: "Việc cần làm", description: "Task cá nhân", icon: ListPlus, feature: "todoEnabled" },
+      { to: "/schedule", label: "Thời khóa biểu", description: "Lịch & nhắc việc", icon: CalendarDays, feature: "scheduleEnabled" },
     ],
   },
   {
@@ -80,6 +86,7 @@ const navGroups: NavGroup[] = [
       { to: "/admin/lunch", label: "Điều phối cơm", icon: ShieldCheck, adminOnly: true },
       { to: "/admin/users", label: "Quản lý tài khoản", icon: UsersRound, adminOnly: true },
       { to: "/admin/notifications", label: "Gửi thông báo", icon: BellRing, adminOnly: true },
+      { to: "/admin/notification-playbooks", label: "Kịch bản notification", icon: BellRing, adminOnly: true },
     ],
   },
 ];
@@ -105,6 +112,8 @@ export default function AppLayout() {
         fitnessEnabled: profile.fitnessEnabled,
         healthEnabled: profile.healthEnabled,
         chatbotEnabled: profile.chatbotEnabled,
+        todoEnabled: profile.todoEnabled,
+        scheduleEnabled: profile.scheduleEnabled,
         passwordChangeRequired: profile.passwordChangeRequired,
       });
       return profile;

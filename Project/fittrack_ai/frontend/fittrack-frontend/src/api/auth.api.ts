@@ -11,6 +11,8 @@ export type AuthResponse = {
   fitnessEnabled: boolean;
   healthEnabled: boolean;
   chatbotEnabled: boolean;
+  todoEnabled: boolean;
+  scheduleEnabled: boolean;
   passwordChangeRequired: boolean;
 };
 

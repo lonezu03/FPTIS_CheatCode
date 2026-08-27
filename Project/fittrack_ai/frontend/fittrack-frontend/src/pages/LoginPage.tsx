@@ -65,6 +65,8 @@ export default function LoginPage() {
         fitnessEnabled: data.fitnessEnabled,
         healthEnabled: data.healthEnabled,
         chatbotEnabled: data.chatbotEnabled,
+        todoEnabled: data.todoEnabled,
+        scheduleEnabled: data.scheduleEnabled,
         passwordChangeRequired: data.passwordChangeRequired,
       });
       navigate(data.passwordChangeRequired ? "/change-password" : "/dashboard", { replace: true });

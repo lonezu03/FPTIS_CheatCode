@@ -103,6 +103,12 @@ public class AdminUserService {
         if (request.chatbotEnabled() != null) {
             target.setChatbotEnabled(request.chatbotEnabled());
         }
+        if (request.todoEnabled() != null) {
+            target.setTodoEnabled(request.todoEnabled());
+        }
+        if (request.scheduleEnabled() != null) {
+            target.setScheduleEnabled(request.scheduleEnabled());
+        }
         AdminUserResponse response = toResponse(userRepository.save(target));
         auditService.record(currentAdmin, "USER_UPDATED", "USER", target.getId(), Map.of(
                 "role", target.getRole(),
@@ -110,7 +116,9 @@ public class AdminUserService {
                 "lunchEnabled", Boolean.TRUE.equals(target.getLunchEnabled()),
                 "fitnessEnabled", Boolean.TRUE.equals(target.getFitnessEnabled()),
                 "healthEnabled", Boolean.TRUE.equals(target.getHealthEnabled()),
-                "chatbotEnabled", Boolean.TRUE.equals(target.getChatbotEnabled())
+                "chatbotEnabled", Boolean.TRUE.equals(target.getChatbotEnabled()),
+                "todoEnabled", Boolean.TRUE.equals(target.getTodoEnabled()),
+                "scheduleEnabled", Boolean.TRUE.equals(target.getScheduleEnabled())
         ));
         return response;
     }
@@ -140,6 +148,8 @@ public class AdminUserService {
                 Boolean.TRUE.equals(user.getFitnessEnabled()),
                 Boolean.TRUE.equals(user.getHealthEnabled()),
                 Boolean.TRUE.equals(user.getChatbotEnabled()),
+                Boolean.TRUE.equals(user.getTodoEnabled()),
+                Boolean.TRUE.equals(user.getScheduleEnabled()),
                 user.getCreatedAt()
         );
     }

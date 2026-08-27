@@ -15,6 +15,11 @@ export type DashboardToday = {
   fatProgressPercent: number;
   mealCount: number;
   workoutCount: number;
+  lunchEnabled: boolean;
+  fitnessEnabled: boolean;
+  healthEnabled: boolean;
+  todoEnabled: boolean;
+  scheduleEnabled: boolean;
   latestWorkoutNote: string | null;
 };
 

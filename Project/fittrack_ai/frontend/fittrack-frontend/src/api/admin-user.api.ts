@@ -12,6 +12,8 @@ export type AdminUser = {
   fitnessEnabled: boolean;
   healthEnabled: boolean;
   chatbotEnabled: boolean;
+  todoEnabled: boolean;
+  scheduleEnabled: boolean;
   createdAt: string;
 };
 
@@ -43,6 +45,8 @@ export async function updateAdminUser(
     fitnessEnabled?: boolean;
     healthEnabled?: boolean;
     chatbotEnabled?: boolean;
+    todoEnabled?: boolean;
+    scheduleEnabled?: boolean;
   },
 ): Promise<AdminUser> {
   const response = await api.patch<AdminUser>(`/admin/users/${id}`, payload);

@@ -22,6 +22,8 @@ public class UserMapper {
                 .fitnessEnabled(Boolean.TRUE.equals(user.getFitnessEnabled()))
                 .healthEnabled(Boolean.TRUE.equals(user.getHealthEnabled()))
                 .chatbotEnabled(Boolean.TRUE.equals(user.getChatbotEnabled()))
+                .todoEnabled(Boolean.TRUE.equals(user.getTodoEnabled()))
+                .scheduleEnabled(Boolean.TRUE.equals(user.getScheduleEnabled()))
                 .passwordChangeRequired(Boolean.TRUE.equals(user.getPasswordChangeRequired()))
                 .assistantConsent(Boolean.TRUE.equals(user.getAssistantConsent()))
                 .emailNotificationsEnabled(Boolean.TRUE.equals(user.getEmailNotificationsEnabled()))

@@ -22,6 +22,8 @@ public final class AdminUserDtos {
             boolean fitnessEnabled,
             boolean healthEnabled,
             boolean chatbotEnabled,
+            boolean todoEnabled,
+            boolean scheduleEnabled,
             LocalDateTime createdAt
     ) {
     }
@@ -34,10 +36,12 @@ public final class AdminUserDtos {
             Boolean lunchEnabled,
             Boolean fitnessEnabled,
             Boolean healthEnabled,
-            Boolean chatbotEnabled
+            Boolean chatbotEnabled,
+            Boolean todoEnabled,
+            Boolean scheduleEnabled
     ) {
         public UpdateAdminUserRequest(String fullName, String role, Boolean active) {
-            this(fullName, role, active, null, null, null, null);
+            this(fullName, role, active, null, null, null, null, null, null);
         }
     }
 

@@ -81,6 +81,11 @@ public class DashboardService {
                 .fatProgressPercent(percent(totalFat, targetFat))
                 .mealCount(meals.size())
                 .workoutCount(workouts.size())
+                .lunchEnabled(Boolean.TRUE.equals(user.getLunchEnabled()))
+                .fitnessEnabled(Boolean.TRUE.equals(user.getFitnessEnabled()))
+                .healthEnabled(Boolean.TRUE.equals(user.getHealthEnabled()))
+                .todoEnabled(Boolean.TRUE.equals(user.getTodoEnabled()))
+                .scheduleEnabled(Boolean.TRUE.equals(user.getScheduleEnabled()))
                 .latestWorkoutNote(latestWorkoutNote)
                 .build();
     }

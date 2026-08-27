@@ -67,6 +67,14 @@ public class FeatureAccessFilter extends OncePerRequestFilter {
                 && !Boolean.TRUE.equals(user.getHealthEnabled())) {
             return "Chăm sóc sức khỏe";
         }
+        if (path.startsWith("/api/todos")
+                && !Boolean.TRUE.equals(user.getTodoEnabled())) {
+            return "Todo";
+        }
+        if (path.startsWith("/api/schedule")
+                && !Boolean.TRUE.equals(user.getScheduleEnabled())) {
+            return "Thời khóa biểu";
+        }
         return null;
     }
 

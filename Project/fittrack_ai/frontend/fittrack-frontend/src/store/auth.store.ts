@@ -9,6 +9,8 @@ export type AuthUser = {
   fitnessEnabled: boolean;
   healthEnabled: boolean;
   chatbotEnabled: boolean;
+  todoEnabled: boolean;
+  scheduleEnabled: boolean;
   passwordChangeRequired: boolean;
 };
 

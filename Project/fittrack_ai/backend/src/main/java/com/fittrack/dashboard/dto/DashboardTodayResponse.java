@@ -23,6 +23,12 @@ public class DashboardTodayResponse {
 
     private Integer mealCount;
     private Integer workoutCount;
+
+    private boolean lunchEnabled;
+    private boolean fitnessEnabled;
+    private boolean healthEnabled;
+    private boolean todoEnabled;
+    private boolean scheduleEnabled;
     private String latestWorkoutNote;
 }
 

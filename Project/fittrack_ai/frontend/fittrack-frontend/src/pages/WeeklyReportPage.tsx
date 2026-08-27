@@ -161,6 +161,10 @@ function WeeklyReportContent({
         })}
       </div>
 
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 sm:p-5">
+        <div className="flex items-start gap-3"><Lightbulb className="mt-0.5 size-5 shrink-0 text-emerald-700"/><div><p className="font-semibold text-emerald-950">Tóm tắt để hành động</p><p className="mt-1 text-sm leading-6 text-emerald-900/70">{buildActionSummary(report)}</p></div></div>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         <MacroProgressCard
           title="Mức đạt năng lượng"
@@ -295,6 +299,14 @@ function WeeklyReportContent({
       </Card>
     </>
   );
+}
+
+function buildActionSummary(report: WeeklyReport) {
+  if (report.totalMeals === 0 && report.totalWorkouts === 0) return "Chưa đủ dữ liệu để đánh giá. Hãy bắt đầu bằng việc ghi một bữa ăn và một hoạt động trong hôm nay.";
+  if (report.caloriesCompliancePercent < 85) return "Năng lượng trung bình đang thấp. Ưu tiên thêm một bữa phụ có tinh bột lành mạnh và theo dõi phản hồi cơ thể trong 2–3 ngày.";
+  if (report.proteinCompliancePercent < 85) return "Protein đang dưới mục tiêu. Chọn trước một nguồn đạm cho bữa tiếp theo thay vì cố bù dồn vào cuối ngày.";
+  if (report.workoutDays < 3) return "Tuần này vận động chưa đều. Đặt ngay một lịch tập ngắn 20–30 phút để tạo điểm neo cho tuần sau.";
+  return "Các chỉ số chính đang đi đúng hướng. Giữ nguyên thói quen hiện tại và chỉ thay đổi một yếu tố mỗi tuần để biết điều gì thực sự hiệu quả.";
 }
 
 function BodyChangeCard({

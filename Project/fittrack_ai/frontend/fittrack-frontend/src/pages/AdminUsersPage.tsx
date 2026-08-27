@@ -46,6 +46,8 @@ type UserAccessPayload = {
   fitnessEnabled: boolean;
   healthEnabled: boolean;
   chatbotEnabled: boolean;
+  todoEnabled: boolean;
+  scheduleEnabled: boolean;
 };
 
 export default function AdminUsersPage() {
@@ -294,6 +296,8 @@ function EditUserDialog({
   const [fitnessEnabled, setFitnessEnabled] = useState(user.fitnessEnabled);
   const [healthEnabled, setHealthEnabled] = useState(user.healthEnabled);
   const [chatbotEnabled, setChatbotEnabled] = useState(user.chatbotEnabled);
+  const [todoEnabled, setTodoEnabled] = useState(user.todoEnabled);
+  const [scheduleEnabled, setScheduleEnabled] = useState(user.scheduleEnabled);
 
   const isSelf = user.id === currentUserId;
 
@@ -349,6 +353,8 @@ function EditUserDialog({
             <PermissionToggle label="Fitness" checked={fitnessEnabled} onChange={setFitnessEnabled} />
             <PermissionToggle label="Chăm sóc sức khỏe" checked={healthEnabled} onChange={setHealthEnabled} />
             <PermissionToggle label="Trợ lý AI" checked={chatbotEnabled} onChange={setChatbotEnabled} />
+            <PermissionToggle label="Todo" checked={todoEnabled} onChange={setTodoEnabled} />
+            <PermissionToggle label="Thời khóa biểu" checked={scheduleEnabled} onChange={setScheduleEnabled} />
           </div>
         </div>
 
@@ -366,6 +372,8 @@ function EditUserDialog({
                 fitnessEnabled,
                 healthEnabled,
                 chatbotEnabled,
+                todoEnabled,
+                scheduleEnabled,
               })
             }
             disabled={pending || !fullName.trim()}

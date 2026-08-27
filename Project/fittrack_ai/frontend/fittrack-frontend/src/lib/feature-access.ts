@@ -4,7 +4,9 @@ export type FeaturePermission =
   | "lunchEnabled"
   | "fitnessEnabled"
   | "healthEnabled"
-  | "chatbotEnabled";
+  | "chatbotEnabled"
+  | "todoEnabled"
+  | "scheduleEnabled";
 
 export function canUseFeature(user: AuthUser | null, feature: FeaturePermission) {
   return user?.role === "ADMIN" || user?.[feature] !== false;

@@ -59,6 +59,12 @@ public class User {
     private Boolean chatbotEnabled;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean todoEnabled;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean scheduleEnabled;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean passwordChangeRequired;
 
     @Column(nullable = false, columnDefinition = "bigint default 0")
@@ -104,6 +110,14 @@ public class User {
 
         if (this.chatbotEnabled == null) {
             this.chatbotEnabled = false;
+        }
+
+        if (this.todoEnabled == null) {
+            this.todoEnabled = false;
+        }
+
+        if (this.scheduleEnabled == null) {
+            this.scheduleEnabled = false;
         }
 
         if (this.passwordChangeRequired == null) {

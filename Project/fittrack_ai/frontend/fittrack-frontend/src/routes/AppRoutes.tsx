@@ -23,6 +23,9 @@ const LunchPage = lazy(() => import("../pages/LunchPage"));
 const AdminLunchPage = lazy(() => import("../pages/AdminLunchPage"));
 const AdminUsersPage = lazy(() => import("../pages/AdminUsersPage"));
 const AdminNotificationsPage = lazy(() => import("../pages/AdminNotificationsPage"));
+const AdminNotificationPlaybooksPage = lazy(() => import("../pages/AdminNotificationPlaybooksPage"));
+const TodoPage = lazy(() => import("../pages/TodoPage"));
+const SchedulePage = lazy(() => import("../pages/SchedulePage"));
 const ChangePasswordPage = lazy(() => import("../pages/ChangePasswordPage"));
 
 export default function AppRoutes() {
@@ -57,11 +60,14 @@ export default function AppRoutes() {
                 <Route path="/health" element={<HealthPage />} />
               </Route>
               <Route path="/profile" element={<ProfilePage />} />
+              <Route element={<FeatureRoute feature="todoEnabled" />}><Route path="/todos" element={<TodoPage />} /></Route>
+              <Route element={<FeatureRoute feature="scheduleEnabled" />}><Route path="/schedule" element={<SchedulePage />} /></Route>
 
               <Route element={<AdminRoute />}>
                 <Route path="/admin/lunch" element={<AdminLunchPage />} />
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
+                <Route path="/admin/notification-playbooks" element={<AdminNotificationPlaybooksPage />} />
               </Route>
             </Route>
           </Route>
