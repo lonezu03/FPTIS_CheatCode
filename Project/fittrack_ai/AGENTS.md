@@ -6,6 +6,21 @@ These instructions apply to everything under `Project/fittrack_ai/`.
 Read `docs/CODEX_CONTEXT.md` before starting substantial work and update it
 when a material task is completed or handed off to another machine.
 
+## AI assistant handoff links
+
+Use these links when another assistant continues the work. The repository-local
+context is the source of truth; public assistant documentation is provided only
+for tool-specific conventions.
+
+- [Codex](https://developers.openai.com/codex/): read this file and `docs/CODEX_CONTEXT.md` first.
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code): preserve the same branch, migration, and secret-handling rules.
+- [Gemini Code Assist](https://cloud.google.com/gemini/docs/codeassist/overview): use the backend assistant integration only through configured server-side credentials.
+- [GitHub Copilot](https://docs.github.com/en/copilot): review the active diff and CI checks before suggesting changes.
+
+No assistant should infer production credentials from these links or commit
+secrets. Before editing, check the current task and known issues in
+`docs/CODEX_CONTEXT.md`, then update that file when handing work off.
+
 ## Project
 
 FitTrack is a company lunch-ordering, fitness, nutrition, and health-management

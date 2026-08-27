@@ -9,5 +9,5 @@ export type FeaturePermission =
   | "scheduleEnabled";
 
 export function canUseFeature(user: AuthUser | null, feature: FeaturePermission) {
-  return user?.role === "ADMIN" || user?.[feature] !== false;
+  return user?.role === "ADMIN" || user?.[feature] === true;
 }

@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-08-26
+Last updated: 2026-08-27
 
 ## Repository state
 
@@ -158,7 +158,7 @@ physical device with mobile release `1.1.2+4`.
 
 ## Current task
 
-Complete the uncommitted lunch menu/editor and multi-portion ordering change set.
+Fix the Todo/Schedule production regression and document the handoff for other AI assistants.
 
 ## Completed in the current uncommitted change set
 
@@ -191,3 +191,23 @@ Complete the uncommitted lunch menu/editor and multi-portion ordering change set
 3. Manually verify: import → edit or delete/reimport before orders; create two
    portions in one cart; edit/cancel only one portion; summarize counts both.
 4. Keep the mobile source changes unbuilt until the user requests an APK.
+
+## Hotfix 2026-08-27: Todo/Schedule production regression
+
+- Root cause: the previous change added the V9 database migration and frontend screens but did not include the backend Todo/Schedule entity, DTO, repository, service, or controller classes. This caused the production POST calls to fail with HTTP 500.
+- Permission root cause: `AuthResponse` and `AuthService` did not return `todoEnabled` or `scheduleEnabled`; frontend feature gates treated an undefined permission as allowed. The gate is now deny-by-default, and the login/refresh/profile payloads include both flags.
+- Backend fix: added `/api/todos` and `/api/schedule` CRUD controllers with DTO validation, user ownership checks, and V9-compatible JPA mappings. `FeatureAccessFilter` blocks both routes when the user lacks the corresponding permission.
+- Web fix: removed duplicated Todo/Schedule sidebar entries and preserved one item per module. Direct route access is also protected.
+- Verification: Java 21 Maven tests completed without Maven failure; frontend TypeScript and Vite production build passed. Testcontainers integration coverage could not start in the sandbox because Docker was unavailable.
+- Deployment note: deploy the backend before or together with the web client so Flyway V9 and the new endpoints are available. After deployment, verify `POST /api/todos` and `POST /api/schedule` with an admin and with a user whose flags are false.
+
+## AI assistant handoff
+
+The canonical assistant instructions are in [`AGENTS.md`](../AGENTS.md). Continue using the same branch and read this context before substantial work. Useful external references for other assistants are [Codex](https://developers.openai.com/codex/), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Gemini Code Assist](https://cloud.google.com/gemini/docs/codeassist/overview), and [GitHub Copilot](https://docs.github.com/en/copilot). These links are documentation references only; credentials must remain in Render, Vercel, Aiven, local ignored files, or other secret managers.
+
+Exact next steps for the next assistant:
+
+1. Correlate any remaining production 500 with its `X-Request-Id` in Render logs.
+2. Confirm Flyway reports V9 applied and inspect the production database tables `todos` and `schedule_items`.
+3. Test permission transitions: disabled user sees neither menu nor page and receives HTTP 403; enabled user can create and delete records; admin can manage permissions.
+4. Keep `backend/demo/`, `target/`, `dist/`, `node_modules/`, and credentials out of commits.
