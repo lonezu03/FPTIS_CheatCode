@@ -558,9 +558,9 @@ export default function AdminLunchPage() {
                 </Field>
 
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs text-muted-foreground">
-                    Mỗi dòng là một món. Nếu có món đơn, dùng dòng “+” để tách khỏi nhóm cơm 2 món.
-                  </p>
+                      <p className="text-xs text-muted-foreground">
+                        Mỗi dòng là một món. Dùng “+” cho món đơn; dùng “@DRINKS” hoặc “@EXTRAS” rồi nhập “Trà đào | 45000” để thêm món có giá riêng.
+                      </p>
                   <div className="flex gap-2 self-end sm:self-auto">
                     {editingMenuId && (
                       <Button type="button" variant="outline" onClick={resetMenuEditor} disabled={isSavingMenu}>
@@ -605,6 +605,7 @@ export default function AdminLunchPage() {
                   tone="regular"
                 />
                 <MenuPreviewGroup title="Món đơn · chọn 1" items={parsedMenu.specialItems} tone="special" />
+                <MenuPreviewGroup title="Món thêm / đồ uống · tính theo giá nhập" items={parsedMenu.extraItems} tone="extra" />
 
                 {parsedMenu.isValid && (
                   <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
@@ -1150,7 +1151,7 @@ function MenuPreviewGroup({
 }: {
   title: string;
   items: string[];
-  tone: "regular" | "special";
+  tone: "regular" | "special" | "extra";
 }) {
   return (
     <div className="space-y-2">
@@ -1168,7 +1169,9 @@ function MenuPreviewGroup({
               className={
                 tone === "regular"
                   ? "flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-950"
-                  : "flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-950"
+                  : tone === "special"
+                    ? "flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-950"
+                    : "flex items-center gap-2 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-950"
               }
             >
               <span className="text-xs font-semibold opacity-60">{index + 1}.</span>

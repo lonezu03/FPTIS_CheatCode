@@ -76,9 +76,10 @@ Deployment:
 - Registration does not require email verification or OTP; a newly created account can log in immediately. Forgot-password OTPs remain enabled and must be sent only to the email stored on the account; never accept an arbitrary destination email from the client.
 - A regular lunch portion selects exactly two dish slots above the `+` separator; both slots may reference the same regular dish. A special/single order selects exactly one dish below it.
 - Admin fund adjustments are explicit ledger actions: `ADD_FUND`, `REMOVE_FUND`, `ADD_DEBT`, or `REMOVE_DEBT`. Removing fund/debt cannot exceed the current bucket, and every manual adjustment requires an audit record and note when available.
-- Each lunch order records the configured price as debt (35,000 VND by default).
-  Insufficient balance does not block ordering. External payment/top-up requests
-  change balances only after admin approval.
+- Each lunch order records the base menu price plus the selected extra-item prices as debt (35,000 VND by default). Insufficient balance does not block ordering. External payment/top-up requests change balances only after admin approval.
+- Multiple lunch menus may be OPEN for the same date. Each menu is identified by its label/vendor and `createdBy` coordinator; when there are at least two menus, web/mobile must let the user select one, while a single menu keeps the legacy UX. The selected `menuId` scopes the cart and checkout.
+- Menu import supports `@DRINKS` or `@EXTRAS` followed by priced lines such as `Trà đào | 45000` or `Trà vải 50000`. Extra IDs may repeat in an order to represent quantity; each repeated line contributes its `unitPrice` to the order total and refund.
+- Email notification delivery is opt-in per user via `emailNotificationsEnabled`; menu broadcasts, generic notifications and playbooks must honor it. Password-reset OTP is security-critical and remains independent of this preference.
 - User-submitted foods and exercises require admin approval before general use.
 - The web uses secure HttpOnly auth cookies through the Vercel `/api` proxy. The
   mobile app persists refresh credentials in Keystore/Keychain until logout.
@@ -103,8 +104,8 @@ Deployment:
 - Do not edit generated/dependency directories such as `target/`, `build/`,
   `dist/`, `node_modules/`, `.pub-cache/`, or `.local-android-sdk/`.
 - Keep user-facing web/mobile text in Vietnamese unless the user asks otherwise.
-- When a feature exists on web and mobile, keep API payload names and permission flags identical; do not silently fall back to mock data.
-- Notification playbooks must support either all active users or an explicit selected-user list. Prefer selected recipients for personal or sensitive wellness messages to avoid notification fatigue.
+- When a feature exists on web and mobile, keep API payload names and permission flags identical; do not silently fall back to mock data. Current parity includes email preference, multi-menu/extra lunch checkout, grouped workout history, and notification playbook administration.
+- Notification playbooks must support either all active users or an explicit selected-user list. SELECTED requires nonempty IDs for active users only; invalid or locked IDs are rejected. Prefer selected recipients for personal or sensitive wellness messages to avoid notification fatigue. Web and mobile both expose playbook CRUD/edit/toggle/delete.
 - For production HTTP failures, retain and report `X-Request-Id`, then correlate
   it with Render logs before guessing at the cause.
 

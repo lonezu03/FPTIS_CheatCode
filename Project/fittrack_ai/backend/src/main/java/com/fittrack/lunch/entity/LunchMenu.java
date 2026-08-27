@@ -10,13 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(
-        name = "lunch_menus",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_lunch_menus_menu_date",
-                columnNames = "menu_date"
-        )
-)
+@Table(name = "lunch_menus")
 @Getter
 @Setter
 @Builder

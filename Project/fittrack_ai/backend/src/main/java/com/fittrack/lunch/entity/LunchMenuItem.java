@@ -48,6 +48,9 @@ public class LunchMenuItem {
 
     private Double fat;
 
+    @Column(name = "unit_price")
+    private Long unitPrice;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nutrition_food_id")
     private Food nutritionFood;

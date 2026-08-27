@@ -28,9 +28,9 @@ Tiền trong module được lưu theo số nguyên Việt Nam đồng. Đơn gi
 
 Admin có toàn bộ quyền của user và thêm các quyền:
 
-- Import thực đơn hằng ngày.
+- Import một hoặc nhiều bộ thực đơn trong cùng một ngày; mỗi menu có admin tạo/điều phối riêng.
 - Sửa toàn bộ danh sách món hoặc xóa menu nháp để import lại trước khi có đơn.
-- Chọn nhãn đơn, tên quán, ngày áp dụng, giờ chốt và đơn giá.
+- Chọn nhãn đơn, tên quán, ngày áp dụng, giờ chốt và đơn giá cơ bản; thêm đồ uống/món lẻ có đơn giá riêng.
 - Đóng đơn sớm hoặc mở lại đơn.
 - Xem tất cả phần ăn và các đơn chưa thanh toán.
 - Tổng hợp, copy nội dung gửi quán và xem số lượng theo từng món.
@@ -41,7 +41,7 @@ Danh sách admin được cấu hình bằng biến môi trường `ADMIN_EMAILS
 
 ## 3. Import thực đơn và ý nghĩa dấu `+`
 
-Admin dán nguyên văn thực đơn quán gửi. Mỗi dòng không rỗng là một món. Dòng chỉ chứa ký tự `+` là ranh giới giữa hai nhóm:
+Admin dán nguyên văn thực đơn quán gửi. Mỗi dòng không rỗng là một món. Dòng chỉ chứa ký tự `+` là ranh giới giữa hai nhóm. Có thể thêm section `@DRINKS` hoặc `@EXTRAS` cho món thêm/đồ uống có giá riêng:
 
 - Các món **trước** dấu `+`: món thường (`REGULAR`), dùng để ghép một phần cơm hai món.
 - Các món **sau** dấu `+`: món đơn/đặc biệt (`SPECIAL`), mỗi phần chỉ chọn một món.
@@ -60,6 +60,9 @@ Gà kho sả
 Cá ngừ kho
 +
 Phở bò
+@DRINKS
+Trà đào | 45000
+Trà vải 50000
 ```
 
 Quy tắc parse:
@@ -69,10 +72,11 @@ Quy tắc parse:
 - Dấu `+` phải nằm trên một dòng riêng và chỉ được xuất hiện tối đa một lần.
 - Nếu không có dấu `+`, tất cả món đều thuộc nhóm món thường.
 - Không chấp nhận tên món trùng nhau, không phân biệt chữ hoa/chữ thường.
-- Nếu có dấu `+`, phía sau phải có ít nhất một món đặc biệt.
-- Nhóm món thường có đúng một món là không hợp lệ vì không thể tạo phần hai món.
-- Thực đơn rỗng hoặc chỉ có dấu `+` là không hợp lệ.
-- Mỗi ngày chỉ có một thực đơn. Import trùng ngày bị từ chối để tránh hai danh sách nhận đơn song song; admin có thể dùng chức năng **Sửa menu** để thay thế menu đó trước khi có đơn.
+- Nếu có dấu `+`, phía sau phải có ít nhất một món đặc biệt; section `@DRINKS`/`@EXTRAS` nên đặt sau nhóm này.
+- Món trong section extra phải có giá dương theo dạng `Tên món | 45000` hoặc `Tên món 45000`.
+- Nhóm món thường có đúng một món là không hợp lệ vì không thể tạo phần hai món. Extra là món thêm đi kèm ít nhất một món cơm hoặc món đơn; menu chỉ có đồ uống mà không có base meal sẽ bị từ chối.
+- Tên món không được trùng, kể cả khác nhóm.
+- Một ngày có thể có nhiều menu mở đồng thời. User sẽ chọn bộ menu theo tên quán/nhãn đơn/admin điều phối; nếu chỉ có một menu, giao diện giữ nguyên UX cũ.
 
 Khi import thành công, thực đơn ở trạng thái `OPEN`. Tuy nhiên, user chỉ đặt được khi thực đơn vừa `OPEN` vừa chưa tới `cutoffAt`.
 
@@ -90,14 +94,15 @@ User chọn đúng một trong hai loại phần:
 
 | Loại | Mã | Quy tắc |
 | --- | --- | --- |
-| Cơm hai món | `COMBO` | Chọn đúng 2 món khác nhau trong nhóm trước dấu `+` |
+| Cơm hai món | `COMBO` | Chọn đúng 2 lượt món trong nhóm trước dấu `+`; cùng một món được chọn 2 lần |
 | Món đơn | `SINGLE` | Chọn đúng 1 món trong nhóm sau dấu `+` |
 
 Không được:
 
-- Chọn cùng một món hai lần.
-- Ghép một món thường với một món đặc biệt.
+- Chọn quá 2 lượt món cơm cho một phần.
+- Ghép một món thường với một món đặc biệt trong phần cơm.
 - Chọn hai món đặc biệt cho một phần.
+- Chọn extra không thuộc menu hoặc extra chưa có giá.
 - Gửi ID món thuộc thực đơn khác hoặc món không còn tồn tại.
 
 User có thể thêm ghi chú như `cơm thêm + rau thêm`. Ghi chú được làm sạch khoảng trắng, giới hạn 500 ký tự và được đặt trong ngoặc ở nội dung gửi quán.
@@ -120,7 +125,7 @@ Nếu user A chọn user B làm người nhận:
 
 - B là người nhận phần ăn.
 - A là người tạo đơn và là người trả hộ nếu quỹ của A đủ.
-- Hệ thống trừ đúng một đơn giá từ quỹ của A.
+- Hệ thống trừ đúng tổng giá của phần cơ bản và các extra đã chọn từ quỹ của A.
 - A và B tự hoàn tiền/đối soát với nhau bên ngoài hệ thống.
 - B có thể nhận nhiều phần trong ngày. Mỗi phần vẫn được lưu và tính tiền riêng; các bên tự đối soát tiền trả hộ bên ngoài hệ thống.
 
@@ -138,9 +143,9 @@ Nạp quỹ không tự động đổi trạng thái một đơn `UNPAID` cũ. A
 
 ### Đủ quỹ
 
-Nếu quỹ của người đặt/người trả lớn hơn hoặc bằng đơn giá:
+Nếu quỹ của người đặt/người trả lớn hơn hoặc bằng tổng giá phần (`giá cơ bản + tổng giá extra`):
 
-- Trừ toàn bộ đơn giá trong một giao dịch `ORDER_DEBIT`.
+- Trừ toàn bộ tổng giá trong một giao dịch `ORDER_DEBIT`.
 - Không trừ từng phần và không cho số dư âm.
 - Đơn nhận trạng thái `PAID_FUND`.
 - Giao dịch lưu số dư sau giao dịch và liên kết tới đơn để đối soát.
@@ -153,7 +158,7 @@ Với đơn giá mặc định, số dư thay đổi như sau:
 
 ### Không đủ quỹ
 
-Nếu số dư nhỏ hơn đơn giá:
+Nếu số dư nhỏ hơn tổng giá phần:
 
 - Hệ thống vẫn tạo và giữ phần ăn.
 - Không trừ một phần số dư và không tạo số dư âm.
@@ -200,8 +205,8 @@ Tổng hợp chỉ lấy các đơn `ACTIVE`; đơn `CANCELLED` không được 
 
 - Tổng số phần.
 - Số đơn `PAID_FUND`, `PAID_EXTERNAL` và `UNPAID`.
-- Tổng tiền bằng `số phần × đơn giá`.
-- Số lượng xuất hiện của từng món.
+- Tổng tiền bằng tổng giá cơ bản của từng phần cộng giá từng extra; mỗi extra lặp lại được tính theo số lượng.
+- Số lượng xuất hiện của từng món và đồ uống.
 - Chuỗi đã định dạng để copy gửi quán.
 
 Định dạng:

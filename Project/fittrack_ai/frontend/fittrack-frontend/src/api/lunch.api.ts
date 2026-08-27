@@ -1,7 +1,7 @@
 import api from "./axios";
 
 export type LunchSelectionType = "COMBO" | "SINGLE";
-export type LunchItemType = "REGULAR" | "SPECIAL";
+export type LunchItemType = "REGULAR" | "SPECIAL" | "EXTRA";
 export type LunchMenuStatus = "OPEN" | "CLOSED" | string;
 export type LunchOrderStatus = "ACTIVE" | "CANCELLED" | string;
 export type LunchPaymentStatus = "PAID_FUND" | "PAID_EXTERNAL" | "UNPAID" | string;
@@ -16,6 +16,7 @@ export type LunchMenuItem = {
   protein?: number | null;
   carbs?: number | null;
   fat?: number | null;
+  unitPrice?: number | null;
   averageRating: number;
   reviewCount: number;
 };
@@ -37,6 +38,7 @@ export type LunchMenu = {
   menuDate: string;
   orderLabel: string;
   vendorName: string;
+  coordinator?: LunchPerson | null;
   cutoffAt: string;
   price: number;
   status: LunchMenuStatus;
@@ -46,6 +48,7 @@ export type LunchMenu = {
   canReplace: boolean;
   regularItems: LunchMenuItem[];
   specialItems: LunchMenuItem[];
+  extraItems?: LunchMenuItem[];
   totalOrders: number;
   unpaidOrders: number;
 };
@@ -92,6 +95,8 @@ export type LunchTodayResponse = {
   /** Kept optional while older backends are being rolled out. */
   myMealOrders?: LunchOrder[];
   ordersPlacedByMe: LunchOrder[];
+  menus?: LunchMenu[];
+  requiresMenuSelection?: boolean;
 };
 
 export type LunchWalletTransaction = {
@@ -110,6 +115,7 @@ export type LunchOrderInput = {
   beneficiaryUserId?: string;
   selectionType: LunchSelectionType;
   itemIds: string[];
+  extraItemIds?: string[];
   note: string;
 };
 
@@ -130,6 +136,7 @@ export type LunchOrderBatchResult = {
 export type LunchOrderUpdateInput = {
   selectionType: LunchSelectionType;
   itemIds: string[];
+  extraItemIds?: string[];
   note: string;
 };
 

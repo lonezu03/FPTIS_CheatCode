@@ -156,6 +156,9 @@ public class LunchNotificationService {
                 + menu.getRawMenuText();
         int sent = 0;
         for (User recipient : recipients) {
+            if (!Boolean.TRUE.equals(recipient.getEmailNotificationsEnabled())) {
+                continue;
+            }
             if (mailService.sendLunchMenuEmail(
                     recipient.getEmail(),
                     recipient.getFullName(),

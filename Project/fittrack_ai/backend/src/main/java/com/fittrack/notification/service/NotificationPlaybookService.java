@@ -57,8 +57,8 @@ public class NotificationPlaybookService {
                 .enabled(request.enabled())
                 .build();
 
-        if (request.recipientMode() == RecipientMode.SELECTED && request.recipientUserIds() != null) {
-            playbook.setRecipients(new LinkedHashSet<>(userRepository.findAllById(request.recipientUserIds())));
+        if (request.recipientMode() == RecipientMode.SELECTED) {
+            playbook.setRecipients(resolveSelectedRecipients(request.recipientUserIds()));
         }
 
         return toResponse(playbookRepository.save(playbook));
@@ -80,8 +80,8 @@ public class NotificationPlaybookService {
         playbook.setRecipientMode(request.recipientMode());
         playbook.setEnabled(request.enabled());
 
-        if (request.recipientMode() == RecipientMode.SELECTED && request.recipientUserIds() != null) {
-            playbook.setRecipients(new LinkedHashSet<>(userRepository.findAllById(request.recipientUserIds())));
+        if (request.recipientMode() == RecipientMode.SELECTED) {
+            playbook.setRecipients(resolveSelectedRecipients(request.recipientUserIds()));
         } else {
             playbook.getRecipients().clear();
         }
@@ -119,6 +119,19 @@ public class NotificationPlaybookService {
             playbook.setLastTriggeredDate(today);
             playbookRepository.save(playbook);
         }
+    }
+
+    private Set<User> resolveSelectedRecipients(List<String> requestedIds) {
+        if (requestedIds == null || requestedIds.isEmpty()) {
+            throw new IllegalArgumentException("Chế độ chọn user phải có ít nhất một người nhận");
+        }
+        List<String> distinctIds = requestedIds.stream().filter(Objects::nonNull).distinct().toList();
+        List<User> recipients = userRepository.findAllById(distinctIds);
+        if (recipients.size() != distinctIds.size()
+                || recipients.stream().anyMatch(user -> !Boolean.TRUE.equals(user.getActive()))) {
+            throw new IllegalArgumentException("Danh sách người nhận có user không tồn tại hoặc đã bị khóa");
+        }
+        return new LinkedHashSet<>(recipients);
     }
 
     private void executePlaybook(NotificationPlaybook playbook, LocalDate date) {

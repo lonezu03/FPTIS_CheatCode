@@ -42,9 +42,6 @@ public class LunchAdminService {
 
     @Transactional
     public MenuResponse importMenu(User admin, ImportMenuRequest request) {
-        if (menuRepository.existsByMenuDate(request.menuDate())) {
-            throw new ConflictException("Ngày này đã có thực đơn");
-        }
         if (!request.cutoffAt().toLocalDate().equals(request.menuDate())) {
             throw new IllegalArgumentException("Giờ chốt món phải cùng ngày với thực đơn");
         }
@@ -78,6 +75,7 @@ public class LunchAdminService {
                     .name(parsedItem.name())
                     .type(parsedItem.type())
                     .sortOrder(parsedItem.sortOrder())
+                    .unitPrice(parsedItem.unitPrice())
                     .build());
         }
 
@@ -103,12 +101,6 @@ public class LunchAdminService {
         LunchMenu menu = getMenuForUpdate(menuId);
         ensureMenuCanBeReplaced(menu);
         validateMenuTiming(request.menuDate(), request.cutoffAt());
-
-        menuRepository.findByMenuDate(request.menuDate())
-                .filter(other -> !Objects.equals(other.getId(), menu.getId()))
-                .ifPresent(other -> {
-                    throw new ConflictException("Ngày này đã có thực đơn");
-                });
 
         LunchMenuParser.ParsedMenu parsed = menuParser.parse(request.rawMenuText());
         menu.setMenuDate(request.menuDate());
@@ -361,6 +353,12 @@ public class LunchAdminService {
         item.setProtein(request.protein());
         item.setCarbs(request.carbs());
         item.setFat(request.fat());
+        if (request.unitPrice() != null) {
+            if (item.getType() != LunchMenuItemType.EXTRA) {
+                throw new IllegalArgumentException("Chỉ món thêm mới có đơn giá riêng");
+            }
+            item.setUnitPrice(request.unitPrice());
+        }
         nutritionService.ensureFood(item);
         LunchMenuItem saved = menuItemRepository.save(item);
         orderRepository.findDistinctByItems_MenuItemAndStatus(saved, LunchOrderStatus.ACTIVE)
@@ -478,6 +476,7 @@ public class LunchAdminService {
                     .name(parsedItem.name())
                     .type(parsedItem.type())
                     .sortOrder(parsedItem.sortOrder())
+                    .unitPrice(parsedItem.unitPrice())
                     .build());
         }
     }

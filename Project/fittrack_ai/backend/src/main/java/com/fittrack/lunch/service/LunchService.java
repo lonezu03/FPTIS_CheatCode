@@ -41,68 +41,49 @@ public class LunchService {
     @Transactional(readOnly = true)
     public TodayResponse getToday(User user) {
         LocalDate today = now().toLocalDate();
-        LunchMenu menu = menuRepository.findByMenuDate(today).orElse(null);
+        LocalDateTime currentTime = now();
+        List<LunchMenu> menus = menuRepository.findByMenuDateOrderByCreatedAtAsc(today);
         long walletBalance = accountService.netBalance(user);
         long outstandingDebt = accountService.outstandingDebt(user);
 
-        if (menu == null) {
+        if (menus.isEmpty()) {
             return new TodayResponse(
-                    null,
-                    walletBalance,
-                    outstandingDebt,
-                    null,
-                    List.of(),
-                    List.of(),
-                    false,
-                    "Chưa có thực đơn hôm nay"
+                    null, walletBalance, outstandingDebt, null, List.of(), List.of(), false,
+                    "Chưa có thực đơn hôm nay", List.of(), false
             );
         }
 
-        List<OrderResponse> myMealOrders = orderRepository
-                .findByMenuAndBeneficiaryAndStatusOrderByCreatedAtAsc(
-                        menu,
-                        user,
-                        LunchOrderStatus.ACTIVE
-                )
-                .stream()
+        List<MenuResponse> menuResponses = menus.stream()
+                .map(menu -> mapper.toMenuResponse(menu, activeOrderCount(menu), unpaidOrderCount(menu), currentTime))
+                .toList();
+        List<OrderResponse> myMealOrders = menus.stream()
+                .flatMap(menu -> orderRepository.findByMenuAndBeneficiaryAndStatusOrderByCreatedAtAsc(
+                        menu, user, LunchOrderStatus.ACTIVE).stream())
                 .map(mapper::toOrderResponse)
                 .toList();
-        List<OrderResponse> placedForOthers = orderRepository
-                .findByMenuAndOrderedByAndStatusOrderByCreatedAtAsc(
-                        menu,
-                        user,
-                        LunchOrderStatus.ACTIVE
-                )
-                .stream()
+        List<OrderResponse> placedForOthers = menus.stream()
+                .flatMap(menu -> orderRepository.findByMenuAndOrderedByAndStatusOrderByCreatedAtAsc(
+                        menu, user, LunchOrderStatus.ACTIVE).stream())
                 .filter(order -> !sameUser(order.getBeneficiary(), user))
                 .map(mapper::toOrderResponse)
                 .toList();
 
-        long totalOrders = activeOrderCount(menu);
-        long unpaidOrders = unpaidOrderCount(menu);
-        MenuResponse menuResponse = mapper.toMenuResponse(
-                menu,
-                totalOrders,
-                unpaidOrders,
-                now()
-        );
-
-        String blockReason = null;
-        if (!menuResponse.acceptingOrders()) {
-            blockReason = menu.getStatus() == LunchMenuStatus.CLOSED
-                    ? "Thực đơn đã đóng"
+        boolean canOrder = menuResponses.stream().anyMatch(MenuResponse::acceptingOrders);
+        String blockReason = canOrder ? null
+                : menuResponses.stream().allMatch(response -> response.status().equals(LunchMenuStatus.CLOSED.name()))
+                    ? "Các thực đơn hôm nay đã đóng"
                     : "Đã qua giờ chốt món";
-        }
-
         return new TodayResponse(
-                menuResponse,
+                menus.size() == 1 ? menuResponses.getFirst() : null,
                 walletBalance,
                 outstandingDebt,
                 myMealOrders.isEmpty() ? null : myMealOrders.getFirst(),
                 myMealOrders,
                 placedForOthers,
-                blockReason == null,
-                blockReason
+                canOrder,
+                blockReason,
+                menuResponses,
+                menus.size() > 1
         );
     }
 
@@ -177,6 +158,7 @@ public class LunchService {
                 request.beneficiaryUserId(),
                 request.selectionType(),
                 request.itemIds(),
+                request.extraItemIds(),
                 request.note(),
                 null,
                 null
@@ -211,12 +193,14 @@ public class LunchService {
             }
             User beneficiary = resolveBeneficiary(actor, portion.beneficiaryUserId());
             List<LunchMenuItem> selectedItems = resolveSelectedItems(menu, portion.itemIds());
+            List<LunchMenuItem> extraItems = resolveExtraItems(menu, portion.extraItemIds());
             orderRules.validateSelection(portion.selectionType(), selectedItems);
             portions.add(new PreparedPortion(
                     portions.size(),
                     beneficiary,
                     portion.selectionType(),
                     selectedItems,
+                    extraItems,
                     portion.note()
             ));
         }
@@ -234,6 +218,7 @@ public class LunchService {
                     portion.beneficiary().getId(),
                     portion.selectionType(),
                     portion.itemIds(),
+                    portion.extraItemIds(),
                     portion.note(),
                     request.clientRequestId(),
                     portion.position()
@@ -250,6 +235,7 @@ public class LunchService {
             String beneficiaryUserId,
             LunchSelectionType selectionType,
             List<String> itemIds,
+            List<String> extraItemIds,
             String note,
             String batchRequestId,
             Integer batchPosition
@@ -257,6 +243,7 @@ public class LunchService {
         User beneficiary = resolveBeneficiary(actor, beneficiaryUserId);
         boolean selfOrder = sameUser(actor, beneficiary);
         List<LunchMenuItem> selectedItems = resolveSelectedItems(menu, itemIds);
+        List<LunchMenuItem> extraItems = resolveExtraItems(menu, extraItemIds);
         orderRules.validateSelection(selectionType, selectedItems);
 
         LunchOrder order = LunchOrder.builder()
@@ -272,6 +259,7 @@ public class LunchService {
                 menu,
                 selectionType,
                 selectedItems,
+                extraItems,
                 note,
                 true
         );
@@ -320,10 +308,15 @@ public class LunchService {
             User beneficiary,
             LunchSelectionType selectionType,
             List<LunchMenuItem> selectedItems,
+            List<LunchMenuItem> extraItems,
             String note
     ) {
         List<String> itemIds() {
             return selectedItems.stream().map(LunchMenuItem::getId).toList();
+        }
+
+        List<String> extraItemIds() {
+            return extraItems.stream().map(LunchMenuItem::getId).toList();
         }
     }
 
@@ -342,12 +335,32 @@ public class LunchService {
                 order.getMenu(),
                 request.itemIds()
         );
+        List<LunchMenuItem> extraItems = resolveExtraItems(order.getMenu(), request.extraItemIds());
         orderRules.validateSelection(request.selectionType(), selectedItems);
 
+        long previousPrice = order.getPrice();
+        long updatedPrice = Math.addExact(order.getMenu().getPrice(), extraItems.stream()
+                .mapToLong(item -> item.getUnitPrice() == null ? 0L : item.getUnitPrice()).sum());
+        if (order.getPaymentStatus() == LunchPaymentStatus.PAID_FUND && previousPrice != updatedPrice) {
+            if (updatedPrice > previousPrice) {
+                accountService.debitOrder(
+                        order.getPayer(), updatedPrice - previousPrice, order, actor,
+                        "Điều chỉnh tăng giá đơn do món thêm", true
+                );
+            } else {
+                accountService.credit(
+                        order.getPayer(), previousPrice - updatedPrice,
+                        LunchFundTransactionType.ORDER_REFUND, order, actor,
+                        "Hoàn chênh lệch khi bỏ món thêm"
+                );
+            }
+        }
+
         order.setSelectionType(request.selectionType());
+        order.setPrice(updatedPrice);
         order.setNote(textFormatter.sanitizeNote(request.note()));
         reviewRepository.deleteByOrder(order);
-        replaceOrderItems(order, selectedItems);
+        replaceOrderItems(order, selectedItems, extraItems);
 
         LunchOrder saved = orderRepository.save(order);
         nutritionService.syncOrder(saved);
@@ -390,6 +403,7 @@ public class LunchService {
             LunchMenu menu,
             LunchSelectionType selectionType,
             List<LunchMenuItem> selectedItems,
+            List<LunchMenuItem> extraItems,
             String note,
             boolean paidFromFund
     ) {
@@ -398,7 +412,8 @@ public class LunchService {
         order.setOrderedBy(actor);
         order.setPayer(paidFromFund ? actor : null);
         order.setSelectionType(selectionType);
-        order.setPrice(menu.getPrice());
+        order.setPrice(Math.addExact(menu.getPrice(), extraItems.stream()
+                .mapToLong(item -> item.getUnitPrice() == null ? 0L : item.getUnitPrice()).sum()));
         order.setPaymentStatus(
                 paidFromFund ? LunchPaymentStatus.PAID_FUND : LunchPaymentStatus.UNPAID
         );
@@ -412,13 +427,19 @@ public class LunchService {
         if (order.getId() != null) {
             reviewRepository.deleteByOrder(order);
         }
-        replaceOrderItems(order, selectedItems);
+        replaceOrderItems(order, selectedItems, extraItems);
     }
 
-    private void replaceOrderItems(LunchOrder order, List<LunchMenuItem> selectedItems) {
+    private void replaceOrderItems(
+            LunchOrder order,
+            List<LunchMenuItem> selectedItems,
+            List<LunchMenuItem> extraItems
+    ) {
         order.getItems().clear();
-        for (int index = 0; index < selectedItems.size(); index++) {
-            LunchMenuItem menuItem = selectedItems.get(index);
+        List<LunchMenuItem> allItems = new ArrayList<>(selectedItems);
+        allItems.addAll(extraItems);
+        for (int index = 0; index < allItems.size(); index++) {
+            LunchMenuItem menuItem = allItems.get(index);
             order.getItems().add(LunchOrderItem.builder()
                     .order(order)
                     .menuItem(menuItem)
@@ -445,6 +466,27 @@ public class LunchService {
             LunchMenuItem item = availableItems.get(itemId);
             if (item == null) {
                 throw new IllegalArgumentException("Món không thuộc thực đơn này");
+            }
+            selected.add(item);
+        }
+        return selected;
+    }
+
+    private List<LunchMenuItem> resolveExtraItems(LunchMenu menu, List<String> itemIds) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return List.of();
+        }
+        Map<String, LunchMenuItem> availableItems = new HashMap<>();
+        for (LunchMenuItem item : menu.getItems()) {
+            if (item.getType() == LunchMenuItemType.EXTRA) {
+                availableItems.put(item.getId(), item);
+            }
+        }
+        List<LunchMenuItem> selected = new ArrayList<>();
+        for (String itemId : itemIds) {
+            LunchMenuItem item = availableItems.get(itemId);
+            if (item == null || item.getUnitPrice() == null || item.getUnitPrice() <= 0) {
+                throw new IllegalArgumentException("Món thêm không thuộc thực đơn hoặc chưa có giá");
             }
             selected.add(item);
         }

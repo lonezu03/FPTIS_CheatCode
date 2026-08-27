@@ -14,6 +14,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? profile;
   Object? error;
+  bool updatingEmailPreference = false;
 
   @override
   void initState() {
@@ -30,6 +31,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) setState(() => error = e);
+    }
+  }
+
+  Future<void> _setEmailNotifications(bool enabled) async {
+    final previous = profile?['emailNotificationsEnabled'];
+    setState(() {
+      updatingEmailPreference = true;
+      profile = {...?profile, 'emailNotificationsEnabled': enabled};
+    });
+    try {
+      final updated = await context.read<ApiClient>().put(
+        '/users/me',
+        data: {'emailNotificationsEnabled': enabled},
+      );
+      if (mounted && updated is Map) {
+        setState(() => profile = Map<String, dynamic>.from(updated));
+      }
+      if (mounted) showMessage(context, enabled ? 'Đã bật email notification.' : 'Đã tắt email notification.');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          updatingEmailPreference = false;
+          profile = {...?profile, 'emailNotificationsEnabled': previous ?? false};
+        });
+        showMessage(context, displayError(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => updatingEmailPreference = false);
     }
   }
 
@@ -122,6 +151,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 value: profile!['goal']?.toString() ?? 'Chưa thiết lập',
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        Card(
+          child: SwitchListTile.adaptive(
+            value: profile!['emailNotificationsEnabled'] == true,
+            onChanged: updatingEmailPreference ? null : _setEmailNotifications,
+            secondary: const Icon(Icons.email_outlined),
+            title: const Text('Nhận email notification'),
+            subtitle: const Text('Cho phép FitTrack gửi email menu, broadcast và kịch bản nhắc nhở. OTP đặt lại mật khẩu vẫn hoạt động độc lập.'),
           ),
         ),
         const SizedBox(height: 20),

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BellRing, Plus, Shuffle, Trash2, Users } from "lucide-react";
+import { BellRing, Pencil, Plus, Shuffle, Trash2, Users, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -38,17 +38,27 @@ export default function AdminNotificationPlaybooksPage() {
   const [threshold, setThreshold] = useState("");
   const [recipientMode, setRecipientMode] = useState<RecipientMode>("ALL_ACTIVE");
   const [recipientUserIds, setRecipientUserIds] = useState<string[]>([]);
+  const [enabled, setEnabled] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const invalidate = () => void client.invalidateQueries({ queryKey: ["notification-playbooks"] });
   const add = useMutation({
     mutationFn: createNotificationPlaybook,
     onSuccess: () => {
-      setName("");
-      setRecipientUserIds([]);
+      resetForm();
       invalidate();
       toast.success("Đã tạo kịch bản notification");
     },
     onError: (error) => toast.error(getApiErrorMessage(error, "Không thể tạo kịch bản")),
+  });
+  const save = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: NotificationPlaybookPayload }) => updateNotificationPlaybook(id, payload),
+    onSuccess: () => {
+      setEditingId(null);
+      invalidate();
+      toast.success("Đã cập nhật kịch bản");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, "Không thể cập nhật kịch bản")),
   });
   const remove = useMutation({
     mutationFn: deleteNotificationPlaybook,
@@ -67,7 +77,7 @@ export default function AdminNotificationPlaybooksPage() {
 
   const users = usersQuery.data ?? [];
   const selectedCount = recipientMode === "ALL_ACTIVE" ? users.filter((user) => user.active).length : recipientUserIds.length;
-  const createDisabled = !name.trim() || !messages.trim() || selectedDays.length === 0 || (recipientMode === "SELECTED" && recipientUserIds.length === 0) || add.isPending;
+  const createDisabled = !name.trim() || !messages.trim() || selectedDays.length === 0 || (recipientMode === "SELECTED" && recipientUserIds.length === 0) || add.isPending || save.isPending;
 
   const toggleRecipient = (id: string) => {
     setRecipientUserIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
@@ -84,7 +94,45 @@ export default function AdminNotificationPlaybooksPage() {
     threshold: threshold ? Number(threshold) : null,
     recipientMode,
     recipientUserIds,
-    enabled: true,
+    enabled,
+  };
+
+  const beginEdit = (item: NotificationPlaybook) => {
+    setEditingId(item.id);
+    setName(item.name);
+    setCategory(item.category);
+    setMode(item.mode);
+    setTriggerTime(item.triggerTime.slice(0, 5));
+    setSelectedDays(item.daysOfWeek.split(",").filter(Boolean));
+    setMessages(item.messages);
+    setConditionType(item.conditionType);
+    setThreshold(item.threshold == null ? "" : String(item.threshold));
+    setRecipientMode(item.recipientMode);
+    setRecipientUserIds(item.recipientUserIds);
+    setEnabled(item.enabled);
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setName("");
+    setCategory("WELLNESS");
+    setMode("RANDOM");
+    setTriggerTime("21:30");
+    setSelectedDays([...days]);
+    setMessages("Chúc bạn ngủ ngon và phục hồi thật tốt.\\nHôm nay bạn đã cố gắng rất nhiều, nghỉ ngơi nhé.");
+    setConditionType("ANY");
+    setThreshold("");
+    setRecipientMode("ALL_ACTIVE");
+    setRecipientUserIds([]);
+    setEnabled(true);
+  };
+
+  const submit = () => {
+    if (editingId) {
+      save.mutate({ id: editingId, payload: createPayload });
+    } else {
+      add.mutate(createPayload);
+    }
   };
 
   return (
@@ -103,7 +151,7 @@ export default function AdminNotificationPlaybooksPage() {
                     <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Users className="size-3" /> {item.recipientMode === "SELECTED" ? `${item.recipientUserIds.length} user được chọn` : "Tất cả user đang hoạt động"}</p>
                     <p className="mt-2 line-clamp-2 text-sm">{item.messages.split("\n")[0]}</p>
                   </div>
-                  <div className="flex shrink-0 gap-1"><button className="rounded-lg px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50" onClick={() => toggle.mutate({ item, enabled: !item.enabled })}>{item.enabled ? "Tắt" : "Bật"}</button><button className="rounded-lg p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600" onClick={() => remove.mutate(item.id)} aria-label="Xóa kịch bản"><Trash2 className="size-4" /></button></div>
+                  <div className="flex shrink-0 items-center gap-1"><button className="rounded-lg p-2 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700" onClick={() => beginEdit(item)} aria-label="Sửa kịch bản"><Pencil className="size-4" /></button><button className="rounded-lg px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50" onClick={() => toggle.mutate({ item, enabled: !item.enabled })}>{item.enabled ? "Tắt" : "Bật"}</button><button className="rounded-lg p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600" onClick={() => remove.mutate(item.id)} aria-label="Xóa kịch bản"><Trash2 className="size-4" /></button></div>
                 </div>
               </div>
             ))}
@@ -111,7 +159,7 @@ export default function AdminNotificationPlaybooksPage() {
         </Card>
 
         <Card className="h-fit border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-background">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="size-5 text-emerald-700" /> Tạo kịch bản</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2">{editingId ? <Pencil className="size-5 text-emerald-700" /> : <Plus className="size-5 text-emerald-700" />} {editingId ? "Chỉnh sửa kịch bản" : "Tạo kịch bản"}</CardTitle>{editingId && <Button variant="ghost" size="sm" onClick={resetForm}><X className="size-4" /> Hủy sửa</Button>}</CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5"><Label>Tên kịch bản</Label><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ví dụ: Chúc ngủ ngon" /></div>
             <div className="grid grid-cols-2 gap-3"><FieldSelect label="Nhóm" value={category} onChange={(value) => setCategory(value as NotificationPlaybook["category"])} options={[["WELLNESS", "Wellness"], ["MEAL", "Ăn uống"], ["SLEEP", "Giấc ngủ"], ["PRODUCTIVITY", "Hiệu suất"]]} /><FieldSelect label="Cách chọn câu" value={mode} onChange={(value) => setMode(value as NotificationPlaybook["mode"])} options={[["RANDOM", "Random"], ["FIXED", "Câu đầu tiên"]]} /></div>
@@ -122,7 +170,8 @@ export default function AdminNotificationPlaybooksPage() {
             <div className="space-y-1.5"><Label>Người nhận</Label><select value={recipientMode} onChange={(event) => setRecipientMode(event.target.value as RecipientMode)} className="h-10 w-full rounded-lg border border-input bg-background px-2 text-sm"><option value="ALL_ACTIVE">Tất cả user đang hoạt động</option><option value="SELECTED">Chỉ user được chọn</option></select><p className="text-xs text-muted-foreground">Đang chọn {selectedCount} người nhận. Dùng nhóm cụ thể để tránh làm phiền toàn bộ công ty.</p></div>
             {recipientMode === "SELECTED" && <div className="max-h-44 space-y-2 overflow-y-auto rounded-xl border bg-background p-3">{usersQuery.isLoading ? <p className="text-sm text-muted-foreground">Đang tải user...</p> : users.map((user) => <label key={user.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={recipientUserIds.includes(user.id)} onChange={() => toggleRecipient(user.id)} className="size-4 accent-emerald-700" /> <span className="min-w-0 truncate">{user.fullName || user.email}</span>{!user.active && <span className="text-xs text-muted-foreground">(đã khóa)</span>}</label>)}</div>}
             <div className="space-y-1.5"><Label>Các câu thông báo (mỗi câu một dòng)</Label><textarea value={messages} onChange={(event) => setMessages(event.target.value)} rows={5} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" /></div>
-            <Button className="w-full" disabled={createDisabled} onClick={() => add.mutate(createPayload)}>{add.isPending ? "Đang lưu..." : "Lưu kịch bản"}</Button>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} className="size-4 accent-emerald-700" /> Kịch bản đang bật</label>
+            <Button className="w-full" disabled={createDisabled} onClick={submit}>{add.isPending || save.isPending ? "Đang lưu..." : editingId ? "Lưu thay đổi" : "Lưu kịch bản"}</Button>
           </CardContent>
         </Card>
       </div>

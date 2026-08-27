@@ -13,9 +13,7 @@ import java.util.Optional;
 
 public interface LunchMenuRepository extends JpaRepository<LunchMenu, String> {
 
-    Optional<LunchMenu> findByMenuDate(LocalDate menuDate);
-
-    boolean existsByMenuDate(LocalDate menuDate);
+    List<LunchMenu> findByMenuDateOrderByCreatedAtAsc(LocalDate menuDate);
 
     List<LunchMenu> findAllByOrderByMenuDateDesc();
 

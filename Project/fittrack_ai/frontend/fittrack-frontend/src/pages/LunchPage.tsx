@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -73,6 +73,8 @@ export default function LunchPage() {
   const authUser = useAuthStore((state) => state.user);
   const [selectionType, setSelectionType] = useState<LunchSelectionType>("COMBO");
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [selectedExtraItemIds, setSelectedExtraItemIds] = useState<string[]>([]);
+  const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
   const [beneficiaryUserId, setBeneficiaryUserId] = useState("");
   const [note, setNote] = useState("");
   const [cartPortions, setCartPortions] = useState<CartPortion[]>([]);
@@ -163,7 +165,23 @@ export default function LunchPage() {
   });
 
   const today = todayQuery.data;
-  const menu = today?.menu ?? null;
+  const availableMenus = useMemo(() => {
+    if (today?.menus?.length) return today.menus;
+    return today?.menu ? [today.menu] : [];
+  }, [today]);
+  useEffect(() => {
+    const nextId = availableMenus.some((item) => item.id === selectedMenuId)
+      ? selectedMenuId
+      : availableMenus[0]?.id ?? null;
+    if (nextId !== selectedMenuId) {
+      setSelectedMenuId(nextId);
+      setSelectedItemIds([]);
+      setSelectedExtraItemIds([]);
+      setCartPortions([]);
+      setCartRequestId(null);
+    }
+  }, [availableMenus, selectedMenuId]);
+  const menu = availableMenus.find((item) => item.id === selectedMenuId) ?? null;
   const people = peopleQuery.data ?? [];
   const history = historyQuery.data ?? [];
   const transactions = transactionsQuery.data ?? [];
@@ -194,6 +212,7 @@ export default function LunchPage() {
       .filter((item): item is LunchMenu["regularItems"][number] => Boolean(item));
   }, [menu, selectedItemIds]);
 
+  const selectedExtraItems = (menu?.extraItems ?? []).filter((item) => selectedExtraItemIds.includes(item.id));
   const selectedBeneficiary = people.find((person) => person.id === beneficiaryUserId);
   const selectedNutrition = selectedItems.reduce(
     (total, item) => ({
@@ -205,20 +224,27 @@ export default function LunchPage() {
     { calories: 0, protein: 0, carbs: 0, fat: 0 },
   );
   const walletBalance = today?.walletBalance ?? 0;
-  const insufficientBalance = !!menu && walletBalance < menu.price;
+  const currentPortionTotal = (menu?.price ?? 0) + selectedExtraItems.reduce((total, item) => total + (item.unitPrice ?? 0), 0);
+  const portionTotal = (portion: LunchOrderPortionInput) =>
+    (menu?.price ?? 0) + (portion.extraItemIds ?? []).reduce(
+      (total, itemId) => total + ((menu?.extraItems ?? []).find((item) => item.id === itemId)?.unitPrice ?? 0),
+      0,
+    );
+  const insufficientBalance = !!menu && walletBalance < currentPortionTotal;
   const sponsoredCartTotal = cartPortions
     .filter((portion) => !!portion.beneficiaryUserId)
-    .reduce((total) => total + (menu?.price ?? 0), 0);
+    .reduce((total, portion) => total + portionTotal(portion), 0);
   const currentPortionIsSponsored = !!beneficiaryUserId;
-  const cannotSponsor = currentPortionIsSponsored && walletBalance < sponsoredCartTotal + (menu?.price ?? 0);
+  const cannotSponsor = currentPortionIsSponsored && walletBalance < sponsoredCartTotal + currentPortionTotal;
   const cannotSubmitCart = sponsoredCartTotal > walletBalance;
-  const cartTotal = cartPortions.length * (menu?.price ?? 0);
+  const cartTotal = cartPortions.reduce((total, portion) => total + portionTotal(portion), 0);
   const requiredItemCount = selectionType === "COMBO" ? 2 : 1;
   const isBusy = batchMutation.isPending || updateMutation.isPending;
 
   function resetOrderForm() {
     setSelectionType("COMBO");
     setSelectedItemIds([]);
+    setSelectedExtraItemIds([]);
     setBeneficiaryUserId("");
     setNote("");
     setEditingOrder(null);
@@ -227,7 +253,8 @@ export default function LunchPage() {
   function startEditing(order: LunchOrder) {
     setEditingOrder(order);
     setSelectionType(order.selectionType);
-    setSelectedItemIds(order.items.map((item) => item.id));
+    setSelectedItemIds(order.items.filter((item) => item.type !== "EXTRA").map((item) => item.id));
+    setSelectedExtraItemIds(order.items.filter((item) => item.type === "EXTRA").map((item) => item.id));
     setBeneficiaryUserId("");
     setNote(order.note ?? "");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -272,6 +299,7 @@ export default function LunchPage() {
         payload: {
           selectionType,
           itemIds: selectedItemIds,
+          extraItemIds: selectedExtraItemIds,
           note: note.trim(),
         },
       });
@@ -285,6 +313,7 @@ export default function LunchPage() {
       beneficiaryUserId: beneficiaryUserId || undefined,
       selectionType,
       itemIds: selectedItemIds,
+      extraItemIds: selectedExtraItemIds,
       note: note.trim(),
       },
     ]);
@@ -308,6 +337,7 @@ export default function LunchPage() {
         beneficiaryUserId: portion.beneficiaryUserId,
         selectionType: portion.selectionType,
         itemIds: portion.itemIds,
+        extraItemIds: portion.extraItemIds,
         note: portion.note,
       })),
     });
@@ -379,6 +409,33 @@ export default function LunchPage() {
                 {today.blockReason || "Vui lòng thanh toán công nợ với admin trước khi đặt phần mới."}
               </AlertDescription>
             </Alert>
+          )}
+
+          {availableMenus.length > 1 && (
+            <Card className="border-emerald-200 bg-emerald-50/50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Chọn bộ menu / điều phối viên</CardTitle>
+                <p className="text-sm text-muted-foreground">Có nhiều menu cho hôm nay. Chọn quán hoặc admin điều phối trước khi đặt.</p>
+              </CardHeader>
+              <CardContent className="grid gap-2 md:grid-cols-2">
+                {availableMenus.map((candidate) => (
+                  <button
+                    key={candidate.id}
+                    type="button"
+                    onClick={() => setSelectedMenuId(candidate.id)}
+                    className={`rounded-xl border bg-white p-3 text-left transition hover:border-emerald-400 ${candidate.id === menu?.id ? "border-emerald-600 ring-2 ring-emerald-200" : "border-slate-200"}`}
+                    disabled={isBusy || cartPortions.length > 0}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold">{candidate.orderLabel}</span>
+                      <MenuStatusBadge status={candidate.status} acceptingOrders={candidate.acceptingOrders} />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{candidate.vendorName} · {candidate.coordinator?.fullName ?? "Điều phối viên"}</p>
+                    <p className="mt-1 text-sm font-medium text-emerald-800">{formatCurrency(candidate.price)}/phần</p>
+                  </button>
+                ))}
+              </CardContent>
+            </Card>
           )}
 
           <div className="grid gap-3 sm:grid-cols-3">
@@ -486,6 +543,30 @@ export default function LunchPage() {
                       onItemsChange={setSelectedItemIds}
                     />
 
+                    {(menu.extraItems?.length ?? 0) > 0 && (
+                      <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50/60 p-3">
+                        <div>
+                          <Label>Món thêm / đồ uống</Label>
+                          <p className="mt-1 text-xs text-muted-foreground">Chọn số lượng tùy ý; giá sẽ cộng vào từng phần ăn.</p>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {(menu.extraItems ?? []).map((item) => {
+                            const count = selectedExtraItemIds.filter((id) => id === item.id).length;
+                            return (
+                              <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
+                                <div className="min-w-0"><p className="truncate font-medium">{item.name}</p><p className="text-xs text-muted-foreground">{formatCurrency(item.unitPrice ?? 0)}</p></div>
+                                <div className="flex items-center gap-1">
+                                  <Button type="button" size="icon" variant="outline" className="size-7" disabled={!count || isBusy} onClick={() => setSelectedExtraItemIds((current) => { const index = current.indexOf(item.id); return index < 0 ? current : [...current.slice(0, index), ...current.slice(index + 1)]; })}>−</Button>
+                                  <span className="w-5 text-center text-xs font-semibold">{count}</span>
+                                  <Button type="button" size="icon" variant="outline" className="size-7" disabled={!menu.acceptingOrders || !today.canOrder || isBusy} onClick={() => setSelectedExtraItemIds((current) => [...current, item.id])}>+</Button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="lunch-note">Ghi chú cho quán</Label>
                       <div className="flex flex-wrap gap-2">
@@ -529,7 +610,9 @@ export default function LunchPage() {
                     <div className="space-y-2 rounded-xl bg-slate-50 p-3">
                       <SummaryRow label="Người nhận" value={editingOrder?.beneficiary.fullName ?? selectedBeneficiary?.fullName ?? "Tôi"} />
                       <SummaryRow label="Loại phần" value={selectionType === "COMBO" ? "Cơm 2 món" : "Món đơn"} />
-                      <SummaryRow label="Đơn giá" value={formatCurrency(menu.price)} strong />
+                      <SummaryRow label="Đơn giá cơ bản" value={formatCurrency(menu.price)} />
+                      <SummaryRow label="Món thêm" value={formatCurrency(selectedExtraItems.reduce((total, item) => total + (item.unitPrice ?? 0), 0))} />
+                      <SummaryRow label="Tổng phần này" value={formatCurrency(currentPortionTotal)} strong />
                     </div>
 
                     <div>
@@ -629,6 +712,7 @@ export default function LunchPage() {
                               const dishes = portion.itemIds
                                 .map((itemId) => [...menu.regularItems, ...menu.specialItems].find((item) => item.id === itemId)?.name)
                                 .filter(Boolean)
+                                .concat((portion.extraItemIds ?? []).map((itemId) => menu.extraItems?.find((item) => item.id === itemId)?.name).filter(Boolean).map((name) => `${name} (thêm)`))
                                 .join(" + ");
                               return (
                                 <li key={portion.id} className="flex gap-2 rounded-lg border bg-white p-2.5">

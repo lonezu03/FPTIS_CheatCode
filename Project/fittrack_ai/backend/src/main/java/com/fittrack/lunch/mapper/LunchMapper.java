@@ -56,6 +56,14 @@ public class LunchMapper {
                         reviewStats.getOrDefault(item.getId(), ReviewStats.EMPTY)
                 ))
                 .toList();
+        List<MenuItemResponse> extraItems = menu.getItems().stream()
+                .filter(item -> item.getType() == LunchMenuItemType.EXTRA)
+                .sorted(Comparator.comparing(LunchMenuItem::getSortOrder))
+                .map(item -> toMenuItemResponse(
+                        item,
+                        reviewStats.getOrDefault(item.getId(), ReviewStats.EMPTY)
+                ))
+                .toList();
 
         boolean acceptingOrders = menu.getStatus() == LunchMenuStatus.OPEN
                 && menu.getSummarizedAt() == null
@@ -66,6 +74,7 @@ public class LunchMapper {
                 menu.getMenuDate(),
                 menu.getOrderLabel(),
                 menu.getVendorName(),
+                toPersonResponse(menu.getCreatedBy()),
                 menu.getCutoffAt(),
                 menu.getPrice(),
                 menu.getStatus().name(),
@@ -74,6 +83,7 @@ public class LunchMapper {
                 canReplace,
                 regularItems,
                 specialItems,
+                extraItems,
                 totalOrders,
                 unpaidOrders
         );
@@ -106,6 +116,7 @@ public class LunchMapper {
                 item.getProtein(),
                 item.getCarbs(),
                 item.getFat(),
+                item.getUnitPrice(),
                 stats.average(),
                 stats.count()
         );
@@ -131,6 +142,7 @@ public class LunchMapper {
                         item.getMenuItem().getProtein(),
                         item.getMenuItem().getCarbs(),
                         item.getMenuItem().getFat(),
+                        item.getMenuItem().getUnitPrice(),
                         reviewStats.getOrDefault(
                                 item.getMenuItem().getId(),
                                 ReviewStats.EMPTY

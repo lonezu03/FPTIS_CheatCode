@@ -256,3 +256,29 @@ Exact next steps for the next assistant:
 3. Verify a scheduled playbook creates at most one notification per user per day and respects `NO_MEAL`, `MEALS_LT`, and `PROTEIN_GT` conditions.
 4. Lock a test user and use the admin UI to delete it; confirm it disappears from admin search while historical records remain queryable.
 5. Register a new account and confirm the response allows immediate login without email verification. Keep password-reset OTP tests unchanged.
+
+
+## Feature batch 2026-08-27: email preference, editable playbooks, grouped workout history, multi-menu lunch
+
+- Email delivery now honors `users.email_notifications_enabled` for lunch menu availability emails as well as generic notification delivery. Password-reset OTP remains independent and must continue to be delivered to the account email.
+- Web admin notification playbooks support editing, enabled-state preservation, cancel/reset, recipient targeting, and toggle/delete. Backend rejects `SELECTED` playbooks with an empty recipient list or missing/inactive user IDs. Mobile admin now exposes a matching CRUD editor under the fifth admin tab.
+- Workout history is grouped by `sessionDate` on web and mobile. Web pagination remains session-based and keeps set-level edit/delete actions; mobile nests sessions and sets under a date expansion card.
+- Flyway `V12__multi_lunch_menus_and_priced_extras.sql` drops the deployed one-menu-per-date constraint, adds a date/created-at index, and adds nullable positive `unit_price` to `lunch_menu_items`. The backend supports multiple menus on the same date; `GET /lunch/today` returns `menus` and `requiresMenuSelection`, while `menu` remains populated when exactly one menu exists. Each menu response includes `coordinator` from `createdBy`.
+- Lunch import supports `@DRINKS`/`@EXTRAS` sections with `Tên món | 45000` or `Tên món 50000`. `EXTRA` menu items are returned in `extraItems`; repeated `extraItemIds` represent quantity and are added to order totals, fund debit, edit adjustments, refunds, and display text. Legacy regular/special syntax and duplicate combo slots remain compatible.
+- Web and mobile lunch flows display a coordinator/menu picker when multiple same-day menus exist, while one-menu UX remains unchanged. Both clients display and submit priced extras.
+
+## Verification for this batch
+
+- Backend `bash mvnw test -q` passed with Java 21. The suite includes parser coverage for priced drink extras; Testcontainers PostgreSQL tests remain skipped when Docker is unavailable.
+- Web `tsc -b` and `vite build` passed after the multi-menu, extra pricing, playbook, and grouped workout changes.
+- Flutter/Dart is not installed in the sandbox. Before releasing mobile, run `flutter pub get`, `dart format lib`, `flutter analyze`, and `flutter test` from `mobile/fittrack_mobile`. Review the newly added admin playbook tab and lunch multi-menu flow on a physical device.
+- Generated `frontend/fittrack-frontend/node_modules`, `dist`, TypeScript build metadata, Maven `target`, and lock artifacts must not be committed.
+
+## Deployment and manual checks
+
+1. Deploy the backend first so Flyway V12 is applied before deploying the web/mobile clients.
+2. Import two menus for the same date as different admins, confirm both appear in admin/user views, select each coordinator, and verify checkout uses the selected `menuId`.
+3. Import a menu with `@DRINKS`, `Trà đào | 45000`, and `Trà vải 50000`; order one drink twice, verify the total/debit/refund and summary counts.
+4. Toggle a user's email preference off and verify menu broadcasts and playbooks still create in-app notifications but do not send email; verify password-reset OTP is unaffected.
+5. Create, edit, disable, re-enable, and delete a playbook from both web and mobile; verify selected recipients are required and inactive IDs are rejected.
+6. Confirm production logs and `X-Request-Id` for any failed request. Do not stage `backend/demo/` or credentials.

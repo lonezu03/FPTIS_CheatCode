@@ -105,7 +105,7 @@ không nhận địa chỉ người nhận từ request.
 
 Sau khi import menu, admin gọi API dưới đây (hoặc bấm **Thông báo menu** trên
 màn hình điều phối cơm) để tạo thông báo trong ứng dụng và gửi email đến toàn bộ
-tài khoản đang active:
+tài khoản đang active và bật nhận email (`emailNotificationsEnabled=true`):
 
 ```http
 POST /lunch/admin/menus/{menuId}/notify
@@ -113,7 +113,7 @@ POST /lunch/admin/menus/{menuId}/notify
 
 ### Đặt nhiều phần cơm trong một lần
 
-Mỗi phần `COMBO` chọn đúng hai món thường; mỗi phần `SINGLE` chọn một món đặc biệt.
+Mỗi phần `COMBO` chọn đúng hai lượt món thường, cho phép chọn trùng cùng một món; mỗi phần `SINGLE` chọn một món đặc biệt. `extraItemIds` là danh sách món thêm/đồ uống, có thể lặp để biểu diễn số lượng và được cộng theo `unitPrice`.
 Toàn bộ request được xử lý trong một transaction: nếu một phần không hợp lệ hoặc phần trả hộ không đủ quỹ, không phần nào được tạo.
 `clientRequestId` phải do client tạo, giữ nguyên khi người dùng gửi lại cùng giỏ vì mất kết nối; backend trả lại batch cũ thay vì ghi thêm nợ.
 
@@ -129,6 +129,7 @@ POST /lunch/orders/batch
     {
       "selectionType": "COMBO",
       "itemIds": ["regular-item-1", "regular-item-2"],
+      "extraItemIds": ["drink-peach-tea", "drink-peach-tea"],
       "note": "Cơm thêm"
     },
     {
@@ -148,7 +149,11 @@ PUT    /lunch/admin/menus/{menuId}
 DELETE /lunch/admin/menus/{menuId}
 ```
 
-`PUT` dùng cùng payload với import menu. Hai thao tác chỉ được chấp nhận khi menu
+`GET /lunch/today` trả `menus` và `requiresMenuSelection` khi có nhiều menu cùng ngày; `menu` vẫn được trả cho trường hợp chỉ có một menu để giữ tương thích client cũ. Mỗi `MenuResponse` có `coordinator`, `regularItems`, `specialItems` và `extraItems`.
+
+`PUT` dùng cùng payload với import menu. Trong nội dung import, thêm `@DRINKS` hoặc `@EXTRAS`, sau đó nhập `Tên món | 45000` hoặc `Tên món 50000` để lưu giá riêng. Nhiều admin có thể import menu cùng ngày; user phải chọn menu/coordinator khi có từ hai menu trở lên.
+
+Hai thao tác chỉ được chấp nhận khi menu
 chưa có bất kỳ đơn nào và chưa được tổng hợp; nếu không API trả `409 Conflict` để
 bảo toàn lịch sử đơn, công nợ và dữ liệu dinh dưỡng. Khi thay thế một menu nháp đã
 đóng thủ công, menu được mở lại để nhận đơn theo giờ chốt mới.
@@ -170,7 +175,8 @@ Update request:
   "height": 160,
   "weight": 60,
   "goal": "LEAN_BULK",
-  "activityLevel": "MODERATE"
+  "activityLevel": "MODERATE",
+  "emailNotificationsEnabled": true
 }
 ```
 

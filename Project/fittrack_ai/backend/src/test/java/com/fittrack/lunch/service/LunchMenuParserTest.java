@@ -77,6 +77,39 @@ class LunchMenuParserTest {
     }
 
     @Test
+    void parsesPricedDrinkExtrasAfterTheLegacySections() {
+        LunchMenuParser.ParsedMenu result = parser.parse("""
+                Cơm gà
+                Cơm sườn
+                +
+                Phở bò
+                @DRINKS
+                Trà đào | 45000
+                Trà vải 50000
+                """);
+
+        assertEquals(2, result.extraItems().size());
+        assertEquals("Trà đào", result.extraItems().getFirst().name());
+        assertEquals(45_000L, result.extraItems().getFirst().unitPrice());
+        assertEquals(LunchMenuItemType.EXTRA, result.extraItems().getFirst().type());
+        assertEquals(50_000L, result.extraItems().get(1).unitPrice());
+    }
+
+    @Test
+    void rejectsAnExtraWithoutAPositivePrice() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> parser.parse("""
+                        Cơm gà
+                        Cơm sườn
+                        @DRINKS
+                        Trà đào
+                        """)
+        );
+        assertTrue(exception.getMessage().contains("phải có giá"));
+    }
+
+    @Test
     void rejectsARegularGroupThatCannotFormACombo() {
         assertThrows(
                 IllegalArgumentException.class,

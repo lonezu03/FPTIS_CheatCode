@@ -25,6 +25,8 @@ class _LunchScreenState extends State<LunchScreen> {
   bool _busy = false;
   String _selectionType = 'COMBO';
   final _selectedIds = <String>[];
+  final _selectedExtraIds = <String>[];
+  String? _selectedMenuId;
   final _noteController = TextEditingController();
   final _cart = <_LunchPortionDraft>[];
   final _requestIdRandom = Random.secure();
@@ -54,9 +56,29 @@ class _LunchScreenState extends State<LunchScreen> {
     }
   }
 
+  List<Map<String, dynamic>> get _menus {
+    final plural = _data?['menus'];
+    if (plural is List && plural.isNotEmpty) {
+      return plural.whereType<Map>().map((menu) => Map<String, dynamic>.from(menu)).toList();
+    }
+    final singular = _data?['menu'];
+    return singular is Map ? [Map<String, dynamic>.from(singular)] : const [];
+  }
+
   Map<String, dynamic>? get _menu {
-    final menu = _data?['menu'];
-    return menu is Map ? Map<String, dynamic>.from(menu) : null;
+    final menus = _menus;
+    if (menus.isEmpty) return null;
+    return menus.firstWhere(
+      (menu) => menu['id']?.toString() == _selectedMenuId,
+      orElse: () => menus.first,
+    );
+  }
+
+  List<Map<String, dynamic>> get _extraItems {
+    final raw = _menu?['extraItems'];
+    return raw is List
+        ? raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+        : const [];
   }
 
   List<Map<String, dynamic>> get _items {
@@ -92,6 +114,31 @@ class _LunchScreenState extends State<LunchScreen> {
   int get _requiredSelectionCount => _selectionType == 'COMBO' ? 2 : 1;
 
   num get _price => _asNumber(_menu?['price'] ?? 35000);
+
+  int _extraCount(String id) => _selectedExtraIds.where((itemId) => itemId == id).length;
+
+  void _changeMenu(String id) {
+    if (_selectedMenuId == id) return;
+    setState(() {
+      _selectedMenuId = id;
+      _selectedIds.clear();
+      _selectedExtraIds.clear();
+      _cart.clear();
+      _cartRequestId = null;
+      _noteController.clear();
+    });
+  }
+
+  void _changeExtra(String id, int delta) {
+    setState(() {
+      if (delta > 0) {
+        _selectedExtraIds.add(id);
+      } else {
+        final index = _selectedExtraIds.indexOf(id);
+        if (index >= 0) _selectedExtraIds.removeAt(index);
+      }
+    });
+  }
 
   int _itemCount(String id) => _selectedIds.where((itemId) => itemId == id).length;
 
@@ -140,17 +187,27 @@ class _LunchScreenState extends State<LunchScreen> {
         item['id'].toString(): item['name']?.toString() ?? 'Món ăn',
     };
     final ids = _selectedIds.toList(growable: false);
+    final extraIds = _selectedExtraIds.toList(growable: false);
+    final namesByExtraId = {
+      for (final item in _extraItems)
+        item['id'].toString(): item['name']?.toString() ?? 'Món thêm',
+    };
     setState(() {
       _cart.add(
         _LunchPortionDraft(
           selectionType: _selectionType,
           itemIds: ids,
-          itemNames: ids.map((id) => namesById[id] ?? 'Món ăn').toList(),
+          extraItemIds: extraIds,
+          itemNames: [
+            ...ids.map((id) => namesById[id] ?? 'Món ăn'),
+            ...extraIds.map((id) => '${namesByExtraId[id] ?? 'Món thêm'} (thêm)'),
+          ],
           note: _noteController.text.trim(),
         ),
       );
       _cartRequestId = null;
       _selectedIds.clear();
+      _selectedExtraIds.clear();
       _noteController.clear();
     });
     showMessage(context, 'Đã thêm phần ăn vào danh sách đặt.');
@@ -161,7 +218,7 @@ class _LunchScreenState extends State<LunchScreen> {
     if (menu == null || _cart.isEmpty || _busy) return;
 
     final portionCount = _cart.length;
-    final total = _price * portionCount;
+    final total = _cart.fold<num>(0, (sum, portion) => sum + portion.total(_price, _extraItems));
     final clientRequestId = _cartRequestId ??= _newCartRequestId();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -313,6 +370,31 @@ class _LunchScreenState extends State<LunchScreen> {
                     '• ${_formatCurrency(_price)} / phần',
                     style: const TextStyle(color: Colors.black54),
                   ),
+                          if (_menus.length > 1) ...[
+                    Card(
+                      color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: .45),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Chọn bộ menu / điều phối viên', style: TextStyle(fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 6),
+                            const Text('Chọn quán hoặc admin điều phối trước khi tạo phần ăn.', style: TextStyle(color: Colors.black54)),
+                            const SizedBox(height: 10),
+                            ..._menus.map((candidate) => RadioListTile<String>(
+                              value: candidate['id'].toString(),
+                              groupValue: _menu?['id']?.toString(),
+                              onChanged: _busy || _cart.isNotEmpty ? null : (value) { if (value != null) _changeMenu(value); },
+                              title: Text(candidate['orderLabel']?.toString() ?? 'Menu hôm nay'),
+                              subtitle: Text('${candidate['vendorName'] ?? 'Quán cơm'} • ${candidate['coordinator'] is Map ? (candidate['coordinator']['fullName'] ?? 'Điều phối viên') : 'Điều phối viên'}'),
+                            )),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   if (!_canOrder) ...[
                     const SizedBox(height: 14),
                     _InfoBanner(
@@ -396,6 +478,35 @@ class _LunchScreenState extends State<LunchScreen> {
                         ),
                       );
                     }),
+                  if (_extraItems.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text('Món thêm / đồ uống', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 6),
+                    const Text('Có thể chọn nhiều chai/cốc; giá cộng vào phần này.', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                    const SizedBox(height: 8),
+                    ..._extraItems.map((item) {
+                      final id = item['id'].toString();
+                      final count = _extraCount(id);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Material(
+                          color: const Color(0xFFF2F8FF),
+                          borderRadius: BorderRadius.circular(14),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            child: Row(
+                              children: [
+                                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item['name']?.toString() ?? 'Món thêm', style: const TextStyle(fontWeight: FontWeight.w700)), Text(_formatCurrency(item['unitPrice']), style: const TextStyle(color: Colors.black54, fontSize: 12))])),
+                                IconButton(onPressed: _canOrder && !_busy && count > 0 ? () => _changeExtra(id, -1) : null, icon: const Icon(Icons.remove_circle_outline)),
+                                Text('$count', style: const TextStyle(fontWeight: FontWeight.w800)),
+                                IconButton(onPressed: _canOrder && !_busy ? () => _changeExtra(id, 1) : null, icon: const Icon(Icons.add_circle_outline)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                   const SizedBox(height: 6),
                   TextField(
                     controller: _noteController,
@@ -428,6 +539,7 @@ class _LunchScreenState extends State<LunchScreen> {
             _OrderCart(
               portions: _cart,
               pricePerPortion: _price,
+              extraItems: _extraItems,
               busy: _busy,
               onRemove: (index) => setState(() {
                 _cart.removeAt(index);
@@ -478,18 +590,29 @@ class _LunchPortionDraft {
   const _LunchPortionDraft({
     required this.selectionType,
     required this.itemIds,
+    required this.extraItemIds,
     required this.itemNames,
     required this.note,
   });
 
   final String selectionType;
   final List<String> itemIds;
+  final List<String> extraItemIds;
   final List<String> itemNames;
   final String note;
+
+  num total(num basePrice, List<Map<String, dynamic>> extraItems) => basePrice + extraItemIds.fold<num>(0, (sum, id) {
+    final item = extraItems.firstWhere(
+      (candidate) => candidate['id'].toString() == id,
+      orElse: () => <String, dynamic>{},
+    );
+    return sum + _LunchScreenState._asNumber(item['unitPrice']);
+  });
 
   Map<String, dynamic> toRequest() => {
     'selectionType': selectionType,
     'itemIds': itemIds,
+    if (extraItemIds.isNotEmpty) 'extraItemIds': extraItemIds,
     if (note.isNotEmpty) 'note': note,
   };
 }
@@ -771,6 +894,7 @@ class _OrderCart extends StatelessWidget {
   const _OrderCart({
     required this.portions,
     required this.pricePerPortion,
+    required this.extraItems,
     required this.busy,
     required this.onRemove,
     required this.onSubmit,
@@ -778,13 +902,14 @@ class _OrderCart extends StatelessWidget {
 
   final List<_LunchPortionDraft> portions;
   final num pricePerPortion;
+  final List<Map<String, dynamic>> extraItems;
   final bool busy;
   final ValueChanged<int> onRemove;
   final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
-    final total = pricePerPortion * portions.length;
+    final total = portions.fold<num>(0, (sum, portion) => sum + portion.total(pricePerPortion, extraItems));
     return Card(
       color: Theme.of(context).colorScheme.primaryContainer
           .withValues(alpha: .48),

@@ -85,6 +85,7 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
 export type ParsedLunchMenu = {
   regularItems: string[];
   specialItems: string[];
+  extraItems: string[];
   errors: string[];
   isValid: boolean;
 };
@@ -94,70 +95,55 @@ export function parseLunchMenu(rawMenuText: string): ParsedLunchMenu {
     .split(/\r?\n/)
     .map((line) => line.trim().replace(/\s+/g, " "))
     .filter(Boolean);
-
-  const separators = lines.reduce<number[]>((indexes, line, index) => {
-    if (line === "+") {
-      indexes.push(index);
-    }
-    return indexes;
-  }, []);
-
   const errors: string[] = [];
-
-  if (separators.length > 1) {
-    errors.push('Menu chỉ được có một dòng phân cách "+".');
-  }
-
-  const separatorIndex = separators[0] ?? lines.length;
-  const regularSource = lines.slice(0, separatorIndex).filter((line) => line !== "+");
-  const specialSource =
-    separators.length > 0
-      ? lines.slice(separatorIndex + 1).filter((line) => line !== "+")
-      : [];
+  const regularItems: string[] = [];
+  const specialItems: string[] = [];
+  const extraItems: string[] = [];
   const seen = new Set<string>();
   const duplicateNames = new Set<string>();
+  let currentSection: "REGULAR" | "SPECIAL" | "EXTRA" = "REGULAR";
+  let separatorCount = 0;
 
-  const deduplicate = (items: string[]) =>
-    items.filter((item) => {
-      const key = item.toLocaleLowerCase("vi-VN");
-      if (seen.has(key)) {
-        duplicateNames.add(item);
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
+  for (const line of lines) {
+    const marker = line.toUpperCase();
+    if (marker === "@DRINKS" || marker === "@EXTRAS") {
+      currentSection = "EXTRA";
+      continue;
+    }
+    if (line === "+") {
+      separatorCount += 1;
+      currentSection = "SPECIAL";
+      continue;
+    }
 
-  const regularItems = deduplicate(regularSource);
-  const specialItems = deduplicate(specialSource);
-
-  if (regularItems.length === 1) {
-    errors.push("Nhóm cơm phần cần ít nhất 2 món để người dùng chọn.");
+    const match = currentSection === "EXTRA"
+      ? /^(.+?)(?:\s*[|:]\s*|\s+)(\d{1,9})$/.exec(line)
+      : null;
+    const name = match?.[1]?.trim() ?? line;
+    const price = match ? Number(match[2]) : null;
+    if (currentSection === "EXTRA" && (!match || price == null || !Number.isFinite(price) || price <= 0)) {
+      errors.push(`Món thêm phải có giá, ví dụ “Trà đào | 45000”: ${line}`);
+    }
+    const key = name.toLocaleLowerCase("vi-VN");
+    if (seen.has(key)) {
+      duplicateNames.add(name);
+      continue;
+    }
+    seen.add(key);
+    if (currentSection === "REGULAR") regularItems.push(name);
+    if (currentSection === "SPECIAL") specialItems.push(name);
+    if (currentSection === "EXTRA") extraItems.push(price ? `${name} · ${formatCurrency(price)}` : name);
   }
 
-  if (regularItems.length === 0 && specialItems.length === 0) {
-    errors.push("Menu cần có ít nhất một món ăn.");
-  }
+  if (separatorCount > 1) errors.push('Menu chỉ được có một dòng phân cách "+".');
+  if (regularItems.length === 1) errors.push("Nhóm cơm phần cần ít nhất 2 món để người dùng chọn.");
+  if (regularItems.length === 0 && specialItems.length === 0) errors.push("Menu cần có ít nhất một món cơm hoặc món đơn.");
+  if (separatorCount > 0 && specialItems.length === 0) errors.push('Thêm ít nhất 1 món đơn ở dưới dấu "+".');
+  if (duplicateNames.size > 0) errors.push(`Tên món bị trùng: ${[...duplicateNames].join(", ")}.`);
+  const longNames = [...regularItems, ...specialItems, ...extraItems].filter((item) => item.length > 255);
+  if (longNames.length > 0) errors.push(`Tên món không được dài quá 255 ký tự: ${longNames.join(", ")}.`);
 
-  if (separators.length > 0 && specialItems.length === 0) {
-    errors.push('Thêm ít nhất 1 món đơn ở dưới dấu "+".');
-  }
-
-  if (duplicateNames.size > 0) {
-    errors.push(`Tên món bị trùng: ${[...duplicateNames].join(", ")}.`);
-  }
-
-  const longNames = [...regularItems, ...specialItems].filter((item) => item.length > 255);
-  if (longNames.length > 0) {
-    errors.push(`Tên món không được dài quá 255 ký tự: ${longNames.join(", ")}.`);
-  }
-
-  return {
-    regularItems,
-    specialItems,
-    errors,
-    isValid: errors.length === 0,
-  };
+  return { regularItems, specialItems, extraItems, errors, isValid: errors.length === 0 };
 }
 
 export function getCutoffDistance(cutoffAt: string, now = Date.now()): {

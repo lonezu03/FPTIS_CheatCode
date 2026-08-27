@@ -119,6 +119,11 @@ class _WorkoutList extends StatelessWidget {
       final sets = item['sets'] is List ? item['sets'] as List : const [];
       return total + sets.whereType<Map>().fold<num>(0, (setTotal, set) => setTotal + (((set['weight'] as num?) ?? 0) * ((set['reps'] as num?) ?? 0)));
     });
+    final groupedByDay = <String, List<Map<String, dynamic>>>{};
+    for (final item in items) {
+      final day = item['sessionDate']?.toString() ?? '-';
+      groupedByDay.putIfAbsent(day, () => []).add(item);
+    }
 
     return RefreshIndicator(
       onRefresh: onReload,
@@ -160,29 +165,28 @@ class _WorkoutList extends StatelessWidget {
             subtitle: 'Thêm buổi tập đầu tiên để theo dõi tiến độ.',
           )
         else
-          ...items.map((item) {
-            final sets = item['sets'] is List ? item['sets'] as List : const [];
+          ...groupedByDay.entries.map((entry) {
+            final daySets = entry.value.fold<int>(0, (total, item) => total + (item['sets'] is List ? (item['sets'] as List).length : 0));
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Card(
                 child: ExpansionTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.fitness_center, size: 20),
-                  ),
-                  title: Text(
-                    _date(item['sessionDate']),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: Text(
-                    '${item['durationMinutes'] ?? 0} phút • ${sets.length} hiệp${item['note']?.toString().isNotEmpty == true ? ' • ${item['note']}' : ''}',
-                  ),
-                  children: sets.map((raw) {
-                    final set = raw as Map;
-                    return ListTile(
-                      title: Text(set['exerciseName']?.toString() ?? 'Bài tập'),
-                      subtitle: Text(
-                        'Hiệp ${set['setNumber'] ?? '-'} • ${set['weight'] ?? 0} kg × ${set['reps'] ?? 0} lần • RIR ${set['rir'] ?? 0}',
-                      ),
+                  leading: const CircleAvatar(child: Icon(Icons.calendar_today_outlined, size: 20)),
+                  title: Text(_date(entry.key), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Text('${entry.value.length} buổi • $daySets hiệp'),
+                  children: entry.value.map((item) {
+                    final sets = item['sets'] is List ? item['sets'] as List : const [];
+                    return ExpansionTile(
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 18),
+                      title: Text(item['note']?.toString().isNotEmpty == true ? item['note'].toString() : 'Buổi tập'),
+                      subtitle: Text('${item['durationMinutes'] ?? 0} phút • ${sets.length} hiệp'),
+                      children: sets.map((raw) {
+                        final set = raw as Map;
+                        return ListTile(
+                          title: Text(set['exerciseName']?.toString() ?? 'Bài tập'),
+                          subtitle: Text('Hiệp ${set['setNumber'] ?? '-'} • ${set['weight'] ?? 0} kg × ${set['reps'] ?? 0} lần • RIR ${set['rir'] ?? 0}'),
+                        );
+                      }).toList(),
                     );
                   }).toList(),
                 ),

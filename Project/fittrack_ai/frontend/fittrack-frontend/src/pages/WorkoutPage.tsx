@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import axios from "axios";
 import {
   Activity,
@@ -66,10 +66,18 @@ export default function WorkoutPage() {
 
   const exercises = exercisesQuery.data ?? [];
   const sessions = sessionsQuery.data?.content ?? [];
-  const workoutRows = sessions.flatMap((session) => session.sets.map((set) => ({ session, set })));
+  const groupedSessions = useMemo(() => {
+    const groups = new Map<string, typeof sessions>();
+    for (const session of sessions) {
+      const current = groups.get(session.sessionDate) ?? [];
+      current.push(session);
+      groups.set(session.sessionDate, current);
+    }
+    return [...groups.entries()];
+  }, [sessions]);
   const workoutPagination = {
     ...workoutPager,
-    paginatedItems: workoutRows,
+    paginatedItems: sessions,
     totalItems: sessionsQuery.data?.totalElements ?? 0,
     totalPages: Math.max(1, sessionsQuery.data?.totalPages ?? 1),
   };
@@ -289,7 +297,7 @@ export default function WorkoutPage() {
       <Card>
         <CardHeader>
           <CardTitle>Lịch sử buổi tập</CardTitle>
-          <p className="text-sm text-muted-foreground">Mỗi dòng là một set trong các buổi gần đây. Dùng nút Sửa để cập nhật lại cảm nhận hoặc thông số.</p>
+          <p className="text-sm text-muted-foreground">Các buổi tập được nhóm theo ngày để bạn nhìn nhanh nhịp luyện tập và vẫn có thể sửa từng set.</p>
         </CardHeader>
 
         <CardContent>
@@ -314,28 +322,31 @@ export default function WorkoutPage() {
               </TableHeader>
 
               <TableBody>
-                {workoutPagination.paginatedItems.map(({ session, set }) => (
-                    <TableRow key={set.id}>
-                      <TableCell>{session.sessionDate}</TableCell>
-                      <TableCell>{set.exerciseName}</TableCell>
-                      <TableCell>{set.weight} kg</TableCell>
-                      <TableCell>{set.reps}</TableCell>
-                      <TableCell>{set.rir}</TableCell>
-                      <TableCell>{session.note}</TableCell>
-                      <TableCell className="space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => openEditWorkout(session, set)}>
-                          Sửa
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(session.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          Xóa
-                        </Button>
+                {groupedSessions.map(([date, daySessions]) => (
+                  <Fragment key={date}>
+                    <TableRow className="bg-emerald-50/70 hover:bg-emerald-50/70">
+                      <TableCell colSpan={7}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-semibold text-emerald-950">{date}</span>
+                          <span className="text-xs text-emerald-800/70">{daySessions.length} buổi · {daySessions.reduce((total, session) => total + session.sets.length, 0)} set</span>
+                        </div>
                       </TableCell>
                     </TableRow>
+                    {daySessions.flatMap((session) => session.sets.map((set) => (
+                      <TableRow key={set.id}>
+                        <TableCell>{session.sessionDate}</TableCell>
+                        <TableCell>{set.exerciseName}</TableCell>
+                        <TableCell>{set.weight} kg</TableCell>
+                        <TableCell>{set.reps}</TableCell>
+                        <TableCell>{set.rir}</TableCell>
+                        <TableCell>{session.note}</TableCell>
+                        <TableCell className="space-x-2">
+                          <Button variant="outline" size="sm" onClick={() => openEditWorkout(session, set)}>Sửa</Button>
+                          <Button variant="destructive" size="sm" onClick={() => handleDelete(session.id)} disabled={deleteMutation.isPending}>Xóa</Button>
+                        </TableCell>
+                      </TableRow>
+                    )))}
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>

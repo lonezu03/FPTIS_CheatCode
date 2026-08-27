@@ -24,6 +24,7 @@ public final class LunchDtos {
             Double protein,
             Double carbs,
             Double fat,
+            Long unitPrice,
             Double averageRating,
             long reviewCount
     ) {
@@ -47,6 +48,7 @@ public final class LunchDtos {
             LocalDate menuDate,
             String orderLabel,
             String vendorName,
+            PersonResponse coordinator,
             LocalDateTime cutoffAt,
             Long price,
             String status,
@@ -55,6 +57,7 @@ public final class LunchDtos {
             boolean canReplace,
             List<MenuItemResponse> regularItems,
             List<MenuItemResponse> specialItems,
+            List<MenuItemResponse> extraItems,
             long totalOrders,
             long unpaidOrders
     ) {
@@ -94,7 +97,9 @@ public final class LunchDtos {
             List<OrderResponse> myMealOrders,
             List<OrderResponse> ordersPlacedByMe,
             boolean canOrder,
-            String blockReason
+            String blockReason,
+            List<MenuResponse> menus,
+            boolean requiresMenuSelection
     ) {
     }
 
@@ -103,8 +108,18 @@ public final class LunchDtos {
             String beneficiaryUserId,
             @NotNull LunchSelectionType selectionType,
             @NotEmpty List<@NotBlank String> itemIds,
+            List<@NotBlank String> extraItemIds,
             @Size(max = 500) String note
     ) {
+        public CreateOrderRequest(
+                String menuId,
+                String beneficiaryUserId,
+                LunchSelectionType selectionType,
+                List<String> itemIds,
+                String note
+        ) {
+            this(menuId, beneficiaryUserId, selectionType, itemIds, null, note);
+        }
     }
 
     /**
@@ -122,8 +137,17 @@ public final class LunchDtos {
             String beneficiaryUserId,
             @NotNull LunchSelectionType selectionType,
             @NotEmpty List<@NotBlank String> itemIds,
+            List<@NotBlank String> extraItemIds,
             @Size(max = 500) String note
     ) {
+        public OrderPortionRequest(
+                String beneficiaryUserId,
+                LunchSelectionType selectionType,
+                List<String> itemIds,
+                String note
+        ) {
+            this(beneficiaryUserId, selectionType, itemIds, null, note);
+        }
     }
 
     public record OrderBatchResponse(
@@ -135,6 +159,7 @@ public final class LunchDtos {
     public record UpdateOrderRequest(
             @NotNull LunchSelectionType selectionType,
             @NotEmpty List<@NotBlank String> itemIds,
+            List<@NotBlank String> extraItemIds,
             @Size(max = 500) String note
     ) {
     }
@@ -204,7 +229,8 @@ public final class LunchDtos {
             @PositiveOrZero Double calories,
             @PositiveOrZero Double protein,
             @PositiveOrZero Double carbs,
-            @PositiveOrZero Double fat
+            @PositiveOrZero Double fat,
+            @Positive Long unitPrice
     ) {
     }
 
