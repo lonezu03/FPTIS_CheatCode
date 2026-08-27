@@ -124,6 +124,31 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
     }
   }
 
+  Future<void> _deleteLocked(Map<String, dynamic> user) async {
+    if (user['active'] == true) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xóa tài khoản?'),
+        content: Text('Xóa vĩnh viễn ${user['email'] ?? 'tài khoản này'}? Dữ liệu liên quan không thể khôi phục.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Hủy')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Xóa')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await context.read<ApiClient>().delete('/admin/users/${user['id']}');
+      if (mounted) {
+        setState(() => users.remove(user));
+        showMessage(context, 'Đã xóa tài khoản bị khóa.');
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, displayError(e), error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) return const LoadingView();
@@ -188,6 +213,12 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
                       value: user['scheduleEnabled'] == true,
                       onChanged: (v) => _toggle(user, 'scheduleEnabled', v),
                     ),
+                    if (user['active'] != true)
+                      ListTile(
+                        leading: const Icon(Icons.delete_forever_outlined, color: Colors.red),
+                        title: const Text('Xóa tài khoản đã khóa', style: TextStyle(color: Colors.red)),
+                        onTap: () => _deleteLocked(user),
+                      ),
                   ],
                 ),
               ),

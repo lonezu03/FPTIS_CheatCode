@@ -27,9 +27,6 @@ class AuthServiceTest {
     private JwtService jwtService;
     @Mock
     private AuthTokenService authTokenService;
-    @Mock
-    private ApplicationMailService mailService;
-
     private AuthService service;
 
     @BeforeEach
@@ -38,8 +35,7 @@ class AuthServiceTest {
                 userRepository,
                 passwordEncoder,
                 jwtService,
-                authTokenService,
-                mailService
+                authTokenService
         );
     }
 
@@ -50,8 +46,6 @@ class AuthServiceTest {
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encoded");
         when(userRepository.save(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        when(mailService.isConfigured()).thenReturn(false);
-
         var response = service.register(request);
 
         assertFalse(response.verificationRequired());
@@ -59,8 +53,6 @@ class AuthServiceTest {
         assertTrue(response.message().contains("đăng nhập ngay"));
         verify(authTokenService, never())
                 .createEmailVerificationToken(any(User.class));
-        verify(mailService, never())
-                .sendVerificationEmail(anyString(), any(), anyString());
         verify(userRepository).save(argThat(user ->
                 Boolean.TRUE.equals(user.getEmailVerified())
                         && Boolean.TRUE.equals(user.getLunchEnabled())
@@ -71,27 +63,21 @@ class AuthServiceTest {
     }
 
     @Test
-    void registrationRequiresVerificationWhenMailIsEnabled() {
+    void registrationAlwaysAllowsImmediateLoginEvenWhenMailIsConfigured() {
         RegisterRequest request = request();
         when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
         when(passwordEncoder.encode(request.getPassword())).thenReturn("encoded");
         when(userRepository.save(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
-        when(mailService.isConfigured()).thenReturn(true);
-        when(authTokenService.createEmailVerificationToken(any(User.class)))
-                .thenReturn("verification-token");
-        when(mailService.sendVerificationEmail(
-                request.getEmail(),
-                request.getFullName(),
-                "verification-token"
-        )).thenReturn(true);
 
         var response = service.register(request);
 
-        assertTrue(response.verificationRequired());
-        assertTrue(response.emailSent());
+        assertFalse(response.verificationRequired());
+        assertFalse(response.emailSent());
+        assertTrue(response.message().contains("đăng nhập ngay"));
+        verify(authTokenService, never()).createEmailVerificationToken(any(User.class));
         verify(userRepository).save(argThat(
-                user -> !Boolean.TRUE.equals(user.getEmailVerified())
+                user -> Boolean.TRUE.equals(user.getEmailVerified())
                         && Boolean.TRUE.equals(user.getLunchEnabled())
                         && Boolean.FALSE.equals(user.getFitnessEnabled())
                         && Boolean.FALSE.equals(user.getHealthEnabled())

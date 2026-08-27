@@ -72,11 +72,8 @@ Deployment:
 
 - A newly registered account starts active for the lunch module only. Fitness,
   health, and chatbot permissions remain disabled until an admin grants them.
-- Admin-only account management controls role, active state, module permissions,
-  and password reset behavior.
-- Registration requires email verification in production. Forgot-password OTPs
-  must be sent only to the email stored on the account; never accept an arbitrary
-  destination email from the client.
+- Admin-only account management controls role, active state, module permissions, password reset behavior, and deletion of locked accounts. Deleting a locked account anonymizes its identity while retaining operational history and auditability.
+- Registration does not require email verification or OTP; a newly created account can log in immediately. Forgot-password OTPs remain enabled and must be sent only to the email stored on the account; never accept an arbitrary destination email from the client.
 - A regular lunch portion selects exactly two dish slots above the `+` separator; both slots may reference the same regular dish. A special/single order selects exactly one dish below it.
 - Admin fund adjustments are explicit ledger actions: `ADD_FUND`, `REMOVE_FUND`, `ADD_DEBT`, or `REMOVE_DEBT`. Removing fund/debt cannot exceed the current bucket, and every manual adjustment requires an audit record and note when available.
 - Each lunch order records the configured price as debt (35,000 VND by default).
@@ -107,6 +104,7 @@ Deployment:
   `dist/`, `node_modules/`, `.pub-cache/`, or `.local-android-sdk/`.
 - Keep user-facing web/mobile text in Vietnamese unless the user asks otherwise.
 - When a feature exists on web and mobile, keep API payload names and permission flags identical; do not silently fall back to mock data.
+- Notification playbooks must support either all active users or an explicit selected-user list. Prefer selected recipients for personal or sensitive wellness messages to avoid notification fatigue.
 - For production HTTP failures, retain and report `X-Request-Id`, then correlate
   it with Render logs before guessing at the cause.
 

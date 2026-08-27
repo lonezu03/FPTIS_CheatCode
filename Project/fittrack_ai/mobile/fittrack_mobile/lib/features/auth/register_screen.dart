@@ -38,10 +38,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await showDialog<void>(
         context: context,
         builder: (context) => AlertDialog(
-          icon: const Icon(Icons.mark_email_read_outlined, size: 42),
-          title: const Text('Kiểm tra email'),
+          icon: const Icon(Icons.check_circle_outline, size: 42),
+          title: const Text('Tạo tài khoản thành công'),
           content: Text(
-            result['message']?.toString() ?? 'Tài khoản đã được tạo. Hãy mở email để xác thực trước khi đăng nhập.',
+            result['message']?.toString() ?? 'Tài khoản đã được tạo. Bạn có thể đăng nhập ngay.',
           ),
           actions: [
             FilledButton(
@@ -93,7 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     labelText: 'Email',
-                    helperText: 'Email dùng để xác thực và khôi phục mật khẩu',
+                    helperText: 'Email dùng để đăng nhập và khôi phục mật khẩu',
                   ),
                   validator: (v) => v == null || !v.contains('@')
                       ? 'Nhập email hợp lệ'

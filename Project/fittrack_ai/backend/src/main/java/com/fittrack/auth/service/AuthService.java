@@ -6,12 +6,10 @@ import com.fittrack.auth.dto.LoginRequest;
 import com.fittrack.auth.dto.RegisterRequest;
 import com.fittrack.auth.exception.EmailVerificationRequiredException;
 import com.fittrack.common.exception.ConflictException;
-import com.fittrack.common.exception.ServiceUnavailableException;
 import com.fittrack.common.security.JwtService;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,10 +25,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthTokenService authTokenService;
-    private final ApplicationMailService mailService;
 
-    @Value("${app.mail.registration-requires-email:false}")
-    private boolean registrationRequiresEmail;
 
     @Transactional
     public RegistrationResponse register(RegisterRequest request) {
@@ -39,12 +34,6 @@ public class AuthService {
             throw new ConflictException("Email đã được sử dụng");
         }
 
-        if (registrationRequiresEmail && !mailService.isConfigured()) {
-            throw new ServiceUnavailableException(
-                    "Đăng ký tạm thời đóng vì dịch vụ xác thực email chưa được cấu hình"
-            );
-        }
-        boolean verificationRequired = mailService.isConfigured();
         User user = User.builder()
                 .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -60,36 +49,15 @@ public class AuthService {
                 .fitnessEnabled(false)
                 .healthEnabled(false)
                 .chatbotEnabled(false)
-                .emailVerified(!verificationRequired)
+                .emailVerified(true)
                 .build();
 
         User savedUser = userRepository.save(user);
-        boolean sent = false;
-        if (verificationRequired) {
-            String rawToken =
-                    authTokenService.createEmailVerificationToken(savedUser);
-            sent = mailService.sendVerificationEmail(
-                    savedUser.getEmail(),
-                    savedUser.getFullName(),
-                    rawToken
-            );
-        }
-
-        String message;
-        if (!verificationRequired) {
-            message = "Đăng ký thành công. Bạn có thể đăng nhập ngay.";
-        } else if (sent) {
-            message = "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.";
-        } else {
-            message = "Đăng ký thành công nhưng chưa gửi được email. "
-                    + "Hãy dùng chức năng gửi lại email xác thực.";
-        }
-
         return new RegistrationResponse(
                 savedUser.getEmail(),
-                message,
-                verificationRequired,
-                sent
+                "Đăng ký thành công. Bạn có thể đăng nhập ngay.",
+                false,
+                false
         );
     }
 

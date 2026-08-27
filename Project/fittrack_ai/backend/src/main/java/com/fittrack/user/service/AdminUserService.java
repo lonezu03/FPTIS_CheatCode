@@ -14,10 +14,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import com.fittrack.common.dto.PageResponse;
 
@@ -121,6 +123,38 @@ public class AdminUserService {
                 "scheduleEnabled", Boolean.TRUE.equals(target.getScheduleEnabled())
         ));
         return response;
+    }
+
+    @Transactional
+    public void deleteLockedUser(User currentAdmin, String userId) {
+        User target = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản"));
+        if (Boolean.TRUE.equals(target.getActive())) {
+            throw new ConflictException("Chỉ được xóa tài khoản đã bị khóa");
+        }
+        if (Objects.equals(currentAdmin.getId(), target.getId())) {
+            throw new ConflictException("Không thể tự xóa tài khoản đang đăng nhập");
+        }
+
+        String targetId = target.getId();
+        String targetEmail = target.getEmail();
+        authTokenService.revokeAllSessions(target);
+        target.setActive(false);
+        target.setEmail("deleted+" + targetId + "@invalid.fittrack.local");
+        target.setFullName("Tài khoản đã xóa");
+        target.setPassword(UUID.randomUUID().toString());
+        target.setDeletedAt(LocalDateTime.now());
+        target.setLunchEnabled(false);
+        target.setFitnessEnabled(false);
+        target.setHealthEnabled(false);
+        target.setChatbotEnabled(false);
+        target.setTodoEnabled(false);
+        target.setScheduleEnabled(false);
+        userRepository.save(target);
+        auditService.record(currentAdmin, "USER_DELETED", "USER", targetId, Map.of(
+                "email", targetEmail,
+                "reason", "LOCKED_ACCOUNT_ANONYMIZED"
+        ));
     }
 
     @Transactional

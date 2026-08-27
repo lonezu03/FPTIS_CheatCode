@@ -28,9 +28,10 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query("""
             select user
             from User user
-            where :keyword = ''
+            where user.deletedAt is null
+              and (:keyword = ''
                or lower(user.email) like lower(concat('%', :keyword, '%'))
-               or lower(coalesce(user.fullName, '')) like lower(concat('%', :keyword, '%'))
+               or lower(coalesce(user.fullName, '')) like lower(concat('%', :keyword, '%')))
             order by user.createdAt desc
             """)
     List<User> searchForAdmin(@Param("keyword") String keyword);
@@ -38,9 +39,10 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query("""
             select user
             from User user
-            where :keyword = ''
+            where user.deletedAt is null
+              and (:keyword = ''
                or lower(user.email) like lower(concat('%', :keyword, '%'))
-               or lower(coalesce(user.fullName, '')) like lower(concat('%', :keyword, '%'))
+               or lower(coalesce(user.fullName, '')) like lower(concat('%', :keyword, '%')))
             order by user.createdAt desc
             """)
     Page<User> searchForAdminPage(

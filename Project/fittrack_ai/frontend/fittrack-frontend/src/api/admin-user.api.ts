@@ -56,3 +56,7 @@ export async function updateAdminUser(
 export async function resetAdminUserPassword(id: string, newPassword: string): Promise<void> {
   await api.post(`/admin/users/${id}/reset-password`, { newPassword });
 }
+
+export async function deleteLockedAdminUser(id: string): Promise<void> {
+  await api.delete(`/admin/users/${id}`);
+}

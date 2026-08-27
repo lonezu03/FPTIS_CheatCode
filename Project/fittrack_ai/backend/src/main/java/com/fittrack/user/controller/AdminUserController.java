@@ -50,6 +50,15 @@ public class AdminUserController {
         );
     }
 
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteLockedUser(
+            Authentication authentication,
+            @PathVariable String id
+    ) {
+        adminUserService.deleteLockedUser((User) authentication.getPrincipal(), id);
+    }
+
     @PostMapping("/{id}/reset-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetPassword(

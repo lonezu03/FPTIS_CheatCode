@@ -80,6 +80,8 @@ public class User {
 
     private LocalDateTime createdAt;
 
+    private LocalDateTime deletedAt;
+
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();

@@ -234,3 +234,25 @@ Exact next steps for the next assistant:
 3. Test a combo with `itemIds: [sameId, sameId]`, a different two-dish combo, and a single special dish.
 4. Test all four fund actions, including attempted over-removal, and verify the ledger balance plus audit event.
 5. Test a regular user with each permission combination on web and mobile; forbidden modules must be absent from navigation and return HTTP 403 when called directly.
+
+## Hotfix 2026-08-27: registration, locked-user deletion, and playbook recipients
+
+- Registration no longer requires email verification or an OTP. `AuthService.register` persists `emailVerified=true`, does not create an email-verification token, and returns `verificationRequired=false` / `emailSent=false`. Password-reset OTP remains a separate feature and must not be removed.
+- Admin deletion is exposed as `DELETE /api/admin/users/{id}` and is allowed only when the target is inactive. The implementation revokes sessions and anonymizes the account with `deletedAt`, a replacement email, disabled module flags, and a random password, retaining historical lunch/ledger/audit references safely. Admin search excludes anonymized accounts.
+- Playbook HTTP 500 root cause: the V9 table and frontend page existed, but the active backend had no playbook entity, DTO, repository, service, or controller. Added `AdminNotificationPlaybookController` at `/api/admin/notification-playbooks`, CRUD service, JPA entity, and scheduler integration.
+- Playbook recipient targeting is now explicit through `recipientMode=ALL_ACTIVE|SELECTED` and `recipientUserIds`. Migration V10 adds `recipient_mode` plus `notification_playbook_recipients`; selected playbooks skip inactive recipients. The admin web UI loads users and lets the operator choose a specific recipient list to avoid notification fatigue.
+- Migration V11 adds `users.deleted_at`; this is intentionally a new migration because production migrations must not be edited in place.
+
+## Verification for this hotfix
+
+- Backend Java 21 `mvn test` passed in the sandbox. Testcontainers integration tests remain skipped when Docker is unavailable.
+- Web TypeScript and Vite production build passed after the notification recipient and admin delete UI changes.
+- Flutter SDK/Dart is not installed in the sandbox, so mobile analyze/test remains pending on a machine with Flutter.
+
+## Next assistant checks
+
+1. Deploy backend so Flyway applies V10 and V11 before testing the new web UI.
+2. Verify `GET /api/admin/notification-playbooks`, then create one `ALL_ACTIVE` playbook and one `SELECTED` playbook with two user IDs.
+3. Verify a scheduled playbook creates at most one notification per user per day and respects `NO_MEAL`, `MEALS_LT`, and `PROTEIN_GT` conditions.
+4. Lock a test user and use the admin UI to delete it; confirm it disappears from admin search while historical records remain queryable.
+5. Register a new account and confirm the response allows immediate login without email verification. Keep password-reset OTP tests unchanged.

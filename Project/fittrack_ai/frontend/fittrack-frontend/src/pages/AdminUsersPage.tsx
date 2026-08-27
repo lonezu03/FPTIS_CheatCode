@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, KeyRound, Search, ShieldCheck, UserCog, UsersRound } from "lucide-react";
+import { AlertCircle, KeyRound, Search, ShieldCheck, Trash2, UserCog, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import {
+  deleteLockedAdminUser,
   getAdminUsersPage,
   resetAdminUserPassword,
   updateAdminUser,
@@ -94,6 +95,23 @@ export default function AdminUsersPage() {
       toast.error(getApiErrorMessage(error, "Không thể đặt lại mật khẩu"));
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteLockedAdminUser,
+    onSuccess: () => {
+      toast.success("Đã xóa tài khoản bị khóa");
+      void queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, "Không thể xóa tài khoản"));
+    },
+  });
+
+  const handleDeleteLockedUser = (user: AdminUser) => {
+    if (user.active) return;
+    if (!window.confirm(`Xóa vĩnh viễn tài khoản ${user.email}? Dữ liệu liên quan sẽ không thể khôi phục.`)) return;
+    deleteMutation.mutate(user.id);
+  };
 
   const users = usersQuery.data?.content ?? [];
   const userPagination = {
@@ -197,6 +215,12 @@ export default function AdminUsersPage() {
                               <KeyRound />
                               Mật khẩu
                             </Button>
+                            {!user.active && (
+                              <Button size="sm" variant="destructive" onClick={() => handleDeleteLockedUser(user)} disabled={deleteMutation.isPending}>
+                                <Trash2 />
+                                Xóa
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -231,6 +255,12 @@ export default function AdminUsersPage() {
                           <KeyRound />
                           Mật khẩu
                         </Button>
+                        {!user.active && (
+                          <Button variant="destructive" onClick={() => handleDeleteLockedUser(user)} disabled={deleteMutation.isPending}>
+                            <Trash2 />
+                            Xóa tài khoản
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
