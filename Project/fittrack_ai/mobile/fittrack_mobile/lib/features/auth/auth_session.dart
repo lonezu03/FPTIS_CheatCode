@@ -16,6 +16,8 @@ class AuthUser {
     required this.lunchEnabled,
     required this.fitnessEnabled,
     required this.healthEnabled,
+    required this.todoEnabled,
+    required this.scheduleEnabled,
     required this.passwordChangeRequired,
   });
 
@@ -26,6 +28,8 @@ class AuthUser {
   final bool lunchEnabled;
   final bool fitnessEnabled;
   final bool healthEnabled;
+  final bool todoEnabled;
+  final bool scheduleEnabled;
   final bool passwordChangeRequired;
 
   bool get isAdmin => role == 'ADMIN';
@@ -38,6 +42,8 @@ class AuthUser {
     lunchEnabled: json['lunchEnabled'] == true,
     fitnessEnabled: json['fitnessEnabled'] == true,
     healthEnabled: json['healthEnabled'] == true,
+    todoEnabled: json['todoEnabled'] == true,
+    scheduleEnabled: json['scheduleEnabled'] == true,
     passwordChangeRequired: json['passwordChangeRequired'] == true,
   );
 
@@ -49,6 +55,8 @@ class AuthUser {
     'lunchEnabled': lunchEnabled,
     'fitnessEnabled': fitnessEnabled,
     'healthEnabled': healthEnabled,
+    'todoEnabled': todoEnabled,
+    'scheduleEnabled': scheduleEnabled,
     'passwordChangeRequired': passwordChangeRequired,
   };
 }

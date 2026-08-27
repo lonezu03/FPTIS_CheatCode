@@ -35,13 +35,14 @@ import {
   notifyLunchMenu,
   reopenLunchMenu,
   summarizeLunchMenu,
-  topUpLunchFund,
+  adjustLunchFund,
   updateLunchMenu,
   type ImportLunchMenuInput,
   type LunchMember,
   type LunchMenu,
   type LunchOrder,
   type LunchSummary,
+  type LunchFundAdjustmentAction,
 } from "@/api/lunch.api";
 import { LunchMetric, MenuStatusBadge, PaymentStatusBadge, SelectionTypeBadge } from "@/components/lunch/LunchStatus";
 import PageHeader from "@/components/PageHeader";
@@ -114,6 +115,7 @@ export default function AdminLunchPage() {
 
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [topUpAmount, setTopUpAmount] = useState(100_000);
+  const [fundAction, setFundAction] = useState<LunchFundAdjustmentAction>("ADD_FUND");
   const [topUpNote, setTopUpNote] = useState("");
 
   const parsedMenu = useMemo(() => parseLunchMenu(rawMenuText), [rawMenuText]);
@@ -267,10 +269,10 @@ export default function AdminLunchPage() {
     },
   });
 
-  const topUpMutation = useMutation({
-    mutationFn: topUpLunchFund,
+  const fundAdjustmentMutation = useMutation({
+    mutationFn: adjustLunchFund,
     onSuccess: () => {
-      toast.success("Đã ghi nhận tiền nạp quỹ.");
+      toast.success(fundAction === "ADD_FUND" ? "Đã cộng tiền vào quỹ." : fundAction === "REMOVE_FUND" ? "Đã trừ tiền khỏi quỹ." : fundAction === "ADD_DEBT" ? "Đã ghi tăng công nợ." : "Đã ghi giảm công nợ.");
       setTopUpNote("");
       void queryClient.invalidateQueries({ queryKey: lunchKeys.adminMembers() });
       void queryClient.invalidateQueries({ queryKey: lunchKeys.today() });
@@ -340,20 +342,21 @@ export default function AdminLunchPage() {
     setRawMenuText("");
   }
 
-  function handleTopUp() {
+  function handleFundAdjustment() {
     if (!selectedMemberId) {
       toast.error("Vui lòng chọn thành viên.");
       return;
     }
 
     if (!Number.isInteger(topUpAmount) || topUpAmount <= 0) {
-      toast.error("Số tiền nạp phải là số nguyên dương.");
+      toast.error("Số tiền điều chỉnh phải là số nguyên dương.");
       return;
     }
 
-    topUpMutation.mutate({
+    fundAdjustmentMutation.mutate({
       userId: selectedMemberId,
       amount: topUpAmount,
+      action: fundAction,
       note: topUpNote.trim(),
     });
   }
@@ -711,7 +714,7 @@ export default function AdminLunchPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <HandCoins className="h-5 w-5" aria-hidden="true" />
-                  Ghi nhận nạp quỹ
+                  Điều chỉnh quỹ & công nợ
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -747,7 +750,21 @@ export default function AdminLunchPage() {
                   </div>
                 )}
 
-                <Field label="Số tiền đã nhận" htmlFor="fund-amount">
+                <Field label="Thao tác" htmlFor="fund-action">
+                  <select
+                    id="fund-action"
+                    value={fundAction}
+                    onChange={(event) => setFundAction(event.target.value as LunchFundAdjustmentAction)}
+                    className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    <option value="ADD_FUND">Cộng tiền vào quỹ</option>
+                    <option value="REMOVE_FUND">Trừ tiền khỏi quỹ</option>
+                    <option value="ADD_DEBT">Ghi tăng công nợ</option>
+                    <option value="REMOVE_DEBT">Ghi giảm công nợ</option>
+                  </select>
+                </Field>
+
+                <Field label={fundAction.includes("DEBT") ? "Số tiền công nợ" : "Số tiền điều chỉnh"} htmlFor="fund-amount">
                   <Input
                     id="fund-amount"
                     type="number"
@@ -783,20 +800,23 @@ export default function AdminLunchPage() {
 
                 <Alert>
                   <AlertTriangle />
-                  <AlertTitle>Chỉ ghi nhận tiền đã nhận</AlertTitle>
+                  <AlertTitle>Điều chỉnh có kiểm soát</AlertTitle>
                   <AlertDescription>
-                    Thao tác này tăng số dư quỹ và được lưu vĩnh viễn trong sổ giao dịch.
+                    {fundAction === "ADD_FUND" && "Cộng tiền đã nhận hoặc khoản được admin xác nhận vào quỹ."}
+                    {fundAction === "REMOVE_FUND" && "Chỉ trừ trong phạm vi số dư quỹ hiện có; không tạo số dư âm."}
+                    {fundAction === "ADD_DEBT" && "Ghi thêm công nợ thủ công, dùng cho các khoản cần đối soát ngoài đơn."}
+                    {fundAction === "REMOVE_DEBT" && "Giảm công nợ hiện có; số tiền không được vượt quá công nợ."}
                   </AlertDescription>
                 </Alert>
 
                 <Button
                   type="button"
                   className="w-full"
-                  onClick={handleTopUp}
-                  disabled={!selectedMemberId || topUpMutation.isPending}
+                  onClick={handleFundAdjustment}
+                  disabled={!selectedMemberId || fundAdjustmentMutation.isPending}
                 >
                   <HandCoins aria-hidden="true" />
-                  {topUpMutation.isPending ? "Đang ghi nhận..." : `Xác nhận nạp ${formatCurrency(topUpAmount)}`}
+                  {fundAdjustmentMutation.isPending ? "Đang ghi nhận..." : `${fundAction === "ADD_FUND" ? "Cộng" : fundAction === "REMOVE_FUND" ? "Trừ" : fundAction === "ADD_DEBT" ? "Ghi nợ" : "Giảm nợ"} ${formatCurrency(topUpAmount)}`}
                 </Button>
               </CardContent>
             </Card>

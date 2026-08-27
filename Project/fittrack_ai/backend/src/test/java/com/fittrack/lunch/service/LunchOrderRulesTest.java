@@ -22,18 +22,24 @@ class LunchOrderRulesTest {
     }
 
     @Test
-    void rejectsDuplicateRegularItemForCombo() {
+    void acceptsDuplicateRegularItemForCombo() {
         LunchMenuItem item = regular("1");
 
-        IllegalArgumentException exception = assertThrows(
+        assertDoesNotThrow(() -> rules.validateSelection(
+                LunchSelectionType.COMBO,
+                List.of(item, item)
+        ));
+    }
+
+    @Test
+    void rejectsMoreThanTwoRegularSlotsForCombo() {
+        assertThrows(
                 IllegalArgumentException.class,
                 () -> rules.validateSelection(
                         LunchSelectionType.COMBO,
-                        List.of(item, item)
+                        List.of(regular("1"), regular("2"), regular("3"))
                 )
         );
-
-        assertTrue(exception.getMessage().contains("trùng"));
     }
 
     @Test

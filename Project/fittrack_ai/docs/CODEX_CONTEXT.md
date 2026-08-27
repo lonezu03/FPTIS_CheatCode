@@ -211,3 +211,26 @@ Exact next steps for the next assistant:
 2. Confirm Flyway reports V9 applied and inspect the production database tables `todos` and `schedule_items`.
 3. Test permission transitions: disabled user sees neither menu nor page and receives HTTP 403; enabled user can create and delete records; admin can manage permissions.
 4. Keep `backend/demo/`, `target/`, `dist/`, `node_modules/`, and credentials out of commits.
+
+## Feature batch 2026-08-27: workout, duplicate lunch, fund controls, mobile parity
+
+- Lunch business rule: a `COMBO` still requires exactly two regular dish slots, but the two `itemIds` may be identical. `SINGLE` remains exactly one special dish. The backend persists repeated IDs as separate order-item rows; web and mobile now expose a clear `+1` action and an `x2` state.
+- Admin fund controls: added `POST /api/lunch/admin/funds/adjust` with `ADD_FUND`, `REMOVE_FUND`, `ADD_DEBT`, and `REMOVE_DEBT`. The account service locks the account, validates bucket limits, writes a signed `ADMIN_ADJUSTMENT` ledger transaction, and records audit metadata. The old top-up endpoint remains compatible.
+- Web UX: Workout now has summary cards for sessions, sets, volume, and minutes. Admin Lunch funds now use a single flexible adjustment form with member balance/debt context and action-specific safety guidance.
+- Mobile parity: lunch duplicate selection uses a list rather than a set; Fitness has workout summary stats; Admin has a Quỹ tab and Todo/Schedule permission toggles; AuthUser persists `todoEnabled` and `scheduleEnabled`; AppShell exposes Lịch & việc only when the corresponding permission or admin role exists; PlannerScreen provides mobile Todo/Schedule listing, create flows, Todo completion, and schedule reminders.
+- Documentation: `AGENTS.md` now defines duplicate combo slots, explicit fund actions, and web/mobile contract parity. This file remains the handoff source for Codex, Claude Code, Gemini Code Assist, and GitHub Copilot.
+
+## Verification notes for this batch
+
+- Backend Java 21 compile passed.
+- Web TypeScript build and Vite production build passed after the changes.
+- Flutter analysis could not be run in the sandbox because neither `flutter` nor `dart` is installed. Before release, run `flutter pub get`, `dart format`, `flutter analyze`, and `flutter test` from `mobile/fittrack_mobile`.
+- Generated frontend `node_modules`, `dist`, and temporary package lock files must stay out of the commit.
+
+## Next assistant checks
+
+1. Run Flutter formatting/analyze/tests on a machine with the Flutter SDK.
+2. Verify the production DB has the existing V9 Todo/Schedule migration and that the fund adjustment route is deployed with the backend.
+3. Test a combo with `itemIds: [sameId, sameId]`, a different two-dish combo, and a single special dish.
+4. Test all four fund actions, including attempted over-removal, and verify the ledger balance plus audit event.
+5. Test a regular user with each permission combination on web and mobile; forbidden modules must be absent from navigation and return HTTP 403 when called directly.

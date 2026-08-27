@@ -5,9 +5,7 @@ import com.fittrack.lunch.entity.LunchMenuItemType;
 import com.fittrack.lunch.entity.LunchSelectionType;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Component
 public class LunchOrderRules {
@@ -23,11 +21,8 @@ public class LunchOrderRules {
             throw new IllegalArgumentException("Vui lòng chọn món");
         }
 
-        Set<String> distinctIds = new HashSet<>();
-        for (LunchMenuItem item : selectedItems) {
-            if (item == null || item.getId() == null || !distinctIds.add(item.getId())) {
-                throw new IllegalArgumentException("Không được chọn trùng món");
-            }
+        if (selectedItems.stream().anyMatch(item -> item == null || item.getId() == null)) {
+            throw new IllegalArgumentException("Vui lòng chọn món hợp lệ");
         }
 
         if (selectionType == LunchSelectionType.COMBO) {

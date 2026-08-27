@@ -77,8 +77,8 @@ Deployment:
 - Registration requires email verification in production. Forgot-password OTPs
   must be sent only to the email stored on the account; never accept an arbitrary
   destination email from the client.
-- A regular lunch portion selects exactly two dishes above the `+` separator; a
-  special/single order selects exactly one dish below it.
+- A regular lunch portion selects exactly two dish slots above the `+` separator; both slots may reference the same regular dish. A special/single order selects exactly one dish below it.
+- Admin fund adjustments are explicit ledger actions: `ADD_FUND`, `REMOVE_FUND`, `ADD_DEBT`, or `REMOVE_DEBT`. Removing fund/debt cannot exceed the current bucket, and every manual adjustment requires an audit record and note when available.
 - Each lunch order records the configured price as debt (35,000 VND by default).
   Insufficient balance does not block ordering. External payment/top-up requests
   change balances only after admin approval.
@@ -106,6 +106,7 @@ Deployment:
 - Do not edit generated/dependency directories such as `target/`, `build/`,
   `dist/`, `node_modules/`, `.pub-cache/`, or `.local-android-sdk/`.
 - Keep user-facing web/mobile text in Vietnamese unless the user asks otherwise.
+- When a feature exists on web and mobile, keep API payload names and permission flags identical; do not silently fall back to mock data.
 - For production HTTP failures, retain and report `X-Request-Id`, then correlate
   it with Render logs before guessing at the cause.
 

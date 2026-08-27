@@ -220,6 +220,14 @@ export type LunchTopUpInput = {
   note: string;
 };
 
+export type LunchFundAdjustmentAction = "ADD_FUND" | "REMOVE_FUND" | "ADD_DEBT" | "REMOVE_DEBT";
+export type LunchFundAdjustmentInput = {
+  userId: string;
+  amount: number;
+  action: LunchFundAdjustmentAction;
+  note: string;
+};
+
 export const lunchKeys = {
   all: ["lunch"] as const,
   today: () => [...lunchKeys.all, "today"] as const,
@@ -333,6 +341,11 @@ export async function getAdminLunchMembers(): Promise<LunchMember[]> {
 
 export async function topUpLunchFund(payload: LunchTopUpInput): Promise<LunchWalletTransaction> {
   const response = await api.post<LunchWalletTransaction>("/lunch/admin/funds/top-up", payload);
+  return response.data;
+}
+
+export async function adjustLunchFund(payload: LunchFundAdjustmentInput): Promise<LunchWalletTransaction> {
+  const response = await api.post<LunchWalletTransaction>("/lunch/admin/funds/adjust", payload);
   return response.data;
 }
 

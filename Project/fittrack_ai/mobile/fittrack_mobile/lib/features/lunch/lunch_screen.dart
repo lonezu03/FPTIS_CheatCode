@@ -24,7 +24,7 @@ class _LunchScreenState extends State<LunchScreen> {
   Object? _error;
   bool _busy = false;
   String _selectionType = 'COMBO';
-  final _selectedIds = <String>{};
+  final _selectedIds = <String>[];
   final _noteController = TextEditingController();
   final _cart = <_LunchPortionDraft>[];
   final _requestIdRandom = Random.secure();
@@ -93,18 +93,27 @@ class _LunchScreenState extends State<LunchScreen> {
 
   num get _price => _asNumber(_menu?['price'] ?? 35000);
 
+  int _itemCount(String id) => _selectedIds.where((itemId) => itemId == id).length;
+
   void _toggleItem(String id) {
     setState(() {
-      if (_selectedIds.remove(id)) return;
-      if (_selectedIds.length >= _requiredSelectionCount) {
-        if (_requiredSelectionCount == 1) {
-          _selectedIds.clear();
-        } else {
-          return;
-        }
+      if (_selectionType == 'SINGLE') {
+        _selectedIds
+          ..clear()
+          ..add(id);
+        return;
       }
-      _selectedIds.add(id);
+      if (_itemCount(id) > 0) {
+        _selectedIds.removeWhere((itemId) => itemId == id);
+        return;
+      }
+      if (_selectedIds.length < _requiredSelectionCount) _selectedIds.add(id);
     });
+  }
+
+  void _addSameItem(String id) {
+    if (_selectionType != 'COMBO' || _itemCount(id) != 1 || _selectedIds.length >= _requiredSelectionCount) return;
+    setState(() => _selectedIds.add(id));
   }
 
   void _changeSelectionType(String nextType) {
@@ -337,7 +346,7 @@ class _LunchScreenState extends State<LunchScreen> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Bạn có thể thêm nhiều phần với các lựa chọn khác nhau, rồi đặt cùng lúc.',
+                    'Bạn có thể thêm nhiều phần với các lựa chọn khác nhau, hoặc chọn cùng một món 2 lần cho một phần cơm.',
                     style: TextStyle(color: Colors.black54),
                   ),
                   const SizedBox(height: 16),
@@ -378,9 +387,12 @@ class _LunchScreenState extends State<LunchScreen> {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: _MenuItemTile(
                           item: item,
-                          selected: _selectedIds.contains(id),
+                          selected: _itemCount(id) > 0,
+                          selectedCount: _itemCount(id),
+                          canAddSame: _selectionType == 'COMBO' && _selectedIds.length < _requiredSelectionCount,
                           enabled: _canOrder && !_busy,
                           onTap: () => _toggleItem(id),
+                          onAddSame: () => _addSameItem(id),
                         ),
                       );
                     }),
@@ -568,7 +580,7 @@ class _SelectionCounter extends StatelessWidget {
         Text(
           isComplete
               ? 'Đã chọn đủ $required/$required món'
-              : 'Đã chọn $current/$required món',
+              : 'Đã chọn $current/$required món${required == 2 ? ' · Có thể chọn một món 2 lần' : ''}',
           style: TextStyle(color: color, fontWeight: FontWeight.w700),
         ),
       ],
@@ -580,14 +592,20 @@ class _MenuItemTile extends StatelessWidget {
   const _MenuItemTile({
     required this.item,
     required this.selected,
+    required this.selectedCount,
+    required this.canAddSame,
     required this.enabled,
     required this.onTap,
+    required this.onAddSame,
   });
 
   final Map<String, dynamic> item;
   final bool selected;
+  final int selectedCount;
+  final bool canAddSame;
   final bool enabled;
   final VoidCallback onTap;
+  final VoidCallback onAddSame;
 
   @override
   Widget build(BuildContext context) {
@@ -627,6 +645,24 @@ class _MenuItemTile extends StatelessWidget {
                   ],
                 ),
               ),
+              if (selectedCount > 0 && canAddSame)
+                IconButton(
+                  tooltip: 'Chọn thêm món này',
+                  onPressed: enabled ? onAddSame : null,
+                  icon: const Icon(Icons.add_circle_outline),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              if (selectedCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text(
+                    'x$selectedCount',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               Checkbox(
                 value: selected,
                 onChanged: enabled ? (_) => onTap() : null,

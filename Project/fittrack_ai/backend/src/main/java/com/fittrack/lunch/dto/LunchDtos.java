@@ -178,6 +178,21 @@ public final class LunchDtos {
     ) {
     }
 
+    public record FundAdjustmentRequest(
+            @NotBlank String userId,
+            @NotNull @Positive Long amount,
+            @NotNull FundAdjustmentAction action,
+            @Size(max = 500) String note
+    ) {
+    }
+
+    public enum FundAdjustmentAction {
+        ADD_FUND,
+        REMOVE_FUND,
+        ADD_DEBT,
+        REMOVE_DEBT
+    }
+
     public record ConfirmExternalPaymentRequest(
             @Size(max = 500) String note
     ) {

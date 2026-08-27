@@ -8,6 +8,7 @@ import '../fitness/fitness_screen.dart';
 import '../health/health_screen.dart';
 import '../lunch/lunch_screen.dart';
 import '../notifications/notifications_screen.dart';
+import '../planner/planner_screen.dart';
 import '../profile/profile_screen.dart';
 import 'dashboard_screen.dart';
 import 'more_screen.dart';
@@ -70,6 +71,13 @@ class _AppShellState extends State<AppShell> {
         Icons.favorite,
         HealthScreen(),
       ),
+    if (user.todoEnabled || user.scheduleEnabled || user.isAdmin)
+      _Destination(
+        'Lịch & việc',
+        Icons.event_note_outlined,
+        Icons.event_note,
+        PlannerScreen(user: user),
+      ),
     const _Destination(
       'Thông báo',
       Icons.notifications_outlined,
@@ -119,6 +127,13 @@ class _AppShellState extends State<AppShell> {
         Icons.favorite_outline,
         Icons.favorite,
         HealthScreen(),
+      ),
+    if (user.todoEnabled || user.scheduleEnabled || user.isAdmin)
+      _Destination(
+        'Lịch & việc',
+        Icons.event_note_outlined,
+        Icons.event_note,
+        PlannerScreen(user: user),
       ),
     _Destination(
       'Thêm',

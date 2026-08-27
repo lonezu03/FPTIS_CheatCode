@@ -28,6 +28,7 @@ import {
   getTodayLunch,
   lunchKeys,
   updateLunchOrder,
+  type LunchMenu,
   type LunchOrder,
   type LunchOrderPortionInput,
   type LunchOrderUpdateInput,
@@ -187,7 +188,10 @@ export default function LunchPage() {
       return [];
     }
 
-    return [...menu.regularItems, ...menu.specialItems].filter((item) => selectedItemIds.includes(item.id));
+    const allItems = [...menu.regularItems, ...menu.specialItems];
+    return selectedItemIds
+      .map((itemId) => allItems.find((item) => item.id === itemId))
+      .filter((item): item is LunchMenu["regularItems"][number] => Boolean(item));
   }, [menu, selectedItemIds]);
 
   const selectedBeneficiary = people.find((person) => person.id === beneficiaryUserId);

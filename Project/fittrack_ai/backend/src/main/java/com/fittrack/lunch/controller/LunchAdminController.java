@@ -102,6 +102,15 @@ public class LunchAdminController {
         return lunchAdminService.topUp(currentUser(authentication), request);
     }
 
+    @PostMapping("/funds/adjust")
+    @ResponseStatus(HttpStatus.CREATED)
+    public WalletTransactionResponse adjustFund(
+            Authentication authentication,
+            @Valid @RequestBody FundAdjustmentRequest request
+    ) {
+        return lunchAdminService.adjustFund(currentUser(authentication), request);
+    }
+
     @PostMapping("/orders/{id}/confirm-external")
     public OrderResponse confirmExternalPayment(
             Authentication authentication,

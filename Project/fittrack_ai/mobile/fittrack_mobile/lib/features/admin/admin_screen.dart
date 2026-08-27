@@ -20,7 +20,7 @@ class _AdminScreenState extends State<AdminScreen>
   @override
   void initState() {
     super.initState();
-    tabs = TabController(length: 3, vsync: this);
+    tabs = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -50,6 +50,7 @@ class _AdminScreenState extends State<AdminScreen>
                 Tab(text: 'Tài khoản'),
                 Tab(text: 'Quản lý menu'),
                 Tab(text: 'Thông báo'),
+                Tab(text: 'Quỹ'),
               ],
             ),
           ],
@@ -58,7 +59,7 @@ class _AdminScreenState extends State<AdminScreen>
       Expanded(
         child: TabBarView(
           controller: tabs,
-          children: const [_UsersAdminTab(), _MenuImportTab(), _BroadcastTab()],
+          children: const [_UsersAdminTab(), _MenuImportTab(), _BroadcastTab(), _FundAdminTab()],
         ),
       ),
     ],
@@ -135,7 +136,7 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
         padding: const EdgeInsets.all(18),
         children: [
           const Text(
-            'App mobile chỉ quản lý 3 quyền nghiệp vụ. Quyền chatbot được để lại cho giai đoạn sau.',
+            'App mobile quản lý 5 quyền nghiệp vụ: Đặt cơm, Fitness, Sức khỏe, Todo và Schedule. Quyền chatbot được để lại cho giai đoạn sau.',
             style: TextStyle(color: Colors.black54),
           ),
           const SizedBox(height: 12),
@@ -177,6 +178,16 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
                       value: user['healthEnabled'] == true,
                       onChanged: (v) => _toggle(user, 'healthEnabled', v),
                     ),
+                    SwitchListTile(
+                      title: const Text('Todo'),
+                      value: user['todoEnabled'] == true,
+                      onChanged: (v) => _toggle(user, 'todoEnabled', v),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Schedule'),
+                      value: user['scheduleEnabled'] == true,
+                      onChanged: (v) => _toggle(user, 'scheduleEnabled', v),
+                    ),
                   ],
                 ),
               ),
@@ -185,6 +196,155 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
         ],
       ),
     );
+  }
+}
+
+class _FundAdminTab extends StatefulWidget {
+  const _FundAdminTab();
+
+  @override
+  State<_FundAdminTab> createState() => _FundAdminTabState();
+}
+
+class _FundAdminTabState extends State<_FundAdminTab> {
+  final amount = TextEditingController(text: '100000');
+  final note = TextEditingController();
+  List<Map<String, dynamic>> members = [];
+  String? selectedUserId;
+  String action = 'ADD_FUND';
+  bool loading = true;
+  bool busy = false;
+  Object? error;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    amount.dispose();
+    note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    setState(() { loading = true; error = null; });
+    try {
+      final raw = await context.read<ApiClient>().get('/lunch/admin/members');
+      if (!mounted) return;
+      setState(() {
+        members = raw is List ? raw.map((e) => Map<String, dynamic>.from(e as Map)).toList() : [];
+        selectedUserId ??= members.isNotEmpty ? members.first['id']?.toString() : null;
+      });
+    } catch (e) {
+      if (mounted) setState(() => error = e);
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> _adjust() async {
+    final userId = selectedUserId;
+    final value = int.tryParse(amount.text.replaceAll(',', '').trim());
+    if (userId == null || value == null || value <= 0) {
+      showMessage(context, 'Chọn thành viên và nhập số tiền hợp lệ.', error: true);
+      return;
+    }
+    setState(() => busy = true);
+    try {
+      await context.read<ApiClient>().post('/lunch/admin/funds/adjust', data: {
+        'userId': userId,
+        'amount': value,
+        'action': action,
+        'note': note.text.trim(),
+      });
+      if (!mounted) return;
+      note.clear();
+      await _load();
+      if (mounted) showMessage(context, 'Đã ghi nhận điều chỉnh quỹ.');
+    } catch (e) {
+      if (mounted) showMessage(context, displayError(e), error: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) return const LoadingView();
+    if (error != null) return ErrorView(message: displayError(error!), onRetry: _load);
+    final matchingMembers = members.where((member) => member['id']?.toString() == selectedUserId).toList();
+    final selected = matchingMembers.isEmpty ? null : matchingMembers.first;
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          const PageIntro(
+            title: 'Quỹ & công nợ',
+            subtitle: 'Cộng, trừ quỹ hoặc điều chỉnh công nợ với lý do rõ ràng.',
+          ),
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: selectedUserId,
+                    decoration: const InputDecoration(labelText: 'Thành viên'),
+                    items: members.map((member) => DropdownMenuItem<String>(
+                      value: member['id']?.toString(),
+                      child: Text(member['fullName']?.toString() ?? 'Người dùng'),
+                    )).toList(),
+                    onChanged: busy ? null : (value) => setState(() => selectedUserId = value),
+                  ),
+                  if (selected != null) ...[
+                    const SizedBox(height: 10),
+                    Text('Số dư ròng: ${_formatMoney(selected['walletBalance'])} • Công nợ: ${_formatMoney(selected['outstandingDebt'])}', style: const TextStyle(color: Colors.black54)),
+                  ],
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: action,
+                    decoration: const InputDecoration(labelText: 'Thao tác'),
+                    items: const [
+                      DropdownMenuItem(value: 'ADD_FUND', child: Text('Cộng tiền vào quỹ')),
+                      DropdownMenuItem(value: 'REMOVE_FUND', child: Text('Trừ tiền khỏi quỹ')),
+                      DropdownMenuItem(value: 'ADD_DEBT', child: Text('Ghi tăng công nợ')),
+                      DropdownMenuItem(value: 'REMOVE_DEBT', child: Text('Ghi giảm công nợ')),
+                    ],
+                    onChanged: busy ? null : (value) => setState(() => action = value ?? 'ADD_FUND'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(controller: amount, enabled: !busy, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Số tiền', suffixText: 'đ')),
+                  const SizedBox(height: 10),
+                  TextField(controller: note, enabled: !busy, maxLength: 500, decoration: const InputDecoration(labelText: 'Ghi chú đối soát', hintText: 'Ví dụ: điều chỉnh theo biên bản tháng này')),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(onPressed: busy ? null : _adjust, icon: const Icon(Icons.account_balance_wallet_outlined), label: Text(busy ? 'Đang ghi nhận...' : 'Xác nhận điều chỉnh')),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...members.map((member) => Card(
+            child: ListTile(
+              leading: CircleAvatar(child: Text(_shortName(member['fullName']?.toString() ?? 'U'))),
+              title: Text(member['fullName']?.toString() ?? 'Người dùng'),
+              subtitle: Text('Quỹ: ${_formatMoney(member['walletBalance'])} • Nợ: ${_formatMoney(member['outstandingDebt'])}'),
+              onTap: () => setState(() => selectedUserId = member['id']?.toString()),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  String _formatMoney(dynamic value) {
+    final number = value is num ? value : num.tryParse(value?.toString() ?? '') ?? 0;
+    return '${NumberFormat('#,##0', 'vi_VN').format(number)}đ';
   }
 }
 

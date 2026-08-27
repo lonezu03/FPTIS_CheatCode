@@ -4,6 +4,7 @@ import com.fittrack.lunch.entity.*;
 import com.fittrack.lunch.repository.LunchFundAccountRepository;
 import com.fittrack.lunch.repository.LunchFundTransactionRepository;
 import com.fittrack.user.entity.User;
+import com.fittrack.lunch.dto.LunchDtos.FundAdjustmentAction;
 import com.fittrack.user.repository.UserRepository;
 import com.fittrack.common.exception.ConflictException;
 import lombok.RequiredArgsConstructor;
@@ -71,6 +72,44 @@ public class LunchAccountService {
                 actor,
                 note
         );
+    }
+
+    @Transactional
+    public LunchFundTransaction adjust(
+            User user,
+            long amount,
+            FundAdjustmentAction action,
+            User actor,
+            String note
+    ) {
+        LunchFundAccount account = getOrCreateForUpdate(user);
+        long signedAmount;
+        switch (action) {
+            case ADD_FUND -> {
+                account.setBalance(Math.addExact(account.getBalance(), amount));
+                signedAmount = amount;
+            }
+            case REMOVE_FUND -> {
+                if (account.getBalance() < amount) {
+                    throw new ConflictException("Số dư quỹ không đủ để trừ khoản này");
+                }
+                account.setBalance(Math.subtractExact(account.getBalance(), amount));
+                signedAmount = -amount;
+            }
+            case ADD_DEBT -> {
+                account.setDebt(Math.addExact(account.getDebt(), amount));
+                signedAmount = -amount;
+            }
+            case REMOVE_DEBT -> {
+                if (account.getDebt() < amount) {
+                    throw new ConflictException("Số công nợ không đủ để giảm khoản này");
+                }
+                account.setDebt(Math.subtractExact(account.getDebt(), amount));
+                signedAmount = amount;
+            }
+            default -> throw new IllegalArgumentException("Loại điều chỉnh không hợp lệ");
+        }
+        return saveTransaction(account, LunchFundTransactionType.ADMIN_ADJUSTMENT, signedAmount, null, actor, note);
     }
 
     @Transactional

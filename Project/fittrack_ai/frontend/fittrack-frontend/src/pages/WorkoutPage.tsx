@@ -1,6 +1,13 @@
 import { useState } from "react";
 import axios from "axios";
 import {
+  Activity,
+  CalendarCheck2,
+  Dumbbell,
+  Timer,
+  TrendingUp,
+} from "lucide-react";
+import {
   createWorkoutSession,
   deleteWorkoutSession,
   getExercises,
@@ -34,7 +41,7 @@ export default function WorkoutPage() {
   const [reps, setReps] = useState(10);
   const [rir, setRir] = useState(2);
   const [durationMinutes, setDurationMinutes] = useState(60);
-  const [note, setNote] = useState("Workout from frontend");
+  const [note, setNote] = useState("");
   const [editingWorkout, setEditingWorkout] = useState<{
     id: string;
     sessionDate: string;
@@ -67,6 +74,13 @@ export default function WorkoutPage() {
     totalPages: Math.max(1, sessionsQuery.data?.totalPages ?? 1),
   };
   const selectedExerciseId = exerciseId || exercises[0]?.id || "";
+  const totalSessions = sessions.length;
+  const totalSets = sessions.reduce((total, session) => total + session.sets.length, 0);
+  const totalVolume = sessions.reduce(
+    (total, session) => total + session.sets.reduce((sessionTotal, set) => sessionTotal + (set.weight ?? 0) * (set.reps ?? 0), 0),
+    0,
+  );
+  const totalMinutes = sessions.reduce((total, session) => total + (session.durationMinutes ?? 0), 0);
 
   const createMutation = useMutation({
     mutationFn: createWorkoutSession,
@@ -188,9 +202,37 @@ export default function WorkoutPage() {
     <div className="space-y-4 md:space-y-6">
       <PageHeader title="Buổi tập" description="Ghi lại buổi tập và theo dõi tiến bộ theo thời gian." />
 
-      <Card>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="border-emerald-200 bg-emerald-50/70">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="rounded-xl bg-emerald-600 p-2.5 text-white"><Activity className="h-5 w-5" aria-hidden="true" /></div>
+            <div><p className="text-xs font-medium text-emerald-800/70">Buổi tập</p><p className="text-2xl font-bold text-emerald-950">{totalSessions}</p></div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="rounded-xl bg-slate-100 p-2.5 text-slate-700"><Dumbbell className="h-5 w-5" aria-hidden="true" /></div>
+            <div><p className="text-xs font-medium text-muted-foreground">Tổng set</p><p className="text-2xl font-bold">{totalSets}</p></div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="rounded-xl bg-amber-100 p-2.5 text-amber-700"><TrendingUp className="h-5 w-5" aria-hidden="true" /></div>
+            <div><p className="text-xs font-medium text-muted-foreground">Khối lượng</p><p className="text-2xl font-bold">{Math.round(totalVolume).toLocaleString("vi-VN")} kg</p></div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="rounded-xl bg-sky-100 p-2.5 text-sky-700"><Timer className="h-5 w-5" aria-hidden="true" /></div>
+            <div><p className="text-xs font-medium text-muted-foreground">Thời lượng</p><p className="text-2xl font-bold">{totalMinutes}<span className="ml-1 text-sm font-medium text-muted-foreground">phút</span></p></div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-emerald-200/70 shadow-sm">
         <CardHeader>
-          <CardTitle>Tạo buổi tập</CardTitle>
+          <CardTitle className="flex items-center gap-2"><CalendarCheck2 className="h-5 w-5 text-emerald-600" aria-hidden="true" />Tạo buổi tập</CardTitle>
+          <p className="text-sm text-muted-foreground">Bắt đầu bằng một bài tập, sau đó ghi lại mức tạ và cảm nhận để lần sau dễ tăng tiến.</p>
         </CardHeader>
 
         <CardContent className="grid gap-4 md:grid-cols-12">
@@ -247,6 +289,7 @@ export default function WorkoutPage() {
       <Card>
         <CardHeader>
           <CardTitle>Lịch sử buổi tập</CardTitle>
+          <p className="text-sm text-muted-foreground">Mỗi dòng là một set trong các buổi gần đây. Dùng nút Sửa để cập nhật lại cảm nhận hoặc thông số.</p>
         </CardHeader>
 
         <CardContent>

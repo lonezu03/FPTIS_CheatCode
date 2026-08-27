@@ -296,6 +296,29 @@ public class LunchAdminService {
     }
 
     @Transactional
+    public WalletTransactionResponse adjustFund(
+            User admin,
+            FundAdjustmentRequest request
+    ) {
+        User member = userRepository.findById(request.userId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thành viên"));
+        String note = textFormatter.sanitizeNote(request.note());
+        LunchFundTransaction transaction = accountService.adjust(
+                member,
+                request.amount(),
+                request.action(),
+                admin,
+                note
+        );
+        auditService.record(admin, "LUNCH_FUND_ADJUSTMENT", "USER", member.getId(), Map.of(
+                "action", request.action().name(),
+                "amount", request.amount(),
+                "transactionId", transaction.getId()
+        ));
+        return mapper.toTransactionResponse(transaction);
+    }
+
+    @Transactional
     public WalletTransactionResponse topUp(
             User admin,
             TopUpRequest request

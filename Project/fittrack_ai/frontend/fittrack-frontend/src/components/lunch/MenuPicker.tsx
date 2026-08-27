@@ -25,24 +25,29 @@ export default function MenuPicker({
   const requiredCount = selectionType === "COMBO" ? 2 : 1;
   const items = selectionType === "COMBO" ? menu.regularItems : menu.specialItems;
 
-  const toggleItem = (itemId: string) => {
-    if (disabled) {
-      return;
-    }
+  const itemCount = (itemId: string) => selectedItemIds.filter((id) => id === itemId).length;
 
-    if (selectedItemIds.includes(itemId)) {
-      onItemsChange(selectedItemIds.filter((id) => id !== itemId));
-      return;
-    }
+  const toggleItem = (itemId: string) => {
+    if (disabled) return;
 
     if (selectionType === "SINGLE") {
       onItemsChange([itemId]);
       return;
     }
 
+    if (itemCount(itemId) > 0) {
+      onItemsChange(selectedItemIds.filter((id) => id !== itemId));
+      return;
+    }
+
     if (selectedItemIds.length < requiredCount) {
       onItemsChange([...selectedItemIds, itemId]);
     }
+  };
+
+  const addSameItem = (itemId: string) => {
+    if (disabled || selectionType !== "COMBO" || itemCount(itemId) !== 1 || selectedItemIds.length >= requiredCount) return;
+    onItemsChange([...selectedItemIds, itemId]);
   };
 
   return (
@@ -98,7 +103,7 @@ export default function MenuPicker({
           <h3 className="font-semibold">{selectionType === "COMBO" ? "Chọn món cho phần cơm" : "Chọn món đơn"}</h3>
           <p className="text-xs text-muted-foreground">
             {selectionType === "COMBO"
-              ? "Nhấn lại món đã chọn để bỏ chọn."
+              ? "Combo được chọn tối đa 2 suất món; có thể chọn cùng một món 2 lần."
               : "Món mới sẽ thay món đang chọn."}
           </p>
         </div>
@@ -122,7 +127,8 @@ export default function MenuPicker({
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
           {items.map((item) => {
-            const selected = selectedItemIds.includes(item.id);
+            const selectedCount = itemCount(item.id);
+            const selected = selectedCount > 0;
             const maxReached = selectionType === "COMBO" && selectedItemIds.length >= requiredCount && !selected;
 
             return (
@@ -166,6 +172,23 @@ export default function MenuPicker({
                     </span>
                   </span>
                 </button>
+                {selectionType === "COMBO" && selectedCount === 1 && selectedItemIds.length < requiredCount && (
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      addSameItem(item.id);
+                    }}
+                    disabled={disabled}
+                    aria-label={`Chọn thêm ${item.name}`}
+                  >
+                    +1
+                  </button>
+                )}
+                {selectedCount > 0 && (
+                  <span className="shrink-0 rounded-md bg-emerald-600 px-2 py-1 text-xs font-bold text-white">x{selectedCount}</span>
+                )}
               </div>
             );
           })}

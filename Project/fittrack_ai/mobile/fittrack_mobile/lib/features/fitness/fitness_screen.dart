@@ -112,11 +112,34 @@ class _WorkoutList extends StatelessWidget {
   final Future<void> Function() onReload;
 
   @override
-  Widget build(BuildContext context) => RefreshIndicator(
-    onRefresh: onReload,
-    child: ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
+  Widget build(BuildContext context) {
+    final totalSets = items.fold<int>(0, (total, item) => total + (item['sets'] is List ? (item['sets'] as List).length : 0));
+    final totalMinutes = items.fold<num>(0, (total, item) => total + ((item['durationMinutes'] as num?) ?? 0));
+    final totalVolume = items.fold<num>(0, (total, item) {
+      final sets = item['sets'] is List ? item['sets'] as List : const [];
+      return total + sets.whereType<Map>().fold<num>(0, (setTotal, set) => setTotal + (((set['weight'] as num?) ?? 0) * ((set['reps'] as num?) ?? 0)));
+    });
+
+    return RefreshIndicator(
+      onRefresh: onReload,
+      child: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+        Card(
+          color: const Color(0xFFE9F8F0),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                _WorkoutStat(value: '${items.length}', label: 'buổi', icon: Icons.calendar_today_outlined),
+                _WorkoutStat(value: '$totalSets', label: 'hiệp', icon: Icons.fitness_center_outlined),
+                _WorkoutStat(value: '${totalVolume.round()}', label: 'kg volume', icon: Icons.trending_up),
+                _WorkoutStat(value: '${totalMinutes.round()}', label: 'phút', icon: Icons.timer_outlined),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         FilledButton.icon(
           onPressed: () async {
             final created = await showModalBottomSheet<bool>(
@@ -166,6 +189,27 @@ class _WorkoutList extends StatelessWidget {
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkoutStat extends StatelessWidget {
+  const _WorkoutStat({required this.value, required this.label, required this.icon});
+
+  final String value;
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Column(
+      children: [
+        Icon(icon, size: 18, color: const Color(0xFF0C7A50)),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+        Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.black54)),
       ],
     ),
   );
