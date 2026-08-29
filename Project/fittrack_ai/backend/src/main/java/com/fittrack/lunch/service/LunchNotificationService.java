@@ -154,11 +154,16 @@ public class LunchNotificationService {
         String emailContent = message
                 + "\n\nDanh sách món:\n"
                 + menu.getRawMenuText();
+        int eligible = 0;
         int sent = 0;
+        int failed = 0;
+        int skipped = 0;
         for (User recipient : recipients) {
             if (!Boolean.TRUE.equals(recipient.getEmailNotificationsEnabled())) {
+                skipped++;
                 continue;
             }
+            eligible++;
             if (mailService.sendLunchMenuEmail(
                     recipient.getEmail(),
                     recipient.getFullName(),
@@ -166,9 +171,11 @@ public class LunchNotificationService {
                     emailContent
             )) {
                 sent++;
+            } else {
+                failed++;
             }
         }
-        return new DeliverySummary(recipients.size(), sent, recipients.size() - sent);
+        return new DeliverySummary(recipients.size(), eligible, sent, failed, skipped);
     }
 
     @Transactional
@@ -238,8 +245,10 @@ public class LunchNotificationService {
 
     public record DeliverySummary(
             int recipientCount,
+            int emailEligibleCount,
             int emailSentCount,
-            int emailFailedCount
+            int emailFailedCount,
+            int emailSkippedCount
     ) {
     }
 }

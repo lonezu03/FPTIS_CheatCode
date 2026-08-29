@@ -191,8 +191,10 @@ public final class LunchDtos {
     public record MenuNotificationResponse(
             String message,
             int recipientCount,
+            int emailEligibleCount,
             int emailSentCount,
-            int emailFailedCount
+            int emailFailedCount,
+            int emailSkippedCount
     ) {
     }
 

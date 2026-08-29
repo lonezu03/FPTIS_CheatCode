@@ -147,16 +147,29 @@ public class LunchAdminService {
                 notificationService.broadcastMenuAvailable(menu);
         auditService.record(admin, "LUNCH_MENU_NOTIFIED", "LUNCH_MENU", menu.getId(), Map.of(
                 "recipientCount", result.recipientCount(),
+                "emailEligibleCount", result.emailEligibleCount(),
                 "emailSentCount", result.emailSentCount(),
-                "emailFailedCount", result.emailFailedCount()
+                "emailFailedCount", result.emailFailedCount(),
+                "emailSkippedCount", result.emailSkippedCount()
         ));
+        String message;
+        if (result.emailFailedCount() > 0) {
+            message = "Đã tạo thông báo; " + result.emailFailedCount() + " email gửi thất bại";
+        } else if (result.emailSkippedCount() == result.recipientCount()) {
+            message = "Đã tạo thông báo trong ứng dụng; tất cả tài khoản đang tắt email";
+        } else if (result.emailSkippedCount() > 0) {
+            message = "Đã gửi " + result.emailSentCount() + "/" + result.emailEligibleCount()
+                    + " email; " + result.emailSkippedCount() + " tài khoản tắt email";
+        } else {
+            message = "Đã thông báo menu qua ứng dụng và email";
+        }
         return new MenuNotificationResponse(
-                result.emailFailedCount() == 0
-                        ? "Đã thông báo menu qua ứng dụng và email"
-                        : "Đã tạo thông báo; một số email gửi thất bại",
+                message,
                 result.recipientCount(),
+                result.emailEligibleCount(),
                 result.emailSentCount(),
-                result.emailFailedCount()
+                result.emailFailedCount(),
+                result.emailSkippedCount()
         );
     }
 

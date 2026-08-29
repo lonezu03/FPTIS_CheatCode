@@ -167,8 +167,10 @@ export type LunchSummary = {
 export type LunchMenuNotificationResult = {
   message: string;
   recipientCount: number;
+  emailEligibleCount: number;
   emailSentCount: number;
   emailFailedCount: number;
+  emailSkippedCount: number;
 };
 
 export type LunchMember = {

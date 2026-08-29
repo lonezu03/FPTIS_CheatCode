@@ -291,3 +291,13 @@ Exact next steps for the next assistant:
 4. Toggle a user's email preference off and verify menu broadcasts and playbooks still create in-app notifications but do not send email; verify password-reset OTP is unaffected.
 5. Create, edit, disable, re-enable, and delete a playbook from both web and mobile; verify selected recipients are required and inactive IDs are rejected.
 6. Confirm production logs and `X-Request-Id` for any failed request. Do not stage `backend/demo/` or credentials.
+
+
+## Hotfix 2026-08-29: menu notification email delivery counts
+
+- Root cause of the admin message `email thất bại 8/8`: `broadcastMenuAvailable` counted active users who had `emailNotificationsEnabled=false` as failed deliveries because the skipped recipients were included in `recipientCount - emailSentCount`.
+- Fixed `LunchNotificationService.DeliverySummary` to track `emailEligibleCount`, `emailSentCount`, `emailFailedCount`, and `emailSkippedCount` separately. Opted-out users still receive the in-app notification but are not passed to the mail provider and are not counted as failures.
+- Updated `LunchAdminService`, `MenuNotificationResponse`, web API types, and `AdminLunchPage` toast. The UI now reports provider failures separately and explains when all active accounts have email disabled.
+- Added `LunchNotificationServiceTest` regression coverage for one opted-in and one opted-out recipient. Password-reset email behavior was not changed.
+
+Verification for this hotfix: targeted backend regression test was run with Java 21; web TypeScript/Vite must be rerun before commit if frontend source is changed. Sandbox mail configuration warnings are expected because no production provider credentials are available locally; do not copy them into source control.

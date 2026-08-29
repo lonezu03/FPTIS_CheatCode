@@ -111,6 +111,8 @@ tài khoản đang active và bật nhận email (`emailNotificationsEnabled=tru
 POST /lunch/admin/menus/{menuId}/notify
 ```
 
+Kết quả trả về gồm `emailEligibleCount`, `emailSentCount`, `emailFailedCount` và `emailSkippedCount`. `emailSkippedCount` là các tài khoản đã tắt nhận email, không phải lỗi gửi; chỉ `emailFailedCount` mới biểu thị provider email trả về thất bại. Thông báo trong ứng dụng vẫn được tạo cho các tài khoản active.
+
 ### Đặt nhiều phần cơm trong một lần
 
 Mỗi phần `COMBO` chọn đúng hai lượt món thường, cho phép chọn trùng cùng một món; mỗi phần `SINGLE` chọn một món đặc biệt. `extraItemIds` là danh sách món thêm/đồ uống, có thể lặp để biểu diễn số lượng và được cộng theo `unitPrice`.

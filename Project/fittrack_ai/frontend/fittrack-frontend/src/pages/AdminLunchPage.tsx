@@ -228,10 +228,16 @@ export default function AdminLunchPage() {
     onSuccess: (result) => {
       if (result.emailFailedCount > 0) {
         toast.warning(
-          `Đã tạo thông báo cho ${result.recipientCount} tài khoản; gửi email thành công ${result.emailSentCount}, thất bại ${result.emailFailedCount}.`,
+          `Đã tạo thông báo cho ${result.recipientCount} tài khoản; email đủ điều kiện ${result.emailEligibleCount}, gửi thành công ${result.emailSentCount}, thất bại thật ${result.emailFailedCount}, bỏ qua do tắt email ${result.emailSkippedCount}.`,
+        );
+      } else if (result.emailSkippedCount === result.recipientCount) {
+        toast.success(`Đã tạo thông báo trong ứng dụng cho ${result.recipientCount} tài khoản; chưa có tài khoản bật email.`);
+      } else if (result.emailSkippedCount > 0) {
+        toast.success(
+          `Đã tạo thông báo; email thành công ${result.emailSentCount}/${result.emailEligibleCount}. ${result.emailSkippedCount} tài khoản đang tắt email.`,
         );
       } else {
-        toast.success(`Đã gửi thông báo và email tới ${result.recipientCount} tài khoản đang hoạt động.`);
+        toast.success(`Đã gửi thông báo và email tới ${result.emailSentCount} tài khoản đang bật email.`);
       }
     },
     onError: (error: unknown) => {
