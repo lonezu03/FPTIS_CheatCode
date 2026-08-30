@@ -73,7 +73,9 @@ Status: implemented locally, verified, not committed or deployed yet.
 - Nutrition meal-entry dialog responsive hotfix (2026-08-31): removed horizontal
   overflow from long food names, uses auto-fit result columns, separates the
   searchable food list from selected-item editing, keeps actions in a fixed footer,
-  and switches to full-width actions/single-column controls on narrow screens.
+  and switches to full-width actions on narrow screens. It explicitly overrides
+  the shared dialog's `sm:max-w-md`/`sm:p-6`; each selected food now uses a stable
+  two-row layout so browser zoom and narrow modal widths cannot overlap labels.
 
 ### Flutter completed
 

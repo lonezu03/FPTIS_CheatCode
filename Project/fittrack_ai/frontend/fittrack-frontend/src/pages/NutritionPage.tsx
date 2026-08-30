@@ -241,7 +241,7 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
   });
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
-      <DialogContent className="flex max-h-[min(90dvh,760px)] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:w-full">
+      <DialogContent className="flex max-h-[min(90dvh,760px)] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:w-full sm:max-w-3xl sm:p-0">
         <DialogHeader className="shrink-0 px-5 pt-5 pr-14 pb-4 sm:px-6 sm:pt-6 sm:pr-14">
           <DialogTitle>{log ? "Chỉnh sửa" : "Ghi món vào"} {mealLabels[mealType]?.toLowerCase()}</DialogTitle>
           <p className="text-xs text-muted-foreground">Tìm món, chọn nhiều món rồi điều chỉnh số lượng ở bên dưới.</p>
@@ -289,23 +289,25 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
             <div className="space-y-3">{items.map((item, index) => {
               const food = foods.find((candidate) => candidate.id === item.foodId);
               return (
-                <div key={`${item.foodId}-${index}`} className="grid min-w-0 items-end gap-3 rounded-2xl border p-4 sm:grid-cols-[minmax(0,1fr)_120px_130px_auto]">
+                <div key={`${item.foodId}-${index}`} className="min-w-0 rounded-2xl border p-4">
                   <div className="min-w-0">
                     <p className="truncate font-semibold" title={food?.name}>{food?.name}</p>
                     <p className="text-xs text-muted-foreground">{food?.verified ? "✓ Dữ liệu đã xác minh" : "~ Dữ liệu tham khảo"}</p>
                   </div>
-                  <FormField label="Số lượng">
-                    <Input type="number" min={0.01} step={0.1} value={item.amount} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, amount: Number(event.target.value) } : value))} />
-                  </FormField>
-                  <FormField label="Đơn vị">
-                    <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={item.unit} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, unit: event.target.value as ServingUnit } : value))}>
-                      <option value="SERVING">Khẩu phần</option>
-                      {food?.servingSizeGrams ? <><option value="GRAM">Gram</option><option value="ML">ml</option></> : null}
-                    </select>
-                  </FormField>
-                  <Button type="button" size="icon" variant="ghost" aria-label={`Xóa ${food?.name ?? "món"}`} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>
-                    <Trash2 className="size-4 text-red-600" />
-                  </Button>
+                  <div className="mt-3 grid min-w-0 grid-cols-[minmax(72px,0.8fr)_minmax(110px,1.2fr)_auto] items-end gap-2 sm:gap-3">
+                    <FormField label="Số lượng">
+                      <Input type="number" min={0.01} step={0.1} value={item.amount} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, amount: Number(event.target.value) } : value))} />
+                    </FormField>
+                    <FormField label="Đơn vị">
+                      <select className="h-10 min-w-0 w-full rounded-md border bg-background px-3 text-sm" value={item.unit} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, unit: event.target.value as ServingUnit } : value))}>
+                        <option value="SERVING">Khẩu phần</option>
+                        {food?.servingSizeGrams ? <><option value="GRAM">Gram</option><option value="ML">ml</option></> : null}
+                      </select>
+                    </FormField>
+                    <Button className="shrink-0" type="button" size="icon" variant="ghost" aria-label={`Xóa ${food?.name ?? "món"}`} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>
+                      <Trash2 className="size-4 text-red-600" />
+                    </Button>
+                  </div>
                 </div>
               );
             })}</div>
