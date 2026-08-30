@@ -23,9 +23,20 @@ class NotificationCenter extends ChangeNotifier {
   Future<void> start() async {
     if (_started) return;
     _started = true;
-    await NativeNotificationService.initialize();
-    await refreshPermissionStatus();
-    await registerNotificationBackgroundTask();
+    try {
+      await NativeNotificationService.initialize();
+      await refreshPermissionStatus();
+    } catch (exception) {
+      permissionGranted = false;
+      debugPrint('Unable to initialize local notifications: $exception');
+    }
+    try {
+      await registerNotificationBackgroundTask();
+    } catch (exception) {
+      // Keep foreground notification sync available even when the operating
+      // system rejects background scheduling.
+      debugPrint('Unable to schedule background notifications: $exception');
+    }
     await refresh();
     _timer = Timer.periodic(const Duration(minutes: 1), (_) => refresh());
   }

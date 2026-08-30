@@ -19,13 +19,22 @@ bool get _supportsBackgroundWork =>
     (defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS);
 
+Future<void>? _initialization;
+
 Future<void> initializeNotificationBackgroundWorker() async {
   if (!_supportsBackgroundWork) return;
-  await Workmanager().initialize(notificationCallbackDispatcher);
+  _initialization ??= Workmanager().initialize(notificationCallbackDispatcher);
+  try {
+    await _initialization;
+  } catch (_) {
+    _initialization = null;
+    rethrow;
+  }
 }
 
 Future<void> registerNotificationBackgroundTask() async {
   if (!_supportsBackgroundWork) return;
+  await initializeNotificationBackgroundWorker();
   await Workmanager().registerPeriodicTask(
     notificationTaskUniqueName,
     notificationTaskName,
