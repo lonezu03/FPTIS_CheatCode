@@ -384,3 +384,43 @@ GET /achievements/summary
 ```http
 POST /demo/seed
 ```
+
+
+## Todo / Personal Task Planner
+
+Todo hỗ trợ task detail, thời gian bắt đầu, deadline, thời lượng dự kiến, priority, category, reminder và recurring. Endpoint cũ vẫn hoạt động khi chỉ gửi `title`, `priority`, `status` và `dueAt`; các field mới là tùy chọn.
+
+```http
+GET    /todos
+POST   /todos
+PATCH  /todos/{id}
+DELETE /todos/{id}
+```
+
+`GET /todos` nhận các query tùy chọn `view=TODAY|OVERDUE|UPCOMING|ALL`, `category=WORK|STUDY|PERSONAL|HEALTH|FINANCE|SHOPPING` và `status=OPEN|IN_PROGRESS|DONE|CANCELLED|ARCHIVED`. Nếu không truyền query, API trả toàn bộ task của user hiện tại.
+
+```json
+{
+  "title": "Học tiếng Nhật 30 phút",
+  "description": "Ôn bài 12 và viết lại 10 câu ví dụ.",
+  "status": "OPEN",
+  "priority": "HIGH",
+  "category": "STUDY",
+  "startAt": "2026-08-30T20:30:00",
+  "dueAt": "2026-08-30T21:30:00",
+  "estimatedMinutes": 45,
+  "reminderAt": "2026-08-30T20:00:00",
+  "reminderEnabled": true,
+  "recurrenceRule": "WEEKLY",
+  "recurrenceInterval": 1,
+  "daysOfWeek": "MONDAY,WEDNESDAY,FRIDAY",
+  "subtasks": [
+    { "title": "Ôn bài 12", "completed": false, "sortOrder": 0 },
+    { "title": "Viết 10 câu ví dụ", "completed": false, "sortOrder": 1 }
+  ]
+}
+```
+
+`recurrenceRule` có các giá trị `NONE`, `DAILY`, `WEEKLY`, `MONTHLY` và `CUSTOM`. Với `CUSTOM`, `recurrenceInterval` tính theo ngày; với `WEEKLY`, có thể thêm `daysOfWeek`. Khi task recurring chuyển sang `DONE`, backend giữ nguyên occurrence đã hoàn thành và tự tạo occurrence tiếp theo trong cùng `recurringSeriesId`, đồng thời reset checklist con.
+
+Todo reminder chạy theo phút trong múi giờ `Asia/Ho_Chi_Minh`, dùng notification infrastructure chung và deduplication key theo task cùng thời điểm reminder. User vẫn có thể tắt email notification ở hồ sơ; reminder trong app không bị biến thành email bắt buộc.

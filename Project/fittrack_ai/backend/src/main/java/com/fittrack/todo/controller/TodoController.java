@@ -19,8 +19,13 @@ public class TodoController {
     private final TodoService todoService;
 
     @GetMapping
-    public List<TodoResponse> getMine(@AuthenticationPrincipal User user) {
-        return todoService.getMine(user);
+    public List<TodoResponse> getMine(
+            @AuthenticationPrincipal User user,
+            @RequestParam(required = false) String view,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) com.fittrack.todo.entity.Todo.TodoStatus status
+    ) {
+        return todoService.getMine(user, view, category, status);
     }
 
     @PostMapping

@@ -301,3 +301,14 @@ Exact next steps for the next assistant:
 - Added `LunchNotificationServiceTest` regression coverage for one opted-in and one opted-out recipient. Password-reset email behavior was not changed.
 
 Verification for this hotfix: targeted backend regression test was run with Java 21; web TypeScript/Vite must be rerun before commit if frontend source is changed. Sandbox mail configuration warnings are expected because no production provider credentials are available locally; do not copy them into source control.
+
+
+## Todo Planner P1 — 2026-08-30
+
+Đã nâng cấp module Todo từ CRUD cơ bản thành Personal Task Planner. Backend có migration `V13__todo_planner_fields_and_subtasks.sql`, bổ sung `startAt`, `estimatedMinutes`, `category`, `recurrenceRule`, `recurrenceInterval`, `daysOfWeek`, `recurringSeriesId` và bảng `todo_subtasks`. API `GET /api/todos` hỗ trợ các view `TODAY`, `OVERDUE`, `UPCOMING`, `ALL` cùng filter category/status; request/response có checklist con.
+
+Todo recurring giữ nguyên occurrence đã hoàn thành. Khi task recurring chuyển sang `DONE`, backend tạo occurrence kế tiếp trong cùng series và reset trạng thái checklist. Reminder chạy mỗi phút theo `Asia/Ho_Chi_Minh`, dùng `LunchNotificationService.notifyUserOnce` với deduplication key riêng cho Todo. User email opt-out vẫn được áp dụng cho email notification nhưng notification trong app vẫn được tạo.
+
+Web `TodoPage.tsx` đã có dashboard số liệu, view Hôm nay/Quá hạn/Sắp tới/Tất cả, filter trạng thái/danh mục, editor chi tiết, start/deadline/duration, reminder, recurring theo ngày trong tuần và checklist. Mobile `planner_screen.dart` đã có editor tương ứng, filter/view, checklist, recurring và giữ nguyên tab Schedule.
+
+Đã cập nhật `docs/API.md` và `AGENTS.md`. Backend Maven test và frontend TypeScript build đã được chạy thành công trong sandbox; Testcontainers bị skip do sandbox không có Docker. Flutter/Dart không có trong sandbox nên cần chạy `flutter analyze` và `flutter test` trên máy có Flutter SDK trước release mobile.

@@ -160,3 +160,13 @@ and update:
 
 Do not store chat transcripts, credentials, access tokens, or personal secrets in
 the context file.
+
+
+## Todo Planner rules
+
+- Todo P1 supports `startAt`, `dueAt`, `estimatedMinutes`, `category`, `reminderAt`, `recurrenceRule`, `recurrenceInterval`, `daysOfWeek`, and nested `subtasks`. Keep `startAt`, deadline, reminder and duration semantically separate.
+- `GET /api/todos` accepts optional `view`, `category`, and `status` filters. `TODAY`, `OVERDUE`, and `UPCOMING` are planning views; status filtering remains independent.
+- Recurring tasks must preserve the completed occurrence. When a recurring Todo changes to `DONE`, create the next occurrence in the same `recurringSeriesId` and reset its checklist completion state. Do not reset the original row in place.
+- Checklist updates are sent as the complete ordered `subtasks` array. The backend replaces children transactionally and cascades deletion with the parent Todo.
+- Todo reminders use `Asia/Ho_Chi_Minh`, the shared in-app notification service, a deduplication key based on Todo ID and reminder time, and the same per-user email opt-in behavior as other notifications. Password-reset OTP remains independent.
+- The web and Flutter planner must expose the same P1 fields and Vietnamese labels. If Flutter/Dart is unavailable in the sandbox, document that limitation and run `flutter analyze` and `flutter test` on a Flutter workstation before release.

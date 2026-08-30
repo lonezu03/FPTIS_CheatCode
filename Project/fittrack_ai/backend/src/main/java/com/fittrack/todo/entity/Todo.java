@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "todos")
@@ -36,7 +38,29 @@ public class Todo {
     @Column(nullable = false, length = 20)
     private TodoPriority priority;
 
+    private LocalDateTime startAt;
     private LocalDateTime dueAt;
+
+    @Column(name = "estimated_minutes")
+    private Integer estimatedMinutes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private TodoCategory category;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private RecurrenceRule recurrenceRule;
+
+    @Column(nullable = false)
+    private Integer recurrenceInterval;
+
+    @Column(length = 100)
+    private String daysOfWeek;
+
+    @Column(length = 255)
+    private String recurringSeriesId;
+
     private LocalDateTime reminderAt;
     private LocalDateTime reminderSentAt;
 
@@ -49,6 +73,11 @@ public class Todo {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @OneToMany(mappedBy = "todo", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("sortOrder ASC")
+    @Builder.Default
+    private List<TodoSubtask> subtasks = new ArrayList<>();
+
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now();
@@ -56,6 +85,9 @@ public class Todo {
         updatedAt = now;
         if (status == null) status = TodoStatus.OPEN;
         if (priority == null) priority = TodoPriority.MEDIUM;
+        if (category == null) category = TodoCategory.PERSONAL;
+        if (recurrenceRule == null) recurrenceRule = RecurrenceRule.NONE;
+        if (recurrenceInterval == null || recurrenceInterval < 1) recurrenceInterval = 1;
         if (reminderEnabled == null) reminderEnabled = false;
     }
 
@@ -64,6 +96,8 @@ public class Todo {
         updatedAt = LocalDateTime.now();
     }
 
-    public enum TodoStatus { OPEN, IN_PROGRESS, DONE, ARCHIVED }
+    public enum TodoStatus { OPEN, IN_PROGRESS, DONE, CANCELLED, ARCHIVED }
     public enum TodoPriority { LOW, MEDIUM, HIGH }
+    public enum TodoCategory { WORK, STUDY, PERSONAL, HEALTH, FINANCE, SHOPPING }
+    public enum RecurrenceRule { NONE, DAILY, WEEKLY, MONTHLY, CUSTOM }
 }
