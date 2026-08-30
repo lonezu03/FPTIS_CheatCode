@@ -11,6 +11,7 @@ import com.fittrack.user.repository.UserRepository;
 import com.fittrack.workout.dto.CreateWorkoutSessionRequest;
 import com.fittrack.workout.dto.CreateWorkoutSetRequest;
 import com.fittrack.workout.entity.Exercise;
+import com.fittrack.workout.entity.WorkoutSetType;
 import com.fittrack.workout.repository.ExerciseRepository;
 import com.fittrack.workout.service.WorkoutService;
 import org.junit.jupiter.api.Test;
@@ -56,9 +57,13 @@ class FitnessHistoryIntegrationTest {
         CreateWorkoutSetRequest set = new CreateWorkoutSetRequest();
         set.setExerciseId(exercise.getId());
         set.setSetNumber(1);
+        set.setExerciseOrder(1);
+        set.setSetType(WorkoutSetType.WARMUP);
         set.setWeight(15.0);
         set.setReps(12);
         set.setRir(2);
+        set.setRestSeconds(120);
+        set.setCompleted(true);
 
         CreateWorkoutSessionRequest request = new CreateWorkoutSessionRequest();
         request.setSessionDate(LocalDate.of(2026, 8, 25));
@@ -72,6 +77,12 @@ class FitnessHistoryIntegrationTest {
         assertEquals(1, history.size());
         assertEquals(1, history.getFirst().getSets().size());
         assertEquals("Dumbbell Shoulder Press", history.getFirst().getSets().getFirst().getExerciseName());
+        assertEquals(WorkoutSetType.WARMUP, history.getFirst().getSets().getFirst().getSetType());
+        assertEquals(120, history.getFirst().getSets().getFirst().getRestSeconds());
+
+        var previous = workoutService.getPreviousPerformance(user, exercise.getId());
+        assertEquals(LocalDate.of(2026, 8, 25), previous.orElseThrow().getSessionDate());
+        assertEquals(1, previous.orElseThrow().getSets().size());
     }
 
     @Test

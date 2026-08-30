@@ -4,6 +4,7 @@ import com.fittrack.user.entity.User;
 import com.fittrack.workout.dto.CreateWorkoutSessionRequest;
 import com.fittrack.workout.dto.CreateWorkoutSetRequest;
 import com.fittrack.workout.dto.WorkoutSessionResponse;
+import com.fittrack.workout.dto.PreviousWorkoutPerformanceResponse;
 import com.fittrack.workout.dto.UpdateWorkoutSessionRequest;
 import com.fittrack.workout.entity.Exercise;
 import com.fittrack.workout.entity.WorkoutSession;
@@ -45,9 +46,15 @@ public class WorkoutService {
                         .session(session)
                         .exercise(exercise)
                         .setNumber(setRequest.getSetNumber())
+                        .exerciseOrder(setRequest.getExerciseOrder() == null ? 1 : setRequest.getExerciseOrder())
+                        .setType(setRequest.getSetType() == null
+                                ? com.fittrack.workout.entity.WorkoutSetType.NORMAL
+                                : setRequest.getSetType())
                         .weight(setRequest.getWeight())
                         .reps(setRequest.getReps())
                         .rir(setRequest.getRir())
+                        .restSeconds(setRequest.getRestSeconds() == null ? 90 : setRequest.getRestSeconds())
+                        .completed(setRequest.getCompleted() == null || setRequest.getCompleted())
                         .build();
 
                 session.getSets().add(set);
@@ -79,6 +86,31 @@ public class WorkoutService {
                 )
                 .map(workoutMapper::toWorkoutSessionResponse);
         return PageResponse.from(result);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<PreviousWorkoutPerformanceResponse> getPreviousPerformance(
+            User user,
+            String exerciseId
+    ) {
+        Exercise exercise = exerciseRepository.findById(exerciseId)
+                .orElseThrow(() -> new IllegalArgumentException("Exercise not found"));
+        return workoutSessionRepository.findLatestContainingExercise(
+                        user,
+                        exerciseId,
+                        PageRequest.of(0, 1)
+                ).stream()
+                .findFirst()
+                .map(session -> PreviousWorkoutPerformanceResponse.builder()
+                        .exerciseId(exercise.getId())
+                        .exerciseName(exercise.getName())
+                        .sessionDate(session.getSessionDate())
+                        .sets(session.getSets().stream()
+                                .filter(set -> set.getExercise().getId().equals(exerciseId))
+                                .sorted(java.util.Comparator.comparing(WorkoutSet::getSetNumber))
+                                .map(workoutMapper::toWorkoutSetResponse)
+                                .toList())
+                        .build());
     }
 
     @Transactional

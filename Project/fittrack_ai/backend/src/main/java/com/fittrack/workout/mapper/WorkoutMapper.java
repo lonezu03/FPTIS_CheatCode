@@ -57,9 +57,13 @@ public class WorkoutMapper {
                 .exerciseName(exercise.getName())
                 .muscleGroup(exercise.getMuscleGroup())
                 .setNumber(set.getSetNumber())
+                .exerciseOrder(set.getExerciseOrder())
+                .setType(set.getSetType())
                 .weight(set.getWeight())
                 .reps(set.getReps())
                 .rir(set.getRir())
+                .restSeconds(set.getRestSeconds())
+                .completed(set.getCompleted())
                 .build();
     }
 
@@ -71,6 +75,9 @@ public class WorkoutMapper {
                 .durationMinutes(session.getDurationMinutes())
                 .createdAt(session.getCreatedAt())
                 .sets(session.getSets().stream()
+                        .sorted(java.util.Comparator
+                                .comparing(WorkoutSet::getExerciseOrder)
+                                .thenComparing(WorkoutSet::getSetNumber))
                         .map(this::toWorkoutSetResponse)
                         .toList())
                 .build();

@@ -136,9 +136,13 @@ public class WorkoutPlanService {
                         .session(session)
                         .exercise(planExercise.getExercise())
                         .setNumber(i)
+                        .exerciseOrder(planExercise.getExerciseOrder() == null ? 1 : planExercise.getExerciseOrder())
+                        .setType(com.fittrack.workout.entity.WorkoutSetType.NORMAL)
                         .weight(planExercise.getTargetWeight())
                         .reps(planExercise.getTargetReps())
                         .rir(planExercise.getTargetRir())
+                        .restSeconds(90)
+                        .completed(true)
                         .build();
 
                 session.getSets().add(set);

@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-08-27
+Last updated: 2026-08-30
 
 ## Repository state
 
@@ -158,39 +158,43 @@ physical device with mobile release `1.1.2+4`.
 
 ## Current task
 
-Fix the Todo/Schedule production regression and document the handoff for other AI assistants.
+Workout P0 đã hoàn tất và được kiểm thử cục bộ. Bước tiếp theo là push/deploy
+backend trước, rồi kiểm tra web và Flutter trên thiết bị thật.
 
-## Completed in the current uncommitted change set
+## Completed in the Workout P0 change set
 
-- Backend: `POST /lunch/orders/batch`, plural `myMealOrders`, and removal of the
-  one-beneficiary/one-menu unique constraint through Flyway `V8`.
-- Backend: admin `PUT`/`DELETE /lunch/admin/menus/{id}`. Full replacement or
-  deletion is allowed only before any order exists; item edits remain available
-  afterward without altering history.
-- Web: a clear multi-portion cart, atomic checkout, individual removal, stronger
-  sponsored-payment feedback, and admin edit/delete/import-again menu UX.
-- Mobile source: matching self-order cart, plural-order display, correct menu
-  field names, and clearer selection guidance. No APK build was created.
-- Documentation updated in `docs/LUNCH_ORDERING.md` and `docs/API.md`.
+- Flyway `V14__live_workout_set_metadata.sql` adds exercise order, set type,
+  rest seconds and completion state to each workout set.
+- Backend accepts the new set metadata, keeps legacy request defaults, returns
+  ordered sets, and exposes `GET /api/workouts/previous-performance`.
+- Web and Flutter now provide a Vietnamese live-workout flow with multiple
+  exercises/sets, reorder/remove, WARMUP/NORMAL/DROP/FAILURE, previous results,
+  rest timer, elapsed timer, start-from-plan, explicit cancel and finish.
+- Workout plan generation writes compatible set metadata. API and PostgreSQL
+  migration/integration coverage were updated.
+- Fixed two missing parentheses in committed Flutter Planner code that prevented
+  whole-project analysis. Existing uncommitted notification startup changes are
+  unrelated and must remain unstaged unless reviewed as a separate change set.
 
 ## Verification for the current change set
 
-- Backend: `mvnw.cmd test` passed — 42 tests, 0 failures, 2 PostgreSQL
-  Testcontainers tests skipped because Docker was unavailable. The new lunch
-  integration coverage checks a two-portion batch and draft-menu replacement/
-  deletion protection.
-- Web: `npm run lint`, `npm test -- --run`, and `npm run build` passed.
-- Mobile: `dart analyze lib/features/lunch/lunch_screen.dart` and `flutter test`
-  passed. No Android/iOS package build was run.
+- Backend: `mvnw.cmd test` passed, including PostgreSQL Testcontainers with V14
+  migration and the previous-performance integration assertion.
+- Web: production build, Vitest suite and targeted ESLint for Workout/API passed.
+  Full lint still has pre-existing errors in `LunchPage.tsx` and `TodoPage.tsx`.
+- Mobile: changed Workout files analyze cleanly; Planner now parses and reports
+  only existing deprecation/style infos; `flutter test` passed. No APK was built.
 
 ## Exact next steps
 
-1. Review, stage and commit only this change set; never include `backend/demo/`.
-2. Deploy the backend first so Flyway `V8` and the new APIs exist, then deploy
-   the Vercel web client.
-3. Manually verify: import → edit or delete/reimport before orders; create two
-   portions in one cart; edit/cancel only one portion; summarize counts both.
-4. Keep the mobile source changes unbuilt until the user requests an APK.
+1. Push riêng commit Workout P0; giữ các thay đổi notification/startup hiện có
+   ngoài commit này và không bao giờ đưa `backend/demo/` vào Git.
+2. Deploy backend trước để V14 và previous-performance endpoint tồn tại, sau đó
+   deploy web; build a new APK only when the user finishes the remaining updates.
+3. Device-test free workout and plan workout with two exercises, several set
+   types, rest timer skip/adjust, cancel without saving and finish with saving.
+4. Treat rep ranges, progressive overload, PRs, charts/recovery and AI coaching
+   from the supplied roadmap as P1/P2; they are not part of this P0 change set.
 
 ## Hotfix 2026-08-27: Todo/Schedule production regression
 

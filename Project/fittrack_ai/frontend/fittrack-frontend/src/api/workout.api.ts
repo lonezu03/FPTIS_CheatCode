@@ -15,9 +15,22 @@ export type WorkoutSetResponse = {
   exerciseName: string;
   muscleGroup: string;
   setNumber: number;
+  exerciseOrder: number;
+  setType: WorkoutSetType;
   weight: number;
   reps: number;
   rir: number;
+  restSeconds: number;
+  completed: boolean;
+};
+
+export type WorkoutSetType = "WARMUP" | "NORMAL" | "DROP" | "FAILURE";
+
+export type PreviousWorkoutPerformance = {
+  exerciseId: string;
+  exerciseName: string;
+  sessionDate: string;
+  sets: WorkoutSetResponse[];
 };
 
 export type WorkoutSession = {
@@ -58,14 +71,28 @@ export const createWorkoutSession = async (payload: {
   sets: {
     exerciseId: string;
     setNumber: number;
+    exerciseOrder: number;
+    setType: WorkoutSetType;
     weight: number;
     reps: number;
     rir: number;
+    restSeconds: number;
+    completed: boolean;
   }[];
 }): Promise<WorkoutSession> => {
   const response = await api.post("/workouts/sessions", payload);
 
   return response.data;
+};
+
+export const getPreviousWorkoutPerformance = async (
+  exerciseId: string,
+): Promise<PreviousWorkoutPerformance | null> => {
+  const response = await api.get<PreviousWorkoutPerformance | undefined>(
+    "/workouts/previous-performance",
+    { params: { exerciseId } },
+  );
+  return response.data ?? null;
 };
 
 export const deleteWorkoutSession = async (id: string): Promise<void> => {

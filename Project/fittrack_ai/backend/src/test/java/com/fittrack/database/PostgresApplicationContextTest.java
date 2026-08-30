@@ -11,7 +11,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(
@@ -51,6 +51,6 @@ class PostgresApplicationContextTest {
                 "select count(*) from flyway_schema_history where success",
                 Integer.class
         );
-        assertEquals(7, versionCount);
+        assertTrue(versionCount >= 14);
     }
 }

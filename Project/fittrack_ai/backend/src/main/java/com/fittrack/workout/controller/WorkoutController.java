@@ -5,6 +5,7 @@ import com.fittrack.workout.dto.CreateWorkoutSessionRequest;
 import com.fittrack.workout.dto.ExerciseResponse;
 import com.fittrack.workout.dto.UpdateWorkoutSessionRequest;
 import com.fittrack.workout.dto.WorkoutSessionResponse;
+import com.fittrack.workout.dto.PreviousWorkoutPerformanceResponse;
 import com.fittrack.workout.service.ExerciseService;
 import com.fittrack.workout.service.WorkoutService;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import com.fittrack.common.dto.PageResponse;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/workouts")
@@ -52,6 +54,17 @@ public class WorkoutController {
         return workoutService.getMySessionsPage(
                 (User) authentication.getPrincipal(), page, size
         );
+    }
+
+    @GetMapping("/previous-performance")
+    public ResponseEntity<PreviousWorkoutPerformanceResponse> getPreviousPerformance(
+            Authentication authentication,
+            @RequestParam String exerciseId
+    ) {
+        return ResponseEntity.of(workoutService.getPreviousPerformance(
+                (User) authentication.getPrincipal(),
+                exerciseId
+        ));
     }
 
     @PutMapping("/sessions/{id}")

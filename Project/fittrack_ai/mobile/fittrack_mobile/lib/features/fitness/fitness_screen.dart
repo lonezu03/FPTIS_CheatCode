@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
+import 'live_workout_sheet.dart';
 
 class FitnessScreen extends StatefulWidget {
   const FitnessScreen({super.key});
@@ -113,11 +114,24 @@ class _WorkoutList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalSets = items.fold<int>(0, (total, item) => total + (item['sets'] is List ? (item['sets'] as List).length : 0));
-    final totalMinutes = items.fold<num>(0, (total, item) => total + ((item['durationMinutes'] as num?) ?? 0));
+    final totalSets = items.fold<int>(
+      0,
+      (total, item) =>
+          total + (item['sets'] is List ? (item['sets'] as List).length : 0),
+    );
+    final totalMinutes = items.fold<num>(
+      0,
+      (total, item) => total + ((item['durationMinutes'] as num?) ?? 0),
+    );
     final totalVolume = items.fold<num>(0, (total, item) {
       final sets = item['sets'] is List ? item['sets'] as List : const [];
-      return total + sets.whereType<Map>().fold<num>(0, (setTotal, set) => setTotal + (((set['weight'] as num?) ?? 0) * ((set['reps'] as num?) ?? 0)));
+      return total +
+          sets.whereType<Map>().fold<num>(
+            0,
+            (setTotal, set) =>
+                setTotal +
+                (((set['weight'] as num?) ?? 0) * ((set['reps'] as num?) ?? 0)),
+          );
     });
     final groupedByDay = <String, List<Map<String, dynamic>>>{};
     for (final item in items) {
@@ -130,69 +144,109 @@ class _WorkoutList extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-        Card(
-          color: const Color(0xFFE9F8F0),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                _WorkoutStat(value: '${items.length}', label: 'buổi', icon: Icons.calendar_today_outlined),
-                _WorkoutStat(value: '$totalSets', label: 'hiệp', icon: Icons.fitness_center_outlined),
-                _WorkoutStat(value: '${totalVolume.round()}', label: 'kg volume', icon: Icons.trending_up),
-                _WorkoutStat(value: '${totalMinutes.round()}', label: 'phút', icon: Icons.timer_outlined),
-              ],
+          Card(
+            color: const Color(0xFFE9F8F0),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  _WorkoutStat(
+                    value: '${items.length}',
+                    label: 'buổi',
+                    icon: Icons.calendar_today_outlined,
+                  ),
+                  _WorkoutStat(
+                    value: '$totalSets',
+                    label: 'hiệp',
+                    icon: Icons.fitness_center_outlined,
+                  ),
+                  _WorkoutStat(
+                    value: '${totalVolume.round()}',
+                    label: 'kg volume',
+                    icon: Icons.trending_up,
+                  ),
+                  _WorkoutStat(
+                    value: '${totalMinutes.round()}',
+                    label: 'phút',
+                    icon: Icons.timer_outlined,
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: () async {
-            final created = await showModalBottomSheet<bool>(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => const _AddWorkoutSheet(),
-            );
-            if (created == true) onReload();
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('Thêm buổi tập'),
-        ),
-        const SizedBox(height: 14),
-        if (items.isEmpty)
-          const EmptyView(
-            icon: Icons.fitness_center,
-            title: 'Chưa có buổi tập',
-            subtitle: 'Thêm buổi tập đầu tiên để theo dõi tiến độ.',
-          )
-        else
-          ...groupedByDay.entries.map((entry) {
-            final daySets = entry.value.fold<int>(0, (total, item) => total + (item['sets'] is List ? (item['sets'] as List).length : 0));
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Card(
-                child: ExpansionTile(
-                  leading: const CircleAvatar(child: Icon(Icons.calendar_today_outlined, size: 20)),
-                  title: Text(_date(entry.key), style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('${entry.value.length} buổi • $daySets hiệp'),
-                  children: entry.value.map((item) {
-                    final sets = item['sets'] is List ? item['sets'] as List : const [];
-                    return ExpansionTile(
-                      tilePadding: const EdgeInsets.symmetric(horizontal: 18),
-                      title: Text(item['note']?.toString().isNotEmpty == true ? item['note'].toString() : 'Buổi tập'),
-                      subtitle: Text('${item['durationMinutes'] ?? 0} phút • ${sets.length} hiệp'),
-                      children: sets.map((raw) {
-                        final set = raw as Map;
-                        return ListTile(
-                          title: Text(set['exerciseName']?.toString() ?? 'Bài tập'),
-                          subtitle: Text('Hiệp ${set['setNumber'] ?? '-'} • ${set['weight'] ?? 0} kg × ${set['reps'] ?? 0} lần • RIR ${set['rir'] ?? 0}'),
-                        );
-                      }).toList(),
-                    );
-                  }).toList(),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () async {
+              final created = await showModalBottomSheet<bool>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => const LiveWorkoutSheet(),
+              );
+              if (created == true) onReload();
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Thêm buổi tập'),
+          ),
+          const SizedBox(height: 14),
+          if (items.isEmpty)
+            const EmptyView(
+              icon: Icons.fitness_center,
+              title: 'Chưa có buổi tập',
+              subtitle: 'Thêm buổi tập đầu tiên để theo dõi tiến độ.',
+            )
+          else
+            ...groupedByDay.entries.map((entry) {
+              final daySets = entry.value.fold<int>(
+                0,
+                (total, item) =>
+                    total +
+                    (item['sets'] is List ? (item['sets'] as List).length : 0),
+              );
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Card(
+                  child: ExpansionTile(
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.calendar_today_outlined, size: 20),
+                    ),
+                    title: Text(
+                      _date(entry.key),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      '${entry.value.length} buổi • $daySets hiệp',
+                    ),
+                    children: entry.value.map((item) {
+                      final sets = item['sets'] is List
+                          ? item['sets'] as List
+                          : const [];
+                      return ExpansionTile(
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 18),
+                        title: Text(
+                          item['note']?.toString().isNotEmpty == true
+                              ? item['note'].toString()
+                              : 'Buổi tập',
+                        ),
+                        subtitle: Text(
+                          '${item['durationMinutes'] ?? 0} phút • ${sets.length} hiệp',
+                        ),
+                        children: sets.map((raw) {
+                          final set = raw as Map;
+                          return ListTile(
+                            title: Text(
+                              set['exerciseName']?.toString() ?? 'Bài tập',
+                            ),
+                            subtitle: Text(
+                              'Hiệp ${set['setNumber'] ?? '-'} • ${set['weight'] ?? 0} kg × ${set['reps'] ?? 0} lần • RIR ${set['rir'] ?? 0}',
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
         ],
       ),
     );
@@ -200,7 +254,11 @@ class _WorkoutList extends StatelessWidget {
 }
 
 class _WorkoutStat extends StatelessWidget {
-  const _WorkoutStat({required this.value, required this.label, required this.icon});
+  const _WorkoutStat({
+    required this.value,
+    required this.label,
+    required this.icon,
+  });
 
   final String value;
   final String label;
@@ -212,8 +270,15 @@ class _WorkoutStat extends StatelessWidget {
       children: [
         Icon(icon, size: 18, color: const Color(0xFF0C7A50)),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-        Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.black54)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+        ),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 10, color: Colors.black54),
+        ),
       ],
     ),
   );
@@ -284,6 +349,9 @@ class _MealList extends StatelessWidget {
   );
 }
 
+// Kept temporarily for source compatibility with older routes. New workouts use
+// LiveWorkoutSheet, which supports multiple exercises and sets.
+// ignore: unused_element
 class _AddWorkoutSheet extends StatefulWidget {
   const _AddWorkoutSheet();
   @override

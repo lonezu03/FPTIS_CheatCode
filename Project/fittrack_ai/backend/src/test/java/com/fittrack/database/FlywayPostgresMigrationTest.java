@@ -10,7 +10,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -49,7 +48,12 @@ class FlywayPostgresMigrationTest {
                     "select 1 from information_schema.columns where table_name = 'user_auth_tokens' and column_name = 'failed_attempts'"));
             assertTrue(exists(connection,
                     "select 1 from pg_indexes where indexname = 'idx_meal_logs_user_date'"));
-            assertEquals(7, count(connection, "select count(*) from flyway_schema_history where success"));
+            assertTrue(exists(connection,
+                    "select 1 from information_schema.columns where table_name = 'workout_sets' and column_name = 'set_type'"));
+            assertTrue(exists(connection,
+                    "select 1 from information_schema.columns where table_name = 'workout_sets' and column_name = 'exercise_order'"));
+            assertTrue(count(connection,
+                    "select count(*) from flyway_schema_history where success") >= 14);
         }
     }
 

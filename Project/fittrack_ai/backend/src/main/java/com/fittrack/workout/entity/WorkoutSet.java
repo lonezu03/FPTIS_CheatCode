@@ -26,9 +26,22 @@ public class WorkoutSet {
 
     private Integer setNumber;
 
+    @Builder.Default
+    private Integer exerciseOrder = 1;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private WorkoutSetType setType = WorkoutSetType.NORMAL;
+
     private Double weight;
 
     private Integer reps;
 
     private Integer rir;
+
+    @Builder.Default
+    private Integer restSeconds = 90;
+
+    @Builder.Default
+    private Boolean completed = true;
 }

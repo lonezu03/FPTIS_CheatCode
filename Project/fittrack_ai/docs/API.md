@@ -209,6 +209,8 @@ Create request:
 
 ```http
 GET /workouts/sessions
+GET /workouts/sessions/page?page=0&size=20
+GET /workouts/previous-performance?exerciseId={exerciseId}
 POST /workouts/sessions
 PUT /workouts/sessions/{id}
 DELETE /workouts/sessions/{id}
@@ -224,14 +226,36 @@ Create request:
   "sets": [
     {
       "exerciseId": "...",
+      "exerciseOrder": 1,
       "setNumber": 1,
+      "setType": "WARMUP",
       "weight": 9,
       "reps": 10,
-      "rir": 2
+      "rir": 2,
+      "restSeconds": 120,
+      "completed": true
+    },
+    {
+      "exerciseId": "...",
+      "exerciseOrder": 1,
+      "setNumber": 2,
+      "setType": "NORMAL",
+      "weight": 20,
+      "reps": 10,
+      "rir": 2,
+      "restSeconds": 120,
+      "completed": true
     }
   ]
 }
 ```
+
+`exerciseOrder` groups and orders exercises inside one session. `setNumber` is
+the order within that exercise. `setType` accepts `WARMUP`, `NORMAL`, `DROP`, or
+`FAILURE`. Web and mobile keep an in-progress workout locally, start the rest
+timer after a set is checked, and submit only completed sets when the user
+finishes the session. The previous-performance endpoint returns the most recent
+session containing the requested exercise, scoped to the authenticated user.
 
 ## Workout Plans
 
