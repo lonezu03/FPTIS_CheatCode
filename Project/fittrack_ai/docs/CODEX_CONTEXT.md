@@ -70,6 +70,10 @@ Status: implemented locally, verified, not committed or deployed yet.
   complete/partial/fasting confirmation. Lunch-linked meals remain read-only.
 - Health and weekly report screens show confidence, data coverage, provisional
   scoring and exclude partial/unlogged dates from trusted charts.
+- Nutrition meal-entry dialog responsive hotfix (2026-08-31): removed horizontal
+  overflow from long food names, uses auto-fit result columns, separates the
+  searchable food list from selected-item editing, keeps actions in a fixed footer,
+  and switches to full-width actions/single-column controls on narrow screens.
 
 ### Flutter completed
 
@@ -98,6 +102,8 @@ Status: implemented locally, verified, not committed or deployed yet.
 - Web targeted ESLint passed for the changed Food/Nutrition/Health/Report/API files.
 - Web Vitest suite passed: 2 files, 2 tests.
 - Web TypeScript and Vite production build passed (2604 modules transformed).
+- The meal-entry responsive hotfix also passed targeted ESLint and a fresh Vite
+  production build (2604 modules transformed).
 - Flutter formatting changed no files; targeted analysis for changed files passed.
 - Flutter widget tests passed. Full-project analysis still reports only existing
   info-level findings in unrelated Admin/Lunch/Planner files.

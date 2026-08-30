@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Droplets, LockKeyhole, Plus, Trash2, Utensils } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Droplets, LockKeyhole, Plus, Trash2, Utensils } from "lucide-react";
 
 type MealDraftItem = {
   foodId: string;
@@ -229,6 +229,7 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
     }))
     : []);
   const filteredFoods = useMemo(() => foods.filter((food) => food.name.toLowerCase().includes(search.toLowerCase())).slice(0, 20), [foods, search]);
+  const selectedFoodIds = useMemo(() => new Set(items.map((item) => item.foodId)), [items]);
   const mutation = useMutation({
     mutationFn: async () => {
       if (items.length === 0) throw new Error("EMPTY");
@@ -240,20 +241,83 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
   });
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader><DialogTitle>{log ? "Chỉnh sửa" : "Ghi món vào"} {mealLabels[mealType]?.toLowerCase()}</DialogTitle></DialogHeader>
-        <Input placeholder="Tìm nhiều món rồi thêm vào bữa..." value={search} onChange={(event) => setSearch(event.target.value)} />
-        <div className="grid max-h-44 gap-2 overflow-y-auto sm:grid-cols-2">{filteredFoods.map((food) => <Button key={food.id} variant="outline" className="justify-start" onClick={() => setItems((current) => current.some((item) => item.foodId === food.id) ? current : [...current, { foodId: food.id, amount: 1, unit: "SERVING" }])}><Plus className="size-4" /> {food.name} · {food.unit}</Button>)}</div>
-        <div className="space-y-3">{items.map((item, index) => {
-          const food = foods.find((candidate) => candidate.id === item.foodId);
-          return <div key={`${item.foodId}-${index}`} className="grid items-end gap-3 rounded-2xl border p-4 sm:grid-cols-[1fr_130px_130px_auto]">
-            <div><p className="font-semibold">{food?.name}</p><p className="text-xs text-muted-foreground">{food?.verified ? "✓ Dữ liệu đã xác minh" : "~ Dữ liệu tham khảo"}</p></div>
-            <FormField label="Số lượng"><Input type="number" min={0.01} step={0.1} value={item.amount} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, amount: Number(event.target.value) } : value))} /></FormField>
-            <FormField label="Đơn vị"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={item.unit} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, unit: event.target.value as ServingUnit } : value))}><option value="SERVING">Khẩu phần</option>{food?.servingSizeGrams ? <><option value="GRAM">Gram</option><option value="ML">ml</option></> : null}</select></FormField>
-            <Button size="icon" variant="ghost" onClick={() => setItems((current) => current.filter((_, position) => position !== index))}><Trash2 className="size-4 text-red-600" /></Button>
-          </div>;
-        })}</div>
-        <div className="flex justify-end gap-2"><Button variant="outline" onClick={onClose}>Hủy</Button><Button disabled={mutation.isPending || items.length === 0} onClick={() => mutation.mutate()}>{mutation.isPending ? "Đang lưu..." : `Lưu ${items.length} món`}</Button></div>
+      <DialogContent className="flex max-h-[min(90dvh,760px)] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:w-full">
+        <DialogHeader className="shrink-0 px-5 pt-5 pr-14 pb-4 sm:px-6 sm:pt-6 sm:pr-14">
+          <DialogTitle>{log ? "Chỉnh sửa" : "Ghi món vào"} {mealLabels[mealType]?.toLowerCase()}</DialogTitle>
+          <p className="text-xs text-muted-foreground">Tìm món, chọn nhiều món rồi điều chỉnh số lượng ở bên dưới.</p>
+        </DialogHeader>
+
+        <div className="shrink-0 border-y bg-muted/25 px-5 py-4 sm:px-6">
+          <Input
+            autoFocus
+            placeholder="Tìm món ăn..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <div className="mt-3 grid max-h-[min(36dvh,16rem)] grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-2 overflow-y-auto overflow-x-hidden pr-1">
+            {filteredFoods.length === 0 ? (
+              <p className="col-span-full rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+                Không tìm thấy món phù hợp.
+              </p>
+            ) : filteredFoods.map((food) => {
+              const selected = selectedFoodIds.has(food.id);
+              return (
+                <Button
+                  key={food.id}
+                  type="button"
+                  variant={selected ? "secondary" : "outline"}
+                  className="h-auto min-h-10 min-w-0 justify-start overflow-hidden rounded-xl px-3 py-2 text-left"
+                  disabled={selected}
+                  title={`${food.name} · ${food.unit}`}
+                  onClick={() => setItems((current) => [...current, { foodId: food.id, amount: 1, unit: "SERVING" }])}
+                >
+                  {selected ? <Check className="size-4 shrink-0" /> : <Plus className="size-4 shrink-0" />}
+                  <span className="min-w-0 truncate">{food.name} · {food.unit}</span>
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+          {items.length === 0 ? (
+            <div className="rounded-2xl border border-dashed bg-slate-50/60 p-5 text-center">
+              <p className="font-medium">Chưa chọn món nào</p>
+              <p className="mt-1 text-xs text-muted-foreground">Chọn một hoặc nhiều món ở danh sách phía trên.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">{items.map((item, index) => {
+              const food = foods.find((candidate) => candidate.id === item.foodId);
+              return (
+                <div key={`${item.foodId}-${index}`} className="grid min-w-0 items-end gap-3 rounded-2xl border p-4 sm:grid-cols-[minmax(0,1fr)_120px_130px_auto]">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold" title={food?.name}>{food?.name}</p>
+                    <p className="text-xs text-muted-foreground">{food?.verified ? "✓ Dữ liệu đã xác minh" : "~ Dữ liệu tham khảo"}</p>
+                  </div>
+                  <FormField label="Số lượng">
+                    <Input type="number" min={0.01} step={0.1} value={item.amount} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, amount: Number(event.target.value) } : value))} />
+                  </FormField>
+                  <FormField label="Đơn vị">
+                    <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={item.unit} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, unit: event.target.value as ServingUnit } : value))}>
+                      <option value="SERVING">Khẩu phần</option>
+                      {food?.servingSizeGrams ? <><option value="GRAM">Gram</option><option value="ML">ml</option></> : null}
+                    </select>
+                  </FormField>
+                  <Button type="button" size="icon" variant="ghost" aria-label={`Xóa ${food?.name ?? "món"}`} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>
+                    <Trash2 className="size-4 text-red-600" />
+                  </Button>
+                </div>
+              );
+            })}</div>
+          )}
+        </div>
+
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-background px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+          <Button className="w-full sm:w-auto" variant="outline" onClick={onClose}>Hủy</Button>
+          <Button className="w-full sm:w-auto" disabled={mutation.isPending || items.length === 0} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? "Đang lưu..." : `Lưu ${items.length} món`}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
