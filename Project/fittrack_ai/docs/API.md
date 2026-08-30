@@ -322,20 +322,39 @@ Create request:
   "protein": 10,
   "carbs": 3.6,
   "fat": 0.4,
-  "unit": "100g"
+  "unit": "100g",
+  "servingSizeGrams": 100,
+  "dataSourceType": "PRODUCT_LABEL",
+  "dataSourceName": "Nhãn sản phẩm",
+  "verified": false
 }
 ```
+
+`dataSourceType` nhận `VERIFIED_DATABASE`, `PRODUCT_LABEL`,
+`RECIPE_CALCULATED`, `COMMUNITY`, hoặc `ESTIMATED`. Vi chất chưa biết nên để
+`null`; không dùng `0` để biểu diễn thiếu dữ liệu. Chỉ admin được quyết định cờ
+`verified`; món do user đề xuất luôn bắt đầu ở trạng thái chưa xác minh.
 
 ## Nutrition
 
 ```http
+GET /nutrition/diary?date=2026-05-28
 GET /nutrition/meal-logs?date=2026-05-28
 POST /nutrition/meal-logs
 PUT /nutrition/meal-logs/{id}
 DELETE /nutrition/meal-logs/{id}
+PUT /nutrition/days/2026-05-28/status
+GET /nutrition/water-logs?date=2026-05-28
+POST /nutrition/water-logs
+DELETE /nutrition/water-logs/{id}
 ```
 
-Create request:
+Nhật ký ngày trả về trạng thái chất lượng dữ liệu, tổng đã dùng, mục tiêu, phần
+còn lại, lượng nước và các bữa đã nhóm. Trạng thái hợp lệ là `UNLOGGED`,
+`PARTIAL`, `COMPLETE`, `FASTING`; ngày có món mặc định là `PARTIAL`, và chỉ
+`COMPLETE`/`FASTING` được dùng trong báo cáo sức khỏe, thành tích và khuyến nghị.
+
+Create/update meal request (field `quantity` cũ vẫn tương thích):
 
 ```json
 {
@@ -344,14 +363,27 @@ Create request:
   "items": [
     {
       "foodId": "...",
-      "quantity": 2
+      "servingAmount": 1.5,
+      "servingUnit": "SERVING"
     },
     {
       "foodId": "...",
-      "quantity": 3
+      "servingAmount": 180,
+      "servingUnit": "GRAM"
     }
   ]
 }
+```
+
+`servingUnit` nhận `SERVING`, `GRAM`, hoặc `ML`. `GRAM`/`ML` chỉ chuyển đổi
+chính xác khi thực phẩm có `servingSizeGrams`.
+
+```json
+PUT /nutrition/days/2026-05-28/status
+{ "status": "COMPLETE" }
+
+POST /nutrition/water-logs
+{ "amountMl": 350, "loggedAt": "2026-05-28T09:30:00" }
 ```
 
 ## Body Measurements

@@ -58,15 +58,19 @@ public class FoodService {
                 .protein(defaultZero(request.getProtein()))
                 .carbs(defaultZero(request.getCarbs()))
                 .fat(defaultZero(request.getFat()))
-                .fiber(defaultZero(request.getFiber()))
-                .sugar(defaultZero(request.getSugar()))
-                .sodium(defaultZero(request.getSodium()))
-                .potassium(defaultZero(request.getPotassium()))
-                .calcium(defaultZero(request.getCalcium()))
-                .iron(defaultZero(request.getIron()))
-                .vitaminC(defaultZero(request.getVitaminC()))
-                .water(defaultZero(request.getWater()))
+                .fiber(request.getFiber())
+                .sugar(request.getSugar())
+                .sodium(request.getSodium())
+                .potassium(request.getPotassium())
+                .calcium(request.getCalcium())
+                .iron(request.getIron())
+                .vitaminC(request.getVitaminC())
+                .water(request.getWater())
                 .unit(request.getUnit())
+                .servingSizeGrams(request.getServingSizeGrams())
+                .dataSourceType(sourceType(request.getDataSourceType()))
+                .dataSourceName(request.getDataSourceName())
+                .verified(Boolean.TRUE.equals(request.getVerified()))
                 .imageUrl(mediaStorageService.storeNew(
                         request.getImageUrl(), "foods", UUID.randomUUID().toString()
                 ))
@@ -104,15 +108,19 @@ public class FoodService {
                 .protein(defaultZero(request.getProtein()))
                 .carbs(defaultZero(request.getCarbs()))
                 .fat(defaultZero(request.getFat()))
-                .fiber(defaultZero(request.getFiber()))
-                .sugar(defaultZero(request.getSugar()))
-                .sodium(defaultZero(request.getSodium()))
-                .potassium(defaultZero(request.getPotassium()))
-                .calcium(defaultZero(request.getCalcium()))
-                .iron(defaultZero(request.getIron()))
-                .vitaminC(defaultZero(request.getVitaminC()))
-                .water(defaultZero(request.getWater()))
+                .fiber(request.getFiber())
+                .sugar(request.getSugar())
+                .sodium(request.getSodium())
+                .potassium(request.getPotassium())
+                .calcium(request.getCalcium())
+                .iron(request.getIron())
+                .vitaminC(request.getVitaminC())
+                .water(request.getWater())
                 .unit(request.getUnit())
+                .servingSizeGrams(request.getServingSizeGrams())
+                .dataSourceType(sourceType(request.getDataSourceType()))
+                .dataSourceName(request.getDataSourceName())
+                .verified(false)
                 .imageUrl(mediaStorageService.storeNew(
                         request.getImageUrl(), "foods", UUID.randomUUID().toString()
                 ))
@@ -183,15 +191,29 @@ public class FoodService {
         food.setProtein(defaultZero(request.getProtein()));
         food.setCarbs(defaultZero(request.getCarbs()));
         food.setFat(defaultZero(request.getFat()));
-        food.setFiber(defaultZero(request.getFiber()));
-        food.setSugar(defaultZero(request.getSugar()));
-        food.setSodium(defaultZero(request.getSodium()));
-        food.setPotassium(defaultZero(request.getPotassium()));
-        food.setCalcium(defaultZero(request.getCalcium()));
-        food.setIron(defaultZero(request.getIron()));
-        food.setVitaminC(defaultZero(request.getVitaminC()));
-        food.setWater(defaultZero(request.getWater()));
+        food.setFiber(request.getFiber());
+        food.setSugar(request.getSugar());
+        food.setSodium(request.getSodium());
+        food.setPotassium(request.getPotassium());
+        food.setCalcium(request.getCalcium());
+        food.setIron(request.getIron());
+        food.setVitaminC(request.getVitaminC());
+        food.setWater(request.getWater());
         food.setUnit(request.getUnit());
+        if (request.getServingSizeGrams() != null) {
+            food.setServingSizeGrams(request.getServingSizeGrams());
+        }
+        if (request.getDataSourceType() != null) {
+            food.setDataSourceType(sourceType(request.getDataSourceType()));
+        }
+        if (request.getDataSourceName() != null) {
+            food.setDataSourceName(request.getDataSourceName().isBlank()
+                    ? null
+                    : request.getDataSourceName().trim());
+        }
+        if (request.getVerified() != null) {
+            food.setVerified(request.getVerified());
+        }
         food.setImageUrl(mediaStorageService.store(
                 food.getImageUrl(),
                 request.getImageUrl(),
@@ -227,6 +249,22 @@ public class FoodService {
 
     private double defaultZero(Double value) {
         return value == null ? 0.0 : value;
+    }
+
+    private String sourceType(String value) {
+        String normalized = value == null || value.isBlank()
+                ? "ESTIMATED"
+                : value.trim().toUpperCase();
+        if (!java.util.Set.of(
+                "VERIFIED_DATABASE",
+                "PRODUCT_LABEL",
+                "RECIPE_CALCULATED",
+                "COMMUNITY",
+                "ESTIMATED"
+        ).contains(normalized)) {
+            throw new IllegalArgumentException("Nguồn dữ liệu thực phẩm không hợp lệ");
+        }
+        return normalized;
     }
 }
 

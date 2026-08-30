@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
 import 'live_workout_sheet.dart';
+import 'nutrition_diary_tab.dart';
 
 class FitnessScreen extends StatefulWidget {
   const FitnessScreen({super.key});
@@ -16,7 +17,6 @@ class _FitnessScreenState extends State<FitnessScreen>
     with SingleTickerProviderStateMixin {
   late final TabController tabs;
   List<Map<String, dynamic>> workouts = [];
-  List<Map<String, dynamic>> meals = [];
   Object? error;
   bool loading = true;
 
@@ -40,14 +40,10 @@ class _FitnessScreenState extends State<FitnessScreen>
     });
     try {
       final api = context.read<ApiClient>();
-      final values = await Future.wait([
-        api.get('/workouts/sessions'),
-        api.get('/nutrition/meal-logs'),
-      ]);
+      final values = await Future.wait([api.get('/workouts/sessions')]);
       if (!mounted) return;
       setState(() {
         workouts = _list(values[0]);
-        meals = _list(values[1]);
       });
     } catch (e) {
       if (mounted) setState(() => error = e);
@@ -98,7 +94,7 @@ class _FitnessScreenState extends State<FitnessScreen>
             controller: tabs,
             children: [
               _WorkoutList(items: workouts, onReload: _load),
-              _MealList(items: meals, onReload: _load),
+              const NutritionDiaryTab(),
             ],
           ),
         ),
@@ -284,6 +280,9 @@ class _WorkoutStat extends StatelessWidget {
   );
 }
 
+// Kept temporarily for compatibility with older routes. The active tab uses
+// NutritionDiaryTab with daily data-quality state and quantity units.
+// ignore: unused_element
 class _MealList extends StatelessWidget {
   const _MealList({required this.items, required this.onReload});
   final List<Map<String, dynamic>> items;

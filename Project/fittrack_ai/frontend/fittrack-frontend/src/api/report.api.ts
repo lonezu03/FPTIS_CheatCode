@@ -2,6 +2,8 @@ import api from "./axios";
 
 export type DailyNutritionSummary = {
   date: string;
+  dataStatus: "COMPLETE" | "PARTIAL" | "UNLOGGED" | "FASTING";
+  dataIncluded: boolean;
   calories: number;
   protein: number;
   carbs: number;
@@ -15,6 +17,12 @@ export type DailyNutritionSummary = {
 export type WeeklyReport = {
   fromDate: string;
   toDate: string;
+  periodDays: number;
+  completeNutritionDays: number;
+  partialNutritionDays: number;
+  unloggedNutritionDays: number;
+  nutritionConfidencePercent: number;
+  nutritionDataSufficient: boolean;
   averageCalories: number;
   averageProtein: number;
   averageCarbs: number;

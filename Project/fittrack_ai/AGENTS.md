@@ -81,6 +81,16 @@ Deployment:
 - Menu import supports `@DRINKS` or `@EXTRAS` followed by priced lines such as `Trà đào | 45000` or `Trà vải 50000`. Extra IDs may repeat in an order to represent quantity; each repeated line contributes its `unitPrice` to the order total and refund.
 - Email notification delivery is opt-in per user via `emailNotificationsEnabled`; menu broadcasts, generic notifications and playbooks must honor it. Password-reset OTP is security-critical and remains independent of this preference.
 - User-submitted foods and exercises require admin approval before general use.
+- Nutrition days use `UNLOGGED`, `PARTIAL`, `COMPLETE`, or `FASTING`. A day
+  containing meals defaults to `PARTIAL` until the user confirms it; only
+  `COMPLETE` and `FASTING` days may affect nutrition averages, achievements,
+  health scores, or low-intake recommendations. Never interpret missing or
+  partial diary data as zero intake.
+- Meal quantities accept the legacy serving multiplier and the shared
+  `SERVING`, `GRAM`, or `ML` contract. Gram/ml conversion requires the food's
+  `servingSizeGrams`; preserve nullable micronutrients so reports can distinguish
+  unknown data from a measured zero. Micronutrient warnings require adequate
+  data coverage.
 - The web uses secure HttpOnly auth cookies through the Vercel `/api` proxy. The
   mobile app persists refresh credentials in Keystore/Keychain until logout.
 

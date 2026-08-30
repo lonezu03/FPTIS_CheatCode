@@ -10,6 +10,9 @@ public class MealItemResponse {
     private String foodId;
     private String foodName;
     private Double quantity;
+    private Double servingAmount;
+    private String servingUnit;
+    private Double gramsEquivalent;
     private Double calories;
     private Double protein;
     private Double carbs;

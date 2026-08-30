@@ -3,10 +3,15 @@ package com.fittrack.health.service;
 import com.fittrack.bodytracking.entity.BodyMeasurement;
 import com.fittrack.bodytracking.repository.BodyMeasurementRepository;
 import com.fittrack.health.dto.HealthDtos.HealthSummaryResponse;
+import com.fittrack.health.dto.HealthDtos.HealthScoreBreakdown;
 import com.fittrack.health.dto.HealthDtos.NutrientMetric;
 import com.fittrack.nutrition.entity.MealItem;
 import com.fittrack.nutrition.entity.MealLog;
 import com.fittrack.nutrition.repository.MealLogRepository;
+import com.fittrack.nutrition.repository.WaterLogRepository;
+import com.fittrack.nutrition.entity.NutritionDayStatus;
+import com.fittrack.nutrition.entity.WaterLog;
+import com.fittrack.nutrition.service.NutritionDayQualityService;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.service.GoalCalculatorService;
 import com.fittrack.workout.entity.WorkoutSession;
@@ -19,6 +24,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +36,8 @@ public class HealthSummaryService {
     private final BodyMeasurementRepository bodyMeasurementRepository;
     private final WorkoutSessionRepository workoutSessionRepository;
     private final GoalCalculatorService goalCalculatorService;
+    private final NutritionDayQualityService dayQualityService;
+    private final WaterLogRepository waterLogRepository;
 
     @Transactional(readOnly = true)
     public HealthSummaryResponse summarize(User user, int requestedDays) {
@@ -45,37 +55,75 @@ public class HealthSummaryService {
                 .map(MealLog::getLogDate)
                 .distinct()
                 .count();
-        double divisor = Math.max(1, trackedDays);
-        List<MealItem> mealItems = meals.stream()
+        Map<LocalDate, List<MealLog>> mealsByDate = meals.stream()
+                .collect(Collectors.groupingBy(MealLog::getLogDate));
+        Map<LocalDate, NutritionDayStatus> explicitStatuses =
+                dayQualityService.statuses(user, from, to);
+        Set<LocalDate> completeDates = new java.util.HashSet<>();
+        int partialDays = 0;
+        LocalDate cursor = from;
+        while (!cursor.isAfter(to)) {
+            NutritionDayStatus status = dayQualityService.resolve(
+                    cursor, explicitStatuses, mealsByDate
+            );
+            if (dayQualityService.isComplete(status)) {
+                completeDates.add(cursor);
+            } else if (status == NutritionDayStatus.PARTIAL) {
+                partialDays++;
+            }
+            cursor = cursor.plusDays(1);
+        }
+        int completeDays = completeDates.size();
+        int unloggedDays = Math.max(0, days - completeDays - partialDays);
+        double confidence = round(completeDays * 100.0 / Math.max(1, days));
+        List<MealLog> includedMeals = meals.stream()
+                .filter(meal -> completeDates.contains(meal.getLogDate()))
+                .toList();
+        double divisor = Math.max(1, completeDays);
+        List<MealItem> mealItems = includedMeals.stream()
                 .flatMap(meal -> meal.getItems().stream())
                 .toList();
         double targetCalories = goalCalculatorService.calculateTargetCalories(user);
+        double macroCoverage = completeDays == 0 ? 0 : 100;
+        List<WaterLog> includedWaterLogs = waterLogRepository
+                .findByUserAndLoggedAtBetweenOrderByLoggedAtDesc(
+                        user, from.atStartOfDay(), to.plusDays(1).atStartOfDay()
+                ).stream()
+                .filter(log -> completeDates.contains(log.getLoggedAt().toLocalDate()))
+                .toList();
+        double waterFromLogs = includedWaterLogs.stream()
+                .mapToInt(log -> log.getAmountMl())
+                .sum();
+        double waterCoverage = completeDays == 0 ? 0 : includedWaterLogs.stream()
+                .map(log -> log.getLoggedAt().toLocalDate())
+                .distinct()
+                .count() * 100.0 / completeDays;
 
         List<NutrientMetric> nutrients = List.of(
-                metric("calories", "Năng lượng", sum(meals, MealLog::getTotalCalories) / divisor,
-                        targetCalories, "kcal", false),
-                metric("protein", "Chất đạm", sum(meals, MealLog::getTotalProtein) / divisor,
-                        goalCalculatorService.calculateProtein(user), "g", false),
-                metric("carbs", "Tinh bột", sum(meals, MealLog::getTotalCarbs) / divisor,
-                        goalCalculatorService.calculateCarbs(user), "g", false),
-                metric("fat", "Chất béo", sum(meals, MealLog::getTotalFat) / divisor,
-                        goalCalculatorService.calculateFat(user), "g", false),
+                metric("calories", "Năng lượng", sum(includedMeals, MealLog::getTotalCalories) / divisor,
+                        targetCalories, "kcal", false, macroCoverage),
+                metric("protein", "Chất đạm", sum(includedMeals, MealLog::getTotalProtein) / divisor,
+                        goalCalculatorService.calculateProtein(user), "g", false, macroCoverage),
+                metric("carbs", "Tinh bột", sum(includedMeals, MealLog::getTotalCarbs) / divisor,
+                        goalCalculatorService.calculateCarbs(user), "g", false, macroCoverage),
+                metric("fat", "Chất béo", sum(includedMeals, MealLog::getTotalFat) / divisor,
+                        goalCalculatorService.calculateFat(user), "g", false, macroCoverage),
                 metric("fiber", "Chất xơ", sumItems(mealItems, MealItem::getFiber) / divisor,
-                        fiberTarget(user), "g", false),
+                        fiberTarget(user), "g", false, coverage(mealItems, item -> item.getFood().getFiber())),
                 metric("sugar", "Đường", sumItems(mealItems, MealItem::getSugar) / divisor,
-                        Math.max(25, targetCalories * 0.10 / 4), "g", true),
+                        Math.max(25, targetCalories * 0.10 / 4), "g", true, coverage(mealItems, item -> item.getFood().getSugar())),
                 metric("sodium", "Natri", sumItems(mealItems, MealItem::getSodium) / divisor,
-                        2300, "mg", true),
+                        2300, "mg", true, coverage(mealItems, item -> item.getFood().getSodium())),
                 metric("potassium", "Kali", sumItems(mealItems, MealItem::getPotassium) / divisor,
-                        isFemale(user) ? 2600 : 3400, "mg", false),
+                        isFemale(user) ? 2600 : 3400, "mg", false, coverage(mealItems, item -> item.getFood().getPotassium())),
                 metric("calcium", "Canxi", sumItems(mealItems, MealItem::getCalcium) / divisor,
-                        calciumTarget(user), "mg", false),
+                        calciumTarget(user), "mg", false, coverage(mealItems, item -> item.getFood().getCalcium())),
                 metric("iron", "Sắt", sumItems(mealItems, MealItem::getIron) / divisor,
-                        ironTarget(user), "mg", false),
+                        ironTarget(user), "mg", false, coverage(mealItems, item -> item.getFood().getIron())),
                 metric("vitaminC", "Vitamin C", sumItems(mealItems, MealItem::getVitaminC) / divisor,
-                        isFemale(user) ? 75 : 90, "mg", false),
-                metric("water", "Nước", sumItems(mealItems, MealItem::getWater) / divisor,
-                        waterTarget(user), "ml", false)
+                        isFemale(user) ? 75 : 90, "mg", false, coverage(mealItems, item -> item.getFood().getVitaminC())),
+                metric("water", "Nước", (sumItems(mealItems, MealItem::getWater) + waterFromLogs) / divisor,
+                        waterTarget(user), "ml", false, waterCoverage)
         );
 
         Double currentWeight = body.isEmpty()
@@ -96,15 +144,16 @@ public class HealthSummaryService {
                 .mapToInt(Integer::intValue)
                 .sum();
 
-        List<String> insights = buildInsights(trackedDays, days, activeDays, nutrients, bmi);
+        List<String> insights = buildInsights(completeDays, days, activeDays, nutrients, bmi);
         int nutritionScore = (int) Math.round(nutrients.stream()
                 .filter(item -> !item.key().equals("sugar") && !item.key().equals("sodium"))
+                .filter(item -> item.coveragePercent() >= 80)
                 .limit(6)
                 .mapToDouble(item -> Math.min(100, item.progressPercent()))
                 .average()
                 .orElse(0));
         int activityScore = Math.min(100, activeDays * 25);
-        int trackingScore = Math.min(100, trackedDays * 100 / Math.max(1, days));
+        int trackingScore = Math.min(100, completeDays * 100 / Math.max(1, days));
         int overallScore = (int) Math.round(
                 nutritionScore * 0.55 + activityScore * 0.30 + trackingScore * 0.15
         );
@@ -112,8 +161,14 @@ public class HealthSummaryService {
         return new HealthSummaryResponse(
                 days,
                 trackedDays,
+                completeDays,
+                partialDays,
+                unloggedDays,
+                confidence,
                 LocalDateTime.now(),
                 overallScore,
+                confidence < 50,
+                new HealthScoreBreakdown(nutritionScore, activityScore, trackingScore),
                 round(bmi),
                 bmiCategory(bmi),
                 currentWeight,
@@ -124,7 +179,7 @@ public class HealthSummaryService {
                 activeDays,
                 nutrients,
                 insights,
-                "Mục tiêu được ước tính từ tuổi, giới tính sinh học, cân nặng và mục tiêu năng lượng trong hồ sơ.",
+                "Mục tiêu được ước tính từ tuổi, giới tính sinh học, cân nặng và mục tiêu năng lượng trong hồ sơ. Chỉ ngày xác nhận ghi đầy đủ mới được dùng để đánh giá.",
                 "Các chỉ số chỉ mang tính tham khảo, không thay thế chẩn đoán hoặc tư vấn của nhân viên y tế."
         );
     }
@@ -169,6 +224,7 @@ public class HealthSummaryService {
             insights.add("Bạn nên vận động ít nhất 3 ngày mỗi tuần nếu tình trạng sức khỏe cho phép.");
         }
         nutrients.stream()
+                .filter(metric -> metric.coveragePercent() >= 80)
                 .filter(metric -> metric.status().equals("LOW"))
                 .limit(2)
                 .forEach(metric -> insights.add("Lượng " + metric.label().toLowerCase()
@@ -188,11 +244,18 @@ public class HealthSummaryService {
             double average,
             double target,
             String unit,
-            boolean maximum
+            boolean maximum,
+            double coveragePercent
     ) {
         double progress = target <= 0 ? 0 : average * 100 / target;
         String status;
-        if (maximum) {
+        if (coveragePercent <= 0) {
+            status = "NO_DATA";
+        } else if (coveragePercent < 80) {
+            status = "INSUFFICIENT_COVERAGE";
+        } else if (target <= 0) {
+            status = "NO_TARGET";
+        } else if (maximum) {
             status = average > target ? "HIGH" : "GOOD";
         } else if (progress < 70) {
             status = "LOW";
@@ -208,8 +271,18 @@ public class HealthSummaryService {
                 round(target),
                 unit,
                 round(progress),
-                status
+                status,
+                round(coveragePercent)
         );
+    }
+
+    private double coverage(
+            List<MealItem> items,
+            java.util.function.Function<MealItem, Double> getter
+    ) {
+        if (items.isEmpty()) return 0;
+        long available = items.stream().map(getter).filter(java.util.Objects::nonNull).count();
+        return available * 100.0 / items.size();
     }
 
     private double calculateBmi(Double weight, Double heightCm) {

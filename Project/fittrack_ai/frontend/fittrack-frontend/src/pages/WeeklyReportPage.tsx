@@ -101,6 +101,7 @@ function WeeklyReportContent({
   report: WeeklyReport;
   recommendations?: WeeklyRecommendation;
 }) {
+  const includedNutrition = report.dailyNutrition.filter((day) => day.dataIncluded);
   const overviewCards = [
     {
       title: "Năng lượng trung bình",
@@ -137,7 +138,18 @@ function WeeklyReportContent({
         </Badge>
 
         <Badge variant="secondary">{report.workoutDays} ngày luyện tập</Badge>
+        <Badge variant={report.nutritionDataSufficient ? "secondary" : "outline"}>
+          Dữ liệu dinh dưỡng: {report.completeNutritionDays}/{report.periodDays} ngày đầy đủ
+        </Badge>
       </div>
+
+      <Card className={report.nutritionDataSufficient ? "border-emerald-200" : "border-amber-300 bg-amber-50/50"}>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between gap-4"><div><p className="font-semibold">Độ tin cậy báo cáo dinh dưỡng</p><p className="mt-1 text-sm text-muted-foreground">{report.nutritionDataSufficient ? "Đủ dữ liệu để đánh giá xu hướng." : "Các ngày ghi thiếu không được dùng để kết luận bạn ăn quá ít."}</p></div><strong className="text-2xl">{report.nutritionConfidencePercent}%</strong></div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white"><div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, report.nutritionConfidencePercent)}%` }} /></div>
+          <p className="mt-2 text-xs text-muted-foreground">{report.partialNutritionDays} ngày ghi thiếu · {report.unloggedNutritionDays} ngày chưa ghi</p>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         {overviewCards.map((item) => {
@@ -208,11 +220,11 @@ function WeeklyReportContent({
           </CardHeader>
 
           <CardContent className="h-[240px] md:h-[320px]">
-            {report.dailyNutrition.length === 0 ? (
+            {includedNutrition.length === 0 ? (
               <EmptyState title="Chưa có dữ liệu dinh dưỡng" description="Ghi bữa ăn trong khoảng này để xem xu hướng năng lượng." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={report.dailyNutrition}>
+                <BarChart data={includedNutrition}>
                   <XAxis dataKey="date" />
                   <YAxis />
                   <Tooltip />
@@ -230,11 +242,11 @@ function WeeklyReportContent({
           </CardHeader>
 
           <CardContent className="h-[240px] md:h-[320px]">
-            {report.dailyNutrition.length === 0 ? (
+            {includedNutrition.length === 0 ? (
               <EmptyState title="Chưa có dữ liệu chất đạm" description="Ghi bữa ăn trong khoảng này để xem xu hướng chất đạm." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={report.dailyNutrition}>
+                <LineChart data={includedNutrition}>
                   <XAxis dataKey="date" />
                   <YAxis />
                   <Tooltip />
@@ -302,6 +314,7 @@ function WeeklyReportContent({
 }
 
 function buildActionSummary(report: WeeklyReport) {
+  if (!report.nutritionDataSufficient) return `Chưa đủ dữ liệu để đánh giá lượng ăn. Bạn mới xác nhận ${report.completeNutritionDays}/${report.periodDays} ngày đầy đủ; hãy hoàn tất nhật ký trước khi điều chỉnh mục tiêu.`;
   if (report.totalMeals === 0 && report.totalWorkouts === 0) return "Chưa đủ dữ liệu để đánh giá. Hãy bắt đầu bằng việc ghi một bữa ăn và một hoạt động trong hôm nay.";
   if (report.caloriesCompliancePercent < 85) return "Năng lượng trung bình đang thấp. Ưu tiên thêm một bữa phụ có tinh bột lành mạnh và theo dõi phản hồi cơ thể trong 2–3 ngày.";
   if (report.proteinCompliancePercent < 85) return "Protein đang dưới mục tiêu. Chọn trước một nguồn đạm cho bữa tiếp theo thay vì cố bù dồn vào cuối ngày.";

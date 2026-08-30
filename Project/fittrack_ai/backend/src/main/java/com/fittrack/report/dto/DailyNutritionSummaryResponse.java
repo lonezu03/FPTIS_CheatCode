@@ -9,6 +9,8 @@ import java.time.LocalDate;
 @Builder
 public class DailyNutritionSummaryResponse {
     private LocalDate date;
+    private String dataStatus;
+    private Boolean dataIncluded;
 
     private Double calories;
     private Double protein;

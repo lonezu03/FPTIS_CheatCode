@@ -32,7 +32,7 @@ class FlywayPostgresMigrationTest {
 
         var result = flyway.migrate();
 
-        assertTrue(result.migrationsExecuted >= 7);
+        assertTrue(result.migrationsExecuted >= 15);
         try (Connection connection = DriverManager.getConnection(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()
         )) {
@@ -52,8 +52,14 @@ class FlywayPostgresMigrationTest {
                     "select 1 from information_schema.columns where table_name = 'workout_sets' and column_name = 'set_type'"));
             assertTrue(exists(connection,
                     "select 1 from information_schema.columns where table_name = 'workout_sets' and column_name = 'exercise_order'"));
+            assertTrue(exists(connection,
+                    "select 1 from information_schema.tables where table_name = 'nutrition_day_states'"));
+            assertTrue(exists(connection,
+                    "select 1 from information_schema.tables where table_name = 'water_logs'"));
+            assertTrue(exists(connection,
+                    "select 1 from information_schema.columns where table_name = 'meal_items' and column_name = 'serving_unit'"));
             assertTrue(count(connection,
-                    "select count(*) from flyway_schema_history where success") >= 14);
+                    "select count(*) from flyway_schema_history where success") >= 15);
         }
     }
 

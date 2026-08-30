@@ -23,8 +23,20 @@ public class RecommendationService {
 
         List<RecommendationItemResponse> items = new ArrayList<>();
 
-        analyzeCalories(report, items);
-        analyzeProtein(report, items);
+        if (Boolean.TRUE.equals(report.getNutritionDataSufficient())) {
+            analyzeCalories(report, items);
+            analyzeProtein(report, items);
+        } else {
+            items.add(RecommendationItemResponse.builder()
+                    .type("DATA_QUALITY")
+                    .severity("MEDIUM")
+                    .title("Chưa đủ dữ liệu dinh dưỡng")
+                    .message("FitTrack chưa thể kết luận bạn ăn thiếu hay chỉ ghi thiếu.")
+                    .action("Xác nhận ngày đã ghi đầy đủ sau khi hoàn tất nhật ký. Hiện có "
+                            + safeInt(report.getCompleteNutritionDays()) + "/"
+                            + safeInt(report.getPeriodDays()) + " ngày đầy đủ.")
+                    .build());
+        }
         analyzeWorkout(report, items);
         analyzeWeightAndWaist(report, items);
 
@@ -42,6 +54,10 @@ public class RecommendationService {
                 .fromDate(report.getFromDate())
                 .toDate(report.getToDate())
                 .summary(buildSummary(report))
+                .nutritionDataSufficient(report.getNutritionDataSufficient())
+                .completeNutritionDays(report.getCompleteNutritionDays())
+                .periodDays(report.getPeriodDays())
+                .nutritionConfidencePercent(report.getNutritionConfidencePercent())
                 .recommendations(items)
                 .build();
     }
@@ -195,6 +211,12 @@ public class RecommendationService {
     }
 
     private String buildSummary(WeeklyReportResponse report) {
+        if (!Boolean.TRUE.equals(report.getNutritionDataSufficient())) {
+            return "Chưa đủ dữ liệu để đánh giá lượng ăn. Bạn mới xác nhận "
+                    + safeInt(report.getCompleteNutritionDays()) + "/"
+                    + safeInt(report.getPeriodDays())
+                    + " ngày ghi đầy đủ; các ngày ghi thiếu đã được loại khỏi khuyến nghị.";
+        }
         return "Trong khoảng báo cáo, trung bình mỗi ngày bạn nạp "
                 + round(safe(report.getAverageCalories())) + " kcal và "
                 + round(safe(report.getAverageProtein())) + " g protein; luyện tập "

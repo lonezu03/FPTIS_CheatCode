@@ -2,6 +2,8 @@ package com.fittrack.health.service;
 
 import com.fittrack.bodytracking.repository.BodyMeasurementRepository;
 import com.fittrack.nutrition.repository.MealLogRepository;
+import com.fittrack.nutrition.repository.WaterLogRepository;
+import com.fittrack.nutrition.service.NutritionDayQualityService;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.service.GoalCalculatorService;
 import com.fittrack.workout.repository.WorkoutSessionRepository;
@@ -27,6 +29,10 @@ class HealthSummaryServiceTest {
     private BodyMeasurementRepository bodyMeasurementRepository;
     @Mock
     private WorkoutSessionRepository workoutSessionRepository;
+    @Mock
+    private NutritionDayQualityService dayQualityService;
+    @Mock
+    private WaterLogRepository waterLogRepository;
 
     private HealthSummaryService service;
 
@@ -36,7 +42,9 @@ class HealthSummaryServiceTest {
                 mealLogRepository,
                 bodyMeasurementRepository,
                 workoutSessionRepository,
-                new GoalCalculatorService()
+                new GoalCalculatorService(),
+                dayQualityService,
+                waterLogRepository
         );
     }
 
@@ -68,6 +76,11 @@ class HealthSummaryServiceTest {
                         any(LocalDate.class),
                         any(LocalDate.class)
                 )).thenReturn(List.of());
+        when(dayQualityService.statuses(any(User.class), any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(java.util.Map.of());
+        when(waterLogRepository.findByUserAndLoggedAtBetweenOrderByLoggedAtDesc(
+                any(User.class), any(java.time.LocalDateTime.class), any(java.time.LocalDateTime.class)
+        )).thenReturn(List.of());
 
         var summary = assertDoesNotThrow(() -> service.summarize(user, 30));
 
@@ -76,6 +89,11 @@ class HealthSummaryServiceTest {
         assertEquals(0, summary.mealCount());
         assertEquals(0, summary.workoutSessions());
         assertEquals(12, summary.nutrients().size());
+        assertEquals("NO_DATA", summary.nutrients().stream()
+                .filter(metric -> metric.key().equals("water"))
+                .findFirst()
+                .orElseThrow()
+                .status());
         assertEquals(20.8, summary.bmi(), 0.1);
         assertFalse(summary.insights().isEmpty());
     }

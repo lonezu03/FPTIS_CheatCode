@@ -49,6 +49,18 @@ public class Food {
 
     private String unit;
 
+    private Double servingSizeGrams;
+
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private String dataSourceType = "ESTIMATED";
+
+    private String dataSourceName;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean verified = false;
+
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
@@ -87,6 +99,14 @@ public class Food {
 
         if (this.approvalStatus == null) {
             this.approvalStatus = "APPROVED";
+        }
+
+        if (this.dataSourceType == null) {
+            this.dataSourceType = "ESTIMATED";
+        }
+
+        if (this.verified == null) {
+            this.verified = false;
         }
     }
 }

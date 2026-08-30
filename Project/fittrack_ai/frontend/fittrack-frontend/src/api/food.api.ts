@@ -16,15 +16,26 @@ export type Food = {
   submittedById?: string | null;
   submittedByName?: string | null;
   adminNote?: string | null;
-  fiber: number;
-  sugar: number;
-  sodium: number;
-  potassium: number;
-  calcium: number;
-  iron: number;
-  vitaminC: number;
-  water: number;
+  fiber: number | null;
+  sugar: number | null;
+  sodium: number | null;
+  potassium: number | null;
+  calcium: number | null;
+  iron: number | null;
+  vitaminC: number | null;
+  water: number | null;
+  servingSizeGrams?: number | null;
+  dataSourceType?: FoodSourceType;
+  dataSourceName?: string | null;
+  verified?: boolean;
 };
+
+export type FoodSourceType =
+  | "VERIFIED_DATABASE"
+  | "PRODUCT_LABEL"
+  | "RECIPE_CALCULATED"
+  | "COMMUNITY"
+  | "ESTIMATED";
 
 export type FoodPayload = {
   name: string;
@@ -32,15 +43,19 @@ export type FoodPayload = {
   protein: number;
   carbs: number;
   fat: number;
-  fiber?: number;
-  sugar?: number;
-  sodium?: number;
-  potassium?: number;
-  calcium?: number;
-  iron?: number;
-  vitaminC?: number;
-  water?: number;
+  fiber?: number | null;
+  sugar?: number | null;
+  sodium?: number | null;
+  potassium?: number | null;
+  calcium?: number | null;
+  iron?: number | null;
+  vitaminC?: number | null;
+  water?: number | null;
   unit: string;
+  servingSizeGrams?: number | null;
+  dataSourceType?: FoodSourceType;
+  dataSourceName?: string | null;
+  verified?: boolean;
   imageUrl?: string | null;
 };
 

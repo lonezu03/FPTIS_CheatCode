@@ -24,6 +24,14 @@ public class MealItem {
 
     private Double quantity;
 
+    private Double servingAmount;
+
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private String servingUnit = "SERVING";
+
+    private Double gramsEquivalent;
+
     private Double calories;
 
     private Double protein;

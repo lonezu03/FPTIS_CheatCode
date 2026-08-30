@@ -21,6 +21,7 @@ import {
   suggestFoodApi,
   updateFoodApi,
   type Food,
+  type FoodSourceType,
 } from "../api/food.api";
 
 import { Button } from "@/components/ui/button";
@@ -36,15 +37,19 @@ type FoodDraft = {
   protein: number;
   carbs: number;
   fat: number;
-  fiber: number;
-  sugar: number;
-  sodium: number;
-  potassium: number;
-  calcium: number;
-  iron: number;
-  vitaminC: number;
-  water: number;
+  fiber: number | null;
+  sugar: number | null;
+  sodium: number | null;
+  potassium: number | null;
+  calcium: number | null;
+  iron: number | null;
+  vitaminC: number | null;
+  water: number | null;
   unit: string;
+  servingSizeGrams: number | null;
+  dataSourceType: FoodSourceType;
+  dataSourceName: string;
+  verified: boolean;
   imageUrl: string;
 };
 
@@ -54,16 +59,28 @@ const emptyDraft: FoodDraft = {
   protein: 0,
   carbs: 0,
   fat: 0,
-  fiber: 0,
-  sugar: 0,
-  sodium: 0,
-  potassium: 0,
-  calcium: 0,
-  iron: 0,
-  vitaminC: 0,
-  water: 0,
+  fiber: null,
+  sugar: null,
+  sodium: null,
+  potassium: null,
+  calcium: null,
+  iron: null,
+  vitaminC: null,
+  water: null,
   unit: "100g",
+  servingSizeGrams: 100,
+  dataSourceType: "ESTIMATED",
+  dataSourceName: "",
+  verified: false,
   imageUrl: "",
+};
+
+const sourceLabels: Record<FoodSourceType, string> = {
+  VERIFIED_DATABASE: "Cơ sở dữ liệu đã kiểm chứng",
+  PRODUCT_LABEL: "Nhãn sản phẩm",
+  RECIPE_CALCULATED: "Tính từ công thức",
+  COMMUNITY: "Người dùng đóng góp",
+  ESTIMATED: "Ước tính",
 };
 
 const MAX_IMAGE_FILE_SIZE = 1024 * 1024;
@@ -91,6 +108,10 @@ export default function FoodsPage() {
     vitaminC: 0,
     water: 85,
     unit: "100g",
+    servingSizeGrams: 100,
+    dataSourceType: "PRODUCT_LABEL",
+    dataSourceName: "Nhãn sản phẩm",
+    verified: false,
     imageUrl: "",
   });
 
@@ -164,6 +185,10 @@ export default function FoodsPage() {
         vitaminC: payload.vitaminC,
         water: payload.water,
         unit: payload.unit,
+        servingSizeGrams: payload.servingSizeGrams,
+        dataSourceType: payload.dataSourceType,
+        dataSourceName: payload.dataSourceName?.trim() ?? "",
+        verified: payload.verified,
         imageUrl: payload.imageUrl?.trim() || null,
       }),
     onSuccess: () => {
@@ -219,6 +244,8 @@ export default function FoodsPage() {
 
     createMutation.mutate({
       ...draft,
+      dataSourceName: draft.dataSourceName.trim() || null,
+      verified: isAdmin ? draft.verified : false,
       imageUrl: draft.imageUrl.trim() || null,
     });
   };
@@ -244,6 +271,17 @@ export default function FoodsPage() {
             <FormField label="Khẩu phần chuẩn" htmlFor="food-unit" hint="Mọi chỉ số bên dưới được tính cho khẩu phần này." required>
               <Input id="food-unit" value={draft.unit} onChange={(event) => setDraft({ ...draft, unit: event.target.value })} placeholder="Ví dụ: 100g, 1 chén, 1 phần" />
             </FormField>
+            <FormField label="Khối lượng một khẩu phần" htmlFor="food-serving-grams" unit="g/ml" hint="Bắt buộc nếu muốn người dùng nhập theo gram hoặc ml.">
+              <Input id="food-serving-grams" type="number" min={0.01} step="any" value={draft.servingSizeGrams ?? ""} onChange={(event) => setDraft({ ...draft, servingSizeGrams: event.target.value === "" ? null : Number(event.target.value) })} placeholder="Ví dụ: 100" />
+            </FormField>
+            <FormField label="Loại nguồn dữ liệu" htmlFor="food-source-type" hint="Giúp đánh giá độ tin cậy của dinh dưỡng.">
+              <select id="food-source-type" className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={draft.dataSourceType} onChange={(event) => setDraft({ ...draft, dataSourceType: event.target.value as FoodSourceType })}>
+                {Object.entries(sourceLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </FormField>
+            <FormField label="Tên nguồn" htmlFor="food-source-name" hint="Ví dụ: nhãn Vinamilk, USDA hoặc công thức nội bộ.">
+              <Input id="food-source-name" value={draft.dataSourceName} onChange={(event) => setDraft({ ...draft, dataSourceName: event.target.value })} placeholder="Nguồn tham khảo" />
+            </FormField>
             <FormField label="Năng lượng" htmlFor="food-calories" unit="kcal" hint="Tổng năng lượng trong một khẩu phần." required>
               <Input id="food-calories" type="number" min={0} value={draft.calories} onChange={(event) => setDraft({ ...draft, calories: Number(event.target.value) })} />
             </FormField>
@@ -259,7 +297,7 @@ export default function FoodsPage() {
 
             <div className="md:col-span-3">
               <h3 className="font-semibold">Vi chất và thành phần mở rộng</h3>
-              <p className="text-xs text-muted-foreground">Có thể xem trên nhãn dinh dưỡng; nhập 0 nếu chưa có dữ liệu.</p>
+              <p className="text-xs text-muted-foreground">Để trống nếu chưa biết; chỉ nhập 0 khi nguồn dữ liệu xác nhận thực sự bằng 0.</p>
             </div>
 
             {([
@@ -278,17 +316,24 @@ export default function FoodsPage() {
                   type="number"
                   min={0}
                   step="any"
-                  value={draft[key]}
-                  onChange={(event) => setDraft({ ...draft, [key]: Number(event.target.value) })}
+                  value={draft[key] ?? ""}
+                  onChange={(event) => setDraft({ ...draft, [key]: event.target.value === "" ? null : Number(event.target.value) })}
                 />
               </FormField>
             ))}
+
+            {isAdmin && (
+              <label className="md:col-span-3 flex items-start gap-3 rounded-xl border bg-emerald-50/60 p-4 text-sm">
+                <input type="checkbox" className="mt-1" checked={draft.verified} onChange={(event) => setDraft({ ...draft, verified: event.target.checked })} />
+                <span><strong>Đã xác minh dữ liệu</strong><br /><span className="text-muted-foreground">Chỉ bật sau khi đã đối chiếu khẩu phần và các chỉ số với nguồn đáng tin cậy.</span></span>
+              </label>
+            )}
 
             <div className="md:col-span-3">
               <FoodImageField
                 value={draft.imageUrl}
                 onChange={(imageUrl) => setDraft({ ...draft, imageUrl })}
-                onPreview={() => draft.imageUrl && setPreviewImage({ url: draft.imageUrl, title: draft.name || "Food image" })}
+                onPreview={() => draft.imageUrl && setPreviewImage({ url: draft.imageUrl, title: draft.name || "Ảnh thực phẩm" })}
               />
             </div>
 
@@ -340,6 +385,7 @@ export default function FoodsPage() {
                     <TableHead>Đạm</TableHead>
                     <TableHead>Tinh bột</TableHead>
                     <TableHead>Chất béo</TableHead>
+                    <TableHead>Nguồn dữ liệu</TableHead>
                     <TableHead>Trạng thái</TableHead>
                     {isAdmin && <TableHead>Thao tác</TableHead>}
                   </TableRow>
@@ -354,7 +400,7 @@ export default function FoodsPage() {
                             type="button"
                             className="block overflow-hidden rounded-lg border bg-slate-50 transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             onClick={() => setPreviewImage({ url: food.imageUrl!, title: food.name })}
-                            aria-label={`View image for ${food.name}`}
+                            aria-label={`Xem ảnh ${food.name}`}
                           >
                             <img
                               src={resolveApiAssetUrl(food.imageUrl)}
@@ -373,6 +419,12 @@ export default function FoodsPage() {
                       <TableCell>{food.protein}g</TableCell>
                       <TableCell>{food.carbs}g</TableCell>
                       <TableCell>{food.fat}g</TableCell>
+                      <TableCell>
+                        <div className="min-w-36 text-xs">
+                          <p className="font-medium">{sourceLabels[food.dataSourceType ?? "ESTIMATED"]}</p>
+                          <p className="text-muted-foreground">{food.verified ? "✓ Đã xác minh" : food.dataSourceName || "Chưa xác minh"}</p>
+                        </div>
+                      </TableCell>
 
                       <TableCell>
                         {food.approvalStatus === "PENDING" ? (
@@ -450,56 +502,34 @@ export default function FoodsPage() {
             }
           }}
         >
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Sửa thực phẩm</DialogTitle>
             </DialogHeader>
 
             {editingFood && (
               <div className="space-y-4">
-                <Input value={editingFood.name} onChange={(event) => setEditingFood({ ...editingFood, name: event.target.value })} placeholder="Name" />
-
-                <Input value={editingFood.unit} onChange={(event) => setEditingFood({ ...editingFood, unit: event.target.value })} placeholder="Unit" />
-
-                <Input
-                  type="number"
-                  value={editingFood.calories}
-                  onChange={(event) => setEditingFood({ ...editingFood, calories: Number(event.target.value) })}
-                  placeholder="Calories"
-                />
-
-                <Input
-                  type="number"
-                  value={editingFood.protein}
-                  onChange={(event) => setEditingFood({ ...editingFood, protein: Number(event.target.value) })}
-                  placeholder="Protein"
-                />
-
-                <Input
-                  type="number"
-                  value={editingFood.carbs}
-                  onChange={(event) => setEditingFood({ ...editingFood, carbs: Number(event.target.value) })}
-                  placeholder="Carbs"
-                />
-
-                <Input
-                  type="number"
-                  value={editingFood.fat}
-                  onChange={(event) => setEditingFood({ ...editingFood, fat: Number(event.target.value) })}
-                  placeholder="Fat"
-                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label="Tên thực phẩm" required><Input value={editingFood.name} onChange={(event) => setEditingFood({ ...editingFood, name: event.target.value })} /></FormField>
+                  <FormField label="Khẩu phần chuẩn" hint="Ví dụ: 100g hoặc 1 phần." required><Input value={editingFood.unit} onChange={(event) => setEditingFood({ ...editingFood, unit: event.target.value })} /></FormField>
+                  <FormField label="Khối lượng một khẩu phần" unit="g/ml" hint="Dùng để quy đổi khi ghi theo gram/ml."><Input type="number" min={0.01} step="any" value={editingFood.servingSizeGrams ?? ""} onChange={(event) => setEditingFood({ ...editingFood, servingSizeGrams: event.target.value === "" ? null : Number(event.target.value) })} /></FormField>
+                  <FormField label="Loại nguồn dữ liệu"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={editingFood.dataSourceType ?? "ESTIMATED"} onChange={(event) => setEditingFood({ ...editingFood, dataSourceType: event.target.value as FoodSourceType })}>{Object.entries(sourceLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></FormField>
+                  <FormField label="Tên nguồn" hint="Nhãn sản phẩm, cơ sở dữ liệu hoặc công thức."><Input value={editingFood.dataSourceName ?? ""} onChange={(event) => setEditingFood({ ...editingFood, dataSourceName: event.target.value })} /></FormField>
+                  <label className="flex items-center gap-3 rounded-xl border p-3 text-sm"><input type="checkbox" checked={Boolean(editingFood.verified)} onChange={(event) => setEditingFood({ ...editingFood, verified: event.target.checked })} /><span><strong>Đã xác minh</strong><br /><span className="text-xs text-muted-foreground">Đã đối chiếu với nguồn đáng tin cậy.</span></span></label>
+                  {(["calories", "protein", "carbs", "fat"] as const).map((key) => <FormField key={key} label={{ calories: "Năng lượng", protein: "Chất đạm", carbs: "Tinh bột", fat: "Chất béo" }[key]} unit={key === "calories" ? "kcal" : "g"}><Input type="number" min={0} step="any" value={editingFood[key]} onChange={(event) => setEditingFood({ ...editingFood, [key]: Number(event.target.value) })} /></FormField>)}
+                </div>
 
                 <FoodImageField
                   value={editingFood.imageUrl ?? ""}
                   onChange={(imageUrl) => setEditingFood({ ...editingFood, imageUrl })}
                   onPreview={() =>
                     editingFood.imageUrl &&
-                    setPreviewImage({ url: editingFood.imageUrl, title: editingFood.name || "Food image" })
+                    setPreviewImage({ url: editingFood.imageUrl, title: editingFood.name || "Ảnh thực phẩm" })
                   }
                 />
 
                 <Button className="w-full" onClick={() => updateMutation.mutate(editingFood)} disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                  {updateMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
                 </Button>
               </div>
             )}
@@ -551,7 +581,7 @@ function FoodImageField({ value, onChange, onPreview }: FoodImageFieldProps) {
     }
 
     if (file.size > MAX_IMAGE_FILE_SIZE) {
-      toast.error("Image must be 1 MB or smaller");
+      toast.error("Ảnh phải có dung lượng tối đa 1 MB");
       return;
     }
 
@@ -561,15 +591,15 @@ function FoodImageField({ value, onChange, onPreview }: FoodImageFieldProps) {
         onChange(reader.result);
       }
     };
-    reader.onerror = () => toast.error("Cannot read this image");
+    reader.onerror = () => toast.error("Không thể đọc ảnh này");
     reader.readAsDataURL(file);
   };
 
   return (
     <div className="space-y-3 rounded-xl border bg-slate-50/60 p-3">
       <div>
-        <p className="text-sm font-medium">Food image</p>
-        <p className="text-xs text-muted-foreground">Paste an image URL or upload an image up to 1 MB.</p>
+        <p className="text-sm font-medium">Hình ảnh thực phẩm</p>
+        <p className="text-xs text-muted-foreground">Dán URL hoặc tải ảnh tối đa 1 MB.</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -577,7 +607,7 @@ function FoodImageField({ value, onChange, onPreview }: FoodImageFieldProps) {
           type="url"
           value={isUploadedFile ? "" : value}
           onChange={(event) => onChange(event.target.value)}
-          placeholder={isUploadedFile ? "Image selected from your device" : "https://example.com/food.jpg"}
+          placeholder={isUploadedFile ? "Đã chọn ảnh từ thiết bị" : "https://example.com/food.jpg"}
         />
         <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" onChange={handleFileChange} />
       </div>
@@ -588,16 +618,16 @@ function FoodImageField({ value, onChange, onPreview }: FoodImageFieldProps) {
             type="button"
             className="overflow-hidden rounded-lg border bg-white transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             onClick={onPreview}
-            aria-label="Preview food image"
+            aria-label="Xem trước ảnh thực phẩm"
           >
             <img src={resolveApiAssetUrl(value)} alt="" className="h-16 w-24 object-cover" />
           </button>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">
-              {isUploadedFile ? "Uploaded image ready to save" : "Image URL ready to save"}
+              {isUploadedFile ? "Ảnh tải lên đã sẵn sàng để lưu" : "URL ảnh đã sẵn sàng để lưu"}
             </p>
             <Button type="button" variant="outline" size="sm" onClick={() => onChange("")}>
-              Remove image
+              Xóa ảnh
             </Button>
           </div>
         </div>

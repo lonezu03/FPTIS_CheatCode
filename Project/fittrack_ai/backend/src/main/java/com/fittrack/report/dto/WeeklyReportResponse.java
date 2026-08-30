@@ -12,6 +12,13 @@ public class WeeklyReportResponse {
     private LocalDate fromDate;
     private LocalDate toDate;
 
+    private Integer periodDays;
+    private Integer completeNutritionDays;
+    private Integer partialNutritionDays;
+    private Integer unloggedNutritionDays;
+    private Double nutritionConfidencePercent;
+    private Boolean nutritionDataSufficient;
+
     private Double averageCalories;
     private Double averageProtein;
     private Double averageCarbs;

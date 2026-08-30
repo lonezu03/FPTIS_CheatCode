@@ -4,8 +4,13 @@ import com.fittrack.nutrition.dto.CreateMealLogRequest;
 import com.fittrack.nutrition.dto.FoodResponse;
 import com.fittrack.nutrition.dto.MealLogResponse;
 import com.fittrack.nutrition.dto.UpdateMealLogRequest;
+import com.fittrack.nutrition.dto.NutritionDayStatusRequest;
+import com.fittrack.nutrition.dto.NutritionDiaryResponse;
+import com.fittrack.nutrition.dto.WaterLogRequest;
+import com.fittrack.nutrition.dto.WaterLogResponse;
 import com.fittrack.nutrition.service.FoodService;
 import com.fittrack.nutrition.service.NutritionService;
+import com.fittrack.nutrition.service.WaterLogService;
 import com.fittrack.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +28,7 @@ public class NutritionController {
 
     private final FoodService foodService;
     private final NutritionService nutritionService;
+    private final WaterLogService waterLogService;
 
     @GetMapping("/foods")
     public List<FoodResponse> getFoods(
@@ -55,6 +61,49 @@ public class NutritionController {
         return nutritionService.getMyMealLogs(user);
     }
 
+    @GetMapping("/diary")
+    public NutritionDiaryResponse getDiary(
+            Authentication authentication,
+            @RequestParam(required = false) LocalDate date
+    ) {
+        return nutritionService.getDiary((User) authentication.getPrincipal(), date);
+    }
+
+    @PutMapping("/days/{date}/status")
+    public NutritionDiaryResponse updateDayStatus(
+            Authentication authentication,
+            @PathVariable LocalDate date,
+            @Valid @RequestBody NutritionDayStatusRequest request
+    ) {
+        User user = (User) authentication.getPrincipal();
+        nutritionService.updateDayStatus(user, date, request.getStatus());
+        return nutritionService.getDiary(user, date);
+    }
+
+    @GetMapping("/water-logs")
+    public List<WaterLogResponse> getWaterLogs(
+            Authentication authentication,
+            @RequestParam(required = false) LocalDate date
+    ) {
+        return waterLogService.getByDate(
+                (User) authentication.getPrincipal(),
+                date == null ? LocalDate.now() : date
+        );
+    }
+
+    @PostMapping("/water-logs")
+    public WaterLogResponse createWaterLog(
+            Authentication authentication,
+            @Valid @RequestBody WaterLogRequest request
+    ) {
+        return waterLogService.create((User) authentication.getPrincipal(), request);
+    }
+
+    @DeleteMapping("/water-logs/{id}")
+    public void deleteWaterLog(Authentication authentication, @PathVariable String id) {
+        waterLogService.delete((User) authentication.getPrincipal(), id);
+    }
+
     @GetMapping("/meal-logs/page")
     public PageResponse<MealLogResponse> getMealLogsPage(
             Authentication authentication,
@@ -71,7 +120,7 @@ public class NutritionController {
     public MealLogResponse updateMealLog(
             Authentication authentication,
             @PathVariable String id,
-            @RequestBody UpdateMealLogRequest request
+            @Valid @RequestBody UpdateMealLogRequest request
     ) {
         User user = (User) authentication.getPrincipal();
 

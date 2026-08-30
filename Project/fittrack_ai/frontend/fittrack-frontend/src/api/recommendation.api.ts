@@ -12,6 +12,10 @@ export type WeeklyRecommendation = {
   fromDate: string;
   toDate: string;
   summary: string;
+  nutritionDataSufficient: boolean;
+  completeNutritionDays: number;
+  periodDays: number;
+  nutritionConfidencePercent: number;
   recommendations: RecommendationItem[];
 };
 

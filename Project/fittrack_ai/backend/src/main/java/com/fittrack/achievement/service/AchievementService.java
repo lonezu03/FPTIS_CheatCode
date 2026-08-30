@@ -6,6 +6,7 @@ import com.fittrack.bodytracking.entity.BodyMeasurement;
 import com.fittrack.bodytracking.repository.BodyMeasurementRepository;
 import com.fittrack.nutrition.entity.MealLog;
 import com.fittrack.nutrition.repository.MealLogRepository;
+import com.fittrack.nutrition.service.NutritionDayQualityService;
 import com.fittrack.user.entity.User;
 import com.fittrack.user.service.GoalCalculatorService;
 import com.fittrack.workout.entity.WorkoutSession;
@@ -24,6 +25,7 @@ public class AchievementService {
     private final WorkoutSessionRepository workoutSessionRepository;
     private final BodyMeasurementRepository bodyMeasurementRepository;
     private final GoalCalculatorService goalCalculatorService;
+    private final NutritionDayQualityService dayQualityService;
 
     public AchievementSummaryResponse getSummary(User user) {
         LocalDate today = LocalDate.now();
@@ -113,7 +115,7 @@ public class AchievementService {
         while (true) {
             List<MealLog> logs = mealLogRepository.findByUserAndLogDate(user, cursor);
 
-            if (logs.isEmpty()) {
+            if (!dayQualityService.isComplete(dayQualityService.resolve(user, cursor, logs))) {
                 break;
             }
 
@@ -179,6 +181,11 @@ public class AchievementService {
 
         while (!cursor.isAfter(toDate)) {
             List<MealLog> logs = mealLogRepository.findByUserAndLogDate(user, cursor);
+
+            if (!dayQualityService.isComplete(dayQualityService.resolve(user, cursor, logs))) {
+                cursor = cursor.plusDays(1);
+                continue;
+            }
 
             double protein = logs.stream()
                     .mapToDouble(log -> log.getTotalProtein() == null ? 0 : log.getTotalProtein())

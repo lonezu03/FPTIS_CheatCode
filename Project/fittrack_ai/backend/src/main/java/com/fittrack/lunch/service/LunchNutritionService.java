@@ -8,6 +8,7 @@ import com.fittrack.nutrition.entity.MealItem;
 import com.fittrack.nutrition.entity.MealLog;
 import com.fittrack.nutrition.repository.FoodRepository;
 import com.fittrack.nutrition.repository.MealLogRepository;
+import com.fittrack.nutrition.service.NutritionDayQualityService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ public class LunchNutritionService {
 
     private final FoodRepository foodRepository;
     private final MealLogRepository mealLogRepository;
+    private final NutritionDayQualityService dayQualityService;
 
     @Transactional
     public void syncOrder(LunchOrder order) {
@@ -52,6 +54,9 @@ public class LunchNutritionService {
                     .mealLog(mealLog)
                     .food(food)
                     .quantity(1.0)
+                    .servingAmount(1.0)
+                    .servingUnit("SERVING")
+                    .gramsEquivalent(food.getServingSizeGrams())
                     .calories(calories)
                     .protein(protein)
                     .carbs(carbs)
@@ -72,12 +77,27 @@ public class LunchNutritionService {
         });
 
         mealLogRepository.save(mealLog);
+        dayQualityService.markPartial(
+                order.getBeneficiary(),
+                order.getMenu().getMenuDate(),
+                true
+        );
     }
 
     @Transactional
     public void removeOrder(String orderId) {
         mealLogRepository.findBySourceLunchOrderId(orderId)
-                .ifPresent(mealLogRepository::delete);
+                .ifPresent(mealLog -> {
+                    var user = mealLog.getUser();
+                    var date = mealLog.getLogDate();
+                    mealLogRepository.delete(mealLog);
+                    mealLogRepository.flush();
+                    dayQualityService.markPartial(
+                            user,
+                            date,
+                            !mealLogRepository.findByUserAndLogDate(user, date).isEmpty()
+                    );
+                });
     }
 
     @Transactional
@@ -87,6 +107,9 @@ public class LunchNutritionService {
             food = Food.builder()
                     .name(item.getName())
                     .unit("1 phần")
+                    .dataSourceType("ESTIMATED")
+                    .dataSourceName("Ước tính từ thực đơn cơm")
+                    .verified(false)
                     .custom(true)
                     .active(true)
                     .build();

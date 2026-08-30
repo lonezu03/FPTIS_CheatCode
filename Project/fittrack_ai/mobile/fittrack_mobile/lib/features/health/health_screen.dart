@@ -133,7 +133,9 @@ class _SummaryTab extends StatelessWidget {
           children: [
             Expanded(
               child: _HealthMetric(
-                label: 'Điểm sức khỏe',
+                label: data['provisionalScore'] == true
+                    ? 'Điểm tạm thời'
+                    : 'Điểm sức khỏe',
                 value: '${data['overallScore'] ?? 0}/100',
                 icon: Icons.favorite_outline,
               ),
@@ -161,12 +163,43 @@ class _SummaryTab extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: _HealthMetric(
-                label: 'Bữa ăn',
-                value: '${data['mealCount'] ?? 0}',
+                label: 'Ngày dinh dưỡng đủ',
+                value:
+                    '${data['completeNutritionDays'] ?? 0}/${data['periodDays'] ?? 30}',
                 icon: Icons.restaurant,
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 10),
+        Card(
+          color: data['provisionalScore'] == true
+              ? Colors.amber.shade50
+              : Colors.green.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Độ tin cậy dữ liệu: ${data['nutritionConfidencePercent'] ?? 0}%',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  data['provisionalScore'] == true
+                      ? 'Điểm hiện tại là tạm thời vì số ngày ghi đầy đủ còn thấp.'
+                      : 'Dữ liệu đủ ổn định để tham khảo xu hướng.',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${data['partialNutritionDays'] ?? 0} ngày ghi thiếu • ${data['unloggedNutritionDays'] ?? 0} ngày chưa ghi',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         Text(
@@ -209,6 +242,14 @@ class _SummaryTab extends StatelessWidget {
                     ),
                     const SizedBox(height: 9),
                     LinearProgressIndicator(value: progress),
+                    const SizedBox(height: 7),
+                    Text(
+                      '${_nutrientStatus(item['status'])} • Độ phủ dữ liệu ${item['coveragePercent'] ?? 0}%',
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -630,3 +671,12 @@ String _days(dynamic value) {
   if (value is List && value.length == 7) return 'Hằng ngày';
   return value is List ? '${value.length} ngày/tuần' : '';
 }
+
+String _nutrientStatus(dynamic value) => switch (value?.toString()) {
+  'GOOD' => 'Cân bằng',
+  'LOW' => 'Còn thấp',
+  'HIGH' => 'Cao',
+  'NO_TARGET' => 'Chưa có mục tiêu',
+  'INSUFFICIENT_COVERAGE' => 'Chưa đủ dữ liệu để đánh giá',
+  _ => 'Không có dữ liệu',
+};

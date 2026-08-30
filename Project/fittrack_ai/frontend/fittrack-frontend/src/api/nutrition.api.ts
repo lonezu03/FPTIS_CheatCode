@@ -11,7 +11,14 @@ export type Food = {
   unit: string;
   custom: boolean;
   active: boolean;
+  servingSizeGrams?: number | null;
+  dataSourceType?: "VERIFIED_DATABASE" | "PRODUCT_LABEL" | "RECIPE_CALCULATED" | "COMMUNITY" | "ESTIMATED";
+  dataSourceName?: string | null;
+  verified?: boolean;
 };
+
+export type ServingUnit = "SERVING" | "GRAM" | "ML";
+export type NutritionDayStatus = "COMPLETE" | "PARTIAL" | "UNLOGGED" | "FASTING";
 
 export type MealLog = {
   id: string;
@@ -30,6 +37,9 @@ export type MealLog = {
     foodId: string;
     foodName: string;
     quantity: number;
+    servingAmount?: number | null;
+    servingUnit?: ServingUnit | null;
+    gramsEquivalent?: number | null;
     calories: number;
     protein: number;
     carbs: number;
@@ -70,6 +80,8 @@ export const createMealLog = async (payload: {
   items: {
     foodId: string;
     quantity: number;
+    servingAmount?: number;
+    servingUnit?: ServingUnit;
   }[];
 }): Promise<MealLog> => {
   const response = await api.post("/nutrition/meal-logs", payload);
@@ -89,10 +101,48 @@ export const updateMealLog = async (
     items: {
       foodId: string;
       quantity: number;
+      servingAmount?: number;
+      servingUnit?: ServingUnit;
     }[];
   }
 ): Promise<MealLog> => {
   const response = await api.put(`/nutrition/meal-logs/${id}`, payload);
 
   return response.data;
+};
+
+export type NutritionTotals = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+};
+
+export type NutritionDiary = {
+  date: string;
+  status: NutritionDayStatus;
+  statusExplicit: boolean;
+  consumed: NutritionTotals;
+  targets: NutritionTotals;
+  remaining: NutritionTotals;
+  waterMl: number;
+  waterTargetMl: number;
+  meals: MealLog[];
+};
+
+export const getNutritionDiary = async (date: string): Promise<NutritionDiary> => {
+  const response = await api.get<NutritionDiary>("/nutrition/diary", { params: { date } });
+  return response.data;
+};
+
+export const updateNutritionDayStatus = async (
+  date: string,
+  status: NutritionDayStatus,
+): Promise<NutritionDiary> => {
+  const response = await api.put<NutritionDiary>(`/nutrition/days/${date}/status`, { status });
+  return response.data;
+};
+
+export const addWaterLog = async (amountMl: number, date: string): Promise<void> => {
+  await api.post("/nutrition/water-logs", { amountMl, loggedAt: `${date}T12:00:00` });
 };

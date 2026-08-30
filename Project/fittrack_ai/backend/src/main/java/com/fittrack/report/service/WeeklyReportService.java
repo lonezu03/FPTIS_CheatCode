@@ -4,6 +4,8 @@ import com.fittrack.bodytracking.entity.BodyMeasurement;
 import com.fittrack.bodytracking.repository.BodyMeasurementRepository;
 import com.fittrack.nutrition.entity.MealLog;
 import com.fittrack.nutrition.repository.MealLogRepository;
+import com.fittrack.nutrition.entity.NutritionDayStatus;
+import com.fittrack.nutrition.service.NutritionDayQualityService;
 import com.fittrack.report.dto.DailyNutritionSummaryResponse;
 import com.fittrack.report.dto.WeeklyReportResponse;
 import com.fittrack.user.entity.User;
@@ -25,6 +27,7 @@ public class WeeklyReportService {
     private final WorkoutSessionRepository workoutSessionRepository;
     private final BodyMeasurementRepository bodyMeasurementRepository;
     private final GoalCalculatorService goalCalculatorService;
+    private final NutritionDayQualityService dayQualityService;
 
     public WeeklyReportResponse getWeeklyReport(User user, LocalDate fromDate, LocalDate toDate) {
         LocalDate end = toDate == null ? LocalDate.now() : toDate;
@@ -46,10 +49,15 @@ public class WeeklyReportService {
 
         Map<LocalDate, List<MealLog>> mealsByDate = meals.stream()
                 .collect(Collectors.groupingBy(MealLog::getLogDate));
+        Map<LocalDate, NutritionDayStatus> explicitStatuses =
+                dayQualityService.statuses(user, start, end);
 
         List<DailyNutritionSummaryResponse> dailyNutrition = new ArrayList<>();
 
-        int days = 0;
+        int periodDays = 0;
+        int completeDays = 0;
+        int partialDays = 0;
+        int unloggedDays = 0;
         double totalCalories = 0;
         double totalProtein = 0;
         double totalCarbs = 0;
@@ -59,6 +67,10 @@ public class WeeklyReportService {
 
         while (!cursor.isAfter(end)) {
             List<MealLog> dayMeals = mealsByDate.getOrDefault(cursor, List.of());
+            NutritionDayStatus dataStatus = dayQualityService.resolve(
+                    cursor, explicitStatuses, mealsByDate
+            );
+            boolean included = dayQualityService.isComplete(dataStatus);
 
             double dayCalories = dayMeals.stream()
                     .mapToDouble(meal -> meal.getTotalCalories() == null ? 0 : meal.getTotalCalories())
@@ -76,13 +88,22 @@ public class WeeklyReportService {
                     .mapToDouble(meal -> meal.getTotalFat() == null ? 0 : meal.getTotalFat())
                     .sum();
 
-            totalCalories += dayCalories;
-            totalProtein += dayProtein;
-            totalCarbs += dayCarbs;
-            totalFat += dayFat;
+            if (included) {
+                totalCalories += dayCalories;
+                totalProtein += dayProtein;
+                totalCarbs += dayCarbs;
+                totalFat += dayFat;
+                completeDays++;
+            } else if (dataStatus == NutritionDayStatus.PARTIAL) {
+                partialDays++;
+            } else {
+                unloggedDays++;
+            }
 
             dailyNutrition.add(DailyNutritionSummaryResponse.builder()
                     .date(cursor)
+                    .dataStatus(dataStatus.name())
+                    .dataIncluded(included)
                     .calories(round(dayCalories))
                     .protein(round(dayProtein))
                     .carbs(round(dayCarbs))
@@ -93,14 +114,16 @@ public class WeeklyReportService {
                     .proteinCompliancePercent(percent(dayProtein, targetProtein))
                     .build());
 
-            days++;
+            periodDays++;
             cursor = cursor.plusDays(1);
         }
 
-        double averageCalories = days == 0 ? 0 : totalCalories / days;
-        double averageProtein = days == 0 ? 0 : totalProtein / days;
-        double averageCarbs = days == 0 ? 0 : totalCarbs / days;
-        double averageFat = days == 0 ? 0 : totalFat / days;
+        double averageCalories = completeDays == 0 ? 0 : totalCalories / completeDays;
+        double averageProtein = completeDays == 0 ? 0 : totalProtein / completeDays;
+        double averageCarbs = completeDays == 0 ? 0 : totalCarbs / completeDays;
+        double averageFat = completeDays == 0 ? 0 : totalFat / completeDays;
+        int minimumCompleteDays = Math.min(4, periodDays);
+        boolean nutritionDataSufficient = completeDays >= minimumCompleteDays;
 
         Set<LocalDate> workoutDays = workouts.stream()
                 .map(WorkoutSession::getSessionDate)
@@ -143,12 +166,21 @@ public class WeeklyReportService {
                 targetProtein,
                 workoutDays.size(),
                 weightChange,
-                waistChange
+                waistChange,
+                nutritionDataSufficient,
+                completeDays,
+                periodDays
         );
 
         return WeeklyReportResponse.builder()
                 .fromDate(start)
                 .toDate(end)
+                .periodDays(periodDays)
+                .completeNutritionDays(completeDays)
+                .partialNutritionDays(partialDays)
+                .unloggedNutritionDays(unloggedDays)
+                .nutritionConfidencePercent(percent(completeDays, periodDays))
+                .nutritionDataSufficient(nutritionDataSufficient)
 
                 .averageCalories(round(averageCalories))
                 .averageProtein(round(averageProtein))
@@ -187,11 +219,17 @@ public class WeeklyReportService {
             double targetProtein,
             int workoutDays,
             Double weightChange,
-            Double waistChange
+            Double waistChange,
+            boolean nutritionDataSufficient,
+            int completeDays,
+            int periodDays
     ) {
         List<String> insights = new ArrayList<>();
 
-        if (averageCalories < targetCalories * 0.85) {
+        if (!nutritionDataSufficient) {
+            insights.add("Chưa đủ dữ liệu để đánh giá dinh dưỡng. Bạn mới xác nhận "
+                    + completeDays + "/" + periodDays + " ngày ghi đầy đủ.");
+        } else if (averageCalories < targetCalories * 0.85) {
             insights.add("Năng lượng nạp vào đang thấp hơn nhiều so với mục tiêu. Hãy cân nhắc bổ sung tinh bột hoặc chất béo lành mạnh.");
         } else if (averageCalories > targetCalories * 1.1) {
             insights.add("Năng lượng nạp vào đang cao hơn mục tiêu. Hãy kiểm tra lại đồ ăn vặt, thức uống và khẩu phần.");
@@ -199,9 +237,9 @@ public class WeeklyReportService {
             insights.add("Năng lượng trung bình đang gần với mục tiêu của bạn.");
         }
 
-        if (averageProtein < targetProtein * 0.85) {
+        if (nutritionDataSufficient && averageProtein < targetProtein * 0.85) {
             insights.add("Lượng protein đang thấp hơn mục tiêu. Hãy bổ sung nguồn đạm nạc như ức gà, trứng, sữa chua hoặc cá.");
-        } else {
+        } else if (nutritionDataSufficient) {
             insights.add("Lượng protein trong tuần đang ở mức tốt.");
         }
 

@@ -51,6 +51,6 @@ class PostgresApplicationContextTest {
                 "select count(*) from flyway_schema_history where success",
                 Integer.class
         );
-        assertTrue(versionCount >= 14);
+        assertTrue(versionCount >= 15);
     }
 }

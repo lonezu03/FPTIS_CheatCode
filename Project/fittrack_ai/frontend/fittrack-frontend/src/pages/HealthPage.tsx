@@ -7,6 +7,7 @@ import {
   deleteHealthReminder,
   getHealthReminders,
   getHealthSummary,
+  type NutrientMetric,
 } from "@/api/health.api";
 import PageHeader from "@/components/PageHeader";
 import EmptyState from "@/components/common/EmptyState";
@@ -87,11 +88,18 @@ export default function HealthPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric title="Điểm sức khỏe" value={`${summary.overallScore}/100`} icon={HeartPulse} />
+        <Metric title={summary.provisionalScore ? "Điểm sức khỏe tạm thời" : "Điểm sức khỏe"} value={`${summary.overallScore}/100`} icon={HeartPulse} />
         <Metric title="BMI" value={summary.bmi ? `${summary.bmi} · ${summary.bmiCategory}` : "Chưa đủ dữ liệu"} icon={Activity} />
         <Metric title="Vận động" value={`${summary.workoutSessions} buổi · ${summary.workoutMinutes} phút`} icon={Activity} />
-        <Metric title="Ngày ghi dinh dưỡng" value={`${summary.trackedNutritionDays}/${summary.periodDays}`} icon={Droplets} />
+        <Metric title="Ngày dinh dưỡng đầy đủ" value={`${summary.completeNutritionDays}/${summary.periodDays}`} icon={Droplets} />
       </div>
+
+      <Card className={summary.provisionalScore ? "border-amber-300 bg-amber-50/50" : "border-emerald-200"}>
+        <CardContent className="grid gap-4 p-5 md:grid-cols-[1fr_auto] md:items-center">
+          <div><p className="font-semibold">Độ tin cậy dữ liệu: {summary.nutritionConfidencePercent}%</p><p className="mt-1 text-sm text-muted-foreground">{summary.provisionalScore ? "Điểm hiện tại là tạm thời vì số ngày ghi đầy đủ còn thấp." : "Dữ liệu đủ ổn định để tham khảo xu hướng."}</p><p className="mt-2 text-xs text-muted-foreground">Dinh dưỡng {summary.scoreBreakdown.nutrition}/100 · Vận động {summary.scoreBreakdown.activity}/100 · Ghi nhận {summary.scoreBreakdown.tracking}/100</p></div>
+          <div className="text-sm text-muted-foreground">{summary.partialNutritionDays} ngày ghi thiếu<br />{summary.unloggedNutritionDays} ngày chưa ghi</div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -103,13 +111,14 @@ export default function HealthPage() {
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="font-medium">{nutrient.label}</p>
                 <Badge variant={nutrient.status === "GOOD" ? "default" : "outline"}>
-                  {nutrient.status === "GOOD" ? "Cân bằng" : nutrient.status === "LOW" ? "Còn thấp" : "Cao"}
+                  {nutrientStatusLabel(nutrient.status)}
                 </Badge>
               </div>
               <p className="mb-3 text-sm text-muted-foreground">
                 <strong className="text-foreground">{nutrient.average}</strong> / {nutrient.target} {nutrient.unit}
               </p>
               <Progress value={Math.min(100, nutrient.progressPercent)} />
+              <p className="mt-2 text-xs text-muted-foreground">Độ phủ dữ liệu: {nutrient.coveragePercent}%</p>
             </div>
           ))}
         </CardContent>
@@ -212,4 +221,13 @@ function Metric({ title, value, icon: Icon }: { title: string; value: string; ic
       </CardContent>
     </Card>
   );
+}
+
+function nutrientStatusLabel(status: NutrientMetric["status"]) {
+  if (status === "GOOD") return "Cân bằng";
+  if (status === "LOW") return "Còn thấp";
+  if (status === "HIGH") return "Cao";
+  if (status === "NO_TARGET") return "Chưa có mục tiêu";
+  if (status === "INSUFFICIENT_COVERAGE") return "Chưa đủ dữ liệu";
+  return "Không có dữ liệu";
 }

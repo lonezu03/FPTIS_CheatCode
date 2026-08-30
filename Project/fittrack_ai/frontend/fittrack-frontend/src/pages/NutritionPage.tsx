@@ -1,614 +1,270 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import axios from "axios";
-import { getTodayDashboard } from "../api/dashboard.api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
+  addWaterLog,
   createMealLog,
   deleteMealLog,
   getFoods,
-  getMealLogsPage,
+  getNutritionDiary,
   updateMealLog,
+  updateNutritionDayStatus,
+  type Food,
   type MealLog,
+  type NutritionDayStatus,
+  type ServingUnit,
 } from "../api/nutrition.api";
-import { toast } from "sonner";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toLocalDateInput } from "../lib/format";
-import { LockKeyhole, Utensils } from "lucide-react";
 
 import PageHeader from "../components/PageHeader";
-import MacroProgressCard from "../components/MacroProgressCard";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
-import TableLoading from "../components/common/TableLoading";
-import DataPagination from "../components/common/DataPagination";
-import { useServerPagination } from "../hooks/useServerPagination";
+import PageLoading from "../components/common/PageLoading";
 import FormField from "../components/common/FormField";
-
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, ChevronRight, Droplets, LockKeyhole, Plus, Trash2, Utensils } from "lucide-react";
 
-type MealItemDraft = {
+type MealDraftItem = {
   foodId: string;
-  quantity: number;
+  amount: number;
+  unit: ServingUnit;
 };
 
-type EditingMealDraft = {
-  id: string;
-  mealType: string;
-  logDate: string;
-  items: MealItemDraft[];
-};
-
-const mealTypeLabels: Record<string, string> = {
+const mealTypes = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const;
+const mealLabels: Record<string, string> = {
   BREAKFAST: "Bữa sáng",
   LUNCH: "Bữa trưa",
   DINNER: "Bữa tối",
-  SNACK: "Ăn nhẹ",
+  SNACK: "Ăn phụ",
 };
-
-const isAutomatedMeal = (log: MealLog) => log.readOnly || log.sourceType === "LUNCH_ORDER";
+const statusMeta: Record<NutritionDayStatus, { label: string; className: string; hint: string }> = {
+  COMPLETE: { label: "Đã ghi đầy đủ", className: "bg-emerald-100 text-emerald-800", hint: "Ngày này được dùng cho báo cáo và khuyến nghị." },
+  PARTIAL: { label: "Ghi chưa đầy đủ", className: "bg-amber-100 text-amber-800", hint: "Ngày này bị loại khỏi đánh giá lượng ăn." },
+  UNLOGGED: { label: "Chưa ghi", className: "bg-slate-100 text-slate-700", hint: "Chưa có dữ liệu dinh dưỡng trong ngày." },
+  FASTING: { label: "Ngày nhịn ăn", className: "bg-blue-100 text-blue-800", hint: "Ngày nhịn ăn có chủ đích được tính là đã xác nhận." },
+};
 
 export default function NutritionPage() {
   const queryClient = useQueryClient();
-  const today = toLocalDateInput();
+  const [date, setDate] = useState(toLocalDateInput());
+  const [editor, setEditor] = useState<{ mealType: string; log?: MealLog } | null>(null);
+  const [waterAmount, setWaterAmount] = useState(350);
 
-  const [logDate, setLogDate] = useState(today);
-  const [keyword, setKeyword] = useState("");
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [mealType, setMealType] = useState("LUNCH");
-
-  const [items, setItems] = useState<MealItemDraft[]>([
-    {
-      foodId: "",
-      quantity: 1,
-    },
-  ]);
-
-  const [editingMeal, setEditingMeal] = useState<EditingMealDraft | null>(null);
-
-  const foodsQuery = useQuery({
-    queryKey: ["foods", searchKeyword],
-    queryFn: () => getFoods(searchKeyword),
+  const diaryQuery = useQuery({
+    queryKey: ["nutrition-diary", date],
+    queryFn: () => getNutritionDiary(date),
   });
-  const mealPager = useServerPagination(20);
+  const foodsQuery = useQuery({ queryKey: ["foods", "diary"], queryFn: () => getFoods() });
 
-  const mealLogsQuery = useQuery({
-    queryKey: ["meal-logs", logDate, mealPager.page, mealPager.pageSize],
-    queryFn: () => getMealLogsPage(logDate, mealPager.page - 1, mealPager.pageSize),
-    placeholderData: (previous) => previous,
-  });
-
-  const dashboardQuery = useQuery({
-    queryKey: ["dashboard-today"],
-    queryFn: getTodayDashboard,
-  });
-
-  const foods = foodsQuery.data ?? [];
-  const logs = mealLogsQuery.data?.content ?? [];
-  const mealPagination = {
-    ...mealPager,
-    paginatedItems: logs,
-    totalItems: mealLogsQuery.data?.totalElements ?? 0,
-    totalPages: Math.max(1, mealLogsQuery.data?.totalPages ?? 1),
-  };
-  const dashboard = dashboardQuery.data;
-  const defaultFoodId = foods[0]?.id ?? "";
-
-  const createMutation = useMutation({
-    mutationFn: createMealLog,
-    onSuccess: () => {
-      toast.success("Đã lưu bữa ăn");
-      queryClient.invalidateQueries({ queryKey: ["meal-logs"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
-      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
-      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
-      queryClient.invalidateQueries({ queryKey: ["achievements"] });
-    },
-    onError: (error) => {
-      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Không thể lưu bữa ăn");
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (payload: EditingMealDraft) =>
-      updateMealLog(payload.id, {
-        mealType: payload.mealType,
-        logDate: payload.logDate,
-        items: payload.items,
-      }),
-    onSuccess: () => {
-      toast.success("Đã cập nhật bữa ăn");
-      setEditingMeal(null);
-      queryClient.invalidateQueries({ queryKey: ["meal-logs"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
-      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
-      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
-      queryClient.invalidateQueries({ queryKey: ["achievements"] });
-    },
-    onError: (error) => {
-      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Không thể cập nhật bữa ăn");
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteMealLog,
-    onSuccess: () => {
-      toast.success("Đã xóa bữa ăn");
-      queryClient.invalidateQueries({ queryKey: ["meal-logs"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
-      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
-      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
-      queryClient.invalidateQueries({ queryKey: ["achievements"] });
-    },
-    onError: (error) => {
-      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Không thể xóa bữa ăn");
-    },
-  });
-
-  const addItem = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        foodId: foods[0]?.id ?? "",
-        quantity: 1,
-      },
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["nutrition-diary"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] }),
+      queryClient.invalidateQueries({ queryKey: ["health-summary"] }),
+      queryClient.invalidateQueries({ queryKey: ["weekly-report"] }),
+      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] }),
+      queryClient.invalidateQueries({ queryKey: ["achievements"] }),
     ]);
   };
 
-  const removeItem = (index: number) => {
-    setItems((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
-  };
+  const statusMutation = useMutation({
+    mutationFn: (status: NutritionDayStatus) => updateNutritionDayStatus(date, status),
+    onSuccess: refresh,
+    onError: showMutationError("Không thể cập nhật trạng thái ngày"),
+  });
+  const waterMutation = useMutation({
+    mutationFn: (amount: number) => addWaterLog(amount, date),
+    onSuccess: async () => {
+      toast.success("Đã ghi lượng nước");
+      await refresh();
+    },
+    onError: showMutationError("Không thể ghi lượng nước"),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: deleteMealLog,
+    onSuccess: async () => {
+      toast.success("Đã xóa bữa ăn");
+      await refresh();
+    },
+    onError: showMutationError("Không thể xóa bữa ăn"),
+  });
 
-  const updateItem = (index: number, field: keyof MealItemDraft, value: string | number) => {
-    setItems((prev) =>
-      prev.map((item, itemIndex) =>
-        itemIndex === index
-          ? {
-              ...item,
-              [field]: value,
-            }
-          : item
-      )
-    );
-  };
-
-  const handleCreate = () => {
-    createMutation.mutate({
-      mealType,
-      logDate,
-      items: items.map((item) => ({
-        ...item,
-        foodId: item.foodId || defaultFoodId,
-      })),
-    });
-  };
-
-  const handleDelete = (log: MealLog) => {
-    if (isAutomatedMeal(log)) {
-      toast.info("Bữa ăn này được đồng bộ từ đơn cơm. Hãy hủy hoặc chỉnh đơn tại trang Đặt cơm.");
-      return;
-    }
-
-    if (!window.confirm("Bạn có chắc muốn xóa bữa ăn này?")) {
-      return;
-    }
-
-    deleteMutation.mutate(log.id);
-  };
-
-  const openEditMeal = (log: MealLog) => {
-    if (isAutomatedMeal(log)) {
-      toast.info("Bữa ăn này được đồng bộ từ đơn cơm và không thể sửa tại đây.");
-      return;
-    }
-
-    setEditingMeal({
-      id: log.id,
-      mealType: log.mealType,
-      logDate: log.logDate,
-      items: log.items.map((item) => ({
-        foodId: item.foodId,
-        quantity: item.quantity,
-      })),
-    });
-  };
-
-  const addEditingItem = () => {
-    if (!editingMeal) {
-      return;
-    }
-
-    setEditingMeal({
-      ...editingMeal,
-      items: [
-        ...editingMeal.items,
-        {
-          foodId: foods[0]?.id ?? "",
-          quantity: 1,
-        },
-      ],
-    });
-  };
-
-  const removeEditingItem = (index: number) => {
-    if (!editingMeal) {
-      return;
-    }
-
-    setEditingMeal({
-      ...editingMeal,
-      items: editingMeal.items.filter((_, itemIndex) => itemIndex !== index),
-    });
-  };
-
-  const updateEditingItem = (index: number, field: keyof MealItemDraft, value: string | number) => {
-    if (!editingMeal) {
-      return;
-    }
-
-    setEditingMeal({
-      ...editingMeal,
-      items: editingMeal.items.map((item, itemIndex) =>
-        itemIndex === index
-          ? {
-              ...item,
-              [field]: value,
-            }
-          : item
-      ),
-    });
-  };
-
-  const totalCalories = logs.reduce((sum, log) => sum + log.totalCalories, 0);
-  const totalProtein = logs.reduce((sum, log) => sum + log.totalProtein, 0);
-  const totalCarbs = logs.reduce((sum, log) => sum + log.totalCarbs, 0);
-  const totalFat = logs.reduce((sum, log) => sum + log.totalFat, 0);
-
-  if (foodsQuery.isLoading || mealLogsQuery.isLoading || dashboardQuery.isLoading) {
-    return <TableLoading />;
+  if (diaryQuery.isLoading || foodsQuery.isLoading) return <PageLoading />;
+  if (diaryQuery.isError || foodsQuery.isError || !diaryQuery.data) {
+    return <ErrorState title="Không thể tải nhật ký ăn uống" message="Vui lòng tải lại trang và thử lại." />;
   }
 
-  if (foodsQuery.isError || mealLogsQuery.isError || dashboardQuery.isError) {
-    return <ErrorState title="Không thể tải dữ liệu dinh dưỡng" message="Vui lòng tải lại trang và thử lại." />;
-  }
+  const diary = diaryQuery.data;
+  const status = statusMeta[diary.status];
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <PageHeader
-        title="Dinh dưỡng"
-        description="Theo dõi năng lượng, dưỡng chất và các bữa ăn tự động từ đơn cơm."
-      />
-
-      {dashboard && (
-        <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
-          <MacroProgressCard
-            title="Năng lượng"
-            current={dashboard.totalCalories}
-            target={dashboard.targetCalories}
-            unit="kcal"
-            percent={dashboard.caloriesProgressPercent}
-          />
-
-          <MacroProgressCard
-            title="Chất đạm"
-            current={dashboard.totalProtein}
-            target={dashboard.targetProtein}
-            unit="g"
-            percent={dashboard.proteinProgressPercent}
-          />
-
-          <MacroProgressCard
-            title="Tinh bột"
-            current={dashboard.totalCarbs}
-            target={dashboard.targetCarbs}
-            unit="g"
-            percent={dashboard.carbsProgressPercent}
-          />
-
-          <MacroProgressCard
-            title="Chất béo"
-            current={dashboard.totalFat}
-            target={dashboard.targetFat}
-            unit="g"
-            percent={dashboard.fatProgressPercent}
-          />
-        </div>
-      )}
-
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Thêm bữa ăn thủ công</CardTitle>
-          </CardHeader>
-
-          <CardContent className="space-y-3 sm:space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Tìm món ăn..."
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    setSearchKeyword(keyword);
-                  }
-                }}
-              />
-
-              <Button onClick={() => setSearchKeyword(keyword)}>Tìm</Button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Loại bữa ăn" htmlFor="meal-type" hint="Chọn thời điểm ăn phù hợp." required>
-                <select id="meal-type" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={mealType} onChange={(event) => setMealType(event.target.value)}>
-                  <option value="BREAKFAST">Bữa sáng</option>
-                  <option value="LUNCH">Bữa trưa</option>
-                  <option value="DINNER">Bữa tối</option>
-                  <option value="SNACK">Ăn nhẹ</option>
-                </select>
-              </FormField>
-              <FormField label="Ngày ăn" htmlFor="meal-date" hint="Ngày thực tế bạn dùng bữa." required>
-                <Input id="meal-date" type="date" value={logDate} onChange={(event) => { mealPager.resetPage(); setLogDate(event.target.value); }} />
-              </FormField>
-            </div>
-
-            {foods.length === 0 ? (
-              <EmptyState
-                title="Không tìm thấy món ăn"
-                description="Hãy thử từ khóa khác hoặc thêm dữ liệu món ăn trước."
-              />
-            ) : (
-              <>
-                <div className="space-y-3">
-                  {items.map((item, index) => (
-                    <div key={index} className="grid gap-3 rounded-xl border bg-slate-50 p-4 md:grid-cols-5">
-                      <FormField label={`Món ${index + 1}`} htmlFor={`meal-food-${index}`} hint="Dinh dưỡng được tính theo khẩu phần chuẩn của món." className="md:col-span-3" required>
-                        <select id={`meal-food-${index}`} className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={item.foodId || defaultFoodId} onChange={(event) => updateItem(index, "foodId", event.target.value)}>
-                          {foods.map((food) => (
-                            <option key={food.id} value={food.id}>
-                              {food.name} / {food.unit}
-                            </option>
-                          ))}
-                        </select>
-                      </FormField>
-                      <FormField label="Số khẩu phần" htmlFor={`meal-quantity-${index}`} hint="1 = một khẩu phần chuẩn." required>
-                        <Input id={`meal-quantity-${index}`} type="number" min="0.1" step="0.1" value={item.quantity} onChange={(event) => updateItem(index, "quantity", Number(event.target.value))} />
-                      </FormField>
-
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="self-end"
-                        onClick={() => removeItem(index)}
-                        disabled={items.length === 1}
-                      >
-                        Xóa
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={addItem}>
-                    Thêm món
-                  </Button>
-
-                  <Button onClick={handleCreate} disabled={createMutation.isPending || foods.length === 0}>
-                    {createMutation.isPending ? "Đang lưu..." : "Lưu bữa ăn"}
-                  </Button>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Tổng hợp ngày {logDate}</CardTitle>
-          </CardHeader>
-
-          <CardContent className="space-y-2 sm:space-y-3">
-            <MacroCard label="Năng lượng" value={`${totalCalories.toFixed(0)} kcal`} />
-            <MacroCard label="Chất đạm" value={`${totalProtein.toFixed(1)}g`} />
-            <MacroCard label="Tinh bột" value={`${totalCarbs.toFixed(1)}g`} />
-            <MacroCard label="Chất béo" value={`${totalFat.toFixed(1)}g`} />
-          </CardContent>
-        </Card>
-      </div>
+    <div className="space-y-5">
+      <PageHeader title="Nhật ký ăn uống" description="Ghi theo từng bữa và xác nhận chất lượng dữ liệu trước khi FitTrack đưa ra đánh giá." />
 
       <Card>
-        <CardHeader className="gap-2">
-          <CardTitle>Nhật ký bữa ăn</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Bữa trưa từ đơn cơm được thêm tự động và chỉ có thể thay đổi tại trang Đặt cơm.
-          </p>
-        </CardHeader>
-
-        <CardContent>
-          {logs.length === 0 ? (
-            <EmptyState
-              title="Chưa có bữa ăn trong ngày"
-              description="Thêm bữa ăn đầu tiên hoặc đặt cơm để bắt đầu theo dõi dinh dưỡng."
-            />
-          ) : (
-            <div className="w-full overflow-x-auto">
-              <Table className="min-w-[860px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Bữa ăn</TableHead>
-                    <TableHead>Món ăn</TableHead>
-                    <TableHead>Năng lượng</TableHead>
-                    <TableHead>Chất đạm</TableHead>
-                    <TableHead>Tinh bột</TableHead>
-                    <TableHead>Chất béo</TableHead>
-                    <TableHead className="text-right">Thao tác</TableHead>
-                  </TableRow>
-                </TableHeader>
-
-                <TableBody>
-                  {mealPagination.paginatedItems.map((log) => {
-                    const automated = isAutomatedMeal(log);
-
-                    return (
-                      <TableRow key={log.id}>
-                        <TableCell>
-                          <div className="flex min-w-32 flex-col items-start gap-2">
-                            <span className="font-medium">{mealTypeLabels[log.mealType] ?? log.mealType}</span>
-                            {automated ? (
-                              <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                                <Utensils />
-                                Từ đơn cơm
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">Nhập thủ công</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="space-y-1">
-                            {log.items.map((item) => (
-                              <p key={item.id} className="text-sm">
-                                {item.foodName} × {item.quantity}
-                              </p>
-                            ))}
-                          </div>
-                        </TableCell>
-
-                        <TableCell>{log.totalCalories.toFixed(0)} kcal</TableCell>
-                        <TableCell>{log.totalProtein.toFixed(1)}g</TableCell>
-                        <TableCell>{log.totalCarbs.toFixed(1)}g</TableCell>
-                        <TableCell>{log.totalFat.toFixed(1)}g</TableCell>
-
-                        <TableCell>
-                          {automated ? (
-                            <div className="flex items-center justify-end gap-1.5 text-xs text-muted-foreground">
-                              <LockKeyhole className="size-3.5" />
-                              Đồng bộ tự động
-                            </div>
-                          ) : (
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" onClick={() => openEditMeal(log)}>
-                                Sửa
-                              </Button>
-
-                              <Button variant="destructive" size="sm" onClick={() => handleDelete(log)}>
-                                Xóa
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              <DataPagination
-                page={mealPagination.page}
-                pageSize={mealPagination.pageSize}
-                totalItems={mealPagination.totalItems}
-                totalPages={mealPagination.totalPages}
-                onPageChange={mealPagination.setPage}
-                onPageSizeChange={mealPagination.setPageSize}
-              />
-            </div>
-          )}
+        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center justify-center gap-2">
+            <Button variant="outline" size="icon" aria-label="Ngày trước" onClick={() => setDate(shiftDate(date, -1))}><ChevronLeft /></Button>
+            <Input className="w-40" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            <Button variant="outline" size="icon" aria-label="Ngày sau" onClick={() => setDate(shiftDate(date, 1))}><ChevronRight /></Button>
+          </div>
+          <div className="text-center sm:text-right">
+            <Badge className={status.className}>{status.label}</Badge>
+            <p className="mt-1 text-xs text-muted-foreground">{status.hint}</p>
+          </div>
         </CardContent>
       </Card>
 
-      <Dialog
-        open={!!editingMeal}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditingMeal(null);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Chỉnh sửa bữa ăn</DialogTitle>
-          </DialogHeader>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <DiaryMacro title="Năng lượng" consumed={diary.consumed.calories} target={diary.targets.calories} remaining={diary.remaining.calories} unit="kcal" />
+        <DiaryMacro title="Chất đạm" consumed={diary.consumed.protein} target={diary.targets.protein} remaining={diary.remaining.protein} unit="g" />
+        <DiaryMacro title="Tinh bột" consumed={diary.consumed.carbs} target={diary.targets.carbs} remaining={diary.remaining.carbs} unit="g" />
+        <DiaryMacro title="Chất béo" consumed={diary.consumed.fat} target={diary.targets.fat} remaining={diary.remaining.fat} unit="g" neutralOverage />
+      </div>
 
-          {editingMeal && (
-            <div className="space-y-3 sm:space-y-4">
-              <Input
-                type="date"
-                value={editingMeal.logDate}
-                onChange={(event) => setEditingMeal({ ...editingMeal, logDate: event.target.value })}
-              />
+      <Card className="border-sky-200 bg-sky-50/40">
+        <CardContent className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <div className="flex items-center gap-2 font-semibold text-sky-950"><Droplets className="size-5" /> Nước hôm nay</div>
+            <p className="mt-2 text-2xl font-black">{diary.waterMl} / {diary.waterTargetMl} ml</p>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-sky-100"><div className="h-full bg-sky-500" style={{ width: `${Math.min(100, diary.waterMl * 100 / Math.max(1, diary.waterTargetMl))}%` }} /></div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[250, 350, 500].map((amount) => <Button key={amount} variant="outline" onClick={() => waterMutation.mutate(amount)}>+{amount}ml</Button>)}
+            <Input className="w-28" type="number" min={1} max={10000} value={waterAmount} onChange={(event) => setWaterAmount(Number(event.target.value))} />
+            <Button onClick={() => waterMutation.mutate(waterAmount)}>Ghi nước</Button>
+          </div>
+        </CardContent>
+      </Card>
 
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={editingMeal.mealType}
-                onChange={(event) => setEditingMeal({ ...editingMeal, mealType: event.target.value })}
-              >
-                <option value="BREAKFAST">Bữa sáng</option>
-                <option value="LUNCH">Bữa trưa</option>
-                <option value="DINNER">Bữa tối</option>
-                <option value="SNACK">Ăn nhẹ</option>
-              </select>
+      <div className="grid gap-4 xl:grid-cols-2">
+        {mealTypes.map((mealType) => (
+          <MealSection
+            key={mealType}
+            mealType={mealType}
+            logs={diary.meals.filter((meal) => meal.mealType === mealType)}
+            onAdd={() => setEditor({ mealType })}
+            onEdit={(log) => setEditor({ mealType, log })}
+            onDelete={(log) => {
+              if (window.confirm("Bạn có chắc muốn xóa bữa ăn này?")) deleteMutation.mutate(log.id);
+            }}
+          />
+        ))}
+      </div>
 
-              {editingMeal.items.map((item, index) => (
-                <div key={index} className="grid gap-3 rounded-xl border bg-slate-50 p-3 md:grid-cols-5">
-                  <select
-                    className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm md:col-span-3"
-                    value={item.foodId}
-                    onChange={(event) => updateEditingItem(index, "foodId", event.target.value)}
-                  >
-                    {foods.map((food) => (
-                      <option key={food.id} value={food.id}>
-                        {food.name} / {food.unit}
-                      </option>
-                    ))}
-                  </select>
+      <Card>
+        <CardHeader><CardTitle>Xác nhận chất lượng dữ liệu ngày</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">Chỉ chọn “Đã ghi đầy đủ” sau khi bạn đã ghi toàn bộ đồ ăn, thức uống có năng lượng trong ngày.</p>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => statusMutation.mutate("COMPLETE")} disabled={diary.meals.length === 0 || statusMutation.isPending}>Đã ghi đầy đủ</Button>
+            <Button variant="outline" onClick={() => statusMutation.mutate("PARTIAL")} disabled={statusMutation.isPending}>Ghi chưa đầy đủ</Button>
+            {diary.meals.length === 0 && <Button variant="outline" onClick={() => statusMutation.mutate("FASTING")} disabled={statusMutation.isPending}>Ngày nhịn ăn</Button>}
+          </div>
+        </CardContent>
+      </Card>
 
-                  <Input
-                    type="number"
-                    min="0.1"
-                    step="0.1"
-                    value={item.quantity}
-                    onChange={(event) => updateEditingItem(index, "quantity", Number(event.target.value))}
-                  />
-
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => removeEditingItem(index)}
-                    disabled={editingMeal.items.length === 1}
-                  >
-                    Xóa
-                  </Button>
-                </div>
-              ))}
-
-              <Button variant="outline" onClick={addEditingItem}>
-                Thêm món
-              </Button>
-
-              <Button className="w-full" onClick={() => updateMutation.mutate(editingMeal)} disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
-              </Button>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {editor && (
+        <MealEditor
+          key={`${editor.log?.id ?? editor.mealType}:${date}`}
+          open
+          mealType={editor.mealType}
+          date={date}
+          log={editor.log}
+          foods={foodsQuery.data ?? []}
+          onClose={() => setEditor(null)}
+          onSaved={async () => { setEditor(null); await refresh(); }}
+        />
+      )}
     </div>
   );
 }
 
-function MacroCard({ label, value }: { label: string; value: string }) {
+function DiaryMacro({ title, consumed, target, remaining, unit, neutralOverage = false }: { title: string; consumed: number; target: number; remaining: number; unit: string; neutralOverage?: boolean }) {
+  const percent = Math.min(100, consumed * 100 / Math.max(1, target));
   return (
-    <div className="rounded-xl bg-slate-100 p-3 sm:p-4">
-      <p className="text-xs text-muted-foreground sm:text-sm">{label}</p>
-      <p className="text-xl font-bold md:text-2xl">{value}</p>
-    </div>
+    <Card><CardContent className="p-5">
+      <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+      <p className="mt-2 text-2xl font-black">{round(consumed)} <span className="text-sm font-medium">/ {round(target)} {unit}</span></p>
+      <div className="my-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-emerald-500" style={{ width: `${percent}%` }} /></div>
+      <p className={`text-xs ${remaining < 0 && !neutralOverage ? "text-red-600" : "text-muted-foreground"}`}>
+        {remaining >= 0 ? `Còn ${round(remaining)} ${unit}` : `+${round(Math.abs(remaining))} ${unit} so với mục tiêu`}
+      </p>
+    </CardContent></Card>
   );
 }
+
+function MealSection({ mealType, logs, onAdd, onEdit, onDelete }: { mealType: string; logs: MealLog[]; onAdd: () => void; onEdit: (log: MealLog) => void; onDelete: (log: MealLog) => void }) {
+  const totals = logs.reduce((sum, log) => ({ calories: sum.calories + log.totalCalories, protein: sum.protein + log.totalProtein, carbs: sum.carbs + log.totalCarbs, fat: sum.fat + log.totalFat }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle>{mealLabels[mealType]}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{round(totals.calories)} kcal · P {round(totals.protein)}g · C {round(totals.carbs)}g · F {round(totals.fat)}g</p></div><Button size="sm" variant="outline" onClick={onAdd}><Plus className="size-4" /> Ghi món</Button></CardHeader>
+      <CardContent className="space-y-3">
+        {logs.length === 0 ? <EmptyState title={`Chưa có ${mealLabels[mealType].toLowerCase()}`} description="Ghi một hoặc nhiều món trong cùng một lần." /> : logs.map((log) => (
+          <div key={log.id} className="rounded-2xl border bg-slate-50/60 p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              {log.sourceType === "LUNCH_ORDER" ? <Badge className="bg-emerald-100 text-emerald-800"><Utensils className="size-3" /> Từ đơn cơm</Badge> : <Badge variant="outline">Nhập thủ công</Badge>}
+              {log.readOnly ? <span className="flex items-center gap-1 text-xs text-muted-foreground"><LockKeyhole className="size-3" /> Đơn hàng giữ nguyên</span> : <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => onEdit(log)}>Sửa</Button><Button size="icon" variant="ghost" onClick={() => onDelete(log)}><Trash2 className="size-4 text-red-600" /></Button></div>}
+            </div>
+            <div className="space-y-2">{log.items.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 text-sm"><span>{item.foodName}</span><span className="text-muted-foreground">{item.servingAmount ?? item.quantity} {unitLabel(item.servingUnit)}</span></div>)}</div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { open: boolean; mealType: string; date: string; log?: MealLog; foods: Food[]; onClose: () => void; onSaved: () => Promise<void> }) {
+  const [search, setSearch] = useState("");
+  const [items, setItems] = useState<MealDraftItem[]>(() => log
+    ? log.items.map((item) => ({
+      foodId: item.foodId,
+      amount: item.servingAmount ?? item.quantity,
+      unit: item.servingUnit ?? "SERVING",
+    }))
+    : []);
+  const filteredFoods = useMemo(() => foods.filter((food) => food.name.toLowerCase().includes(search.toLowerCase())).slice(0, 20), [foods, search]);
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (items.length === 0) throw new Error("EMPTY");
+      const payload = { mealType, logDate: date, items: items.map((item) => ({ foodId: item.foodId, quantity: factor(item, foods), servingAmount: item.amount, servingUnit: item.unit })) };
+      return log ? updateMealLog(log.id, payload) : createMealLog(payload);
+    },
+    onSuccess: async () => { toast.success(log ? "Đã cập nhật bữa ăn" : "Đã lưu bữa ăn"); await onSaved(); },
+    onError: showMutationError("Không thể lưu bữa ăn"),
+  });
+  return (
+    <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader><DialogTitle>{log ? "Chỉnh sửa" : "Ghi món vào"} {mealLabels[mealType]?.toLowerCase()}</DialogTitle></DialogHeader>
+        <Input placeholder="Tìm nhiều món rồi thêm vào bữa..." value={search} onChange={(event) => setSearch(event.target.value)} />
+        <div className="grid max-h-44 gap-2 overflow-y-auto sm:grid-cols-2">{filteredFoods.map((food) => <Button key={food.id} variant="outline" className="justify-start" onClick={() => setItems((current) => current.some((item) => item.foodId === food.id) ? current : [...current, { foodId: food.id, amount: 1, unit: "SERVING" }])}><Plus className="size-4" /> {food.name} · {food.unit}</Button>)}</div>
+        <div className="space-y-3">{items.map((item, index) => {
+          const food = foods.find((candidate) => candidate.id === item.foodId);
+          return <div key={`${item.foodId}-${index}`} className="grid items-end gap-3 rounded-2xl border p-4 sm:grid-cols-[1fr_130px_130px_auto]">
+            <div><p className="font-semibold">{food?.name}</p><p className="text-xs text-muted-foreground">{food?.verified ? "✓ Dữ liệu đã xác minh" : "~ Dữ liệu tham khảo"}</p></div>
+            <FormField label="Số lượng"><Input type="number" min={0.01} step={0.1} value={item.amount} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, amount: Number(event.target.value) } : value))} /></FormField>
+            <FormField label="Đơn vị"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={item.unit} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, unit: event.target.value as ServingUnit } : value))}><option value="SERVING">Khẩu phần</option>{food?.servingSizeGrams ? <><option value="GRAM">Gram</option><option value="ML">ml</option></> : null}</select></FormField>
+            <Button size="icon" variant="ghost" onClick={() => setItems((current) => current.filter((_, position) => position !== index))}><Trash2 className="size-4 text-red-600" /></Button>
+          </div>;
+        })}</div>
+        <div className="flex justify-end gap-2"><Button variant="outline" onClick={onClose}>Hủy</Button><Button disabled={mutation.isPending || items.length === 0} onClick={() => mutation.mutate()}>{mutation.isPending ? "Đang lưu..." : `Lưu ${items.length} món`}</Button></div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function factor(item: MealDraftItem, foods: Food[]) {
+  if (item.unit === "SERVING") return item.amount;
+  const size = foods.find((food) => food.id === item.foodId)?.servingSizeGrams;
+  return size ? item.amount / size : item.amount;
+}
+function shiftDate(value: string, days: number) { const date = new Date(`${value}T12:00:00`); date.setDate(date.getDate() + days); return toLocalDateInput(date); }
+function unitLabel(unit?: ServingUnit | null) { return unit === "GRAM" ? "g" : unit === "ML" ? "ml" : "khẩu phần"; }
+function round(value: number) { return Math.round(value * 10) / 10; }
+function showMutationError(fallback: string) { return (error: unknown) => { const message = axios.isAxiosError(error) ? error.response?.data?.message : error instanceof Error && error.message !== "EMPTY" ? error.message : undefined; toast.error(message || fallback); }; }

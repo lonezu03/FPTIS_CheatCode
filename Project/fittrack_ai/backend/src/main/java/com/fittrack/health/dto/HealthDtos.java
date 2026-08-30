@@ -21,15 +21,29 @@ public final class HealthDtos {
             double target,
             String unit,
             double progressPercent,
-            String status
+            String status,
+            double coveragePercent
+    ) {
+    }
+
+    public record HealthScoreBreakdown(
+            int nutrition,
+            int activity,
+            int tracking
     ) {
     }
 
     public record HealthSummaryResponse(
             int periodDays,
             int trackedNutritionDays,
+            int completeNutritionDays,
+            int partialNutritionDays,
+            int unloggedNutritionDays,
+            double nutritionConfidencePercent,
             LocalDateTime generatedAt,
             int overallScore,
+            boolean provisionalScore,
+            HealthScoreBreakdown scoreBreakdown,
             double bmi,
             String bmiCategory,
             Double currentWeight,

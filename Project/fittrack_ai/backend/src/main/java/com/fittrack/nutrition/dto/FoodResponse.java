@@ -21,6 +21,10 @@ public class FoodResponse {
     private Double vitaminC;
     private Double water;
     private String unit;
+    private Double servingSizeGrams;
+    private String dataSourceType;
+    private String dataSourceName;
+    private Boolean verified;
     private String imageUrl;
     private Boolean custom;
     private Boolean active;

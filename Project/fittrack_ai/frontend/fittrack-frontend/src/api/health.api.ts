@@ -7,14 +7,21 @@ export type NutrientMetric = {
   target: number;
   unit: string;
   progressPercent: number;
-  status: "LOW" | "GOOD" | "HIGH";
+  status: "LOW" | "GOOD" | "HIGH" | "NO_DATA" | "NO_TARGET" | "INSUFFICIENT_COVERAGE";
+  coveragePercent: number;
 };
 
 export type HealthSummary = {
   periodDays: number;
   trackedNutritionDays: number;
+  completeNutritionDays: number;
+  partialNutritionDays: number;
+  unloggedNutritionDays: number;
+  nutritionConfidencePercent: number;
   generatedAt: string;
   overallScore: number;
+  provisionalScore: boolean;
+  scoreBreakdown: { nutrition: number; activity: number; tracking: number };
   bmi: number;
   bmiCategory: string;
   currentWeight?: number | null;
