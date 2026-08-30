@@ -1,9 +1,10 @@
 import api from './axios';
 
-export type TodoStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'ARCHIVED' | 'CANCELLED';
+export type TodoStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'SKIPPED' | 'ARCHIVED' | 'CANCELLED';
 export type TodoPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type TodoCategory = 'WORK' | 'STUDY' | 'PERSONAL' | 'HEALTH' | 'FINANCE' | 'SHOPPING';
-export type TodoRecurrence = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'CUSTOM';
+export type TodoRecurrence = 'NONE' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'CUSTOM';
+export type TodoRecurrenceBasis = 'SCHEDULED_DATE' | 'COMPLETION_DATE';
 
 export type TodoSubtask = {
   id?: string | null;
@@ -25,6 +26,12 @@ export type Todo = {
   recurrenceRule: TodoRecurrence;
   recurrenceInterval: number;
   daysOfWeek: string[];
+  recurrenceBasis: TodoRecurrenceBasis;
+  recurrenceEndAt: string | null;
+  recurrenceMaxOccurrences: number | null;
+  occurrenceNumber: number;
+  completedAt: string | null;
+  skippedAt: string | null;
   reminderAt: string | null;
   reminderEnabled: boolean;
   recurringSeriesId: string | null;
@@ -45,6 +52,9 @@ export type TodoPayload = {
   recurrenceRule?: TodoRecurrence;
   recurrenceInterval?: number;
   daysOfWeek?: string;
+  recurrenceBasis?: TodoRecurrenceBasis;
+  recurrenceEndAt?: string | null;
+  recurrenceMaxOccurrences?: number | null;
   reminderAt?: string | null;
   reminderEnabled?: boolean;
   subtasks?: TodoSubtask[];
@@ -60,4 +70,6 @@ export const getTodos = async (query: TodoQuery = {}) =>
   (await api.get<Todo[]>('/todos', { params: query })).data;
 export const createTodo = async (payload: TodoPayload) => (await api.post<Todo>('/todos', payload)).data;
 export const updateTodo = async (id: string, payload: TodoPayload) => (await api.patch<Todo>(`/todos/${id}`, payload)).data;
+export const completeTodo = async (id: string) => (await api.post<Todo>(`/todos/${id}/complete`)).data;
+export const skipTodo = async (id: string) => (await api.post<Todo>(`/todos/${id}/skip`)).data;
 export const deleteTodo = async (id: string) => { await api.delete(`/todos/${id}`); };

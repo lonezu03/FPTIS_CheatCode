@@ -75,13 +75,29 @@ public class TodoService {
         if (todo.getRecurrenceRule() != Todo.RecurrenceRule.NONE && todo.getRecurringSeriesId() == null) {
             todo.setRecurringSeriesId(UUID.randomUUID().toString());
         }
+        updateTransitionTimestamps(todo, previousStatus);
         Todo saved = repository.save(todo);
-        if (saved.getStatus() == Todo.TodoStatus.DONE
-                && previousStatus != Todo.TodoStatus.DONE
+        if (isFinishedOccurrence(saved.getStatus())
+                && !isFinishedOccurrence(previousStatus)
                 && saved.getRecurrenceRule() != Todo.RecurrenceRule.NONE) {
             createNextOccurrence(saved);
         }
         return toResponse(saved);
+    }
+
+    @Transactional
+    public TodoResponse complete(User user, String id) {
+        return transition(user, id, Todo.TodoStatus.DONE);
+    }
+
+    @Transactional
+    public TodoResponse skip(User user, String id) {
+        Todo todo = repository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công việc"));
+        if (todo.getRecurrenceRule() == Todo.RecurrenceRule.NONE) {
+            throw new IllegalArgumentException("Chỉ có thể bỏ qua một công việc đang lặp");
+        }
+        return transition(todo, Todo.TodoStatus.SKIPPED);
     }
 
     @Transactional
@@ -125,6 +141,9 @@ public class TodoService {
         if (request.recurrenceRule() != null) todo.setRecurrenceRule(request.recurrenceRule());
         if (request.recurrenceInterval() != null) todo.setRecurrenceInterval(request.recurrenceInterval());
         if (request.daysOfWeek() != null) todo.setDaysOfWeek(normalizeDays(request.daysOfWeek()));
+        if (request.recurrenceBasis() != null) todo.setRecurrenceBasis(request.recurrenceBasis());
+        todo.setRecurrenceEndAt(request.recurrenceEndAt());
+        todo.setRecurrenceMaxOccurrences(request.recurrenceMaxOccurrences());
         todo.setStartAt(request.startAt());
         todo.setDueAt(request.dueAt());
         todo.setEstimatedMinutes(request.estimatedMinutes());
@@ -144,10 +163,14 @@ public class TodoService {
         if (todo.getPriority() == null) todo.setPriority(Todo.TodoPriority.MEDIUM);
         if (todo.getCategory() == null) todo.setCategory(Todo.TodoCategory.PERSONAL);
         if (todo.getRecurrenceRule() == null) todo.setRecurrenceRule(Todo.RecurrenceRule.NONE);
+        if (todo.getRecurrenceBasis() == null) todo.setRecurrenceBasis(Todo.RecurrenceBasis.SCHEDULED_DATE);
         if (todo.getRecurrenceInterval() == null || todo.getRecurrenceInterval() < 1) todo.setRecurrenceInterval(1);
         if (todo.getRecurrenceRule() == Todo.RecurrenceRule.NONE) {
             todo.setDaysOfWeek(null);
             todo.setRecurringSeriesId(null);
+            todo.setRecurrenceBasis(Todo.RecurrenceBasis.SCHEDULED_DATE);
+            todo.setRecurrenceEndAt(null);
+            todo.setRecurrenceMaxOccurrences(null);
         }
         if (request.subtasks() != null || creating) replaceSubtasks(todo, request.subtasks());
     }
@@ -182,9 +205,25 @@ public class TodoService {
         LocalDateTime anchor = current.getDueAt() != null ? current.getDueAt()
                 : current.getStartAt() != null ? current.getStartAt() : current.getReminderAt();
         if (anchor == null) return;
-        LocalDateTime nextAnchor = nextOccurrence(current, anchor);
-        long reminderOffset = current.getReminderAt() != null && current.getDueAt() != null
-                ? java.time.Duration.between(current.getReminderAt(), current.getDueAt()).toMinutes() : 0L;
+        int currentOccurrence = current.getOccurrenceNumber() == null ? 1 : current.getOccurrenceNumber();
+        int nextOccurrenceNumber = currentOccurrence + 1;
+        if (current.getRecurrenceMaxOccurrences() != null
+                && nextOccurrenceNumber > current.getRecurrenceMaxOccurrences()) return;
+        if (repository.existsByUserAndRecurringSeriesIdAndOccurrenceNumber(
+                current.getUser(), current.getRecurringSeriesId(), nextOccurrenceNumber)) return;
+
+        LocalDateTime recurrenceAnchor = anchor;
+        if (current.getStatus() == Todo.TodoStatus.DONE
+                && current.getRecurrenceBasis() == Todo.RecurrenceBasis.COMPLETION_DATE) {
+            LocalDateTime completedAt = current.getCompletedAt() == null
+                    ? LocalDateTime.now(BUSINESS_ZONE) : current.getCompletedAt();
+            recurrenceAnchor = completedAt.withHour(anchor.getHour()).withMinute(anchor.getMinute())
+                    .withSecond(anchor.getSecond()).withNano(anchor.getNano());
+        }
+        LocalDateTime nextAnchor = nextOccurrence(current, recurrenceAnchor);
+        if (current.getRecurrenceEndAt() != null && nextAnchor.isAfter(current.getRecurrenceEndAt())) return;
+        long reminderOffset = current.getReminderAt() == null ? 0L
+                : java.time.Duration.between(current.getReminderAt(), anchor).toMinutes();
         Todo next = Todo.builder()
                 .user(current.getUser()).title(current.getTitle()).description(current.getDescription())
                 .status(Todo.TodoStatus.OPEN).priority(current.getPriority())
@@ -193,6 +232,8 @@ public class TodoService {
                 .estimatedMinutes(current.getEstimatedMinutes()).category(current.getCategory())
                 .recurrenceRule(current.getRecurrenceRule()).recurrenceInterval(current.getRecurrenceInterval())
                 .daysOfWeek(current.getDaysOfWeek()).recurringSeriesId(current.getRecurringSeriesId())
+                .recurrenceBasis(current.getRecurrenceBasis()).recurrenceEndAt(current.getRecurrenceEndAt())
+                .recurrenceMaxOccurrences(current.getRecurrenceMaxOccurrences()).occurrenceNumber(nextOccurrenceNumber)
                 .reminderAt(current.getReminderAt() == null ? null : nextAnchor.minusMinutes(reminderOffset))
                 .reminderEnabled(current.getReminderAt() != null).reminderSentAt(null).build();
         for (TodoSubtask subtask : current.getSubtasks()) {
@@ -207,6 +248,7 @@ public class TodoService {
         return switch (todo.getRecurrenceRule()) {
             case DAILY -> anchor.plusDays(interval);
             case MONTHLY -> anchor.plusMonths(interval);
+            case YEARLY -> anchor.plusYears(interval);
             case CUSTOM -> anchor.plusDays(interval);
             case WEEKLY -> nextWeekly(todo, anchor, interval);
             case NONE -> anchor;
@@ -256,7 +298,9 @@ public class TodoService {
                         Boolean.TRUE.equals(item.getCompleted()), item.getSortOrder())).toList();
         return new TodoResponse(todo.getId(), todo.getTitle(), todo.getDescription(), todo.getStatus(), todo.getPriority(),
                 todo.getStartAt(), todo.getDueAt(), todo.getEstimatedMinutes(), todo.getCategory(),
-                todo.getRecurrenceRule(), todo.getRecurrenceInterval(), days, todo.getReminderAt(),
+                todo.getRecurrenceRule(), todo.getRecurrenceInterval(), days, todo.getRecurrenceBasis(),
+                todo.getRecurrenceEndAt(), todo.getRecurrenceMaxOccurrences(), todo.getOccurrenceNumber(),
+                todo.getCompletedAt(), todo.getSkippedAt(), todo.getReminderAt(),
                 Boolean.TRUE.equals(todo.getReminderEnabled()), todo.getRecurringSeriesId(), subtasks,
                 todo.getCreatedAt(), todo.getUpdatedAt());
     }
@@ -286,4 +330,40 @@ public class TodoService {
     }
 
     private String trimToNull(String value) { return value == null || value.isBlank() ? null : value.trim(); }
+
+    private TodoResponse transition(User user, String id, Todo.TodoStatus status) {
+        Todo todo = repository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công việc"));
+        return transition(todo, status);
+    }
+
+    private TodoResponse transition(Todo todo, Todo.TodoStatus status) {
+        Todo.TodoStatus previousStatus = todo.getStatus();
+        if (previousStatus == status) return toResponse(todo);
+        todo.setStatus(status);
+        updateTransitionTimestamps(todo, previousStatus);
+        Todo saved = repository.save(todo);
+        if (isFinishedOccurrence(status) && !isFinishedOccurrence(previousStatus)
+                && saved.getRecurrenceRule() != Todo.RecurrenceRule.NONE) {
+            createNextOccurrence(saved);
+        }
+        return toResponse(saved);
+    }
+
+    private void updateTransitionTimestamps(Todo todo, Todo.TodoStatus previousStatus) {
+        if (todo.getStatus() == Todo.TodoStatus.DONE && previousStatus != Todo.TodoStatus.DONE) {
+            todo.setCompletedAt(LocalDateTime.now(BUSINESS_ZONE));
+            todo.setSkippedAt(null);
+        } else if (todo.getStatus() == Todo.TodoStatus.SKIPPED && previousStatus != Todo.TodoStatus.SKIPPED) {
+            todo.setSkippedAt(LocalDateTime.now(BUSINESS_ZONE));
+            todo.setCompletedAt(null);
+        } else if (!isFinishedOccurrence(todo.getStatus())) {
+            todo.setCompletedAt(null);
+            todo.setSkippedAt(null);
+        }
+    }
+
+    private boolean isFinishedOccurrence(Todo.TodoStatus status) {
+        return status == Todo.TodoStatus.DONE || status == Todo.TodoStatus.SKIPPED;
+    }
 }

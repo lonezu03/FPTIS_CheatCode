@@ -9,5 +9,7 @@ import java.util.Optional;
 
 public interface ScheduleRepository extends JpaRepository<ScheduleItem, String> {
     List<ScheduleItem> findByUserOrderByStartAtAsc(User user);
+    List<ScheduleItem> findByUserAndEnabledTrueOrderByStartAtAsc(User user);
+    List<ScheduleItem> findAllByEnabledTrueAndReminderEnabledTrue();
     Optional<ScheduleItem> findByIdAndUser(String id, User user);
 }

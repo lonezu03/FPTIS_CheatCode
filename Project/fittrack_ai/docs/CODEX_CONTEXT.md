@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-08-30
+Last updated: 2026-08-31
 
 ## Repository and deployment
 
@@ -32,7 +32,54 @@ Last updated: 2026-08-30
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
 
-## Current task: Nutrition diary P0/P1
+## Current task: Todo recurrence and unified calendar
+
+Status: implemented locally, verified, not committed or deployed yet.
+
+### Completed
+
+- Added Flyway `V16__planner_recurrence_and_calendar.sql` with recurrence basis,
+  end/max limits, occurrence numbering, completion/skip timestamps and extended
+  Schedule recurrence fields. A partial unique index prevents duplicate rows for
+  the same recurring occurrence.
+- Todo supports fixed schedule (`SCHEDULED_DATE`) or next date based on actual
+  completion (`COMPLETION_DATE`), yearly cadence, optional end/max occurrence,
+  explicit complete/skip endpoints and checklist reset on the next occurrence.
+- Schedule reminder dispatch is now real, minute-based and deduplicated through
+  the shared notification service.
+- Added `GET /api/schedule/calendar?from&to`, a unified read model containing
+  Schedule events plus timed Todos when the user has Todo permission. It expands
+  daily/weekly/monthly/yearly event occurrences without duplicating Todo records.
+- Rebuilt web Schedule with Ngày/Tuần/Tháng/Danh sách views, navigation, unified
+  source badges and full event create/edit/delete form. Rebuilt Todo recurrence
+  UX and added deterministic Vietnamese quick-add parsing for common phrases.
+- Flutter now uses the unified calendar feed and supports recurrence basis,
+  end/max limits, yearly cadence and “Bỏ qua lần này”. No APK was built.
+- `docs/API.md` and `AGENTS.md` contain the new contracts and invariants.
+
+### Verification
+
+- Backend full suite passed before the last Schedule reminder/test additions:
+  52 tests, 0 failures; Flyway applied all 16 migrations successfully.
+- Targeted `TodoServiceTest,ScheduleServiceTest` passed after the final backend
+  changes, including completion-based cadence, skip cadence and calendar merge.
+- Web targeted ESLint passed and the production TypeScript/Vite build passed
+  (2604 modules transformed).
+- Flutter targeted analysis reported no errors/warnings, only 17 existing
+  info-level style/deprecation findings; Flutter widget tests passed.
+
+### Deployment order and next steps
+
+1. Review and commit the Planner batch. Deploy backend first so Flyway V16 runs,
+   then deploy web; old clients remain compatible with optional fields.
+2. Verify complete/skip idempotency, completion-based chores, week/month calendar,
+   event editing and in-app Schedule reminders using an authenticated account.
+3. Test the Flutter Planner on a physical device. Build an APK only when the user
+   explicitly asks after remaining app updates are finished.
+4. A later P2 can add multiple reminder offsets, snooze and per-occurrence event
+   exceptions; V16 intentionally keeps one reminder per Todo/event.
+
+## Previously completed: Nutrition diary P0/P1
 
 Status: implemented locally, verified, not committed or deployed yet.
 
@@ -91,7 +138,7 @@ Status: implemented locally, verified, not committed or deployed yet.
 - `AGENTS.md` records the trusted-day and nullable micronutrient rules so another
   assistant does not reintroduce the zero-intake bug.
 
-## Verification for the current task
+### Nutrition verification
 
 - Backend full run before the final variable-scope correction: 52 tests executed;
   all existing 51 tests passed, and the new move-date test exposed that local
@@ -111,7 +158,7 @@ Status: implemented locally, verified, not committed or deployed yet.
   info-level findings in unrelated Admin/Lunch/Planner files.
 - No APK was built, by design.
 
-## Important decisions
+### Nutrition decisions
 
 - Data completeness is user-confirmed, not inferred merely from the existence of
   one meal. `FASTING` is valid only without meals; `COMPLETE` requires a meal.
@@ -125,7 +172,7 @@ Status: implemented locally, verified, not committed or deployed yet.
 - Do not build a release APK until the user explicitly asks after remaining app
   updates are complete.
 
-## Known issues and risks
+### Nutrition known issues and risks
 
 - V15 must be deployed with the backend before deploying the new web/mobile
   clients; otherwise the new diary endpoints/columns do not exist in production.
@@ -136,7 +183,7 @@ Status: implemented locally, verified, not committed or deployed yet.
 - `backend/demo/`, generated directories, credentials and local SDK files must
   remain outside commits.
 
-## Exact next steps
+### Deferred Nutrition next steps
 
 1. Review the Nutrition diff and commit only the files listed by `git status` for
    this change set; do not include generated files or `backend/demo/`.

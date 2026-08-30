@@ -450,10 +450,12 @@ Todo hỗ trợ task detail, thời gian bắt đầu, deadline, thời lượng
 GET    /todos
 POST   /todos
 PATCH  /todos/{id}
+POST   /todos/{id}/complete
+POST   /todos/{id}/skip
 DELETE /todos/{id}
 ```
 
-`GET /todos` nhận các query tùy chọn `view=TODAY|OVERDUE|UPCOMING|ALL`, `category=WORK|STUDY|PERSONAL|HEALTH|FINANCE|SHOPPING` và `status=OPEN|IN_PROGRESS|DONE|CANCELLED|ARCHIVED`. Nếu không truyền query, API trả toàn bộ task của user hiện tại.
+`GET /todos` nhận các query tùy chọn `view=TODAY|OVERDUE|UPCOMING|ALL`, `category=WORK|STUDY|PERSONAL|HEALTH|FINANCE|SHOPPING` và `status=OPEN|IN_PROGRESS|DONE|SKIPPED|CANCELLED|ARCHIVED`. Nếu không truyền query, API trả toàn bộ task của user hiện tại.
 
 ```json
 {
@@ -470,6 +472,9 @@ DELETE /todos/{id}
   "recurrenceRule": "WEEKLY",
   "recurrenceInterval": 1,
   "daysOfWeek": "MONDAY,WEDNESDAY,FRIDAY",
+  "recurrenceBasis": "SCHEDULED_DATE",
+  "recurrenceEndAt": null,
+  "recurrenceMaxOccurrences": 30,
   "subtasks": [
     { "title": "Ôn bài 12", "completed": false, "sortOrder": 0 },
     { "title": "Viết 10 câu ví dụ", "completed": false, "sortOrder": 1 }
@@ -477,6 +482,20 @@ DELETE /todos/{id}
 }
 ```
 
-`recurrenceRule` có các giá trị `NONE`, `DAILY`, `WEEKLY`, `MONTHLY` và `CUSTOM`. Với `CUSTOM`, `recurrenceInterval` tính theo ngày; với `WEEKLY`, có thể thêm `daysOfWeek`. Khi task recurring chuyển sang `DONE`, backend giữ nguyên occurrence đã hoàn thành và tự tạo occurrence tiếp theo trong cùng `recurringSeriesId`, đồng thời reset checklist con.
+`recurrenceRule` có các giá trị `NONE`, `DAILY`, `WEEKLY`, `MONTHLY`, `YEARLY` và `CUSTOM`. Với `CUSTOM`, `recurrenceInterval` tính theo ngày; với `WEEKLY`, có thể thêm `daysOfWeek`. `recurrenceBasis=SCHEDULED_DATE` giữ lịch cố định; `COMPLETION_DATE` tính lần kế tiếp từ ngày user thực sự hoàn thành. `recurrenceEndAt` và `recurrenceMaxOccurrences` là hai giới hạn tùy chọn.
+
+Khi task recurring được `complete` hoặc `skip`, backend giữ occurrence cũ, tạo đúng một occurrence kế tiếp trong cùng `recurringSeriesId`, reset checklist và tăng `occurrenceNumber`. Unique index theo series/occurrence ngăn việc nhấn lặp hoặc retry request sinh bản ghi trùng.
 
 Todo reminder chạy theo phút trong múi giờ `Asia/Ho_Chi_Minh`, dùng notification infrastructure chung và deduplication key theo task cùng thời điểm reminder. User vẫn có thể tắt email notification ở hồ sơ; reminder trong app không bị biến thành email bắt buộc.
+
+## Thời khóa biểu / Calendar
+
+```http
+GET    /schedule
+GET    /schedule/calendar?from=2026-08-31T00:00:00&to=2026-09-07T00:00:00
+POST   /schedule
+PATCH  /schedule/{id}
+DELETE /schedule/{id}
+```
+
+`/schedule` quản lý event/cuộc hẹn. Event hỗ trợ `repeatRule=NONE|DAILY|WEEKLY|MONTHLY|YEARLY`, `repeatInterval`, `daysOfWeek`, `repeatEndAt`, `endAt` và reminder. `/schedule/calendar` là read model hợp nhất: trả cả event (`sourceType=EVENT`) và Todo có `startAt`/`dueAt` (`sourceType=TODO`) trong khoảng tối đa 370 ngày. Client không tạo thêm bản ghi Schedule khi một Todo được time-block.

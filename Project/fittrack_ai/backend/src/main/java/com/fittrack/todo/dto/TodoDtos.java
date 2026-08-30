@@ -33,6 +33,11 @@ public final class TodoDtos {
             Integer recurrenceInterval,
             @Size(max = 100, message = "Danh sách ngày lặp tối đa 100 ký tự")
             String daysOfWeek,
+            Todo.RecurrenceBasis recurrenceBasis,
+            LocalDateTime recurrenceEndAt,
+            @Min(value = 1, message = "Số lần lặp tối thiểu là 1")
+            @Max(value = 10_000, message = "Số lần lặp tối đa là 10.000")
+            Integer recurrenceMaxOccurrences,
             LocalDateTime reminderAt,
             Boolean reminderEnabled,
             @Size(max = 50, message = "Tối đa 50 checklist")
@@ -43,12 +48,33 @@ public final class TodoDtos {
                 String description,
                 Todo.TodoStatus status,
                 Todo.TodoPriority priority,
+                LocalDateTime startAt,
+                LocalDateTime dueAt,
+                Integer estimatedMinutes,
+                Todo.TodoCategory category,
+                Todo.RecurrenceRule recurrenceRule,
+                Integer recurrenceInterval,
+                String daysOfWeek,
+                LocalDateTime reminderAt,
+                Boolean reminderEnabled,
+                List<SubtaskRequest> subtasks
+        ) {
+            this(title, description, status, priority, startAt, dueAt, estimatedMinutes, category,
+                    recurrenceRule, recurrenceInterval, daysOfWeek, null, null, null,
+                    reminderAt, reminderEnabled, subtasks);
+        }
+
+        public TodoRequest(
+                String title,
+                String description,
+                Todo.TodoStatus status,
+                Todo.TodoPriority priority,
                 LocalDateTime dueAt,
                 LocalDateTime reminderAt,
                 Boolean reminderEnabled
         ) {
             this(title, description, status, priority, null, dueAt, null, null,
-                    null, null, null, reminderAt, reminderEnabled, null);
+                    null, null, null, null, null, null, reminderAt, reminderEnabled, null);
         }
     }
 
@@ -82,6 +108,12 @@ public final class TodoDtos {
             Todo.RecurrenceRule recurrenceRule,
             Integer recurrenceInterval,
             List<String> daysOfWeek,
+            Todo.RecurrenceBasis recurrenceBasis,
+            LocalDateTime recurrenceEndAt,
+            Integer recurrenceMaxOccurrences,
+            Integer occurrenceNumber,
+            LocalDateTime completedAt,
+            LocalDateTime skippedAt,
             LocalDateTime reminderAt,
             boolean reminderEnabled,
             String recurringSeriesId,

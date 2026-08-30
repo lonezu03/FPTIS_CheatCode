@@ -61,6 +61,19 @@ public class Todo {
     @Column(length = 255)
     private String recurringSeriesId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private RecurrenceBasis recurrenceBasis;
+
+    private LocalDateTime recurrenceEndAt;
+    private Integer recurrenceMaxOccurrences;
+
+    @Column(nullable = false)
+    private Integer occurrenceNumber;
+
+    private LocalDateTime completedAt;
+    private LocalDateTime skippedAt;
+
     private LocalDateTime reminderAt;
     private LocalDateTime reminderSentAt;
 
@@ -87,7 +100,9 @@ public class Todo {
         if (priority == null) priority = TodoPriority.MEDIUM;
         if (category == null) category = TodoCategory.PERSONAL;
         if (recurrenceRule == null) recurrenceRule = RecurrenceRule.NONE;
+        if (recurrenceBasis == null) recurrenceBasis = RecurrenceBasis.SCHEDULED_DATE;
         if (recurrenceInterval == null || recurrenceInterval < 1) recurrenceInterval = 1;
+        if (occurrenceNumber == null || occurrenceNumber < 1) occurrenceNumber = 1;
         if (reminderEnabled == null) reminderEnabled = false;
     }
 
@@ -96,8 +111,9 @@ public class Todo {
         updatedAt = LocalDateTime.now();
     }
 
-    public enum TodoStatus { OPEN, IN_PROGRESS, DONE, CANCELLED, ARCHIVED }
+    public enum TodoStatus { OPEN, IN_PROGRESS, DONE, SKIPPED, CANCELLED, ARCHIVED }
     public enum TodoPriority { LOW, MEDIUM, HIGH }
     public enum TodoCategory { WORK, STUDY, PERSONAL, HEALTH, FINANCE, SHOPPING }
-    public enum RecurrenceRule { NONE, DAILY, WEEKLY, MONTHLY, CUSTOM }
+    public enum RecurrenceRule { NONE, DAILY, WEEKLY, MONTHLY, YEARLY, CUSTOM }
+    public enum RecurrenceBasis { SCHEDULED_DATE, COMPLETION_DATE }
 }

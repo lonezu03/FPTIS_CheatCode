@@ -22,6 +22,9 @@ public final class ScheduleDtos {
             LocalDateTime startAt,
             LocalDateTime endAt,
             ScheduleItem.RepeatRule repeatRule,
+            @Min(value = 1, message = "Khoảng lặp tối thiểu là 1")
+            Integer repeatInterval,
+            LocalDateTime repeatEndAt,
             @Size(max = 100, message = "Danh sách ngày tối đa 100 ký tự")
             String daysOfWeek,
             @Min(value = 0, message = "Số phút nhắc không được âm")
@@ -38,11 +41,26 @@ public final class ScheduleDtos {
             LocalDateTime startAt,
             LocalDateTime endAt,
             ScheduleItem.RepeatRule repeatRule,
+            int repeatInterval,
+            LocalDateTime repeatEndAt,
             String daysOfWeek,
             int reminderMinutes,
             boolean reminderEnabled,
             boolean enabled,
             LocalDateTime lastRemindedAt,
             LocalDateTime createdAt
+    ) {}
+
+    public record CalendarEntryResponse(
+            String occurrenceId,
+            String sourceType,
+            String sourceId,
+            String title,
+            String description,
+            String category,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
+            String status,
+            boolean recurring
     ) {}
 }

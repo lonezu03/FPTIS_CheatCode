@@ -11,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/api/schedule")
@@ -21,6 +22,15 @@ public class ScheduleController {
     @GetMapping
     public List<ScheduleResponse> getMine(@AuthenticationPrincipal User user) {
         return scheduleService.getMine(user);
+    }
+
+    @GetMapping("/calendar")
+    public List<com.fittrack.schedule.dto.ScheduleDtos.CalendarEntryResponse> getCalendar(
+            @AuthenticationPrincipal User user,
+            @RequestParam LocalDateTime from,
+            @RequestParam LocalDateTime to
+    ) {
+        return scheduleService.getCalendar(user, from, to);
     }
 
     @PostMapping

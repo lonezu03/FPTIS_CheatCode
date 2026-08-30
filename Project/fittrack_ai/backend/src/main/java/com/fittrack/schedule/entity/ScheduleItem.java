@@ -41,6 +41,11 @@ public class ScheduleItem {
     @Column(nullable = false, length = 20)
     private RepeatRule repeatRule;
 
+    @Column(nullable = false)
+    private Integer repeatInterval;
+
+    private LocalDateTime repeatEndAt;
+
     @Column(length = 100)
     private String daysOfWeek;
 
@@ -68,6 +73,7 @@ public class ScheduleItem {
         updatedAt = now;
         if (category == null) category = ScheduleCategory.PERSONAL;
         if (repeatRule == null) repeatRule = RepeatRule.NONE;
+        if (repeatInterval == null || repeatInterval < 1) repeatInterval = 1;
         if (reminderMinutes == null) reminderMinutes = 10;
         if (reminderEnabled == null) reminderEnabled = true;
         if (enabled == null) enabled = true;
@@ -79,5 +85,5 @@ public class ScheduleItem {
     }
 
     public enum ScheduleCategory { PERSONAL, WORK, HEALTH, STUDY, MEAL }
-    public enum RepeatRule { NONE, DAILY, WEEKLY }
+    public enum RepeatRule { NONE, DAILY, WEEKLY, MONTHLY, YEARLY }
 }

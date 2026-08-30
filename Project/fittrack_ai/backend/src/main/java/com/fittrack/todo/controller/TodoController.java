@@ -44,4 +44,14 @@ public class TodoController {
     public void delete(@AuthenticationPrincipal User user, @PathVariable String id) {
         todoService.delete(user, id);
     }
+
+    @PostMapping("/{id}/complete")
+    public TodoResponse complete(@AuthenticationPrincipal User user, @PathVariable String id) {
+        return todoService.complete(user, id);
+    }
+
+    @PostMapping("/{id}/skip")
+    public TodoResponse skip(@AuthenticationPrincipal User user, @PathVariable String id) {
+        return todoService.skip(user, id);
+    }
 }

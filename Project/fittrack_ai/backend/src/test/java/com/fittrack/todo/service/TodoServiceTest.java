@@ -115,4 +115,49 @@ class TodoServiceTest {
         assertThat(next.getDueAt()).isEqualTo(LocalDateTime.of(2026, 8, 31, 21, 0));
         assertThat(next.getRecurringSeriesId()).isEqualTo("series-1");
     }
+
+    @Test
+    void completionBasedRecurrenceUsesActualCompletionDate() {
+        User user = new User();
+        LocalDateTime oldDue = LocalDateTime.now(ZONE).minusDays(10).withHour(8).withMinute(30).withSecond(0).withNano(0);
+        Todo todo = Todo.builder().id("todo-completion").user(user).title("Quét nhà")
+                .status(Todo.TodoStatus.OPEN).priority(Todo.TodoPriority.MEDIUM).category(Todo.TodoCategory.PERSONAL)
+                .recurrenceRule(Todo.RecurrenceRule.DAILY).recurrenceInterval(3)
+                .recurrenceBasis(Todo.RecurrenceBasis.COMPLETION_DATE).occurrenceNumber(1)
+                .recurringSeriesId("series-completion").dueAt(oldDue)
+                .reminderEnabled(false).subtasks(List.of()).build();
+        when(repository.findByIdAndUser("todo-completion", user)).thenReturn(Optional.of(todo));
+        when(repository.save(any(Todo.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.complete(user, "todo-completion");
+
+        ArgumentCaptor<Todo> captor = ArgumentCaptor.forClass(Todo.class);
+        verify(repository, times(2)).save(captor.capture());
+        Todo next = captor.getAllValues().get(1);
+        assertThat(next.getDueAt().toLocalDate()).isEqualTo(LocalDate.now(ZONE).plusDays(3));
+        assertThat(next.getDueAt().toLocalTime()).isEqualTo(oldDue.toLocalTime());
+        assertThat(next.getOccurrenceNumber()).isEqualTo(2);
+    }
+
+    @Test
+    void skippingRecurringTodoPreservesScheduledCadence() {
+        User user = new User();
+        LocalDateTime due = LocalDateTime.of(2026, 9, 1, 21, 0);
+        Todo todo = Todo.builder().id("todo-skip").user(user).title("Học tiếng Nhật")
+                .status(Todo.TodoStatus.OPEN).priority(Todo.TodoPriority.MEDIUM).category(Todo.TodoCategory.STUDY)
+                .recurrenceRule(Todo.RecurrenceRule.WEEKLY).recurrenceInterval(1)
+                .recurrenceBasis(Todo.RecurrenceBasis.COMPLETION_DATE).occurrenceNumber(4)
+                .recurringSeriesId("series-skip").dueAt(due)
+                .reminderEnabled(false).subtasks(List.of()).build();
+        when(repository.findByIdAndUser("todo-skip", user)).thenReturn(Optional.of(todo));
+        when(repository.save(any(Todo.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.skip(user, "todo-skip");
+
+        ArgumentCaptor<Todo> captor = ArgumentCaptor.forClass(Todo.class);
+        verify(repository, times(2)).save(captor.capture());
+        assertThat(captor.getAllValues().get(0).getStatus()).isEqualTo(Todo.TodoStatus.SKIPPED);
+        assertThat(captor.getAllValues().get(1).getDueAt()).isEqualTo(due.plusWeeks(1));
+        assertThat(captor.getAllValues().get(1).getOccurrenceNumber()).isEqualTo(5);
+    }
 }

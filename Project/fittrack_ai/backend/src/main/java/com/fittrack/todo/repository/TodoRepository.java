@@ -29,4 +29,5 @@ public interface TodoRepository extends JpaRepository<Todo, String> {
     List<Todo> findDueRemindersForUpdate(@Param("now") java.time.LocalDateTime now, Pageable pageable);
 
     List<Todo> findByRecurringSeriesIdAndUserOrderByDueAtAsc(String recurringSeriesId, User user);
+    boolean existsByUserAndRecurringSeriesIdAndOccurrenceNumber(User user, String recurringSeriesId, Integer occurrenceNumber);
 }
