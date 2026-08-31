@@ -41,7 +41,9 @@ Last updated: 2026-08-31
   returns exercise equipment, description and image URL in addition to its name
   and muscle group.
 - Web plan creation shows the selected exercise's muscle group, equipment,
-  description/instructions and image. Saved plan cards expose the same context.
+  description/instructions and a persistent image preview. Exercises without an
+  image show an explicit placeholder and a hint to update the Exercise Library;
+  saved plan cards expose the same exercise context.
 - Added `WorkoutPlanServiceIntegrationTest` covering nested list, paginated list
   and detail reads with open-in-view disabled.
 - Verification: targeted backend integration test passed; targeted frontend

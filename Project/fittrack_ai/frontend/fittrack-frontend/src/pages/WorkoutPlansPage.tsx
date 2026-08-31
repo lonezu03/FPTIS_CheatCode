@@ -576,16 +576,32 @@ function ExercisePreview({ exercise }: { exercise?: Exercise }) {
   }
 
   return (
-    <div className="flex min-w-0 items-start gap-3 rounded-xl border bg-slate-50 p-3 md:col-span-8">
-      {exercise.imageUrl && (
-        <img
-          src={exercise.imageUrl}
-          alt={exercise.name}
-          className="size-16 shrink-0 rounded-lg border bg-white object-cover"
-          loading="lazy"
-        />
-      )}
+    <div className="grid min-w-0 gap-3 rounded-xl border bg-slate-50 p-3 sm:grid-cols-[6rem_minmax(0,1fr)] md:col-span-8">
+      <div className="flex aspect-square w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-white">
+        {exercise.imageUrl ? (
+          <a
+            href={exercise.imageUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="block size-full"
+            title="Mở ảnh bài tập"
+          >
+            <img
+              src={exercise.imageUrl}
+              alt={exercise.name}
+              className="size-full object-cover transition-transform hover:scale-105"
+              loading="lazy"
+            />
+          </a>
+        ) : (
+          <div className="px-2 text-center text-xs leading-5 text-muted-foreground">
+            <span className="block text-2xl" aria-hidden="true">🖼️</span>
+            Chưa có ảnh
+          </div>
+        )}
+      </div>
       <div className="min-w-0 space-y-2">
+        <p className="truncate text-sm font-semibold">{exercise.name}</p>
         <div className="flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-800">
             Nhóm cơ: {exercise.muscleGroup || "Chưa cập nhật"}
@@ -597,6 +613,11 @@ function ExercisePreview({ exercise }: { exercise?: Exercise }) {
         <p className="text-sm leading-5 text-muted-foreground">
           {exercise.description || "Bài tập này chưa có mô tả hoặc ghi chú hướng dẫn."}
         </p>
+        {!exercise.imageUrl && (
+          <p className="text-xs text-amber-700">
+            Có thể bổ sung ảnh cho bài tập này tại Kho bài tập.
+          </p>
+        )}
       </div>
     </div>
   );
