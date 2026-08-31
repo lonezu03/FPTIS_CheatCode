@@ -197,7 +197,8 @@ public class NotificationPlaybookService {
                 playbook.getConditionType(),
                 playbook.getThreshold(),
                 playbook.getRecipientMode(),
-                playbook.getRecipients().stream().map(User::getId).toList(),
+                playbook.getRecipients() == null ? List.of()
+                        : playbook.getRecipients().stream().map(User::getId).toList(),
                 playbook.isEnabled(),
                 playbook.getLastTriggeredDate(),
                 playbook.getCreatedAt()

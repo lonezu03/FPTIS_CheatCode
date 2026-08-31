@@ -56,6 +56,18 @@ Status: implemented locally, verified, not committed or deployed yet.
 - Flutter now uses the unified calendar feed and supports recurrence basis,
   end/max limits, yearly cadence and “Bỏ qua lần này”. No APK was built.
 - `docs/API.md` and `AGENTS.md` contain the new contracts and invariants.
+- Mobile hotfix after device testing:
+  - Todo and Schedule now load independently, so one failed endpoint no longer
+    hides both tabs behind the same error screen.
+  - Schedule falls back to legacy `GET /schedule` when a deployed backend does
+    not yet expose `/schedule/calendar`; completing Todo similarly falls back to
+    the legacy PATCH contract on HTTP 404/405.
+  - Notification playbooks load independently from the admin-user selector,
+    validate `HH:mm` before submission, safely format legacy time values and use
+    a compact action menu to avoid mobile `ListTile.trailing` overflow.
+  - Backend playbook DTO now returns HTTP 400 validation for invalid time instead
+    of allowing `LocalTime.parse` to surface as HTTP 500; nullable legacy
+    recipient collections serialize as an empty list.
 
 ### Verification
 
@@ -67,6 +79,9 @@ Status: implemented locally, verified, not committed or deployed yet.
   (2604 modules transformed).
 - Flutter targeted analysis reported no errors/warnings, only 17 existing
   info-level style/deprecation findings; Flutter widget tests passed.
+- Hotfix verification: backend compilation passed; Flutter analysis of Planner
+  and Admin reported no errors/warnings (only existing info-level lints), and
+  Flutter widget tests passed.
 
 ### Deployment order and next steps
 

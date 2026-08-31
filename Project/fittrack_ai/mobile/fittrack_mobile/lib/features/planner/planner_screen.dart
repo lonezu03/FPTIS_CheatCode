@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../auth/auth_session.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/widgets/common_widgets.dart';
 
 class PlannerScreen extends StatefulWidget {
@@ -21,7 +22,8 @@ class _PlannerScreenState extends State<PlannerScreen>
   List<Map<String, dynamic>> schedules = [];
   bool loading = true;
   bool busy = false;
-  Object? error;
+  Object? todoError;
+  Object? scheduleError;
   String todoView = 'TODAY';
   String todoStatus = 'ALL';
   String todoCategory = 'ALL';
@@ -46,29 +48,60 @@ class _PlannerScreenState extends State<PlannerScreen>
     if (mounted) {
       setState(() {
         loading = true;
-        error = null;
+        todoError = null;
+        scheduleError = null;
       });
     }
-    try {
-      final api = context.read<ApiClient>();
-      if (canTodo) todos = _list(await api.get('/todos'));
-      if (canSchedule) {
-        final from = DateTime.now().subtract(const Duration(days: 30));
-        final to = DateTime.now().add(const Duration(days: 365));
-        schedules = _list(
-          await api.get(
-            '/schedule/calendar',
-            queryParameters: {'from': _iso(from), 'to': _iso(to)},
-          ),
-        );
+    final api = context.read<ApiClient>();
+    if (canTodo) {
+      try {
+        todos = _list(await api.get('/todos'));
+      } catch (e) {
+        todoError = e;
       }
-      if (mounted) setState(() {});
-    } catch (e) {
-      if (mounted) setState(() => error = e);
-    } finally {
-      if (mounted) setState(() => loading = false);
+    }
+    if (canSchedule) {
+      try {
+        schedules = await _loadCalendar(api);
+      } catch (e) {
+        scheduleError = e;
+      }
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  Future<List<Map<String, dynamic>>> _loadCalendar(ApiClient api) async {
+    final from = DateTime.now().subtract(const Duration(days: 30));
+    final to = DateTime.now().add(const Duration(days: 365));
+    try {
+      return _list(
+        await api.get(
+          '/schedule/calendar',
+          queryParameters: {'from': _iso(from), 'to': _iso(to)},
+        ),
+      );
+    } on ApiException catch (calendarError) {
+      if (calendarError.statusCode == 401 || calendarError.statusCode == 403) {
+        rethrow;
+      }
+      try {
+        final legacy = _list(await api.get('/schedule'));
+        return legacy.map(_legacyScheduleEntry).toList();
+      } catch (_) {
+        throw calendarError;
+      }
     }
   }
+
+  static Map<String, dynamic> _legacyScheduleEntry(Map<String, dynamic> item) =>
+      {
+        ...item,
+        'occurrenceId': 'EVENT:${item['id']}',
+        'sourceType': 'EVENT',
+        'sourceId': item['id'],
+        'status': item['enabled'] == false ? 'DISABLED' : 'ACTIVE',
+        'recurring': item['repeatRule'] != null && item['repeatRule'] != 'NONE',
+      };
 
   static List<Map<String, dynamic>> _list(dynamic value) => value is List
       ? value.map((e) => Map<String, dynamic>.from(e as Map)).toList()
@@ -189,7 +222,16 @@ class _PlannerScreenState extends State<PlannerScreen>
     if (done) {
       setState(() => busy = true);
       try {
-        await context.read<ApiClient>().post('/todos/${todo['id']}/complete');
+        final api = context.read<ApiClient>();
+        try {
+          await api.post('/todos/${todo['id']}/complete');
+        } on ApiException catch (error) {
+          if (error.statusCode != 404 && error.statusCode != 405) rethrow;
+          await api.patch(
+            '/todos/${todo['id']}',
+            data: _todoPayload(todo, status: 'DONE'),
+          );
+        }
         await _load();
       } catch (e) {
         if (mounted) showMessage(context, displayError(e), error: true);
@@ -272,8 +314,6 @@ class _PlannerScreenState extends State<PlannerScreen>
   @override
   Widget build(BuildContext context) {
     if (loading) return const LoadingView();
-    if (error != null)
-      return ErrorView(message: displayError(error!), onRetry: _load);
     return Column(
       children: [
         Padding(
@@ -307,34 +347,44 @@ class _PlannerScreenState extends State<PlannerScreen>
             controller: tabs,
             children: [
               canTodo
-                  ? _TodoList(
-                      items: filteredTodos,
-                      allItems: todos,
-                      view: todoView,
-                      status: todoStatus,
-                      category: todoCategory,
-                      onViewChanged: (value) =>
-                          setState(() => todoView = value),
-                      onStatusChanged: (value) =>
-                          setState(() => todoStatus = value),
-                      onCategoryChanged: (value) =>
-                          setState(() => todoCategory = value),
-                      onAdd: _createTodo,
-                      onEdit: _openTodoEditor,
-                      onDelete: _deleteTodo,
-                      onToggle: _toggleTodo,
-                      onSkip: _skipTodo,
-                      busy: busy,
-                      onReload: _load,
-                    )
+                  ? todoError == null
+                        ? _TodoList(
+                            items: filteredTodos,
+                            allItems: todos,
+                            view: todoView,
+                            status: todoStatus,
+                            category: todoCategory,
+                            onViewChanged: (value) =>
+                                setState(() => todoView = value),
+                            onStatusChanged: (value) =>
+                                setState(() => todoStatus = value),
+                            onCategoryChanged: (value) =>
+                                setState(() => todoCategory = value),
+                            onAdd: _createTodo,
+                            onEdit: _openTodoEditor,
+                            onDelete: _deleteTodo,
+                            onToggle: _toggleTodo,
+                            onSkip: _skipTodo,
+                            busy: busy,
+                            onReload: _load,
+                          )
+                        : ErrorView(
+                            message: displayError(todoError!),
+                            onRetry: _load,
+                          )
                   : const _LockedPanel(label: 'Bạn chưa được cấp quyền Todo.'),
               canSchedule
-                  ? _ScheduleList(
-                      items: schedules,
-                      onAdd: _createSchedule,
-                      busy: busy,
-                      onReload: _load,
-                    )
+                  ? scheduleError == null
+                        ? _ScheduleList(
+                            items: schedules,
+                            onAdd: _createSchedule,
+                            busy: busy,
+                            onReload: _load,
+                          )
+                        : ErrorView(
+                            message: displayError(scheduleError!),
+                            onRetry: _load,
+                          )
                   : const _LockedPanel(
                       label: 'Bạn chưa được cấp quyền Schedule.',
                     ),

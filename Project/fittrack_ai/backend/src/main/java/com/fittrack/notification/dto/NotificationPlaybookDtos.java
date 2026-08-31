@@ -3,6 +3,7 @@ package com.fittrack.notification.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -41,7 +42,9 @@ public final class NotificationPlaybookDtos {
             @NotBlank @Size(max = 180) String name,
             @NotNull Category category,
             @NotNull Mode mode,
-            @NotBlank String triggerTime,
+            @NotBlank
+            @Pattern(regexp = "^(?:[01]\\d|2[0-3]):[0-5]\\d$", message = "Giờ gửi phải theo định dạng HH:mm")
+            String triggerTime,
             @NotBlank String daysOfWeek,
             @NotBlank String messages,
             @NotNull ConditionType conditionType,

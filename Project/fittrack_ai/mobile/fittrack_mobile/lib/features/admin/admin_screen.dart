@@ -253,7 +253,8 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
   String? editingId;
   bool loading = true;
   bool busy = false;
-  Object? error;
+  Object? playbookError;
+  Object? usersError;
 
   @override
   void initState() {
@@ -271,23 +272,21 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
   }
 
   Future<void> _load() async {
-    setState(() { loading = true; error = null; });
+    setState(() { loading = true; playbookError = null; usersError = null; });
+    final api = context.read<ApiClient>();
     try {
-      final api = context.read<ApiClient>();
-      final values = await Future.wait([
-        api.get('/admin/notification-playbooks'),
-        api.get('/admin/users'),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        playbooks = values[0] is List ? values[0].map((e) => Map<String, dynamic>.from(e as Map)).toList() : [];
-        users = values[1] is List ? values[1].map((e) => Map<String, dynamic>.from(e as Map)).toList() : [];
-      });
+      final value = await api.get('/admin/notification-playbooks');
+      playbooks = value is List ? value.map((e) => Map<String, dynamic>.from(e as Map)).toList() : [];
     } catch (e) {
-      if (mounted) setState(() => error = e);
-    } finally {
-      if (mounted) setState(() => loading = false);
+      playbookError = e;
     }
+    try {
+      final value = await api.get('/admin/users');
+      users = value is List ? value.map((e) => Map<String, dynamic>.from(e as Map)).toList() : [];
+    } catch (e) {
+      usersError = e;
+    }
+    if (mounted) setState(() => loading = false);
   }
 
   void _reset() {
@@ -312,7 +311,7 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
     setState(() {
       editingId = item['id']?.toString();
       name.text = item['name']?.toString() ?? '';
-      triggerTime.text = (item['triggerTime']?.toString() ?? '21:30').substring(0, 5);
+      triggerTime.text = _shortTime(item['triggerTime']);
       threshold.text = item['threshold']?.toString() ?? '';
       messages.text = item['messages']?.toString() ?? '';
       category = item['category']?.toString() ?? 'WELLNESS';
@@ -345,6 +344,14 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
   Future<void> _save() async {
     if (name.text.trim().isEmpty || messages.text.trim().isEmpty || days.isEmpty || (recipientMode == 'SELECTED' && selectedUsers.isEmpty)) {
       showMessage(context, 'Vui lòng điền tên, câu thông báo, ngày gửi và người nhận.', error: true);
+      return;
+    }
+    if (!RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$').hasMatch(triggerTime.text.trim())) {
+      showMessage(context, 'Giờ gửi phải theo định dạng HH:mm, ví dụ 21:30.', error: true);
+      return;
+    }
+    if (recipientMode == 'SELECTED' && usersError != null) {
+      showMessage(context, 'Chưa tải được danh sách tài khoản. Vui lòng thử lại trước khi chọn người nhận.', error: true);
       return;
     }
     setState(() => busy = true);
@@ -405,7 +412,7 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
   @override
   Widget build(BuildContext context) {
     if (loading) return const LoadingView();
-    if (error != null) return ErrorView(message: displayError(error!), onRetry: _load);
+    if (playbookError != null) return ErrorView(message: displayError(playbookError!), onRetry: _load);
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -420,9 +427,9 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
                 TextField(controller: name, decoration: const InputDecoration(labelText: 'Tên kịch bản', hintText: 'Ví dụ: Chúc ngủ ngon')),
                 const SizedBox(height: 10),
                 Row(children: [
-                  Expanded(child: DropdownButtonFormField<String>(value: category, decoration: const InputDecoration(labelText: 'Nhóm'), items: const [DropdownMenuItem(value: 'WELLNESS', child: Text('Wellness')), DropdownMenuItem(value: 'MEAL', child: Text('Ăn uống')), DropdownMenuItem(value: 'SLEEP', child: Text('Giấc ngủ')), DropdownMenuItem(value: 'PRODUCTIVITY', child: Text('Hiệu suất'))], onChanged: (value) { if (value != null) setState(() => category = value); })),
+                  Expanded(child: DropdownButtonFormField<String>(value: category, isExpanded: true, decoration: const InputDecoration(labelText: 'Nhóm'), items: const [DropdownMenuItem(value: 'WELLNESS', child: Text('Sức khỏe')), DropdownMenuItem(value: 'MEAL', child: Text('Ăn uống')), DropdownMenuItem(value: 'SLEEP', child: Text('Giấc ngủ')), DropdownMenuItem(value: 'PRODUCTIVITY', child: Text('Hiệu suất'))], onChanged: (value) { if (value != null) setState(() => category = value); })),
                   const SizedBox(width: 10),
-                  Expanded(child: DropdownButtonFormField<String>(value: mode, decoration: const InputDecoration(labelText: 'Cách chọn câu'), items: const [DropdownMenuItem(value: 'RANDOM', child: Text('Random')), DropdownMenuItem(value: 'FIXED', child: Text('Câu đầu tiên'))], onChanged: (value) { if (value != null) setState(() => mode = value); })),
+                  Expanded(child: DropdownButtonFormField<String>(value: mode, isExpanded: true, decoration: const InputDecoration(labelText: 'Cách chọn câu'), items: const [DropdownMenuItem(value: 'RANDOM', child: Text('Ngẫu nhiên')), DropdownMenuItem(value: 'FIXED', child: Text('Câu đầu tiên'))], onChanged: (value) { if (value != null) setState(() => mode = value); })),
                 ]),
                 const SizedBox(height: 10),
                 TextField(controller: triggerTime, keyboardType: TextInputType.datetime, decoration: const InputDecoration(labelText: 'Giờ gửi', hintText: '21:30')),
@@ -439,6 +446,7 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
                 DropdownButtonFormField<String>(value: recipientMode, decoration: const InputDecoration(labelText: 'Người nhận'), items: const [DropdownMenuItem(value: 'ALL_ACTIVE', child: Text('Tất cả user đang hoạt động')), DropdownMenuItem(value: 'SELECTED', child: Text('Chỉ user được chọn'))], onChanged: (value) { if (value != null) setState(() => recipientMode = value); }),
                 if (recipientMode == 'SELECTED') ...[
                   const SizedBox(height: 6),
+                  if (usersError != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('Không tải được danh sách tài khoản. Hãy bấm làm mới.', style: TextStyle(color: Colors.red.shade700))),
                   ...users.where((user) => user['active'] == true).map((user) => CheckboxListTile(contentPadding: EdgeInsets.zero, dense: true, value: selectedUsers.contains(user['id'].toString()), title: Text(user['fullName']?.toString() ?? user['email']?.toString() ?? 'User'), onChanged: (value) => setState(() { value == true ? selectedUsers.add(user['id'].toString()) : selectedUsers.remove(user['id'].toString()); }))),
                 ],
                 const SizedBox(height: 10),
@@ -450,12 +458,20 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
           ),
           const SizedBox(height: 14),
           if (playbooks.isEmpty) const EmptyView(icon: Icons.notifications_none, title: 'Chưa có kịch bản', subtitle: 'Tạo kịch bản để nhắc đúng người, đúng lúc.'),
-          ...playbooks.map((item) => Card(child: ListTile(
-            title: Text(item['name']?.toString() ?? 'Kịch bản', style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text('${item['triggerTime']?.toString().substring(0, 5) ?? '--:--'} • ${item['recipientMode'] == 'SELECTED' ? '${(item['recipientUserIds'] as List? ?? []).length} user' : 'Tất cả user hoạt động'}'),
-            leading: Icon(item['enabled'] == true ? Icons.notifications_active_outlined : Icons.notifications_off_outlined),
-            trailing: Wrap(spacing: 0, children: [IconButton(onPressed: () => _edit(item), icon: const Icon(Icons.edit_outlined)), IconButton(onPressed: () => _toggle(item), icon: Icon(item['enabled'] == true ? Icons.pause_circle_outline : Icons.play_circle_outline)), IconButton(onPressed: () => _delete(item), icon: const Icon(Icons.delete_outline))]),
-          ))),
+          ...playbooks.map((item) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            CircleAvatar(child: Icon(item['enabled'] == true ? Icons.notifications_active_outlined : Icons.notifications_off_outlined)),
+            const SizedBox(width: 10),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(item['name']?.toString() ?? 'Kịch bản', style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text('${_shortTime(item['triggerTime'])} • ${item['recipientMode'] == 'SELECTED' ? '${(item['recipientUserIds'] as List? ?? []).length} người' : 'Tất cả tài khoản hoạt động'}', style: const TextStyle(color: Colors.black54)),
+            ])),
+            PopupMenuButton<String>(tooltip: 'Thao tác', onSelected: (value) { if (value == 'edit') _edit(item); if (value == 'toggle') _toggle(item); if (value == 'delete') _delete(item); }, itemBuilder: (_) => [
+              const PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Chỉnh sửa'), contentPadding: EdgeInsets.zero)),
+              PopupMenuItem(value: 'toggle', child: ListTile(leading: Icon(item['enabled'] == true ? Icons.pause_circle_outline : Icons.play_circle_outline), title: Text(item['enabled'] == true ? 'Tạm dừng' : 'Kích hoạt'), contentPadding: EdgeInsets.zero)),
+              const PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline, color: Colors.red), title: Text('Xóa'), contentPadding: EdgeInsets.zero)),
+            ]),
+          ])))),
         ],
       ),
     );
@@ -1322,3 +1338,10 @@ class _BroadcastTabState extends State<_BroadcastTab> {
 
 String _shortName(String value) =>
     value.trim().isEmpty ? 'U' : value.trim()[0].toUpperCase();
+
+String _shortTime(dynamic value) {
+  final text = value?.toString().trim() ?? '';
+  final match = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(text);
+  if (match == null) return '--:--';
+  return '${match.group(1)!.padLeft(2, '0')}:${match.group(2)}';
+}
