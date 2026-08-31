@@ -7,6 +7,7 @@ export type Exercise = {
   muscleGroup: string;
   equipment: string;
   description: string;
+  imageUrl?: string | null;
 };
 
 export type WorkoutSetResponse = {

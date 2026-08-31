@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { toLocalDateInput } from "../lib/format";
 
-import { getExercises } from "../api/workout.api";
+import { getExercises, type Exercise } from "../api/workout.api";
 import {
   createWorkoutPlan,
   deleteWorkoutPlan,
@@ -348,11 +348,17 @@ export default function WorkoutPlansPage() {
                         >
                           {exercises.map((item) => (
                             <option key={item.id} value={item.id}>
-                              {item.name}
+                              {item.name} · {item.muscleGroup || "Chưa phân nhóm"} · {item.equipment || "Không dụng cụ"}
                             </option>
                           ))}
                         </select>
                       </FormField>
+
+                      <ExercisePreview
+                        exercise={exercises.find(
+                          (item) => item.id === (exercise.exerciseId || defaultExerciseId)
+                        )}
+                      />
 
                       <FormField label="Số hiệp" htmlFor={`plan-sets-${dayIndex}-${exerciseIndex}`} hint="Số lượt thực hiện." className="md:col-span-2" required>
                         <Input
@@ -522,8 +528,28 @@ function PlanCard({
                 <TableBody>
                   {day.exercises.map((exercise) => (
                     <TableRow key={exercise.id}>
-                      <TableCell className="font-medium">{exercise.exerciseName}</TableCell>
+                      <TableCell className="min-w-[260px]">
+                        <div className="flex items-start gap-3">
+                          {exercise.imageUrl && (
+                            <img
+                              src={exercise.imageUrl}
+                              alt={exercise.exerciseName}
+                              className="size-12 shrink-0 rounded-lg border object-cover"
+                              loading="lazy"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium">{exercise.exerciseName}</p>
+                            {exercise.description && (
+                              <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                                {exercise.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
                       <TableCell>{exercise.muscleGroup}</TableCell>
+                      <TableCell>{exercise.equipment || "Không dụng cụ"}</TableCell>
                     <TableCell>{exercise.targetSets} hiệp</TableCell>
                     <TableCell>{exercise.targetReps} lần</TableCell>
                       <TableCell>{exercise.targetWeight}kg</TableCell>
@@ -537,5 +563,41 @@ function PlanCard({
         ))}
       </CardContent>
     </Card>
+  );
+}
+
+function ExercisePreview({ exercise }: { exercise?: Exercise }) {
+  if (!exercise) {
+    return (
+      <div className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground md:col-span-8">
+        Chọn một bài tập để xem nhóm cơ, dụng cụ và hướng dẫn thực hiện.
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 items-start gap-3 rounded-xl border bg-slate-50 p-3 md:col-span-8">
+      {exercise.imageUrl && (
+        <img
+          src={exercise.imageUrl}
+          alt={exercise.name}
+          className="size-16 shrink-0 rounded-lg border bg-white object-cover"
+          loading="lazy"
+        />
+      )}
+      <div className="min-w-0 space-y-2">
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-800">
+            Nhóm cơ: {exercise.muscleGroup || "Chưa cập nhật"}
+          </span>
+          <span className="rounded-full bg-slate-200 px-2.5 py-1 font-medium text-slate-700">
+            Dụng cụ: {exercise.equipment || "Không dụng cụ"}
+          </span>
+        </div>
+        <p className="text-sm leading-5 text-muted-foreground">
+          {exercise.description || "Bài tập này chưa có mô tả hoặc ghi chú hướng dẫn."}
+        </p>
+      </div>
+    </div>
   );
 }

@@ -10,6 +10,9 @@ public class WorkoutPlanExerciseResponse {
     private String exerciseId;
     private String exerciseName;
     private String muscleGroup;
+    private String equipment;
+    private String description;
+    private String imageUrl;
     private Integer exerciseOrder;
     private Integer targetSets;
     private Integer targetReps;

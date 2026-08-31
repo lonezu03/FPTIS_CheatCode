@@ -7,6 +7,9 @@ export type WorkoutPlanExercise = {
   exerciseId: string;
   exerciseName: string;
   muscleGroup: string;
+  equipment: string | null;
+  description: string | null;
+  imageUrl: string | null;
   exerciseOrder: number;
   targetSets: number;
   targetReps: number;

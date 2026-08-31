@@ -7,6 +7,7 @@ import com.fittrack.workoutplan.dto.WorkoutPlanResponse;
 import com.fittrack.workoutplan.entity.WorkoutPlan;
 import com.fittrack.workoutplan.entity.WorkoutPlanDay;
 import com.fittrack.workoutplan.entity.WorkoutPlanExercise;
+import com.fittrack.common.media.ImageReferences;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
@@ -22,7 +23,10 @@ public class WorkoutPlanMapper {
                 .description(plan.getDescription())
                 .createdAt(plan.getCreatedAt())
                 .days(plan.getDays().stream()
-                        .sorted(Comparator.comparing(WorkoutPlanDay::getDayOrder))
+                        .sorted(Comparator.comparing(
+                                WorkoutPlanDay::getDayOrder,
+                                Comparator.nullsLast(Integer::compareTo)
+                        ))
                         .map(this::toDayResponse)
                         .toList())
                 .build();
@@ -40,7 +44,10 @@ public class WorkoutPlanMapper {
                 .name(day.getName())
                 .dayOrder(day.getDayOrder())
                 .exercises(day.getExercises().stream()
-                        .sorted(Comparator.comparing(WorkoutPlanExercise::getExerciseOrder))
+                        .sorted(Comparator.comparing(
+                                WorkoutPlanExercise::getExerciseOrder,
+                                Comparator.nullsLast(Integer::compareTo)
+                        ))
                         .map(this::toExerciseResponse)
                         .toList())
                 .build();
@@ -54,6 +61,12 @@ public class WorkoutPlanMapper {
                 .exerciseId(exercise.getId())
                 .exerciseName(exercise.getName())
                 .muscleGroup(exercise.getMuscleGroup())
+                .equipment(exercise.getEquipment())
+                .description(exercise.getDescription())
+                .imageUrl(ImageReferences.responseUrl(
+                        exercise.getImageUrl(),
+                        ImageReferences.exercisePath(exercise.getId())
+                ))
                 .exerciseOrder(planExercise.getExerciseOrder())
                 .targetSets(planExercise.getTargetSets())
                 .targetReps(planExercise.getTargetReps())

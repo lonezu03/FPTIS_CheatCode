@@ -16,6 +16,7 @@ import com.fittrack.workoutplan.mapper.WorkoutPlanMapper;
 import com.fittrack.workoutplan.repository.WorkoutPlanRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -24,6 +25,7 @@ import com.fittrack.common.dto.PageResponse;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class WorkoutPlanService {
 
     private final WorkoutPlanRepository workoutPlanRepository;
@@ -75,12 +77,14 @@ public class WorkoutPlanService {
         return workoutPlanMapper.toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     public List<WorkoutPlanResponse> getMyPlans(User user) {
         return workoutPlanMapper.toResponseList(
                 workoutPlanRepository.findByUserOrderByCreatedAtDesc(user)
         );
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<WorkoutPlanResponse> getMyPlansPage(
             User user,
             int page,
@@ -93,6 +97,7 @@ public class WorkoutPlanService {
         return PageResponse.from(result);
     }
 
+    @Transactional(readOnly = true)
     public WorkoutPlanResponse getPlanDetail(User user, String planId) {
         WorkoutPlan plan = workoutPlanRepository.findByIdAndUser(planId, user)
                 .orElseThrow(() -> new IllegalArgumentException("Workout plan not found"));

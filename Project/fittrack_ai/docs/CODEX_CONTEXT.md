@@ -32,6 +32,23 @@ Last updated: 2026-08-31
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
 
+## Workout plan web/API fix (2026-08-31)
+
+- Fixed `GET /api/workout-plans`, `/page` and plan detail mapping with
+  `spring.jpa.open-in-view=false`: `WorkoutPlanService` now keeps a read-only
+  transaction open while mapping lazy plan days, exercises and exercise details.
+- Workout plan mapping tolerates legacy null day/exercise order values and now
+  returns exercise equipment, description and image URL in addition to its name
+  and muscle group.
+- Web plan creation shows the selected exercise's muscle group, equipment,
+  description/instructions and image. Saved plan cards expose the same context.
+- Added `WorkoutPlanServiceIntegrationTest` covering nested list, paginated list
+  and detail reads with open-in-view disabled.
+- Verification: targeted backend integration test passed; targeted frontend
+  ESLint passed; frontend TypeScript/Vite production build passed (2604 modules).
+- Deploy the backend before the web so the additive workout-plan response fields
+  are available. No database migration is required.
+
 ## Current task: Todo recurrence and unified calendar
 
 Status: implemented locally, verified, not committed or deployed yet.
