@@ -21,7 +21,6 @@ import {
   ChefHat,
   ShieldCheck,
   Soup,
-  Sparkles,
  
   Trophy,
   User,
@@ -300,7 +299,7 @@ function Brand() {
   return (
     <Link to="/dashboard" className="flex items-center gap-3" aria-label="FitTrack - Tổng quan">
       <div className="grid size-10 place-items-center rounded-2xl bg-emerald-400 text-[#0c2821] shadow-lg shadow-black/15">
-        <ChefHat  className="size-5" />
+        <ChefHat className="size-5" />
       </div>
       <div>
         <p className="text-lg font-bold tracking-[-0.03em] text-white">FitTrack</p>

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Check, Dumbbell, Eye, EyeOff, Sparkles, UtensilsCrossed } from "lucide-react";
+import { ArrowRight, Check, ChefHat, Dumbbell, Eye, EyeOff, UtensilsCrossed } from "lucide-react";
 import { loginApi, registerApi, resendVerificationApi } from "../api/auth.api";
 import { useAuthStore } from "../store/auth.store";
 import { Button } from "@/components/ui/button";
@@ -115,7 +115,7 @@ export default function LoginPage() {
 
           <div className="relative flex items-center gap-3">
             <div className="grid size-11 place-items-center rounded-2xl bg-emerald-400 text-[#0d2b24] shadow-lg shadow-emerald-950/30">
-              <Sparkles className="size-5" />
+              <ChefHat className="size-5" />
             </div>
             <div>
               <p className="text-xl font-bold tracking-tight">FitTrack</p>
@@ -152,7 +152,7 @@ export default function LoginPage() {
           <div className="w-full max-w-md">
             <div className="mb-9 flex items-center gap-3 lg:hidden">
               <div className="grid size-10 place-items-center rounded-xl bg-[#0d2b24] text-emerald-300">
-                <Sparkles className="size-5" />
+                <ChefHat className="size-5" />
               </div>
               <div>
                 <p className="font-bold tracking-tight text-[#0d2b24]">FitTrack</p>

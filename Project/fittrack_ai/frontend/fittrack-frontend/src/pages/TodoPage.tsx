@@ -12,7 +12,7 @@ import {
   Plus,
   Repeat2,
   SkipForward,
-  Sparkles,
+  ChefHat,
   Timer,
   Trash2,
 } from 'lucide-react';
@@ -170,7 +170,7 @@ export default function TodoPage() {
 
   return <div className="space-y-6">
     <PageHeader title="Việc cần làm" description="Lập kế hoạch rõ ràng hơn với lịch, nhắc việc, lặp lại và checklist con." />
-    <Card className="border-violet-200 bg-violet-50/40"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700"><Sparkles className="size-5" /></span><div className="min-w-0 flex-1"><Label htmlFor="todo-quick-add">Thêm nhanh bằng câu tự nhiên</Label><Input id="todo-quick-add" value={quickAdd} onChange={event => setQuickAdd(event.target.value)} onKeyDown={event => event.key === 'Enter' && applyQuickAdd()} className="mt-1" placeholder="Ví dụ: Rửa xe mỗi 3 tuần sau khi hoàn thành, lúc 9 giờ sáng" /></div><Button variant="outline" onClick={applyQuickAdd}>Phân tích</Button></CardContent></Card>
+    <Card className="border-violet-200 bg-violet-50/40"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-100 text-violet-700"><ChefHat className="size-5" /></span><div className="min-w-0 flex-1"><Label htmlFor="todo-quick-add">Thêm nhanh bằng câu tự nhiên</Label><Input id="todo-quick-add" value={quickAdd} onChange={event => setQuickAdd(event.target.value)} onKeyDown={event => event.key === 'Enter' && applyQuickAdd()} className="mt-1" placeholder="Ví dụ: Rửa xe mỗi 3 tuần sau khi hoàn thành, lúc 9 giờ sáng" /></div><Button variant="outline" onClick={applyQuickAdd}>Phân tích</Button></CardContent></Card>
     <div className="grid gap-3 sm:grid-cols-4">
       <MetricCard label="Hôm nay" value={counts.today} icon={<CalendarClock className="size-4" />} tone="emerald" />
       <MetricCard label="Quá hạn" value={counts.overdue} icon={<AlertTriangle className="size-4" />} tone="red" />
