@@ -40,4 +40,12 @@ public final class NotificationDtos {
             String recipient
     ) {
     }
+
+    public record ModuleAccessRequestResponse(
+            String message,
+            int notifiedAdminCount,
+            boolean alreadyRequested,
+            boolean alreadyGranted
+    ) {
+    }
 }

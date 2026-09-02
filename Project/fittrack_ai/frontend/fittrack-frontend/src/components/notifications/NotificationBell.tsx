@@ -40,7 +40,9 @@ export default function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
     void queryClient.invalidateQueries({ queryKey: lunchKeys.paymentRequests() });
     setOpen(false);
     navigate(
-      isAdmin && notification.type === "PAYMENT_REQUEST"
+      isAdmin && notification.type === "MODULE_ACCESS_REQUEST"
+        ? "/admin/users"
+        : isAdmin && notification.type === "PAYMENT_REQUEST"
         ? "/admin/lunch?tab=payments"
         : notification.type.startsWith("PAYMENT_")
           ? "/lunch?tab=payment"

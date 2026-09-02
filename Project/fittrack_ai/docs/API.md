@@ -101,6 +101,20 @@ POST /admin/notifications/test-email
 Email thử chỉ được gửi đến email đăng ký của chính admin đang đăng nhập; API
 không nhận địa chỉ người nhận từ request.
 
+### Yêu cầu mở module Rèn luyện
+
+Tài khoản đã đăng nhập nhưng chưa có quyền Fitness có thể gửi yêu cầu đến các
+admin đang hoạt động:
+
+```http
+POST /notifications/access-requests/fitness
+```
+
+Backend lấy tên, email và ID từ tài khoản đang xác thực; client không được truyền
+thay danh tính người yêu cầu. Mỗi admin chỉ nhận tối đa một thông báo cho cùng
+người dùng trong một ngày. Thông báo tham chiếu đến tài khoản người gửi để admin
+mở màn Quản lý tài khoản và cấp quyền.
+
 ### Thông báo menu trưa (Admin)
 
 Sau khi import menu, admin gọi API dưới đây (hoặc bấm **Thông báo menu** trên

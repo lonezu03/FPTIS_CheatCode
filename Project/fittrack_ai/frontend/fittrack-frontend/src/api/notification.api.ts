@@ -29,3 +29,17 @@ export async function sendTestEmail(): Promise<{ message: string; recipient: str
   const response = await api.post("/admin/notifications/test-email");
   return response.data;
 }
+
+export type ModuleAccessRequestResult = {
+  message: string;
+  notifiedAdminCount: number;
+  alreadyRequested: boolean;
+  alreadyGranted: boolean;
+};
+
+export async function requestFitnessModuleAccess(): Promise<ModuleAccessRequestResult> {
+  const response = await api.post<ModuleAccessRequestResult>(
+    "/notifications/access-requests/fitness",
+  );
+  return response.data;
+}

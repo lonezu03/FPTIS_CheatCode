@@ -32,6 +32,20 @@ Last updated: 2026-08-31
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
 
+## Fitness access request (2026-09-02)
+
+- Lunch-only non-admin accounts now see Vũ's contact email and a
+  **Yêu cầu mở Rèn luyện** action on the web dashboard.
+- `POST /api/notifications/access-requests/fitness` derives the requester's
+  identity from authentication and notifies every active admin. Each admin gets
+  at most one request per user per day; repeated clicks return an idempotent
+  success message instead of creating notification spam.
+- Admin notification clicks route to Account Management so permissions can be
+  reviewed. The endpoint is documented in `docs/API.md`; no migration is needed.
+- Verification: `LunchNotificationServiceTest` passed all 3 tests; targeted web
+  ESLint passed; the production TypeScript/Vite build passed (2604 modules).
+- Deploy backend before web. Flutter does not yet expose this request action.
+
 ## Workout plan web/API fix (2026-08-31)
 
 - Fixed `GET /api/workout-plans`, `/page` and plan detail mapping with

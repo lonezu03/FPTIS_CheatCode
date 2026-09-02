@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import com.fittrack.common.dto.PageResponse;
@@ -104,6 +105,40 @@ public class LunchNotificationService {
         }
         create(user, type, title, message, referenceType, referenceId, deduplicationKey);
         return true;
+    }
+
+    @Transactional
+    public ModuleAccessRequestResult requestFitnessAccess(User requester) {
+        if (Boolean.TRUE.equals(requester.getFitnessEnabled())) {
+            return new ModuleAccessRequestResult(0, false, true, true);
+        }
+
+        int created = 0;
+        List<User> admins = userRepository.findByRoleIgnoreCase("ADMIN").stream()
+                .filter(admin -> Boolean.TRUE.equals(admin.getActive()))
+                .toList();
+        if (admins.isEmpty()) {
+            return new ModuleAccessRequestResult(0, false, false, false);
+        }
+        for (User admin : admins) {
+            String deduplicationKey = "MODULE_ACCESS_REQUEST:FITNESS:"
+                    + requester.getId() + ":" + LocalDate.now() + ":" + admin.getId();
+            if (notificationRepository.existsByDeduplicationKey(deduplicationKey)) {
+                continue;
+            }
+            create(
+                    admin,
+                    "MODULE_ACCESS_REQUEST",
+                    "Yêu cầu mở module Rèn luyện",
+                    requester.getFullName() + " (" + requester.getEmail()
+                            + ") yêu cầu được cấp quyền module Rèn luyện.",
+                    "USER_ACCESS_REQUEST",
+                    requester.getId(),
+                    deduplicationKey
+            );
+            created++;
+        }
+        return new ModuleAccessRequestResult(created, created == 0, false, true);
     }
 
     @Transactional
@@ -249,6 +284,14 @@ public class LunchNotificationService {
             int emailSentCount,
             int emailFailedCount,
             int emailSkippedCount
+    ) {
+    }
+
+    public record ModuleAccessRequestResult(
+            int notifiedAdminCount,
+            boolean alreadyRequested,
+            boolean alreadyGranted,
+            boolean adminAvailable
     ) {
     }
 }

@@ -2,6 +2,7 @@ package com.fittrack.notification.controller;
 
 import com.fittrack.lunch.dto.LunchDtos.NotificationListResponse;
 import com.fittrack.lunch.service.LunchNotificationService;
+import com.fittrack.notification.dto.NotificationDtos.ModuleAccessRequestResponse;
 import com.fittrack.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -35,5 +36,28 @@ public class NotificationController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markAllRead(@AuthenticationPrincipal User user) {
         notificationService.markAllRead(user);
+    }
+
+    @PostMapping("/access-requests/fitness")
+    public ModuleAccessRequestResponse requestFitnessAccess(
+            @AuthenticationPrincipal User user
+    ) {
+        var result = notificationService.requestFitnessAccess(user);
+        String message;
+        if (!result.adminAvailable()) {
+            message = "Chưa tìm thấy admin đang hoạt động. Vui lòng liên hệ bạn Vũ qua lonezu03@gmail.com.";
+        } else if (result.alreadyGranted()) {
+            message = "Tài khoản đã được cấp quyền module Rèn luyện.";
+        } else if (result.alreadyRequested()) {
+            message = "Yêu cầu mở module Rèn luyện hôm nay đã được gửi đến admin.";
+        } else {
+            message = "Đã gửi yêu cầu mở module Rèn luyện đến admin.";
+        }
+        return new ModuleAccessRequestResponse(
+                message,
+                result.notifiedAdminCount(),
+                result.alreadyRequested(),
+                result.alreadyGranted()
+        );
     }
 }
