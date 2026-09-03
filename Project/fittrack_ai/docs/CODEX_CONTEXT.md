@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-08-31
+Last updated: 2026-09-03
 
 ## Repository and deployment
 
@@ -65,9 +65,49 @@ Last updated: 2026-08-31
 - Deploy the backend before the web so the additive workout-plan response fields
   are available. No database migration is required.
 
-## Current task: Todo recurrence and unified calendar
+## Current task: Lunch debt ordering and permission consistency (2026-09-03)
 
-Status: implemented locally, verified, not committed or deployed yet.
+Status: implemented locally and verified; backend/web deployment is pending.
+
+### Completed
+
+- Fixed the web checkout condition that treated a self-only cart as
+  unaffordable whenever `walletBalance` was negative. A user with 35,000 VND of
+  existing debt can now place another self order and accrue another 35,000 VND
+  debt; only sponsored portions require positive sufficient fund.
+- Corrected repeated priced-extra calculation in the current-portion summary and
+  avoided duplicate React keys when the same regular dish is selected twice.
+- Switching between multiple menus now clears the draft selection/cart instead
+  of retaining item IDs from the previous menu. Debt guidance now displays the
+  actual portion total including extras and uses a positive debt amount.
+- `GET /api/lunch/people` now returns only active users who currently have Lunch
+  access (active admins remain eligible). The backend rejects sponsored orders
+  for locked users or users whose Lunch permission was revoked.
+- Increasing the price of a sponsored order now requires the payer to perform
+  the edit and rechecks that payer's available fund. Only self-orders may create
+  additional debt when edited.
+- The web profile query now refreshes on focus and once per minute, reducing the
+  temporary mismatch after an admin changes module permissions. Backend access
+  was already immediate because `JwtAuthFilter` reloads the user and
+  `FeatureAccessFilter` checks database-backed flags on every request.
+- Flutter required no debt fix: its current lunch checkout does not reject a
+  self-order based on wallet balance and uses the same backend batch endpoint.
+
+### Verification
+
+- Backend full Maven suite: 61 tests passed, 0 failed, 2 PostgreSQL/Testcontainers
+  tests skipped because Docker was unavailable.
+- Lunch integration suite: 13 tests passed, including repeated debt, sponsored
+  balance/edit authorization and revoked Lunch permission.
+- Web Vitest: 3 files / 6 tests passed; ESLint passed; production TypeScript/Vite
+  build passed (2605 modules transformed).
+- No schema migration or API payload change is required. Deploy backend first,
+  then web, and test with the affected account after a hard refresh.
+
+## Previously completed: Todo recurrence and unified calendar
+
+Status: implemented and verified; production deployment was not rechecked in the
+current session.
 
 ### Completed
 

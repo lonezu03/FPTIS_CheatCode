@@ -69,7 +69,9 @@ export default function LunchReviewDialog({ order, open, onOpenChange, onSaved }
         {order && (
           <div className="space-y-4">
             <div className="grid gap-2 sm:grid-cols-2">
-              {order.items.map((item) => (
+              {order.items.filter(
+                (item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index,
+              ).map((item) => (
                 <button
                   key={item.id}
                   type="button"

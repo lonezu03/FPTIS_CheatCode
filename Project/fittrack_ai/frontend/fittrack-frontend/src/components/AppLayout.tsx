@@ -116,7 +116,9 @@ export default function AppLayout() {
       });
       return profile;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: "always",
   });
 
   const isAdmin = (profileQuery.data?.role ?? authUser?.role) === "ADMIN";

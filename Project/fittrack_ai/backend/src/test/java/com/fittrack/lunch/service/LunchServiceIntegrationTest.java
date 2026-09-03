@@ -8,6 +8,7 @@ import com.fittrack.lunch.dto.LunchDtos.OrderPortionRequest;
 import com.fittrack.lunch.dto.LunchDtos.OrderResponse;
 import com.fittrack.lunch.dto.LunchDtos.SummaryResponse;
 import com.fittrack.lunch.dto.LunchDtos.UpdateMenuRequest;
+import com.fittrack.lunch.dto.LunchDtos.UpdateOrderRequest;
 import com.fittrack.lunch.dto.LunchDtos.CreatePaymentRequest;
 import com.fittrack.lunch.dto.LunchDtos.ReviewPaymentRequest;
 import com.fittrack.lunch.dto.LunchDtos.UpdatePaymentSettingsRequest;
@@ -53,6 +54,9 @@ class LunchServiceIntegrationTest {
 
     @Autowired
     private LunchMenuRepository menuRepository;
+
+    @Autowired
+    private LunchMenuItemRepository menuItemRepository;
 
     @Autowired
     private LunchOrderRepository orderRepository;
@@ -160,6 +164,76 @@ class LunchServiceIntegrationTest {
 
         assertEquals("PAID_FUND", response.paymentStatus());
         assertEquals(35_000L, accountRepository.findByUser(user).orElseThrow().getDebt());
+    }
+
+    @Test
+    void currentDebtDoesNotBlockAnotherSelfOrder() {
+        User user = saveUser("repeat-debt");
+        LunchMenu firstMenu = saveMenu(user, LocalDate.of(2099, 1, 13));
+        LunchMenu secondMenu = saveMenu(user, LocalDate.of(2099, 1, 14));
+
+        lunchService.createOrder(user, comboRequest(firstMenu, null));
+        OrderResponse secondOrder = lunchService.createOrder(user, comboRequest(secondMenu, null));
+
+        LunchFundAccount account = accountRepository.findByUser(user).orElseThrow();
+        assertEquals("PAID_FUND", secondOrder.paymentStatus());
+        assertEquals(0L, account.getBalance());
+        assertEquals(70_000L, account.getDebt());
+        assertEquals(2, transactionRepository.findByAccountOrderByCreatedAtDesc(account).size());
+    }
+
+    @Test
+    void lunchPeopleAndSponsoredOrdersHonorCurrentModulePermission() {
+        User payer = saveUser("permission-payer");
+        User disabledBeneficiary = saveUser("permission-disabled");
+        disabledBeneficiary.setLunchEnabled(false);
+        userRepository.saveAndFlush(disabledBeneficiary);
+        LunchMenu menu = saveMenu(payer, LocalDate.of(2099, 1, 14));
+
+        assertTrue(lunchService.getPeople(payer).stream()
+                .noneMatch(person -> person.id().equals(disabledBeneficiary.getId())));
+        assertThrows(
+                ConflictException.class,
+                () -> lunchService.createOrder(payer, comboRequest(menu, disabledBeneficiary.getId()))
+        );
+    }
+
+    @Test
+    void sponsoredOrderPriceIncreaseRequiresPayerAndSufficientFund() {
+        User payer = saveUser("sponsor-update-payer");
+        User beneficiary = saveUser("sponsor-update-beneficiary");
+        LunchMenu menu = saveMenu(payer, LocalDate.of(2099, 1, 14));
+        LunchMenuItem extra = LunchMenuItem.builder()
+                .menu(menu)
+                .name("Trà đào")
+                .type(LunchMenuItemType.EXTRA)
+                .sortOrder(3)
+                .unitPrice(10_000L)
+                .build();
+        menuItemRepository.saveAndFlush(extra);
+        menu.getItems().add(extra);
+        LunchFundAccount account = accountRepository.save(
+                LunchFundAccount.builder().user(payer).balance(40_000L).build()
+        );
+        OrderResponse order = lunchService.createOrder(payer, comboRequest(menu, beneficiary.getId()));
+        UpdateOrderRequest update = new UpdateOrderRequest(
+                LunchSelectionType.COMBO,
+                List.of(menu.getItems().get(0).getId(), menu.getItems().get(1).getId()),
+                List.of(extra.getId()),
+                null
+        );
+
+        assertThrows(
+                org.springframework.security.access.AccessDeniedException.class,
+                () -> lunchService.updateOrder(beneficiary, order.id(), update)
+        );
+        assertThrows(
+                ConflictException.class,
+                () -> lunchService.updateOrder(payer, order.id(), update)
+        );
+        assertEquals(5_000L, account.getBalance());
+        assertEquals(0L, account.getDebt());
+        assertEquals(35_000L, orderRepository.findById(order.id()).orElseThrow().getPrice());
     }
 
     @Test

@@ -56,9 +56,9 @@ export default function LunchOrderCard({
 
         {order.items.some((item) => item.imageUrl) && (
           <div className="flex gap-2 overflow-x-auto">
-            {order.items.filter((item) => item.imageUrl).map((item) => (
+            {order.items.filter((item) => item.imageUrl).map((item, index) => (
               <ImagePreviewDialog
-                key={item.id}
+                key={`${item.id}-${index}`}
                 src={item.imageUrl}
                 alt={item.name}
                 className="h-16 w-24 shrink-0"

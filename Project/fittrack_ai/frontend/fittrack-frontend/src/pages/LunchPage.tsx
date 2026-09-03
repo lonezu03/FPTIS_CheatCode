@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cannotAffordSponsoredPortions } from "@/lib/lunch-order";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency, formatDate, formatDateTime, getApiErrorMessage } from "@/lib/format";
 import { useAuthStore } from "@/store/auth.store";
@@ -174,11 +175,14 @@ export default function LunchPage() {
       ? selectedMenuId
       : availableMenus[0]?.id ?? null;
     if (nextId !== selectedMenuId) {
-      setSelectedMenuId(nextId);
-      setSelectedItemIds([]);
-      setSelectedExtraItemIds([]);
-      setCartPortions([]);
-      setCartRequestId(null);
+      const timer = window.setTimeout(() => {
+        setSelectedMenuId(nextId);
+        setSelectedItemIds([]);
+        setSelectedExtraItemIds([]);
+        setCartPortions([]);
+        setCartRequestId(null);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [availableMenus, selectedMenuId]);
   const menu = availableMenus.find((item) => item.id === selectedMenuId) ?? null;
@@ -212,7 +216,12 @@ export default function LunchPage() {
       .filter((item): item is LunchMenu["regularItems"][number] => Boolean(item));
   }, [menu, selectedItemIds]);
 
-  const selectedExtraItems = (menu?.extraItems ?? []).filter((item) => selectedExtraItemIds.includes(item.id));
+  const selectedExtraItems = useMemo(
+    () => selectedExtraItemIds
+      .map((itemId) => (menu?.extraItems ?? []).find((item) => item.id === itemId))
+      .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    [menu, selectedExtraItemIds],
+  );
   const selectedBeneficiary = people.find((person) => person.id === beneficiaryUserId);
   const selectedNutrition = selectedItems.reduce(
     (total, item) => ({
@@ -236,7 +245,7 @@ export default function LunchPage() {
     .reduce((total, portion) => total + portionTotal(portion), 0);
   const currentPortionIsSponsored = !!beneficiaryUserId;
   const cannotSponsor = currentPortionIsSponsored && walletBalance < sponsoredCartTotal + currentPortionTotal;
-  const cannotSubmitCart = sponsoredCartTotal > walletBalance;
+  const cannotSubmitCart = cannotAffordSponsoredPortions(walletBalance, sponsoredCartTotal);
   const cartTotal = cartPortions.reduce((total, portion) => total + portionTotal(portion), 0);
   const requiredItemCount = selectionType === "COMBO" ? 2 : 1;
   const isBusy = batchMutation.isPending || updateMutation.isPending;
@@ -248,6 +257,14 @@ export default function LunchPage() {
     setBeneficiaryUserId("");
     setNote("");
     setEditingOrder(null);
+  }
+
+  function selectMenu(menuId: string) {
+    if (menuId === selectedMenuId) return;
+    setSelectedMenuId(menuId);
+    resetOrderForm();
+    setCartPortions([]);
+    setCartRequestId(null);
   }
 
   function startEditing(order: LunchOrder) {
@@ -422,7 +439,7 @@ export default function LunchPage() {
                   <button
                     key={candidate.id}
                     type="button"
-                    onClick={() => setSelectedMenuId(candidate.id)}
+                    onClick={() => selectMenu(candidate.id)}
                     className={`rounded-xl border bg-white p-3 text-left transition hover:border-emerald-400 ${candidate.id === menu?.id ? "border-emerald-600 ring-2 ring-emerald-200" : "border-slate-200"}`}
                     disabled={isBusy || cartPortions.length > 0}
                   >
@@ -624,7 +641,7 @@ export default function LunchPage() {
                       ) : (
                         <ul className="space-y-2">
                           {selectedItems.map((item, index) => (
-                            <li key={item.id} className="flex items-start gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
+                            <li key={`${item.id}-${index}`} className="flex items-start gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
                               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white">
                                 {index + 1}
                               </span>
@@ -651,7 +668,7 @@ export default function LunchPage() {
                         <AlertDescription className="text-amber-800">
                           {cannotSponsor
                             ? "Bạn cần nạp thêm quỹ hoặc để người nhận tự đặt. Đơn trả hộ chỉ được tạo khi quỹ của người trả còn đủ."
-                            : `Bạn vẫn có thể tự đặt. Hệ thống sẽ ghi ${formatCurrency(-menu.price)} vào sổ công nợ.`}
+                            : `Bạn vẫn có thể tự đặt. Hệ thống sẽ ghi thêm ${formatCurrency(currentPortionTotal)} vào công nợ.`}
                         </AlertDescription>
                       </Alert>
                     )}

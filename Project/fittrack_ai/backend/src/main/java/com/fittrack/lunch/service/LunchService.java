@@ -91,7 +91,7 @@ public class LunchService {
     public List<PersonResponse> getPeople(User currentUser) {
         return userRepository.findAll().stream()
                 .filter(user -> !sameUser(user, currentUser))
-                .filter(user -> Boolean.TRUE.equals(user.getActive()))
+                .filter(this::hasLunchAccess)
                 .sorted(Comparator
                         .comparing(
                                 User::getFullName,
@@ -343,9 +343,18 @@ public class LunchService {
                 .mapToLong(item -> item.getUnitPrice() == null ? 0L : item.getUnitPrice()).sum());
         if (order.getPaymentStatus() == LunchPaymentStatus.PAID_FUND && previousPrice != updatedPrice) {
             if (updatedPrice > previousPrice) {
+                User payer = order.getPayer();
+                if (payer == null) {
+                    throw new IllegalStateException("Đơn đã trừ quỹ nhưng không có người thanh toán");
+                }
+                if (!sameUser(actor, payer)) {
+                    throw new org.springframework.security.access.AccessDeniedException(
+                            "Chỉ người trả tiền mới được thêm chi phí vào đơn đặt hộ"
+                    );
+                }
                 accountService.debitOrder(
-                        order.getPayer(), updatedPrice - previousPrice, order, actor,
-                        "Điều chỉnh tăng giá đơn do món thêm", true
+                        payer, updatedPrice - previousPrice, order, actor,
+                        "Điều chỉnh tăng giá đơn do món thêm", sameUser(payer, order.getBeneficiary())
                 );
             } else {
                 accountService.credit(
@@ -499,8 +508,21 @@ public class LunchService {
                 || beneficiaryUserId.equals(actor.getId())) {
             return actor;
         }
-        return userRepository.findById(beneficiaryUserId)
+        User beneficiary = userRepository.findById(beneficiaryUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người nhận"));
+        if (!Boolean.TRUE.equals(beneficiary.getActive())) {
+            throw new ConflictException("Tài khoản người nhận đang bị khóa");
+        }
+        if (!hasLunchAccess(beneficiary)) {
+            throw new ConflictException("Người nhận chưa được cấp quyền sử dụng Đặt cơm");
+        }
+        return beneficiary;
+    }
+
+    private boolean hasLunchAccess(User user) {
+        return Boolean.TRUE.equals(user.getActive())
+                && ("ADMIN".equalsIgnoreCase(user.getRole())
+                || Boolean.TRUE.equals(user.getLunchEnabled()));
     }
 
     private LunchMenu getMenuForUpdate(String menuId) {
