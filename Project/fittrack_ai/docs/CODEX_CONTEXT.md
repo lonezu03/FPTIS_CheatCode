@@ -67,7 +67,7 @@ Last updated: 2026-09-03
 
 ## Current task: Proxy lunch orders charge the beneficiary (2026-09-03)
 
-Status: implemented locally and verified; backend/web deployment is pending.
+Status: implemented locally; backend/web deployment and mobile release build are pending.
 
 ### Completed
 
@@ -98,8 +98,12 @@ Status: implemented locally and verified; backend/web deployment is pending.
   temporary mismatch after an admin changes module permissions. Backend access
   was already immediate because `JwtAuthFilter` reloads the user and
   `FeatureAccessFilter` checks database-backed flags on every request.
-- Flutter required no debt fix: its current lunch checkout does not reject a
-  self-order based on wallet balance and uses the same backend batch endpoint.
+- Flutter lunch is now aligned with the web/backend proxy-order flow: it loads
+  eligible recipients from `/api/lunch/people`, sends `beneficiaryUserId` for
+  each cart portion, explains that the recipient owns the fund/debt, and shows
+  active portions that the current user placed for colleagues.
+- The Android build helper now rejects an incomplete Flutter SDK up front with
+  a specific error instead of failing later inside `flutter_tools`.
 
 ### Verification
 
@@ -110,6 +114,11 @@ Status: implemented locally and verified; backend/web deployment is pending.
   repeated debt and revoked Lunch permission.
 - Web Vitest: 2 files / 2 tests passed; ESLint passed; production TypeScript/Vite
   build passed (2604 modules transformed).
+- The complete mobile source passed `dart analyze` with no errors or warnings;
+  26 existing info-level style/deprecation findings remain. `flutter test`
+  could not start because the workstation's temporary Flutter SDK is missing
+  `packages/flutter_tools/pubspec.yaml`; restore/reinstall that SDK before the
+  release build and run the Flutter test suite.
 - No schema migration or API payload change is required. Deploy backend first,
   then web, and test with the affected account after a hard refresh. No mobile
   APK was built for this change.

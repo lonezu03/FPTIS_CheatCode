@@ -10,13 +10,20 @@ $localFlutter = "C:\Users\anime\AppData\Local\Temp\fittrack_flutter_sdk\bin\flut
 $localAndroidSdk = Join-Path $projectRoot ".local-android-sdk"
 $localPubCache = Join-Path $projectRoot ".pub-cache"
 
+function Test-FlutterSdk([string]$FlutterCommand) {
+    if (-not (Test-Path -LiteralPath $FlutterCommand)) { return $false }
+    $flutterBin = Split-Path -Parent $FlutterCommand
+    $flutterRoot = Split-Path -Parent $flutterBin
+    return Test-Path -LiteralPath (Join-Path $flutterRoot "packages\flutter_tools\pubspec.yaml")
+}
+
 $flutterOnPath = Get-Command flutter.bat -ErrorAction SilentlyContinue
-if ($flutterOnPath) {
+if ($flutterOnPath -and (Test-FlutterSdk $flutterOnPath.Source)) {
     $flutter = $flutterOnPath.Source
-} elseif (Test-Path -LiteralPath $localFlutter) {
+} elseif (Test-FlutterSdk $localFlutter) {
     $flutter = $localFlutter
 } else {
-    throw "Flutter SDK not found. Install Flutter and add its bin directory to PATH."
+    throw "Flutter SDK not found or incomplete. Reinstall Flutter, verify packages\flutter_tools\pubspec.yaml exists, and add Flutter bin to PATH."
 }
 
 if (Test-Path -LiteralPath $localAndroidSdk) {

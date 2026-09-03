@@ -21,11 +21,14 @@ class LunchScreen extends StatefulWidget {
 
 class _LunchScreenState extends State<LunchScreen> {
   Map<String, dynamic>? _data;
+  List<Map<String, dynamic>> _people = const [];
   Object? _error;
+  Object? _peopleError;
   bool _busy = false;
   String _selectionType = 'COMBO';
   final _selectedIds = <String>[];
   final _selectedExtraIds = <String>[];
+  String? _selectedBeneficiaryId;
   String? _selectedMenuId;
   final _noteController = TextEditingController();
   final _cart = <_LunchPortionDraft>[];
@@ -45,11 +48,38 @@ class _LunchScreenState extends State<LunchScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _error = null);
+    setState(() {
+      _error = null;
+      _peopleError = null;
+    });
     try {
-      final response = await context.read<ApiClient>().get('/lunch/today');
+      final api = context.read<ApiClient>();
+      final response = await api.get('/lunch/today');
+      List<Map<String, dynamic>> people = const [];
+      Object? peopleError;
+      try {
+        final peopleResponse = await api.get('/lunch/people');
+        if (peopleResponse is List) {
+          people = peopleResponse
+              .whereType<Map>()
+              .map((person) => Map<String, dynamic>.from(person))
+              .toList(growable: false);
+        }
+      } catch (error) {
+        peopleError = error;
+      }
       if (mounted) {
-        setState(() => _data = Map<String, dynamic>.from(response as Map));
+        setState(() {
+          _data = Map<String, dynamic>.from(response as Map);
+          _people = people;
+          _peopleError = peopleError;
+          if (_selectedBeneficiaryId != null &&
+              !_people.any(
+                (person) => person['id']?.toString() == _selectedBeneficiaryId,
+              )) {
+            _selectedBeneficiaryId = null;
+          }
+        });
       }
     } catch (error) {
       if (mounted) setState(() => _error = error);
@@ -59,7 +89,10 @@ class _LunchScreenState extends State<LunchScreen> {
   List<Map<String, dynamic>> get _menus {
     final plural = _data?['menus'];
     if (plural is List && plural.isNotEmpty) {
-      return plural.whereType<Map>().map((menu) => Map<String, dynamic>.from(menu)).toList();
+      return plural
+          .whereType<Map>()
+          .map((menu) => Map<String, dynamic>.from(menu))
+          .toList();
     }
     final singular = _data?['menu'];
     return singular is Map ? [Map<String, dynamic>.from(singular)] : const [];
@@ -77,7 +110,10 @@ class _LunchScreenState extends State<LunchScreen> {
   List<Map<String, dynamic>> get _extraItems {
     final raw = _menu?['extraItems'];
     return raw is List
-        ? raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList()
+        ? raw
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList()
         : const [];
   }
 
@@ -108,6 +144,25 @@ class _LunchScreenState extends State<LunchScreen> {
     return legacy is Map ? [Map<String, dynamic>.from(legacy)] : const [];
   }
 
+  List<Map<String, dynamic>> get _placedForOthers {
+    final raw = _data?['placedForOthers'];
+    return raw is List
+        ? raw
+              .whereType<Map>()
+              .map((order) => Map<String, dynamic>.from(order))
+              .toList()
+        : const [];
+  }
+
+  Map<String, dynamic>? get _selectedBeneficiary {
+    final id = _selectedBeneficiaryId;
+    if (id == null) return null;
+    for (final person in _people) {
+      if (person['id']?.toString() == id) return person;
+    }
+    return null;
+  }
+
   bool get _canOrder =>
       _data?['canOrder'] == true && _menu?['acceptingOrders'] == true;
 
@@ -115,7 +170,8 @@ class _LunchScreenState extends State<LunchScreen> {
 
   num get _price => _asNumber(_menu?['price'] ?? 35000);
 
-  int _extraCount(String id) => _selectedExtraIds.where((itemId) => itemId == id).length;
+  int _extraCount(String id) =>
+      _selectedExtraIds.where((itemId) => itemId == id).length;
 
   void _changeMenu(String id) {
     if (_selectedMenuId == id) return;
@@ -123,6 +179,7 @@ class _LunchScreenState extends State<LunchScreen> {
       _selectedMenuId = id;
       _selectedIds.clear();
       _selectedExtraIds.clear();
+      _selectedBeneficiaryId = null;
       _cart.clear();
       _cartRequestId = null;
       _noteController.clear();
@@ -140,7 +197,8 @@ class _LunchScreenState extends State<LunchScreen> {
     });
   }
 
-  int _itemCount(String id) => _selectedIds.where((itemId) => itemId == id).length;
+  int _itemCount(String id) =>
+      _selectedIds.where((itemId) => itemId == id).length;
 
   void _toggleItem(String id) {
     setState(() {
@@ -159,7 +217,11 @@ class _LunchScreenState extends State<LunchScreen> {
   }
 
   void _addSameItem(String id) {
-    if (_selectionType != 'COMBO' || _itemCount(id) != 1 || _selectedIds.length >= _requiredSelectionCount) return;
+    if (_selectionType != 'COMBO' ||
+        _itemCount(id) != 1 ||
+        _selectedIds.length >= _requiredSelectionCount) {
+      return;
+    }
     setState(() => _selectedIds.add(id));
   }
 
@@ -200,14 +262,20 @@ class _LunchScreenState extends State<LunchScreen> {
           extraItemIds: extraIds,
           itemNames: [
             ...ids.map((id) => namesById[id] ?? 'Món ăn'),
-            ...extraIds.map((id) => '${namesByExtraId[id] ?? 'Món thêm'} (thêm)'),
+            ...extraIds.map(
+              (id) => '${namesByExtraId[id] ?? 'Món thêm'} (thêm)',
+            ),
           ],
+          beneficiaryUserId: _selectedBeneficiaryId,
+          beneficiaryName:
+              _selectedBeneficiary?['fullName']?.toString() ?? 'Bạn',
           note: _noteController.text.trim(),
         ),
       );
       _cartRequestId = null;
       _selectedIds.clear();
       _selectedExtraIds.clear();
+      _selectedBeneficiaryId = null;
       _noteController.clear();
     });
     showMessage(context, 'Đã thêm phần ăn vào danh sách đặt.');
@@ -218,7 +286,10 @@ class _LunchScreenState extends State<LunchScreen> {
     if (menu == null || _cart.isEmpty || _busy) return;
 
     final portionCount = _cart.length;
-    final total = _cart.fold<num>(0, (sum, portion) => sum + portion.total(_price, _extraItems));
+    final total = _cart.fold<num>(
+      0,
+      (sum, portion) => sum + portion.total(_price, _extraItems),
+    );
     final clientRequestId = _cartRequestId ??= _newCartRequestId();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -226,8 +297,9 @@ class _LunchScreenState extends State<LunchScreen> {
         icon: const Icon(Icons.shopping_bag_outlined),
         title: Text('Đặt $portionCount phần ăn?'),
         content: Text(
-          'Hệ thống sẽ ghi nợ ${_formatCurrency(total)}. '
-          'Bạn vẫn có thể hủy từng phần trước giờ chốt.',
+          _cart.any((portion) => portion.beneficiaryUserId != null)
+              ? 'Tổng giá trị ${_formatCurrency(total)}. Mỗi phần sẽ dùng quỹ của đúng người nhận; phần thiếu được ghi vào công nợ của người đó. Bạn vẫn có thể hủy trước giờ chốt.'
+              : 'Hệ thống sẽ dùng quỹ của bạn và ghi phần thiếu trong ${_formatCurrency(total)} vào công nợ. Bạn vẫn có thể hủy từng phần trước giờ chốt.',
         ),
         actions: [
           TextButton(
@@ -262,7 +334,7 @@ class _LunchScreenState extends State<LunchScreen> {
       if (mounted) {
         showMessage(
           context,
-          'Đã đặt $portionCount phần ăn. Khoản ghi nợ đã được cập nhật.',
+          'Đã đặt $portionCount phần ăn. Quỹ và công nợ của từng người nhận đã được cập nhật.',
         );
       }
     } catch (error) {
@@ -321,6 +393,7 @@ class _LunchScreenState extends State<LunchScreen> {
     }
 
     final myOrders = _myOrders;
+    final placedForOthers = _placedForOthers;
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -370,25 +443,43 @@ class _LunchScreenState extends State<LunchScreen> {
                     '• ${_formatCurrency(_price)} / phần',
                     style: const TextStyle(color: Colors.black54),
                   ),
-                          if (_menus.length > 1) ...[
+                  if (_menus.length > 1) ...[
                     Card(
-                      color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: .45),
+                      color: Theme.of(context).colorScheme.secondaryContainer
+                          .withValues(alpha: .45),
                       child: Padding(
                         padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Chọn bộ menu / điều phối viên', style: TextStyle(fontWeight: FontWeight.w800)),
+                            const Text(
+                              'Chọn bộ menu / điều phối viên',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
                             const SizedBox(height: 6),
-                            const Text('Chọn quán hoặc admin điều phối trước khi tạo phần ăn.', style: TextStyle(color: Colors.black54)),
+                            const Text(
+                              'Chọn quán hoặc admin điều phối trước khi tạo phần ăn.',
+                              style: TextStyle(color: Colors.black54),
+                            ),
                             const SizedBox(height: 10),
-                            ..._menus.map((candidate) => RadioListTile<String>(
-                              value: candidate['id'].toString(),
-                              groupValue: _menu?['id']?.toString(),
-                              onChanged: _busy || _cart.isNotEmpty ? null : (value) { if (value != null) _changeMenu(value); },
-                              title: Text(candidate['orderLabel']?.toString() ?? 'Menu hôm nay'),
-                              subtitle: Text('${candidate['vendorName'] ?? 'Quán cơm'} • ${candidate['coordinator'] is Map ? (candidate['coordinator']['fullName'] ?? 'Điều phối viên') : 'Điều phối viên'}'),
-                            )),
+                            ..._menus.map(
+                              (candidate) => RadioListTile<String>(
+                                value: candidate['id'].toString(),
+                                groupValue: _menu?['id']?.toString(),
+                                onChanged: _busy || _cart.isNotEmpty
+                                    ? null
+                                    : (value) {
+                                        if (value != null) _changeMenu(value);
+                                      },
+                                title: Text(
+                                  candidate['orderLabel']?.toString() ??
+                                      'Menu hôm nay',
+                                ),
+                                subtitle: Text(
+                                  '${candidate['vendorName'] ?? 'Quán cơm'} • ${candidate['coordinator'] is Map ? (candidate['coordinator']['fullName'] ?? 'Điều phối viên') : 'Điều phối viên'}',
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -421,6 +512,23 @@ class _LunchScreenState extends State<LunchScreen> {
                       ),
                     ),
                   ],
+                  if (placedForOthers.isNotEmpty) ...[
+                    const Divider(height: 30),
+                    Text(
+                      'Phần bạn đặt hộ (${placedForOthers.length})',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    ...placedForOthers.asMap().entries.map(
+                      (entry) => _PlacedOrderCard(
+                        order: entry.value,
+                        index: entry.key + 1,
+                        canCancel: _canOrder && !_busy,
+                        onCancel: () =>
+                            _cancelOrder(entry.value['id'].toString()),
+                      ),
+                    ),
+                  ],
                   const Divider(height: 30),
                   Text(
                     _cart.isEmpty ? 'Tạo phần ăn mới' : 'Thêm một phần khác',
@@ -431,6 +539,45 @@ class _LunchScreenState extends State<LunchScreen> {
                     'Bạn có thể thêm nhiều phần với các lựa chọn khác nhau, hoặc chọn cùng một món 2 lần cho một phần cơm.',
                     style: TextStyle(color: Colors.black54),
                   ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey(_selectedBeneficiaryId ?? ''),
+                    initialValue: _selectedBeneficiaryId ?? '',
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Người nhận phần ăn',
+                      prefixIcon: Icon(Icons.person_outline),
+                      helperText: 'Đặt hộ không dùng quỹ của bạn. Chi phí thuộc về người nhận.',
+                    ),
+                    items: [
+                      const DropdownMenuItem(
+                        value: '',
+                        child: Text('Tôi — đặt cho bản thân'),
+                      ),
+                      ..._people.map(
+                        (person) => DropdownMenuItem(
+                          value: person['id']?.toString() ?? '',
+                          child: Text(
+                            '${person['fullName'] ?? person['email'] ?? 'Đồng nghiệp'} — đặt hộ',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ],
+                    onChanged: _canOrder && !_busy
+                        ? (value) => setState(
+                            () => _selectedBeneficiaryId =
+                                value == null || value.isEmpty ? null : value,
+                          )
+                        : null,
+                  ),
+                  if (_peopleError != null) ...[
+                    const SizedBox(height: 8),
+                    const _InfoBanner(
+                      icon: Icons.people_outline,
+                      text: 'Chưa tải được danh sách đồng nghiệp. Kéo xuống để thử lại; bạn vẫn có thể tự đặt.',
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   SegmentedButton<String>(
                     segments: const [
@@ -471,7 +618,9 @@ class _LunchScreenState extends State<LunchScreen> {
                           item: item,
                           selected: _itemCount(id) > 0,
                           selectedCount: _itemCount(id),
-                          canAddSame: _selectionType == 'COMBO' && _selectedIds.length < _requiredSelectionCount,
+                          canAddSame:
+                              _selectionType == 'COMBO' &&
+                              _selectedIds.length < _requiredSelectionCount,
                           enabled: _canOrder && !_busy,
                           onTap: () => _toggleItem(id),
                           onAddSame: () => _addSameItem(id),
@@ -480,9 +629,15 @@ class _LunchScreenState extends State<LunchScreen> {
                     }),
                   if (_extraItems.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    const Text('Món thêm / đồ uống', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const Text(
+                      'Món thêm / đồ uống',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(height: 6),
-                    const Text('Có thể chọn nhiều chai/cốc; giá cộng vào phần này.', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                    const Text(
+                      'Có thể chọn nhiều chai/cốc; giá cộng vào phần này.',
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
+                    ),
                     const SizedBox(height: 8),
                     ..._extraItems.map((item) {
                       final id = item['id'].toString();
@@ -493,13 +648,51 @@ class _LunchScreenState extends State<LunchScreen> {
                           color: const Color(0xFFF2F8FF),
                           borderRadius: BorderRadius.circular(14),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             child: Row(
                               children: [
-                                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(item['name']?.toString() ?? 'Món thêm', style: const TextStyle(fontWeight: FontWeight.w700)), Text(_formatCurrency(item['unitPrice']), style: const TextStyle(color: Colors.black54, fontSize: 12))])),
-                                IconButton(onPressed: _canOrder && !_busy && count > 0 ? () => _changeExtra(id, -1) : null, icon: const Icon(Icons.remove_circle_outline)),
-                                Text('$count', style: const TextStyle(fontWeight: FontWeight.w800)),
-                                IconButton(onPressed: _canOrder && !_busy ? () => _changeExtra(id, 1) : null, icon: const Icon(Icons.add_circle_outline)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item['name']?.toString() ?? 'Món thêm',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatCurrency(item['unitPrice']),
+                                        style: const TextStyle(
+                                          color: Colors.black54,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: _canOrder && !_busy && count > 0
+                                      ? () => _changeExtra(id, -1)
+                                      : null,
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                ),
+                                Text(
+                                  '$count',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: _canOrder && !_busy
+                                      ? () => _changeExtra(id, 1)
+                                      : null,
+                                  icon: const Icon(Icons.add_circle_outline),
+                                ),
                               ],
                             ),
                           ),
@@ -592,26 +785,33 @@ class _LunchPortionDraft {
     required this.itemIds,
     required this.extraItemIds,
     required this.itemNames,
+    required this.beneficiaryName,
     required this.note,
+    this.beneficiaryUserId,
   });
 
   final String selectionType;
   final List<String> itemIds;
   final List<String> extraItemIds;
   final List<String> itemNames;
+  final String? beneficiaryUserId;
+  final String beneficiaryName;
   final String note;
 
-  num total(num basePrice, List<Map<String, dynamic>> extraItems) => basePrice + extraItemIds.fold<num>(0, (sum, id) {
-    final item = extraItems.firstWhere(
-      (candidate) => candidate['id'].toString() == id,
-      orElse: () => <String, dynamic>{},
-    );
-    return sum + _LunchScreenState._asNumber(item['unitPrice']);
-  });
+  num total(num basePrice, List<Map<String, dynamic>> extraItems) =>
+      basePrice +
+      extraItemIds.fold<num>(0, (sum, id) {
+        final item = extraItems.firstWhere(
+          (candidate) => candidate['id'].toString() == id,
+          orElse: () => <String, dynamic>{},
+        );
+        return sum + _LunchScreenState._asNumber(item['unitPrice']);
+      });
 
   Map<String, dynamic> toRequest() => {
     'selectionType': selectionType,
     'itemIds': itemIds,
+    if (beneficiaryUserId != null) 'beneficiaryUserId': beneficiaryUserId,
     if (extraItemIds.isNotEmpty) 'extraItemIds': extraItemIds,
     if (note.isNotEmpty) 'note': note,
   };
@@ -844,50 +1044,80 @@ class _PlacedOrderCard extends StatelessWidget {
   final VoidCallback onCancel;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-    decoration: BoxDecoration(
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CircleAvatar(
-          radius: 15,
-          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-          child: Text('$index'),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _LunchScreenState._orderNames(order),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              if ((order['note']?.toString().trim() ?? '').isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 3),
-                  child: Text(
-                    'Ghi chú: ${order['note']}',
-                    style: const TextStyle(color: Colors.black54, fontSize: 12),
-                  ),
-                ),
-            ],
+  Widget build(BuildContext context) {
+    final beneficiary = order['beneficiary'];
+    final orderedBy = order['orderedBy'];
+    final beneficiaryId = beneficiary is Map
+        ? beneficiary['id']?.toString()
+        : null;
+    final orderedById = orderedBy is Map ? orderedBy['id']?.toString() : null;
+    final isProxyOrder =
+        beneficiaryId != null &&
+        orderedById != null &&
+        beneficiaryId != orderedById;
+    final beneficiaryName = beneficiary is Map
+        ? beneficiary['fullName']?.toString() ?? 'Đồng nghiệp'
+        : 'Đồng nghiệp';
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 15,
+            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            child: Text('$index'),
           ),
-        ),
-        IconButton(
-          tooltip: 'Hủy phần này',
-          onPressed: canCancel ? onCancel : null,
-          icon: const Icon(Icons.cancel_outlined),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _LunchScreenState._orderNames(order),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                if ((order['note']?.toString().trim() ?? '').isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      'Ghi chú: ${order['note']}',
+                      style: const TextStyle(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                if (isProxyOrder)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      'Người nhận: $beneficiaryName • Chi phí tính cho người nhận',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Hủy phần này',
+            onPressed: canCancel ? onCancel : null,
+            icon: const Icon(Icons.cancel_outlined),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _OrderCart extends StatelessWidget {
@@ -909,7 +1139,10 @@ class _OrderCart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = portions.fold<num>(0, (sum, portion) => sum + portion.total(pricePerPortion, extraItems));
+    final total = portions.fold<num>(
+      0,
+      (sum, portion) => sum + portion.total(pricePerPortion, extraItems),
+    );
     return Card(
       color: Theme.of(context).colorScheme.primaryContainer
           .withValues(alpha: .48),
@@ -940,13 +1173,11 @@ class _OrderCart extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(child: Text('${entry.key + 1}')),
                 title: Text(entry.value.itemNames.join(' + ')),
-                subtitle: entry.value.note.isEmpty
-                    ? Text(
-                        entry.value.selectionType == 'COMBO'
-                            ? 'Phần cơm 2 món'
-                            : 'Món đơn',
-                      )
-                    : Text('Ghi chú: ${entry.value.note}'),
+                subtitle: Text(
+                  '${entry.value.selectionType == 'COMBO' ? 'Phần cơm 2 món' : 'Món đơn'}'
+                  ' • Người nhận: ${entry.value.beneficiaryName}'
+                  '${entry.value.note.isEmpty ? '' : '\nGhi chú: ${entry.value.note}'}',
+                ),
                 trailing: IconButton(
                   tooltip: 'Bỏ phần này',
                   onPressed: busy ? null : () => onRemove(entry.key),
