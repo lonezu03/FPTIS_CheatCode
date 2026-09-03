@@ -109,31 +109,41 @@ class LunchServiceIntegrationTest {
     }
 
     @Test
-    void payingForAnotherUserDebitsAuthenticatedPayerAndCancelRefundsThatPayer() {
-        User payer = saveUser("payer");
+    void orderingForAnotherUserDebitsBeneficiaryAndCancelRefundsBeneficiary() {
+        User orderer = saveUser("orderer");
         User beneficiary = saveUser("beneficiary");
-        LunchMenu menu = saveMenu(payer, LocalDate.of(2099, 1, 11));
-        LunchFundAccount account = accountRepository.save(
+        LunchMenu menu = saveMenu(orderer, LocalDate.of(2099, 1, 11));
+        LunchFundAccount ordererAccount = accountRepository.save(
                 LunchFundAccount.builder()
-                        .user(payer)
+                        .user(orderer)
                         .balance(70_000L)
+                        .build()
+        );
+        LunchFundAccount beneficiaryAccount = accountRepository.save(
+                LunchFundAccount.builder()
+                        .user(beneficiary)
+                        .balance(20_000L)
                         .build()
         );
 
         OrderResponse created = lunchService.createOrder(
-                payer,
+                orderer,
                 comboRequest(menu, beneficiary.getId())
         );
 
         assertEquals("PAID_FUND", created.paymentStatus());
-        assertEquals(payer.getId(), created.payer().id());
-        assertEquals(35_000L, account.getBalance());
+        assertEquals(beneficiary.getId(), created.payer().id());
+        assertEquals(70_000L, ordererAccount.getBalance());
+        assertEquals(0L, beneficiaryAccount.getBalance());
+        assertEquals(15_000L, beneficiaryAccount.getDebt());
 
         lunchService.cancelOrder(beneficiary, created.id());
 
-        assertEquals(70_000L, account.getBalance());
+        assertEquals(70_000L, ordererAccount.getBalance());
+        assertEquals(20_000L, beneficiaryAccount.getBalance());
+        assertEquals(0L, beneficiaryAccount.getDebt());
         List<LunchFundTransaction> transactions =
-                transactionRepository.findByAccountOrderByCreatedAtDesc(account);
+                transactionRepository.findByAccountOrderByCreatedAtDesc(beneficiaryAccount);
         assertEquals(2, transactions.size());
         assertEquals(35_000L, transactions.getFirst().getAmount());
         assertEquals(-35_000L, transactions.get(1).getAmount());
@@ -199,10 +209,10 @@ class LunchServiceIntegrationTest {
     }
 
     @Test
-    void sponsoredOrderPriceIncreaseRequiresPayerAndSufficientFund() {
-        User payer = saveUser("sponsor-update-payer");
+    void sponsoredOrderAndPriceIncreaseAreChargedToBeneficiaryDebt() {
+        User orderer = saveUser("sponsor-update-orderer");
         User beneficiary = saveUser("sponsor-update-beneficiary");
-        LunchMenu menu = saveMenu(payer, LocalDate.of(2099, 1, 14));
+        LunchMenu menu = saveMenu(orderer, LocalDate.of(2099, 1, 14));
         LunchMenuItem extra = LunchMenuItem.builder()
                 .menu(menu)
                 .name("Trà đào")
@@ -212,10 +222,7 @@ class LunchServiceIntegrationTest {
                 .build();
         menuItemRepository.saveAndFlush(extra);
         menu.getItems().add(extra);
-        LunchFundAccount account = accountRepository.save(
-                LunchFundAccount.builder().user(payer).balance(40_000L).build()
-        );
-        OrderResponse order = lunchService.createOrder(payer, comboRequest(menu, beneficiary.getId()));
+        OrderResponse order = lunchService.createOrder(orderer, comboRequest(menu, beneficiary.getId()));
         UpdateOrderRequest update = new UpdateOrderRequest(
                 LunchSelectionType.COMBO,
                 List.of(menu.getItems().get(0).getId(), menu.getItems().get(1).getId()),
@@ -223,17 +230,17 @@ class LunchServiceIntegrationTest {
                 null
         );
 
-        assertThrows(
-                org.springframework.security.access.AccessDeniedException.class,
-                () -> lunchService.updateOrder(beneficiary, order.id(), update)
+        OrderResponse updated = assertDoesNotThrow(
+                () -> lunchService.updateOrder(orderer, order.id(), update)
         );
-        assertThrows(
-                ConflictException.class,
-                () -> lunchService.updateOrder(payer, order.id(), update)
-        );
-        assertEquals(5_000L, account.getBalance());
-        assertEquals(0L, account.getDebt());
-        assertEquals(35_000L, orderRepository.findById(order.id()).orElseThrow().getPrice());
+
+        LunchFundAccount beneficiaryAccount = accountRepository.findByUser(beneficiary).orElseThrow();
+        assertEquals(beneficiary.getId(), order.payer().id());
+        assertTrue(accountRepository.findByUser(orderer).isEmpty());
+        assertEquals(0L, beneficiaryAccount.getBalance());
+        assertEquals(45_000L, beneficiaryAccount.getDebt());
+        assertEquals(45_000L, updated.price());
+        assertEquals(2, transactionRepository.findByAccountOrderByCreatedAtDesc(beneficiaryAccount).size());
     }
 
     @Test

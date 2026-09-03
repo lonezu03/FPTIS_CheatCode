@@ -7,7 +7,7 @@ Module đặt cơm chuyển quy trình đang làm thủ công thành một luồ
 1. Quán gửi thực đơn dạng văn bản cho admin.
 2. Admin import thực đơn, ngày áp dụng, giờ chốt và đơn giá.
 3. Nhân viên chọn món cho mình hoặc đặt hộ đồng nghiệp.
-4. Hệ thống trừ quỹ nếu người trả có đủ số dư; nếu không đủ vẫn giữ phần ăn và đánh dấu chưa thanh toán.
+4. Hệ thống dùng quỹ của người nhận phần ăn; nếu không đủ thì dùng hết số dư và ghi phần thiếu vào công nợ của người nhận.
 5. Khi hết giờ nhận đơn, admin đóng đơn, tổng hợp nội dung và copy gửi quán.
 6. Admin ghi nhận tiền đã nhận ngoài hệ thống và xác nhận các đơn chưa thanh toán.
 
@@ -19,10 +19,10 @@ Tiền trong module được lưu theo số nguyên Việt Nam đồng. Đơn gi
 
 - Xem thực đơn hôm nay, giờ chốt và đơn giá.
 - Tạo một hoặc nhiều phần cho bản thân trong cùng một lần đặt.
-- Đặt nhiều phần hộ đồng nghiệp; người đặt là người trả hộ nếu quỹ còn đủ.
+- Đặt nhiều phần hộ đồng nghiệp mà không cần đủ quỹ cá nhân; chi phí luôn thuộc tài khoản của từng người nhận.
 - Sửa hoặc hủy phần mình phụ trách trước giờ chốt.
 - Xem lịch sử đơn, trạng thái thanh toán, số dư và sổ giao dịch quỹ.
-- Tự đối soát tiền với đồng nghiệp ở bên ngoài khi đặt hộ.
+- Theo dõi rõ ai là người thao tác đặt hộ và ai là người nhận/chịu chi phí.
 
 ### Admin
 
@@ -107,13 +107,13 @@ Không được:
 
 User có thể thêm ghi chú như `cơm thêm + rau thêm`. Ghi chú được làm sạch khoảng trắng, giới hạn 500 ký tự và được đặt trong ngoặc ở nội dung gửi quán.
 
-## 5. Đặt cho mình và trả hộ
+## 5. Đặt cho mình và đặt hộ
 
 Ba khái niệm được lưu riêng:
 
 - **Người nhận (`beneficiary`)**: người có phần ăn.
 - **Người tạo đơn (`orderedBy`)**: người thao tác đặt.
-- **Người trả (`payer`)**: chủ tài khoản quỹ bị trừ tiền.
+- **Người trả (`payer`)**: chủ tài khoản quỹ/công nợ chịu chi phí. Với mọi đơn mới, đây luôn là người nhận.
 
 ### Đặt cho bản thân
 
@@ -124,10 +124,11 @@ Nếu user không chọn đồng nghiệp, cả ba vai trò là chính user đó
 Nếu user A chọn user B làm người nhận:
 
 - B là người nhận phần ăn.
-- A là người tạo đơn và là người trả hộ nếu quỹ của A đủ.
-- Hệ thống trừ đúng tổng giá của phần cơ bản và các extra đã chọn từ quỹ của A.
-- A và B tự hoàn tiền/đối soát với nhau bên ngoài hệ thống.
-- B có thể nhận nhiều phần trong ngày. Mỗi phần vẫn được lưu và tính tiền riêng; các bên tự đối soát tiền trả hộ bên ngoài hệ thống.
+- A chỉ là người tạo đơn (`orderedBy`); quỹ và công nợ của A không bị thay đổi và không được dùng làm điều kiện chặn đơn.
+- B đồng thời là người nhận và người trả (`beneficiary = payer`).
+- Hệ thống trừ đúng tổng giá phần cơ bản và các extra từ quỹ của B; nếu thiếu thì ghi phần thiếu vào công nợ của B.
+- B có thể nhận nhiều phần trong ngày. Mỗi phần được lưu, tính tiền và tạo giao dịch riêng.
+- Quy tắc mới áp dụng cho đơn tạo mới. Đơn lịch sử vẫn hoàn tiền về `payer` đã lưu để bảo toàn sổ cái.
 
 ## 6. Quỹ và trạng thái thanh toán
 
@@ -141,9 +142,9 @@ Hệ thống không trực tiếp thu tiền. Quy trình nạp quỹ là:
 
 Nạp quỹ không tự động đổi trạng thái một đơn `UNPAID` cũ. Admin phải xác nhận khoản thu ngoài cho đúng đơn để tránh vừa tăng quỹ vừa tính đơn đó là đã trả.
 
-### Đủ quỹ
+### Hạch toán một phần ăn
 
-Nếu quỹ của người đặt/người trả lớn hơn hoặc bằng tổng giá phần (`giá cơ bản + tổng giá extra`):
+Nếu quỹ của người nhận lớn hơn hoặc bằng tổng giá phần (`giá cơ bản + tổng giá extra`):
 
 - Trừ toàn bộ tổng giá trong một giao dịch `ORDER_DEBIT`.
 - Không trừ từng phần và không cho số dư âm.
@@ -158,21 +159,19 @@ Với đơn giá mặc định, số dư thay đổi như sau:
 
 ### Không đủ quỹ
 
-Nếu số dư nhỏ hơn tổng giá phần:
+Nếu số dư của người nhận nhỏ hơn tổng giá phần:
 
-- Hệ thống vẫn tạo và giữ phần ăn.
-- Không trừ một phần số dư và không tạo số dư âm.
-- Đơn nhận trạng thái `UNPAID`.
-- Admin thu đủ tiền bên ngoài rồi xác nhận đơn; đơn chuyển thành `PAID_EXTERNAL`.
-- Xác nhận ngoài không trừ quỹ lần nữa.
-
-Một người nhận có đơn `UNPAID` từ ngày trước sẽ không được tạo phần cho ngày sau cho tới khi admin xác nhận khoản tiền ngoài. Quy tắc này áp dụng cả khi chính họ đặt và khi người khác cố đặt hộ.
+- Hệ thống vẫn tạo và giữ phần ăn, kể cả người nhận đang có công nợ cũ.
+- Dùng hết số dư dương hiện có, giữ số dư ở `0` và cộng phần thiếu vào công nợ; không tạo số dư âm.
+- Đơn vẫn nhận trạng thái `PAID_FUND` vì toàn bộ giá trị đã được hạch toán vào sổ quỹ/công nợ bằng giao dịch `ORDER_DEBIT`.
+- Người nhận vẫn được đặt tiếp vào ngày sau; mỗi đơn tiếp tục cộng vào công nợ.
+- Admin có thể ghi nhận nạp quỹ hoặc thanh toán nợ sau khi đã đối soát tiền bên ngoài.
 
 ### Hủy đơn
 
 - Chỉ được hủy trước giờ chốt và khi menu còn nhận đơn.
 - Đơn chuyển từ `ACTIVE` sang `CANCELLED`; dữ liệu cũ được giữ để kiểm tra.
-- Nếu đơn đã `PAID_FUND`, hệ thống hoàn đúng số tiền đã trừ cho người trả bằng giao dịch `ORDER_REFUND`.
+- Nếu đơn đã `PAID_FUND`, hệ thống hoàn đúng giá trị đã hạch toán cho `payer` đã lưu bằng giao dịch `ORDER_REFUND`: giảm công nợ trước, phần còn lại mới cộng vào quỹ.
 - Nếu đơn là `UNPAID`, không phát sinh hoàn quỹ.
 - Hủy chỉ tác động đến đúng phần được chọn; các phần khác của cùng người nhận vẫn giữ nguyên.
 
@@ -194,7 +193,7 @@ Mọi kiểm tra cutoff phải thực hiện ở backend, không dựa riêng v�
 Quy trình khuyến nghị khi chốt:
 
 1. Chờ tới cutoff hoặc chủ động đóng menu.
-2. Kiểm tra tổng số phần và số đơn `UNPAID`.
+2. Kiểm tra tổng số phần, công nợ phát sinh và các đơn `UNPAID` cũ (nếu có).
 3. Bấm **Tổng hợp**.
 4. Copy nội dung đã sinh và gửi quán.
 5. Không sửa dữ liệu sau khi đã gửi quán; nếu bắt buộc thay đổi, admin phải đối soát lại với quán và tổng hợp lại.
@@ -230,7 +229,7 @@ Vũ - 21-07: 6 phần
 - Trứng chiên + Canh khổ qua
 ```
 
-Thao tác tổng hợp không phải là thao tác thu tiền. Đơn `UNPAID` vẫn xuất hiện trong danh sách gửi quán và vẫn cần được admin xác nhận riêng sau khi nhận tiền.
+Thao tác tổng hợp không phải là thao tác thu tiền. Đơn mới thiếu quỹ vẫn có trạng thái `PAID_FUND` vì giá trị đã chuyển vào công nợ; các đơn `UNPAID` cũ vẫn xuất hiện trong danh sách gửi quán và cần admin đối soát riêng.
 
 ## 9. Trạng thái
 
@@ -252,7 +251,7 @@ Thao tác tổng hợp không phải là thao tác thu tiền. Đơn `UNPAID` v�
 
 | Trạng thái | Ý nghĩa |
 | --- | --- |
-| `PAID_FUND` | Đã trừ đủ tiền từ quỹ |
+| `PAID_FUND` | Đã hạch toán đủ giá trị vào quỹ/công nợ của `payer` |
 | `PAID_EXTERNAL` | Admin đã nhận và xác nhận tiền bên ngoài |
 | `UNPAID` | Đã giữ phần nhưng chưa thu đủ tiền |
 
@@ -269,16 +268,16 @@ Thao tác tổng hợp không phải là thao tác thu tiền. Đơn `UNPAID` v�
 
 - **Không có menu hôm nay:** hiển thị trạng thái trống, không cho đặt.
 - **Menu đã đóng hoặc hết giờ:** backend từ chối mọi thay đổi đơn, kể cả tab trình duyệt đã mở từ trước.
-- **Hai người cùng đặt cho một người nhận:** chỉ một yêu cầu thành công; yêu cầu còn lại nhận lỗi xung đột.
-- **Hai yêu cầu cùng dùng một số dư:** khóa/phiên giao dịch phải ngăn trừ quá số dư. Nếu chỉ đủ cho một phần thì phần còn lại là `UNPAID`, không làm số dư âm.
-- **Gửi lặp do double-click/retry:** không được trừ quỹ hai lần hoặc tạo hai phần cho cùng người nhận.
-- **Sửa món:** chỉ thay món/ghi chú trước cutoff; đơn giá và nguồn thanh toán của đơn không bị tính lại.
+- **Hai người cùng đặt cho một người nhận:** cả hai phần có thể được tạo; mỗi phần hạch toán riêng vào cùng tài khoản người nhận dưới khóa giao dịch.
+- **Hai yêu cầu cùng dùng một số dư:** khóa/phiên giao dịch phải dùng số dư tuần tự; phần thiếu của yêu cầu sau được cộng vào công nợ, không làm số dư âm.
+- **Gửi lặp do double-click/retry:** cùng `clientRequestId` phải trả lại batch cũ, không trừ quỹ hoặc tạo phần lần hai.
+- **Sửa món:** chỉ thay món/ghi chú trước cutoff; thêm/bớt extra phải ghi thêm `ORDER_DEBIT` hoặc `ORDER_REFUND` cho `payer` đã lưu.
 - **Hủy phần đã trả:** hoàn tiền đúng một lần; gọi hủy lại không hoàn thêm.
 - **Xác nhận ngoài lặp lại:** không được đổi hoặc cộng/trừ quỹ thêm nếu đơn đã `PAID_EXTERNAL` hay `PAID_FUND`.
 - **Nạp quỹ không hợp lệ:** từ chối số tiền bằng 0, số âm, user không tồn tại hoặc ghi chú vượt giới hạn.
 - **Món trùng/khác menu/sai nhóm:** từ chối toàn bộ yêu cầu, không tạo đơn và không ghi giao dịch.
 - **Tổng hợp nhiều lần:** cùng một tập đơn hoạt động phải cho cùng nội dung và số tiền; không phát sinh giao dịch tài chính.
-- **Đơn chưa trả của ngày trước:** chặn phần ngày mới cho người nhận cho tới khi admin xác nhận tiền ngoài.
+- **Công nợ hoặc đơn chưa trả của ngày trước:** không chặn phần mới; giá trị mới tiếp tục được hạch toán vào quỹ/công nợ của người nhận.
 - **Lỗi giữa chừng:** tạo đơn và trừ/hoàn quỹ phải nằm trong cùng giao dịch; hoặc cùng thành công, hoặc cùng rollback.
 
 ## 11. API chính

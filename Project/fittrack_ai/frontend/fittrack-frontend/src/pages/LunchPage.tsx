@@ -53,7 +53,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cannotAffordSponsoredPortions } from "@/lib/lunch-order";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency, formatDate, formatDateTime, getApiErrorMessage } from "@/lib/format";
 import { useAuthStore } from "@/store/auth.store";
@@ -239,13 +238,7 @@ export default function LunchPage() {
       (total, itemId) => total + ((menu?.extraItems ?? []).find((item) => item.id === itemId)?.unitPrice ?? 0),
       0,
     );
-  const insufficientBalance = !!menu && walletBalance < currentPortionTotal;
-  const sponsoredCartTotal = cartPortions
-    .filter((portion) => !!portion.beneficiaryUserId)
-    .reduce((total, portion) => total + portionTotal(portion), 0);
-  const currentPortionIsSponsored = !!beneficiaryUserId;
-  const cannotSponsor = currentPortionIsSponsored && walletBalance < sponsoredCartTotal + currentPortionTotal;
-  const cannotSubmitCart = cannotAffordSponsoredPortions(walletBalance, sponsoredCartTotal);
+  const insufficientBalance = !!menu && !beneficiaryUserId && walletBalance < currentPortionTotal;
   const cartTotal = cartPortions.reduce((total, portion) => total + portionTotal(portion), 0);
   const requiredItemCount = selectionType === "COMBO" ? 2 : 1;
   const isBusy = batchMutation.isPending || updateMutation.isPending;
@@ -302,11 +295,6 @@ export default function LunchPage() {
 
     if (selectedItemIds.length !== requiredItemCount) {
       toast.error(selectionType === "COMBO" ? "Vui lòng chọn đúng 2 món." : "Vui lòng chọn 1 món đơn.");
-      return;
-    }
-
-    if (cannotSponsor) {
-      toast.error("Số dư quỹ không đủ để trả hộ các phần đang có trong giỏ.");
       return;
     }
 
@@ -546,7 +534,7 @@ export default function LunchPage() {
                           </select>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Khi đặt hộ, hệ thống ưu tiên trừ quỹ của bạn. Hai bên tự đối soát với nhau bên ngoài.
+                          Chi phí sẽ được trừ từ quỹ của người nhận; nếu quỹ không đủ, hệ thống ghi công nợ cho người nhận.
                         </p>
                       </div>
                     )}
@@ -664,11 +652,19 @@ export default function LunchPage() {
                     {insufficientBalance && !editingOrder && (
                       <Alert className="border-amber-200 bg-amber-50 text-amber-900">
                         <AlertTriangle />
-                        <AlertTitle>{cannotSponsor ? "Không đủ quỹ để trả hộ" : "Quỹ hiện không đủ"}</AlertTitle>
+                        <AlertTitle>Quỹ hiện không đủ</AlertTitle>
                         <AlertDescription className="text-amber-800">
-                          {cannotSponsor
-                            ? "Bạn cần nạp thêm quỹ hoặc để người nhận tự đặt. Đơn trả hộ chỉ được tạo khi quỹ của người trả còn đủ."
-                            : `Bạn vẫn có thể tự đặt. Hệ thống sẽ ghi thêm ${formatCurrency(currentPortionTotal)} vào công nợ.`}
+                          Bạn vẫn có thể tự đặt. Hệ thống sẽ dùng hết số dư còn lại và ghi phần thiếu vào công nợ của bạn.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {!!beneficiaryUserId && !editingOrder && (
+                      <Alert className="border-sky-200 bg-sky-50 text-sky-900">
+                        <UserRound />
+                        <AlertTitle>Chi phí tính cho người nhận</AlertTitle>
+                        <AlertDescription className="text-sky-800">
+                          {formatCurrency(currentPortionTotal)} sẽ được trừ từ quỹ của {selectedBeneficiary?.fullName ?? "người nhận"}; phần thiếu sẽ được ghi vào công nợ của người đó.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -683,8 +679,7 @@ export default function LunchPage() {
                           !menu.acceptingOrders ||
                           !today.canOrder ||
                           isBusy ||
-                          selectedItemIds.length !== requiredItemCount ||
-                          cannotSponsor
+                          selectedItemIds.length !== requiredItemCount
                         }
                       >
                         {isBusy
@@ -761,15 +756,6 @@ export default function LunchPage() {
                           </ul>
                         )}
 
-                        {cannotSubmitCart && cartPortions.length > 0 && (
-                          <Alert className="border-amber-200 bg-amber-50 text-amber-900">
-                            <AlertTriangle />
-                            <AlertDescription>
-                              Quỹ hiện không đủ để trả hộ tất cả phần trong giỏ. Bỏ bớt phần đặt hộ hoặc nạp thêm quỹ trước khi đặt.
-                            </AlertDescription>
-                          </Alert>
-                        )}
-
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">Tạm tính</span>
                           <strong>{formatCurrency(cartTotal)}</strong>
@@ -783,8 +769,7 @@ export default function LunchPage() {
                             cartPortions.length === 0 ||
                             !menu.acceptingOrders ||
                             !today.canOrder ||
-                            isBusy ||
-                            cannotSubmitCart
+                            isBusy
                           }
                         >
                           <CirclePlus aria-hidden="true" />

@@ -166,8 +166,8 @@ public class LunchService {
     }
 
     /**
-     * Creates every selected portion in a single transaction. Any invalid item
-     * or failed sponsored payment rolls back the entire cart.
+     * Creates every selected portion in a single transaction. Any invalid
+     * portion rolls back the entire cart.
      */
     @Transactional
     public OrderBatchResponse createOrderBatch(
@@ -207,11 +207,7 @@ public class LunchService {
 
         List<OrderResponse> created = new ArrayList<>();
         long totalPrice = 0L;
-        // Deduct sponsored portions first. A self-order may legitimately create
-        // debt, but it must not consume the balance needed to pay for a colleague.
-        for (PreparedPortion portion : portions.stream()
-                .sorted(Comparator.comparing(portion -> sameUser(actor, portion.beneficiary())))
-                .toList()) {
+        for (PreparedPortion portion : portions) {
             OrderResponse order = createOrder(
                     actor,
                     menu,
@@ -241,7 +237,6 @@ public class LunchService {
             Integer batchPosition
     ) {
         User beneficiary = resolveBeneficiary(actor, beneficiaryUserId);
-        boolean selfOrder = sameUser(actor, beneficiary);
         List<LunchMenuItem> selectedItems = resolveSelectedItems(menu, itemIds);
         List<LunchMenuItem> extraItems = resolveExtraItems(menu, extraItemIds);
         orderRules.validateSelection(selectionType, selectedItems);
@@ -260,17 +255,15 @@ public class LunchService {
                 selectionType,
                 selectedItems,
                 extraItems,
-                note,
-                true
+                note
         );
         LunchOrder saved = orderRepository.save(order);
         accountService.debitOrder(
-                actor,
+                beneficiary,
                 saved.getPrice(),
                 saved,
                 actor,
-                "Ghi nợ phần ăn " + saved.getMenu().getMenuDate(),
-                selfOrder
+                "Ghi nợ phần ăn " + saved.getMenu().getMenuDate()
         );
         nutritionService.syncOrder(saved);
 
@@ -347,14 +340,9 @@ public class LunchService {
                 if (payer == null) {
                     throw new IllegalStateException("Đơn đã trừ quỹ nhưng không có người thanh toán");
                 }
-                if (!sameUser(actor, payer)) {
-                    throw new org.springframework.security.access.AccessDeniedException(
-                            "Chỉ người trả tiền mới được thêm chi phí vào đơn đặt hộ"
-                    );
-                }
                 accountService.debitOrder(
                         payer, updatedPrice - previousPrice, order, actor,
-                        "Điều chỉnh tăng giá đơn do món thêm", sameUser(payer, order.getBeneficiary())
+                        "Điều chỉnh tăng giá đơn do món thêm"
                 );
             } else {
                 accountService.credit(
@@ -413,19 +401,18 @@ public class LunchService {
             LunchSelectionType selectionType,
             List<LunchMenuItem> selectedItems,
             List<LunchMenuItem> extraItems,
-            String note,
-            boolean paidFromFund
+            String note
     ) {
         order.setMenu(menu);
         order.setBeneficiary(beneficiary);
         order.setOrderedBy(actor);
-        order.setPayer(paidFromFund ? actor : null);
+        // The beneficiary owns both the meal and its fund/debt. The actor is
+        // retained separately in orderedBy for authorization and audit history.
+        order.setPayer(beneficiary);
         order.setSelectionType(selectionType);
         order.setPrice(Math.addExact(menu.getPrice(), extraItems.stream()
                 .mapToLong(item -> item.getUnitPrice() == null ? 0L : item.getUnitPrice()).sum()));
-        order.setPaymentStatus(
-                paidFromFund ? LunchPaymentStatus.PAID_FUND : LunchPaymentStatus.UNPAID
-        );
+        order.setPaymentStatus(LunchPaymentStatus.PAID_FUND);
         order.setStatus(LunchOrderStatus.ACTIVE);
         order.setNote(textFormatter.sanitizeNote(note));
         order.setExternalConfirmedBy(null);

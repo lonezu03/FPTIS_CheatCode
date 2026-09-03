@@ -130,7 +130,7 @@ Kết quả trả về gồm `emailEligibleCount`, `emailSentCount`, `emailFaile
 ### Đặt nhiều phần cơm trong một lần
 
 Mỗi phần `COMBO` chọn đúng hai lượt món thường, cho phép chọn trùng cùng một món; mỗi phần `SINGLE` chọn một món đặc biệt. `extraItemIds` là danh sách món thêm/đồ uống, có thể lặp để biểu diễn số lượng và được cộng theo `unitPrice`.
-Toàn bộ request được xử lý trong một transaction: nếu một phần không hợp lệ hoặc phần trả hộ không đủ quỹ, không phần nào được tạo.
+Toàn bộ request được xử lý trong một transaction: nếu một phần không hợp lệ, không phần nào được tạo. Với phần đặt hộ, người nhận là chủ tài khoản thanh toán; hệ thống dùng quỹ của người nhận trước và ghi phần thiếu vào công nợ của chính người nhận, nên số dư người đặt hộ không chặn giao dịch.
 `clientRequestId` phải do client tạo, giữ nguyên khi người dùng gửi lại cùng giỏ vì mất kết nối; backend trả lại batch cũ thay vì ghi thêm nợ.
 
 ```http

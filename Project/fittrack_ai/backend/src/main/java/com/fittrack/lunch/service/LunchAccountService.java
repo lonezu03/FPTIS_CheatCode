@@ -45,16 +45,11 @@ public class LunchAccountService {
             long amount,
             LunchOrder order,
             User actor,
-            String note,
-            boolean allowDebt
+            String note
     ) {
         LunchFundAccount account = getOrCreateForUpdate(payer);
         long balance = account.getBalance();
         long debt = account.getDebt();
-
-        if (!allowDebt && netBalance(account) < amount) {
-            throw new ConflictException("Số dư quỹ của bạn không đủ để trả hộ");
-        }
 
         if (balance >= amount) {
             account.setBalance(Math.subtractExact(balance, amount));

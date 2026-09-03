@@ -67,9 +67,11 @@ export default function LunchOrderCard({
           </div>
         )}
 
-        {payerName && payerName !== order.beneficiary.fullName && (
+        {orderedForAnotherPerson && (
           <p className="rounded-lg bg-sky-50 px-2.5 py-2 text-xs text-sky-800">
-            Quỹ được trừ từ tài khoản của {payerName}.
+            {payerName === order.beneficiary.fullName
+              ? "Chi phí được tính vào quỹ hoặc công nợ của người nhận."
+              : `Đơn cũ: quỹ được trừ từ tài khoản của ${payerName ?? "người đặt"}.`}
           </p>
         )}
 
