@@ -95,6 +95,8 @@ class _UserGuideSheetState extends State<UserGuideSheet> {
               ],
             ),
           ),
+          _PermissionSummary(user: widget.user),
+          const SizedBox(height: 10),
           const Divider(height: 1),
           SizedBox(
             height: 58,
@@ -251,6 +253,83 @@ class _UserGuideSheetState extends State<UserGuideSheet> {
   }
 }
 
+class _PermissionSummary extends StatelessWidget {
+  const _PermissionSummary({required this.user});
+
+  final AuthUser user;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final permissions = <(String, bool)>[
+      ('Đặt cơm', user.isAdmin || user.lunchEnabled),
+      ('Rèn luyện', user.isAdmin || user.fitnessEnabled),
+      ('Sức khỏe', user.isAdmin || user.healthEnabled),
+      ('Việc cần làm', user.isAdmin || user.todoEnabled),
+      ('Thời khóa biểu', user.isAdmin || user.scheduleEnabled),
+      ('Chatbot', user.isAdmin || user.chatbotEnabled),
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            user.isAdmin
+                ? 'Quyền của bạn · Admin có toàn quyền'
+                : 'Quyền của bạn',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: permissions.map((permission) {
+              final (label, enabled) = permission;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: enabled
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.surfaceContainerLow,
+                  border: Border.all(
+                    color: enabled
+                        ? theme.colorScheme.primary.withValues(alpha: .25)
+                        : theme.colorScheme.outlineVariant,
+                  ),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      enabled ? Icons.check_circle : Icons.lock_outline,
+                      size: 13,
+                      color: enabled
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$label · ${enabled ? 'Được dùng' : 'Chưa cấp'}',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 enum _GuidePermission { lunch, fitness, health, todo, schedule, admin }
 
 class _GuideModule {
@@ -300,7 +379,12 @@ class _GuideStep {
 
 enum _GuideVisual {
   navigation,
-  lunch,
+  lunchMenu,
+  lunchDishes,
+  lunchCart,
+  lunchReview,
+  lunchPayment,
+  lunchHistory,
   todo,
   schedule,
   fitness,
@@ -342,22 +426,43 @@ const _guideModules = <_GuideModule>[
         title: 'Chọn menu và đúng người nhận',
         description: 'Nếu có nhiều quán, chọn menu trước. Có thể đặt cho bản thân hoặc đồng nghiệp; người nhận là người được trừ quỹ hoặc ghi công nợ.',
         action: 'Kiểm tra menu và người nhận trước khi chọn món.',
-        visual: _GuideVisual.lunch,
+        visual: _GuideVisual.lunchMenu,
         focusLabel: 'Menu & người nhận',
       ),
       _GuideStep(
         title: 'Chọn đủ món cho từng phần',
         description: 'Cơm thường cần đúng 2 món phía trên dấu + và có thể chọn trùng. Món đơn chỉ cần 1 món phía dưới dấu +. Món thêm được cộng theo giá.',
         action: 'Chọn món rồi nhấn “Thêm phần vào giỏ”.',
-        visual: _GuideVisual.lunch,
+        visual: _GuideVisual.lunchDishes,
         focusLabel: 'Vùng chọn món',
       ),
       _GuideStep(
         title: 'Kiểm tra giỏ trước khi đặt',
         description: 'Bạn có thể đặt nhiều phần cùng lúc. Thiếu quỹ không chặn đặt món; quỹ còn lại được dùng trước, phần thiếu ghi vào công nợ người nhận.',
         action: 'Đọc lại người nhận, món, món thêm và tổng tiền.',
-        visual: _GuideVisual.lunch,
+        visual: _GuideVisual.lunchCart,
         focusLabel: 'Giỏ đặt cơm',
+      ),
+      _GuideStep(
+        title: 'Đánh giá món đã ăn',
+        description: 'Chỉ người nhận phần ăn mới được đánh giá đơn của mình. Mở Lịch sử, chọn Đánh giá món, chấm sao và ghi nhận xét để mọi người tham khảo.',
+        action: 'Vào Lịch sử → chọn đơn → Đánh giá món → lưu nhận xét.',
+        visual: _GuideVisual.lunchReview,
+        focusLabel: 'Nút Đánh giá món',
+      ),
+      _GuideStep(
+        title: 'Nạp quỹ hoặc thanh toán công nợ',
+        description: 'Chọn đúng luồng Nạp quỹ hoặc Trả công nợ, nhập số tiền và chuyển khoản bằng QR. Số dư chỉ thay đổi sau khi admin kiểm tra và duyệt.',
+        action: 'Kiểm tra loại thanh toán, QR, số tiền rồi gửi yêu cầu.',
+        visual: _GuideVisual.lunchPayment,
+        focusLabel: 'Thanh toán & QR',
+      ),
+      _GuideStep(
+        title: 'Đối soát lịch sử và sổ quỹ',
+        description: 'Lịch sử lưu món, người nhận và trạng thái từng phần. Sổ quỹ lưu lần nạp, trừ, hoàn hoặc điều chỉnh cùng số dư sau giao dịch.',
+        action: 'Dùng Lịch sử kiểm tra đơn và Sổ quỹ kiểm tra tiền.',
+        visual: _GuideVisual.lunchHistory,
+        focusLabel: 'Lịch sử & Sổ quỹ',
       ),
     ],
   ),
@@ -515,7 +620,7 @@ const _guideModules = <_GuideModule>[
         title: 'Điều phối menu cơm',
         description: 'Import menu, kiểm tra món, giá, ảnh và giờ chốt trước khi gửi thông báo. Cuối phiên hãy tổng hợp đúng menu/quán.',
         action: 'Kiểm tra menu rồi mới mở nhận đơn và thông báo.',
-        visual: _GuideVisual.lunch,
+        visual: _GuideVisual.lunchMenu,
         focusLabel: 'Quy trình menu',
       ),
       _GuideStep(
@@ -538,6 +643,7 @@ class _GuideIllustration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final target = _guideTarget(visual);
     return AspectRatio(
       aspectRatio: 1.6,
       child: Container(
@@ -576,25 +682,30 @@ class _GuideIllustration extends StatelessWidget {
             ),
             Positioned.fill(
               child: IgnorePointer(
-                child: CustomPaint(painter: _ArrowPainter(colors.tertiary)),
+                child: CustomPaint(
+                  painter: _ArrowPainter(colors.tertiary, target.center),
+                ),
               ),
             ),
-            Positioned(
-              right: 17,
-              bottom: 18,
+            Positioned.fill(
               child: IgnorePointer(
-                child: Container(
-                  width: 74,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(99),
-                    border: Border.all(color: colors.tertiary, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colors.tertiary.withValues(alpha: .22),
-                        spreadRadius: 6,
+                child: Align(
+                  alignment: target.alignment,
+                  child: FractionallySizedBox(
+                    widthFactor: target.width,
+                    heightFactor: target.height,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(color: colors.tertiary, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.tertiary.withValues(alpha: .22),
+                            spreadRadius: 6,
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -633,6 +744,33 @@ class _GuideIllustration extends StatelessWidget {
   }
 }
 
+class _GuideTarget {
+  const _GuideTarget(this.center, this.width, this.height);
+
+  final Offset center;
+  final double width;
+  final double height;
+
+  Alignment get alignment => Alignment(center.dx * 2 - 1, center.dy * 2 - 1);
+}
+
+_GuideTarget _guideTarget(_GuideVisual visual) => switch (visual) {
+  _GuideVisual.navigation => const _GuideTarget(Offset(.23, .61), .31, .43),
+  _GuideVisual.lunchMenu => const _GuideTarget(Offset(.37, .45), .57, .19),
+  _GuideVisual.lunchDishes => const _GuideTarget(Offset(.37, .67), .57, .36),
+  _GuideVisual.lunchCart => const _GuideTarget(Offset(.73, .65), .37, .40),
+  _GuideVisual.lunchReview => const _GuideTarget(Offset(.63, .64), .56, .35),
+  _GuideVisual.lunchPayment => const _GuideTarget(Offset(.47, .61), .68, .46),
+  _GuideVisual.lunchHistory => const _GuideTarget(Offset(.43, .64), .66, .38),
+  _GuideVisual.todo => const _GuideTarget(Offset(.43, .65), .66, .36),
+  _GuideVisual.schedule => const _GuideTarget(Offset(.43, .57), .66, .46),
+  _GuideVisual.fitness => const _GuideTarget(Offset(.60, .64), .55, .37),
+  _GuideVisual.health => const _GuideTarget(Offset(.43, .61), .66, .43),
+  _GuideVisual.notifications => const _GuideTarget(Offset(.43, .65), .66, .36),
+  _GuideVisual.profile => const _GuideTarget(Offset(.43, .65), .66, .36),
+  _GuideVisual.admin => const _GuideTarget(Offset(.43, .65), .66, .36),
+};
+
 class _MockScreen extends StatelessWidget {
   const _MockScreen({required this.visual});
 
@@ -640,17 +778,20 @@ class _MockScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (visual == _GuideVisual.lunchMenu ||
+        visual == _GuideVisual.lunchDishes ||
+        visual == _GuideVisual.lunchCart ||
+        visual == _GuideVisual.lunchReview ||
+        visual == _GuideVisual.lunchPayment ||
+        visual == _GuideVisual.lunchHistory) {
+      return _LunchGuideMock(visual: visual);
+    }
     final color = Theme.of(context).colorScheme.primary;
     final (title, icon, rows) = switch (visual) {
       _GuideVisual.navigation => (
         'Thanh chức năng',
         Icons.apps_outlined,
         ['Tổng quan', 'Đặt cơm', 'Rèn luyện'],
-      ),
-      _GuideVisual.lunch => (
-        'Giỏ đặt cơm',
-        Icons.lunch_dining_outlined,
-        ['Chọn menu & người nhận', 'Chọn đủ món', 'Xác nhận tổng tiền'],
       ),
       _GuideVisual.todo => (
         'Việc hôm nay',
@@ -686,6 +827,11 @@ class _MockScreen extends StatelessWidget {
         'Quản trị',
         Icons.admin_panel_settings_outlined,
         ['Chọn người dùng', 'Bật quyền module', 'Kiểm tra & lưu'],
+      ),
+      _ => (
+        'Đặt cơm',
+        Icons.lunch_dining_outlined,
+        ['Chọn menu & người nhận', 'Chọn đủ món', 'Xác nhận tổng tiền'],
       ),
     };
     return Container(
@@ -739,10 +885,131 @@ class _MockScreen extends StatelessWidget {
   }
 }
 
+class _LunchGuideMock extends StatelessWidget {
+  const _LunchGuideMock({required this.visual});
+
+  final _GuideVisual visual;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final title = switch (visual) {
+      _GuideVisual.lunchMenu => 'Chọn menu & người nhận',
+      _GuideVisual.lunchDishes => 'Chọn đủ món',
+      _GuideVisual.lunchCart => 'Giỏ đặt cơm',
+      _GuideVisual.lunchReview => 'Đánh giá món',
+      _GuideVisual.lunchPayment => 'Nạp quỹ / Trả nợ',
+      _GuideVisual.lunchHistory => 'Lịch sử & Sổ quỹ',
+      _ => 'Đặt cơm',
+    };
+    final rows = switch (visual) {
+      _GuideVisual.lunchMenu => [
+        'Menu quán Vũ · Đang mở',
+        'Người nhận: Tôi',
+        'Cơm 2 món · 35.000 đ',
+      ],
+      _GuideVisual.lunchDishes => [
+        '◉ Sườn ram',
+        '◉ Trứng chiên',
+        '○ Cá kho · ○ Rau xào',
+      ],
+      _GuideVisual.lunchCart => [
+        'Tôi · Cơm 2 món',
+        'Sườn ram + Trứng chiên',
+        'Tổng: 35.000 đ · Đặt 1 phần',
+      ],
+      _GuideVisual.lunchReview => [
+        'Sườn ram + Trứng chiên',
+        '★★★★★',
+        'Món vừa vị, giao đúng giờ · Lưu',
+      ],
+      _GuideVisual.lunchPayment => [
+        'Nạp quỹ  |  Trả công nợ',
+        'Số tiền: 100.000 đ · [ QR ]',
+        'Gửi yêu cầu · Chờ admin duyệt',
+      ],
+      _GuideVisual.lunchHistory => [
+        '03/09 · Đã đặt · 35.000 đ',
+        '02/09 · Đã đặt · 35.000 đ',
+        '01/09 · Hoàn đơn · +35.000 đ',
+      ],
+      _ => const <String>[],
+    };
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black12)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 15,
+                backgroundColor: colors.primaryContainer,
+                foregroundColor: colors.primary,
+                child: Icon(
+                  visual == _GuideVisual.lunchPayment
+                      ? Icons.qr_code_2
+                      : visual == _GuideVisual.lunchReview
+                      ? Icons.star_outline
+                      : Icons.lunch_dining_outlined,
+                  size: 17,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          ...rows.asMap().entries.map(
+            (entry) => Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+              decoration: BoxDecoration(
+                color: entry.key == 0
+                    ? colors.primaryContainer.withValues(alpha: .55)
+                    : colors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                entry.value,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight:
+                      entry.key == 1 && visual == _GuideVisual.lunchReview
+                      ? FontWeight.w900
+                      : FontWeight.w500,
+                  color: entry.key == 1 && visual == _GuideVisual.lunchReview
+                      ? Colors.amber.shade700
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ArrowPainter extends CustomPainter {
-  const _ArrowPainter(this.color);
+  const _ArrowPainter(this.color, this.target);
 
   final Color color;
+  final Offset target;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -752,13 +1019,13 @@ class _ArrowPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
     final start = Offset(size.width - 58, 40);
-    final end = Offset(size.width - 52, size.height - 70);
+    final end = Offset(size.width * target.dx, size.height * target.dy);
     final path = Path()
       ..moveTo(start.dx, start.dy)
       ..cubicTo(
-        size.width - 105,
+        math.max(end.dx + 38, size.width - 105),
         size.height * .34,
-        size.width - 28,
+        math.min(end.dx + 45, size.width - 28),
         size.height * .58,
         end.dx,
         end.dy,
@@ -770,5 +1037,5 @@ class _ArrowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ArrowPainter oldDelegate) =>
-      oldDelegate.color != color;
+      oldDelegate.color != color || oldDelegate.target != target;
 }

@@ -38,6 +38,17 @@ class _Destination {
 class _AppShellState extends State<AppShell> {
   int index = 0;
 
+  Future<void> _openUserGuide() async {
+    final session = context.read<AuthSession>();
+    try {
+      await session.refreshProfile();
+    } catch (_) {
+      // Hướng dẫn vẫn dùng quyền gần nhất đã lưu khi thiết bị mất mạng.
+    }
+    if (!mounted || session.user == null) return;
+    await showUserGuideSheet(context, session.user!);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -227,7 +238,7 @@ class _AppShellState extends State<AppShell> {
         actions: [
           IconButton(
             tooltip: 'Hướng dẫn sử dụng',
-            onPressed: () => showUserGuideSheet(context, user),
+            onPressed: _openUserGuide,
             icon: const Icon(Icons.help_outline_rounded),
           ),
           Padding(

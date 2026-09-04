@@ -16,6 +16,7 @@ class AuthUser {
     required this.lunchEnabled,
     required this.fitnessEnabled,
     required this.healthEnabled,
+    required this.chatbotEnabled,
     required this.todoEnabled,
     required this.scheduleEnabled,
     required this.passwordChangeRequired,
@@ -28,6 +29,7 @@ class AuthUser {
   final bool lunchEnabled;
   final bool fitnessEnabled;
   final bool healthEnabled;
+  final bool chatbotEnabled;
   final bool todoEnabled;
   final bool scheduleEnabled;
   final bool passwordChangeRequired;
@@ -35,13 +37,14 @@ class AuthUser {
   bool get isAdmin => role == 'ADMIN';
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
-    id: json['userId']?.toString() ?? '',
+    id: (json['userId'] ?? json['id'])?.toString() ?? '',
     email: json['email']?.toString() ?? '',
     fullName: json['fullName']?.toString() ?? 'Người dùng',
     role: json['role']?.toString() ?? 'USER',
     lunchEnabled: json['lunchEnabled'] == true,
     fitnessEnabled: json['fitnessEnabled'] == true,
     healthEnabled: json['healthEnabled'] == true,
+    chatbotEnabled: json['chatbotEnabled'] == true,
     todoEnabled: json['todoEnabled'] == true,
     scheduleEnabled: json['scheduleEnabled'] == true,
     passwordChangeRequired: json['passwordChangeRequired'] == true,
@@ -55,6 +58,7 @@ class AuthUser {
     'lunchEnabled': lunchEnabled,
     'fitnessEnabled': fitnessEnabled,
     'healthEnabled': healthEnabled,
+    'chatbotEnabled': chatbotEnabled,
     'todoEnabled': todoEnabled,
     'scheduleEnabled': scheduleEnabled,
     'passwordChangeRequired': passwordChangeRequired,
@@ -138,6 +142,17 @@ class AuthSession extends ChangeNotifier {
       ),
     );
     await _setSession(data);
+    notifyListeners();
+  }
+
+  Future<void> refreshProfile() async {
+    if (!authenticated) return;
+    final data = Map<String, dynamic>.from(await api.get('/users/me') as Map);
+    user = AuthUser.fromJson(data);
+    await _storage.write(
+      key: AuthStorageKeys.user,
+      value: jsonEncode(user!.toJson()),
+    );
     notifyListeners();
   }
 

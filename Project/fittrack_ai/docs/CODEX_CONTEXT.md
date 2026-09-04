@@ -46,15 +46,26 @@ Status: implemented locally and verified; deployment/app release build are pendi
   may use; admins additionally see account permission, lunch coordination and
   notification administration guidance. General navigation, notifications and
   profile guidance remain available to everyone.
+- Permission filtering now uses the latest `/users/me` profile on web. Flutter
+  refreshes that profile whenever the guide opens (with the last securely stored
+  profile as an offline fallback) and now persists `chatbotEnabled` alongside
+  the other module flags. Both clients show a clear **Được dùng / Chưa cấp**
+  permission summary; admin is explicitly labeled as having full access.
 - Each module contains a short step-by-step flow with a UI illustration, labeled
   arrow, highlighted circular target, progress indicator, previous/next actions
   and explicit action text. Web steps can open the related authorized route.
+- Lunch guidance now has dedicated steps and clearer mock screens for menu and
+  recipient selection, choosing dishes, the multi-portion cart, reviewing a
+  consumed dish, fund top-up/debt payment through QR/admin approval, and order/
+  wallet history. Highlight ellipse size/position and arrow endpoint are now
+  percentage-based per visual instead of one fixed bottom-right overlay.
 - No backend endpoint, authorization rule, API payload or database migration was
   added. Backend permission checks remain the security boundary.
 
 ### Verification
 
-- Web full ESLint passed; Vitest passed 2 files / 2 tests; TypeScript/Vite
+- Web full ESLint passed; Vitest passed 3 files / 4 tests, including explicit
+  lunch-only versus admin guide-access assertions; TypeScript/Vite
   production build passed with 2605 modules transformed.
 - Flutter targeted analysis for the guide and its two integration points passed
   with no issues; Flutter widget tests passed.

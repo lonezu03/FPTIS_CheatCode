@@ -125,6 +125,24 @@ export default function AppLayout() {
   });
 
   const isAdmin = (profileQuery.data?.role ?? authUser?.role) === "ADMIN";
+  const guideUser = useMemo(() => {
+    const profile = profileQuery.data;
+    if (!authUser || !profile) return authUser;
+    return {
+      ...authUser,
+      userId: profile.id,
+      email: profile.email,
+      fullName: profile.fullName,
+      role: profile.role,
+      lunchEnabled: profile.lunchEnabled,
+      fitnessEnabled: profile.fitnessEnabled,
+      healthEnabled: profile.healthEnabled,
+      chatbotEnabled: profile.chatbotEnabled,
+      todoEnabled: profile.todoEnabled,
+      scheduleEnabled: profile.scheduleEnabled,
+      passwordChangeRequired: profile.passwordChangeRequired,
+    };
+  }, [authUser, profileQuery.data]);
   const visibleGroups = useMemo(
     () =>
       navGroups
@@ -328,7 +346,7 @@ export default function AppLayout() {
       <UserGuideDialog
         open={guideOpen}
         onOpenChange={setGuideOpen}
-        user={authUser}
+        user={guideUser}
         isAdmin={isAdmin}
       />
     </div>

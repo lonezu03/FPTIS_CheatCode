@@ -65,7 +65,16 @@ class MoreScreen extends StatelessWidget {
                   'Xem từng bước theo các module bạn được cấp quyền',
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => showUserGuideSheet(context, user),
+                onTap: () async {
+                  final session = context.read<AuthSession>();
+                  try {
+                    await session.refreshProfile();
+                  } catch (_) {
+                    // Dùng quyền gần nhất đã lưu nếu đang mất mạng.
+                  }
+                  if (!context.mounted || session.user == null) return;
+                  await showUserGuideSheet(context, session.user!);
+                },
               ),
               if (user.isAdmin) ...[
                 const Divider(height: 1),

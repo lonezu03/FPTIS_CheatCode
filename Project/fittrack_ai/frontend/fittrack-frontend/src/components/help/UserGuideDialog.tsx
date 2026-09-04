@@ -26,10 +26,16 @@ import {
 } from "@/components/ui/dialog";
 import { canUseFeature, type FeaturePermission } from "@/lib/feature-access";
 import type { AuthUser } from "@/store/auth.store";
+import { getAvailableGuideModuleIds } from "./user-guide-access";
 
 type GuideVisual =
   | "navigation"
-  | "lunch"
+  | "lunchMenu"
+  | "lunchDishes"
+  | "lunchCart"
+  | "lunchReview"
+  | "lunchPayment"
+  | "lunchHistory"
   | "todo"
   | "schedule"
   | "fitness"
@@ -97,7 +103,7 @@ const guideModules: GuideModule[] = [
         description:
           "Nếu hôm nay có nhiều quán, hãy chọn menu trước. Mỗi phần có thể đặt cho bạn hoặc đồng nghiệp; người nhận là người bị trừ quỹ hoặc ghi công nợ.",
         action: "Kiểm tra tên menu và người nhận trước khi chọn món.",
-        visual: "lunch",
+        visual: "lunchMenu",
         focusLabel: "Menu & người nhận",
         route: "/lunch",
       },
@@ -106,7 +112,7 @@ const guideModules: GuideModule[] = [
         description:
           "Cơm thường cần đúng 2 món phía trên dấu + và có thể chọn trùng món. Món đơn chỉ chọn 1 món phía dưới dấu +. Món thêm được cộng đúng theo giá niêm yết.",
         action: "Chọn món rồi nhấn “Thêm phần vào giỏ”.",
-        visual: "lunch",
+        visual: "lunchDishes",
         focusLabel: "Vùng chọn món",
         route: "/lunch",
       },
@@ -115,9 +121,36 @@ const guideModules: GuideModule[] = [
         description:
           "Bạn có thể thêm nhiều phần rồi đặt cùng lúc. Thiếu quỹ không chặn đặt món; hệ thống dùng quỹ còn lại trước và ghi phần thiếu vào công nợ của người nhận.",
         action: "Đọc lại người nhận, món, món thêm và tổng tiền trước khi đặt.",
-        visual: "lunch",
+        visual: "lunchCart",
         focusLabel: "Giỏ đặt cơm",
         route: "/lunch",
+      },
+      {
+        title: "Đánh giá món đã ăn",
+        description:
+          "Chỉ người nhận phần ăn mới có thể đánh giá món trong đơn của mình. Mở Lịch sử, chọn Đánh giá, chấm sao và ghi nhận xét để đồng nghiệp tham khảo ở những menu sau.",
+        action: "Vào Lịch sử → chọn đơn của bạn → Đánh giá món → lưu số sao và nhận xét.",
+        visual: "lunchReview",
+        focusLabel: "Nút Đánh giá món",
+        route: "/lunch?tab=history",
+      },
+      {
+        title: "Nạp quỹ hoặc thanh toán công nợ",
+        description:
+          "Mở tab Thanh toán, chọn đúng luồng Nạp quỹ hoặc Thanh toán nợ, nhập số tiền rồi quét QR/chuyển khoản ngoài ngân hàng. Yêu cầu chỉ làm thay đổi số dư sau khi admin kiểm tra và phê duyệt.",
+        action: "Chọn loại thanh toán, kiểm tra QR và số tiền, gửi yêu cầu rồi chờ admin duyệt.",
+        visual: "lunchPayment",
+        focusLabel: "Loại thanh toán & QR",
+        route: "/lunch?tab=payment",
+      },
+      {
+        title: "Đối soát lịch sử đơn và sổ quỹ",
+        description:
+          "Tab Lịch sử lưu món, người nhận và trạng thái từng phần. Tab Sổ quỹ lưu mọi lần nạp, trừ, hoàn hoặc điều chỉnh cùng số dư sau giao dịch.",
+        action: "Dùng Lịch sử để kiểm tra đơn; dùng Sổ quỹ để kiểm tra biến động tiền.",
+        visual: "lunchHistory",
+        focusLabel: "Lịch sử & Sổ quỹ",
+        route: "/lunch?tab=history",
       },
     ],
   },
@@ -335,7 +368,7 @@ const guideModules: GuideModule[] = [
         description:
           "Import menu, kiểm tra món/giá/ảnh, mở nhận đơn, gửi thông báo, tổng hợp và chốt. Nếu nhập sai, chỉnh hoặc xóa menu trước khi có đơn liên quan.",
         action: "Kiểm tra ngày, quán, giờ chốt và danh sách món trước khi thông báo.",
-        visual: "lunch",
+        visual: "lunchMenu",
         focusLabel: "Quy trình menu",
         route: "/admin/lunch",
       },
@@ -352,6 +385,15 @@ const guideModules: GuideModule[] = [
   },
 ];
 
+const permissionLabels: Array<{ feature: FeaturePermission; label: string }> = [
+  { feature: "lunchEnabled", label: "Đặt cơm" },
+  { feature: "fitnessEnabled", label: "Rèn luyện" },
+  { feature: "healthEnabled", label: "Sức khỏe" },
+  { feature: "todoEnabled", label: "Việc cần làm" },
+  { feature: "scheduleEnabled", label: "Thời khóa biểu" },
+  { feature: "chatbotEnabled", label: "Chatbot" },
+];
+
 export function UserGuideDialog({
   open,
   onOpenChange,
@@ -364,15 +406,10 @@ export function UserGuideDialog({
   isAdmin: boolean;
 }) {
   const navigate = useNavigate();
-  const availableModules = useMemo(
-    () =>
-      guideModules.filter(
-        (module) =>
-          (!module.adminOnly || isAdmin) &&
-          (!module.feature || canUseFeature(user, module.feature)),
-      ),
-    [isAdmin, user],
-  );
+  const availableModules = useMemo(() => {
+    const ids = new Set(getAvailableGuideModuleIds(user, isAdmin));
+    return guideModules.filter((module) => ids.has(module.id));
+  }, [isAdmin, user]);
   const [selectedId, setSelectedId] = useState("overview");
   const [stepIndex, setStepIndex] = useState(0);
   const selectedModule =
@@ -398,6 +435,30 @@ export function UserGuideDialog({
           <DialogDescription>
             Nội dung bên dưới được cá nhân hóa theo quyền hiện có của tài khoản.
           </DialogDescription>
+          <div className="mt-1 flex flex-wrap gap-1.5" aria-label="Quyền module hiện tại">
+            {permissionLabels.map(({ feature, label }) => {
+              const enabled = canUseFeature(user, feature);
+              return (
+                <span
+                  key={feature}
+                  className={[
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold",
+                    enabled
+                      ? "border-emerald-200 bg-emerald-100 text-emerald-800"
+                      : "border-slate-200 bg-white/75 text-slate-500",
+                  ].join(" ")}
+                >
+                  <span className={`size-1.5 rounded-full ${enabled ? "bg-emerald-600" : "bg-slate-300"}`} />
+                  {label}: {enabled ? "Được dùng" : "Chưa cấp"}
+                </span>
+              );
+            })}
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-100 px-2.5 py-1 text-[0.68rem] font-semibold text-amber-900">
+                <ShieldCheck className="size-3" /> Admin có toàn quyền
+              </span>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="grid min-h-0 flex-1 md:grid-cols-[18rem_minmax(0,1fr)]">
@@ -503,6 +564,9 @@ export function UserGuideDialog({
 }
 
 function GuideIllustration({ visual, focusLabel }: { visual: GuideVisual; focusLabel: string }) {
+  const target = guideTargets[visual];
+  const endX = (target.left + target.width / 2) * 8;
+  const endY = (target.top + target.height / 2) * 3;
   return (
     <div
       className="relative h-64 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-100 to-emerald-50 p-4 shadow-inner sm:h-72 sm:p-6"
@@ -522,7 +586,15 @@ function GuideIllustration({ visual, focusLabel }: { visual: GuideVisual; focusL
         <MockScreen visual={visual} />
       </div>
 
-      <div className="pointer-events-none absolute bottom-[15%] right-[8%] z-20 rounded-full border-4 border-amber-400 bg-amber-100/35 px-5 py-3 shadow-[0_0_0_6px_rgba(251,191,36,.18)] motion-safe:animate-pulse sm:right-[12%]">
+      <div
+        className="pointer-events-none absolute z-20 rounded-[999px] border-4 border-amber-400 bg-amber-100/25 shadow-[0_0_0_6px_rgba(251,191,36,.18)] motion-safe:animate-pulse"
+        style={{
+          left: `${target.left}%`,
+          top: `${target.top}%`,
+          width: `${target.width}%`,
+          height: `${target.height}%`,
+        }}
+      >
         <span className="sr-only">Vùng cần chú ý</span>
       </div>
       <svg className="pointer-events-none absolute inset-0 z-30 size-full" viewBox="0 0 800 300" preserveAspectRatio="none" aria-hidden="true">
@@ -532,7 +604,7 @@ function GuideIllustration({ visual, focusLabel }: { visual: GuideVisual; focusL
           </marker>
         </defs>
         <path
-          d="M 690 48 C 650 75, 690 150, 650 220"
+          d={`M 690 48 C ${Math.max(endX + 80, 570)} 78, ${Math.min(endX + 90, 675)} ${Math.max(endY - 55, 105)}, ${endX} ${endY}`}
           fill="none"
           stroke="#d97706"
           strokeWidth="4"
@@ -547,6 +619,24 @@ function GuideIllustration({ visual, focusLabel }: { visual: GuideVisual; focusL
     </div>
   );
 }
+
+const guideTargets: Record<GuideVisual, { left: number; top: number; width: number; height: number }> = {
+  navigation: { left: 9, top: 38, width: 24, height: 44 },
+  lunchMenu: { left: 10, top: 38, width: 49, height: 18 },
+  lunchDishes: { left: 10, top: 51, width: 50, height: 34 },
+  lunchCart: { left: 62, top: 43, width: 26, height: 42 },
+  lunchReview: { left: 11, top: 55, width: 55, height: 27 },
+  lunchPayment: { left: 11, top: 37, width: 55, height: 47 },
+  lunchHistory: { left: 11, top: 45, width: 56, height: 39 },
+  todo: { left: 11, top: 48, width: 56, height: 34 },
+  schedule: { left: 10, top: 36, width: 57, height: 43 },
+  fitness: { left: 36, top: 43, width: 49, height: 39 },
+  health: { left: 10, top: 39, width: 57, height: 44 },
+  assistant: { left: 46, top: 58, width: 41, height: 26 },
+  notifications: { left: 11, top: 48, width: 56, height: 34 },
+  profile: { left: 11, top: 48, width: 56, height: 34 },
+  admin: { left: 11, top: 48, width: 56, height: 34 },
+};
 
 function MockScreen({ visual }: { visual: GuideVisual }) {
   if (visual === "navigation") {
@@ -568,16 +658,15 @@ function MockScreen({ visual }: { visual: GuideVisual }) {
     );
   }
 
-  if (visual === "lunch") {
-    return (
-      <div className="grid h-full grid-cols-[1fr_36%] gap-3 p-4">
-        <div className="space-y-2">
-          <div className="flex gap-2"><div className="h-7 flex-1 rounded-lg bg-emerald-100" /><div className="h-7 flex-1 rounded-lg bg-slate-100" /></div>
-          <div className="grid grid-cols-2 gap-2">{[1, 2, 3, 4].map((item) => <div key={item} className="flex h-10 items-center gap-2 rounded-lg border px-2"><span className="size-3 rounded-full border-2 border-emerald-500" /><span className="h-2 flex-1 rounded bg-slate-200" /></div>)}</div>
-        </div>
-        <div className="rounded-lg bg-emerald-50 p-3"><div className="mb-2 text-[0.65rem] font-bold text-emerald-900">Giỏ đặt cơm</div><div className="h-14 rounded border bg-white" /><div className="mt-3 h-8 rounded-lg bg-emerald-600" /></div>
-      </div>
-    );
+  if (
+    visual === "lunchMenu" ||
+    visual === "lunchDishes" ||
+    visual === "lunchCart" ||
+    visual === "lunchReview" ||
+    visual === "lunchPayment" ||
+    visual === "lunchHistory"
+  ) {
+    return <LunchGuideMock visual={visual} />;
   }
 
   if (visual === "todo") {
@@ -608,6 +697,82 @@ function MockScreen({ visual }: { visual: GuideVisual }) {
     return <MockList title="Quyền tài khoản" icon="●" rows={["Đặt cơm · Đã bật", "Rèn luyện · Đã bật", "Sức khỏe · Chưa bật"]} />;
   }
   return <MockList title="Quản lý người dùng" icon="⚙" rows={["Nguyễn Văn A · Đặt cơm", "Trần Thị B · Rèn luyện", "Lê Văn C · Sức khỏe"]} />;
+}
+
+function LunchGuideMock({
+  visual,
+}: {
+  visual:
+    | "lunchMenu"
+    | "lunchDishes"
+    | "lunchCart"
+    | "lunchReview"
+    | "lunchPayment"
+    | "lunchHistory";
+}) {
+  if (visual === "lunchReview") {
+    return (
+      <div className="grid h-full grid-cols-[42%_1fr] gap-3 p-4">
+        <div className="overflow-hidden rounded-xl border bg-slate-100">
+          <div className="grid h-24 place-items-center bg-gradient-to-br from-orange-100 to-amber-200 text-4xl" aria-hidden="true">🍱</div>
+          <div className="p-2 text-[0.6rem] font-bold">Sườn ram + Trứng chiên</div>
+        </div>
+        <div className="rounded-xl border bg-white p-3">
+          <p className="text-[0.65rem] font-bold">Đánh giá món đã ăn</p>
+          <div className="my-3 text-lg tracking-wider text-amber-400">★★★★★</div>
+          <div className="h-9 rounded-lg border bg-slate-50 px-2 py-1 text-[0.52rem] text-slate-500">Món vừa vị, giao đúng giờ...</div>
+          <div className="mt-2 h-7 rounded-lg bg-emerald-600 text-center text-[0.55rem] font-bold leading-7 text-white">Lưu đánh giá</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (visual === "lunchPayment") {
+    return (
+      <div className="grid h-full grid-cols-[1fr_38%] gap-3 p-4">
+        <div className="space-y-2 rounded-xl border p-3">
+          <p className="text-[0.65rem] font-bold">Tạo yêu cầu thanh toán</p>
+          <div className="flex gap-2"><span className="flex-1 rounded-lg bg-emerald-100 p-2 text-center text-[0.55rem] font-bold">Nạp quỹ</span><span className="flex-1 rounded-lg bg-slate-100 p-2 text-center text-[0.55rem]">Trả công nợ</span></div>
+          <div className="rounded-lg border p-2 text-[0.55rem]">Số tiền: 100.000 đ</div>
+          <div className="h-7 rounded-lg bg-emerald-600 text-center text-[0.55rem] font-bold leading-7 text-white">Gửi yêu cầu</div>
+        </div>
+        <div className="grid place-items-center rounded-xl border bg-white p-3">
+          <div className="grid size-20 grid-cols-5 gap-0.5 bg-slate-900 p-1">{Array.from({ length: 25 }, (_, index) => <span key={index} className={index % 3 === 0 ? "bg-white" : "bg-slate-900"} />)}</div>
+          <span className="text-[0.5rem] font-semibold">Quét QR ngân hàng</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (visual === "lunchHistory") {
+    return (
+      <div className="h-full p-4">
+        <div className="mb-3 flex gap-2"><span className="rounded-full bg-emerald-600 px-3 py-1 text-[0.55rem] font-bold text-white">Lịch sử</span><span className="rounded-full bg-slate-100 px-3 py-1 text-[0.55rem]">Sổ quỹ</span></div>
+        <div className="space-y-2">
+          {["03/09 · Sườn ram + Trứng chiên · 35.000 đ", "02/09 · Cá kho + Rau xào · 35.000 đ", "01/09 · Hoàn đơn · +35.000 đ"].map((row, index) => (
+            <div key={row} className="flex items-center gap-3 rounded-lg border p-2.5 text-[0.58rem]"><span className={`size-2 rounded-full ${index === 2 ? "bg-blue-500" : "bg-emerald-500"}`} /><span className="flex-1">{row}</span><span className="font-semibold">{index === 2 ? "Đã hoàn" : "Đã đặt"}</span></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid h-full grid-cols-[1fr_36%] gap-3 p-4">
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <div className={`h-7 flex-1 rounded-lg px-2 text-[0.55rem] font-semibold leading-7 ${visual === "lunchMenu" ? "bg-emerald-100 ring-2 ring-emerald-400" : "bg-emerald-100"}`}>Menu quán Vũ · Người nhận: Tôi</div>
+          <div className="h-7 w-20 rounded-lg bg-slate-100 text-center text-[0.5rem] leading-7">Cơm 2 món</div>
+        </div>
+        <div className={`grid grid-cols-2 gap-2 rounded-lg ${visual === "lunchDishes" ? "ring-2 ring-emerald-300" : ""}`}>
+          {["Sườn ram", "Trứng chiên", "Cá kho", "Rau xào"].map((item, index) => (
+            <div key={item} className="flex h-10 items-center gap-2 rounded-lg border px-2 text-[0.55rem]"><span className={`size-3 rounded-full border-2 ${index < 2 ? "border-emerald-500 bg-emerald-100" : "border-slate-300"}`} /><span>{item}</span></div>
+          ))}
+        </div>
+      </div>
+      <div className={`rounded-lg bg-emerald-50 p-3 ${visual === "lunchCart" ? "ring-2 ring-amber-300" : ""}`}><div className="mb-2 text-[0.65rem] font-bold text-emerald-900">Giỏ đặt cơm</div><div className="rounded border bg-white p-2 text-[0.5rem]">Tôi · Sườn ram + Trứng chiên</div><div className="mt-2 text-right text-[0.55rem] font-bold">35.000 đ</div><div className="mt-2 h-7 rounded-lg bg-emerald-600 text-center text-[0.52rem] font-bold leading-7 text-white">Đặt 1 phần</div></div>
+    </div>
+  );
 }
 
 function MockList({ title, icon, rows }: { title: string; icon: string; rows: string[] }) {
