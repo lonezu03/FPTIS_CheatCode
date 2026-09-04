@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-09-03
+Last updated: 2026-09-05
 
 ## Repository and deployment
 
@@ -31,6 +31,40 @@ Last updated: 2026-09-03
   subtasks and recurring occurrences; notification playbooks support all active
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
+
+## Current task: Permission-aware user guide (2026-09-05)
+
+Status: implemented locally and verified; deployment/app release build are pending.
+
+### Completed
+
+- Added an interactive Vietnamese user-guide popup to web and Flutter instead
+  of a downloadable document. It is available from the persistent question-mark
+  action; Flutter also exposes it in **Thêm -> Hướng dẫn sử dụng**.
+- Guide categories are filtered from the authenticated account permissions.
+  Users only see the Lunch, Todo, Schedule, Fitness and Health instructions they
+  may use; admins additionally see account permission, lunch coordination and
+  notification administration guidance. General navigation, notifications and
+  profile guidance remain available to everyone.
+- Each module contains a short step-by-step flow with a UI illustration, labeled
+  arrow, highlighted circular target, progress indicator, previous/next actions
+  and explicit action text. Web steps can open the related authorized route.
+- No backend endpoint, authorization rule, API payload or database migration was
+  added. Backend permission checks remain the security boundary.
+
+### Verification
+
+- Web full ESLint passed; Vitest passed 2 files / 2 tests; TypeScript/Vite
+  production build passed with 2605 modules transformed.
+- Flutter targeted analysis for the guide and its two integration points passed
+  with no issues; Flutter widget tests passed.
+- No APK was built because this request did not ask for a release artifact.
+
+### Deployment / next step
+
+1. Review and commit the five guide/integration files plus this context update.
+2. Deploy the web normally. Include the Flutter changes in the next requested
+   APK build and verify the bottom sheet on a physical narrow-screen device.
 
 ## Fitness access request (2026-09-02)
 
@@ -65,7 +99,7 @@ Last updated: 2026-09-03
 - Deploy the backend before the web so the additive workout-plan response fields
   are available. No database migration is required.
 
-## Current task: Proxy lunch orders charge the beneficiary (2026-09-03)
+## Previously completed locally: Proxy lunch orders charge the beneficiary (2026-09-03)
 
 Status: implemented locally; backend/web deployment and mobile release build are pending.
 

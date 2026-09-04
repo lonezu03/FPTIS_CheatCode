@@ -5,6 +5,7 @@ import '../../core/notifications/notification_center.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../admin/admin_screen.dart';
 import '../auth/auth_session.dart';
+import '../help/user_guide_sheet.dart';
 import '../notifications/notifications_screen.dart';
 import '../profile/profile_screen.dart';
 
@@ -53,6 +54,18 @@ class MoreScreen extends StatelessWidget {
                   title: 'Thông báo',
                   page: const NotificationsScreen(),
                 ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const CircleAvatar(
+                  child: Icon(Icons.help_outline_rounded),
+                ),
+                title: const Text('Hướng dẫn sử dụng'),
+                subtitle: const Text(
+                  'Xem từng bước theo các module bạn được cấp quyền',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showUserGuideSheet(context, user),
               ),
               if (user.isAdmin) ...[
                 const Divider(height: 1),

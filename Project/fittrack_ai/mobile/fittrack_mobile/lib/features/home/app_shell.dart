@@ -6,6 +6,7 @@ import '../admin/admin_screen.dart';
 import '../auth/auth_session.dart';
 import '../fitness/fitness_screen.dart';
 import '../health/health_screen.dart';
+import '../help/user_guide_sheet.dart';
 import '../lunch/lunch_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../planner/planner_screen.dart';
@@ -224,6 +225,11 @@ class _AppShellState extends State<AppShell> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Hướng dẫn sử dụng',
+            onPressed: () => showUserGuideSheet(context, user),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Tooltip(

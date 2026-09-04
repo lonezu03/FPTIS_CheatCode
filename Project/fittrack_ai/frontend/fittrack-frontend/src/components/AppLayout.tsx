@@ -10,6 +10,7 @@ import {
   Apple,
   BellRing,
   CalendarDays,
+  CircleHelp,
   ChevronRight,
   Dumbbell,
   FileBarChart,
@@ -32,6 +33,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import AssistantChat from "@/components/assistant/AssistantChat";
 import { canUseFeature, type FeaturePermission } from "@/lib/feature-access";
 import { logoutApi } from "@/api/auth.api";
+import { UserGuideDialog } from "@/components/help/UserGuideDialog";
 
 type NavItem = {
   to: string;
@@ -96,6 +98,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
 
   const profileQuery = useQuery({
     queryKey: ["profile"],
@@ -185,7 +188,15 @@ export default function AppLayout() {
           ))}
         </nav>
 
-        <div className="border-t border-white/8 p-3">
+        <div className="space-y-2 border-t border-white/8 p-3">
+          <button
+            type="button"
+            onClick={() => setGuideOpen(true)}
+            className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-emerald-50/70 transition hover:bg-white/[0.07] hover:text-white"
+          >
+            <CircleHelp className="size-4" />
+            Hướng dẫn sử dụng
+          </button>
           <div className="flex items-center gap-3 rounded-2xl bg-white/[0.06] p-2.5">
             <Avatar initials={initials} />
             <div className="min-w-0 flex-1">
@@ -239,6 +250,17 @@ export default function AppLayout() {
                   <div className="border-t border-white/8 p-4">
                     <Button
                       variant="ghost"
+                      className="mb-1 w-full justify-start text-emerald-50/70 hover:bg-white/10 hover:text-white"
+                      onClick={() => {
+                        setMobileOpen(false);
+                        setGuideOpen(true);
+                      }}
+                    >
+                      <CircleHelp className="mr-2 size-4" />
+                      Hướng dẫn sử dụng
+                    </Button>
+                    <Button
+                      variant="ghost"
                       className="w-full justify-start text-emerald-50/70 hover:bg-white/10 hover:text-white"
                       onClick={() => {
                         setMobileOpen(false);
@@ -263,6 +285,16 @@ export default function AppLayout() {
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setGuideOpen(true)}
+                aria-label="Mở hướng dẫn sử dụng"
+                title="Hướng dẫn sử dụng"
+              >
+                <CircleHelp className="size-4" />
+              </Button>
               <NotificationBell isAdmin={isAdmin} />
               {location.pathname !== "/lunch" && canUseFeature(authUser, "lunchEnabled") && (
                 <Button asChild variant="outline" className="hidden border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:inline-flex">
@@ -293,6 +325,12 @@ export default function AppLayout() {
         </main>
       </div>
       {canUseFeature(authUser, "chatbotEnabled") && <AssistantChat />}
+      <UserGuideDialog
+        open={guideOpen}
+        onOpenChange={setGuideOpen}
+        user={authUser}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
