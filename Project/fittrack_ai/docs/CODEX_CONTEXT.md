@@ -84,6 +84,10 @@ Status: implemented locally and verified; web deployment is pending.
 - Replaced the native exercise `<select>` in web Workout Plan creation with a
   searchable dialog. The selected exercise remains visible as a compact field,
   while the dialog shows image, name, equipment and technical description.
+- The same shared picker now replaces the exercise `<select>` inside free/live
+  Workout mode. Changing an exercise preserves that draft block's sets, weight,
+  reps, RIR, completion state and rest duration; previous-performance loading
+  follows the newly selected exercise ID.
 - Existing `muscleGroup` is intentionally used as the parent classification;
   no duplicate `parent` database/API field was added. Users can combine the
   parent muscle-group facet, equipment facet and free-text search.
@@ -92,7 +96,7 @@ Status: implemented locally and verified; web deployment is pending.
   group, include counts and expose clear-filter/empty states.
 - Verification: targeted ESLint passed; search/filter Vitest passed 3 tests and
   the full web suite passed 4 files / 7 tests; TypeScript/Vite production build
-  passed with 2608 modules transformed. No
+  passed again after the free-workout integration with 2608 modules transformed. No
   backend, Flyway or mobile contract change was required.
 
 ## Fitness access request (2026-09-02)

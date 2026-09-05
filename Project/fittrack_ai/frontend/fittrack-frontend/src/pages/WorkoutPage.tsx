@@ -41,6 +41,7 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import DataPagination from "../components/common/DataPagination";
 import { useServerPagination } from "../hooks/useServerPagination";
+import ExercisePicker from "../components/workouts/ExercisePicker";
 
 type DraftSet = {
   key: string;
@@ -461,13 +462,14 @@ function LiveWorkoutDialog({
                     </div>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-[1fr_150px]">
-                    <select
-                      className="h-10 rounded-xl border border-input bg-background px-3 text-sm"
+                    <ExercisePicker
+                      id={`live-exercise-${group.key}`}
+                      exercises={exercises}
                       value={group.exerciseId}
-                      onChange={(event) => updateGroup(group.key, (item) => ({ ...item, exerciseId: event.target.value }))}
-                    >
-                      {exercises.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                    </select>
+                      onChange={(exerciseId) =>
+                        updateGroup(group.key, (item) => ({ ...item, exerciseId }))
+                      }
+                    />
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
                       Nghỉ
                       <Input type="number" min={0} max={1800} value={group.restSeconds} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, restSeconds: Number(event.target.value) }))} />
