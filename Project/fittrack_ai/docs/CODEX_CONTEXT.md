@@ -77,6 +77,24 @@ Status: implemented locally and verified; deployment/app release build are pendi
 2. Deploy the web normally. Include the Flutter changes in the next requested
    APK build and verify the bottom sheet on a physical narrow-screen device.
 
+## Workout-plan exercise picker (2026-09-05)
+
+Status: implemented locally and verified; web deployment is pending.
+
+- Replaced the native exercise `<select>` in web Workout Plan creation with a
+  searchable dialog. The selected exercise remains visible as a compact field,
+  while the dialog shows image, name, equipment and technical description.
+- Existing `muscleGroup` is intentionally used as the parent classification;
+  no duplicate `parent` database/API field was added. Users can combine the
+  parent muscle-group facet, equipment facet and free-text search.
+- Search is accent/case insensitive, token based and covers name, muscle group,
+  equipment and description. Results are grouped under their parent muscle
+  group, include counts and expose clear-filter/empty states.
+- Verification: targeted ESLint passed; search/filter Vitest passed 3 tests and
+  the full web suite passed 4 files / 7 tests; TypeScript/Vite production build
+  passed with 2608 modules transformed. No
+  backend, Flyway or mobile contract change was required.
+
 ## Fitness access request (2026-09-02)
 
 - Lunch-only non-admin accounts now see Vũ's contact email and a

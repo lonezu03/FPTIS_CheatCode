@@ -20,6 +20,7 @@ import ErrorState from "../components/common/ErrorState";
 import DataPagination from "../components/common/DataPagination";
 import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
+import ExercisePicker from "../components/workouts/ExercisePicker";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -337,21 +338,21 @@ export default function WorkoutPlansPage() {
 
                   {day.exercises.map((exercise, exerciseIndex) => (
                     <div key={exerciseIndex} className="grid gap-3 rounded-xl border bg-white p-4 md:grid-cols-12">
-                      <FormField label="Bài tập" htmlFor={`plan-exercise-${dayIndex}-${exerciseIndex}`} className="md:col-span-4" required>
-                        <select
+                      <FormField
+                        label="Bài tập"
+                        htmlFor={`plan-exercise-${dayIndex}-${exerciseIndex}`}
+                        hint="Tìm theo tên rồi lọc thêm bằng nhóm cơ chính hoặc dụng cụ."
+                        className="md:col-span-4"
+                        required
+                      >
+                        <ExercisePicker
                           id={`plan-exercise-${dayIndex}-${exerciseIndex}`}
-                          className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          exercises={exercises}
                           value={exercise.exerciseId || defaultExerciseId}
-                          onChange={(event) =>
-                            updateDayExercise(dayIndex, exerciseIndex, "exerciseId", event.target.value)
+                          onChange={(exerciseId) =>
+                            updateDayExercise(dayIndex, exerciseIndex, "exerciseId", exerciseId)
                           }
-                        >
-                          {exercises.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.name} · {item.muscleGroup || "Chưa phân nhóm"} · {item.equipment || "Không dụng cụ"}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </FormField>
 
                       <ExercisePreview
