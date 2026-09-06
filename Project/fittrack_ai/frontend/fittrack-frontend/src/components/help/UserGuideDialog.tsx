@@ -11,6 +11,7 @@ import {
   Dumbbell,
   LayoutDashboard,
   ListChecks,
+  Quote,
   ShieldCheck,
   Soup,
   UserRound,
@@ -281,6 +282,33 @@ const guideModules: GuideModule[] = [
     ],
   },
   {
+    id: "quotes",
+    title: "Câu nói yêu thích",
+    summary: "Lưu lại câu nói đáng nhớ và nhận một gợi ý mỗi ngày.",
+    icon: Quote,
+    feature: "quoteEnabled",
+    steps: [
+      {
+        title: "Lưu câu nói kèm nguồn",
+        description:
+          "Ghi nội dung, tác giả, nguồn và thẻ để dễ tìm lại. Hệ thống sẽ cảnh báo nếu câu tương tự đã tồn tại trong kho cá nhân.",
+        action: "Mở Kho câu nói, nhập nội dung rồi lưu.",
+        visual: "profile",
+        focusLabel: "Kho câu nói",
+        route: "/quotes",
+      },
+      {
+        title: "Xem câu nói ngẫu nhiên hằng ngày",
+        description:
+          "Dashboard chỉ hiện Câu nói hôm nay khi tài khoản được cấp quyền. Các câu hợp lệ được luân phiên và không lặp lại trước khi hết danh sách.",
+        action: "Bật tùy chọn hiển thị hằng ngày cho những câu bạn muốn luân phiên.",
+        visual: "navigation",
+        focusLabel: "Câu nói hôm nay",
+        route: "/dashboard",
+      },
+    ],
+  },
+  {
     id: "assistant",
     title: "Trợ lý FitTrack PT",
     summary: "Hỏi đáp và yêu cầu hỗ trợ trong phạm vi được cấp.",
@@ -391,6 +419,7 @@ const permissionLabels: Array<{ feature: FeaturePermission; label: string }> = [
   { feature: "healthEnabled", label: "Sức khỏe" },
   { feature: "todoEnabled", label: "Việc cần làm" },
   { feature: "scheduleEnabled", label: "Thời khóa biểu" },
+  { feature: "quoteEnabled", label: "Câu nói" },
   { feature: "chatbotEnabled", label: "Chatbot" },
 ];
 

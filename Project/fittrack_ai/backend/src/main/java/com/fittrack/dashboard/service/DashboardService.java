@@ -86,6 +86,7 @@ public class DashboardService {
                 .healthEnabled(Boolean.TRUE.equals(user.getHealthEnabled()))
                 .todoEnabled(Boolean.TRUE.equals(user.getTodoEnabled()))
                 .scheduleEnabled(Boolean.TRUE.equals(user.getScheduleEnabled()))
+                .quoteEnabled(Boolean.TRUE.equals(user.getQuoteEnabled()))
                 .latestWorkoutNote(latestWorkoutNote)
                 .build();
     }

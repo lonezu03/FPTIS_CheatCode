@@ -162,7 +162,7 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
         padding: const EdgeInsets.all(18),
         children: [
           const Text(
-            'App mobile quản lý 5 quyền nghiệp vụ: Đặt cơm, Fitness, Sức khỏe, Todo và Schedule. Quyền chatbot được để lại cho giai đoạn sau.',
+            'App mobile quản lý 6 quyền nghiệp vụ: Đặt cơm, Fitness, Sức khỏe, Todo, Schedule và Câu nói. Quyền chatbot được để lại cho giai đoạn sau.',
             style: TextStyle(color: Colors.black54),
           ),
           const SizedBox(height: 12),
@@ -213,6 +213,11 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
                       title: const Text('Schedule'),
                       value: user['scheduleEnabled'] == true,
                       onChanged: (v) => _toggle(user, 'scheduleEnabled', v),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Câu nói yêu thích'),
+                      value: user['quoteEnabled'] == true,
+                      onChanged: (v) => _toggle(user, 'quoteEnabled', v),
                     ),
                     if (user['active'] != true)
                       ListTile(

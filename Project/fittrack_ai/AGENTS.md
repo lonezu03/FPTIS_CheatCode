@@ -71,7 +71,8 @@ Deployment:
 ## Stable business rules
 
 - A newly registered account starts active for the lunch module only. Fitness,
-  health, and chatbot permissions remain disabled until an admin grants them.
+  health, chatbot, Todo, Schedule, and Quote permissions remain disabled until
+  an admin grants them.
 - Admin-only account management controls role, active state, module permissions, password reset behavior, and deletion of locked accounts. Deleting a locked account anonymizes its identity while retaining operational history and auditability.
 - Registration does not require email verification or OTP; a newly created account can log in immediately. Forgot-password OTPs remain enabled and must be sent only to the email stored on the account; never accept an arbitrary destination email from the client.
 - A regular lunch portion selects exactly two dish slots above the `+` separator; both slots may reference the same regular dish. A special/single order selects exactly one dish below it.
@@ -81,12 +82,14 @@ Deployment:
 - Menu import supports `@DRINKS` or `@EXTRAS` followed by priced lines such as `Trà đào | 45000` or `Trà vải 50000`. Extra IDs may repeat in an order to represent quantity; each repeated line contributes its `unitPrice` to the order total and refund.
 - Email notification delivery is opt-in per user via `emailNotificationsEnabled`; menu broadcasts, generic notifications and playbooks must honor it. Password-reset OTP is security-critical and remains independent of this preference.
 - User-submitted foods and exercises require admin approval before general use.
-- The personal Quote Library is available to every authenticated active user and
-  is not tied to a module-permission flag. Daily quotes use
-  `Asia/Ho_Chi_Minh`, remain stable across web/app for the same day, and cannot
-  repeat for that user until every eligible active quote has appeared in the
-  current cycle. Archived quotes and quotes with `includeInDaily=false` are
-  excluded from rotation.
+- The personal Quote Library requires `quoteEnabled`; admins bypass the module
+  flag. Backend authorization covers both `/api/quotes` and `/api/quote-tags`,
+  while web/mobile hide the library and Dashboard daily quote without access.
+  Revoking access preserves owner-scoped quote data for later re-enablement.
+  Daily quotes use `Asia/Ho_Chi_Minh`, remain stable across web/app for the same
+  day, and cannot repeat for that user until every eligible active quote has
+  appeared in the current cycle. Archived quotes and quotes with
+  `includeInDaily=false` are excluded from rotation.
 - Nutrition days use `UNLOGGED`, `PARTIAL`, `COMPLETE`, or `FASTING`. A day
   containing meals defaults to `PARTIAL` until the user confirms it; only
   `COMPLETE` and `FASTING` days may affect nutrition averages, achievements,

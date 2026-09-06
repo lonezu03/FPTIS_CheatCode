@@ -67,6 +67,7 @@ export default function LoginPage() {
         chatbotEnabled: data.chatbotEnabled,
         todoEnabled: data.todoEnabled,
         scheduleEnabled: data.scheduleEnabled,
+        quoteEnabled: data.quoteEnabled,
         passwordChangeRequired: data.passwordChangeRequired,
       });
       navigate(data.passwordChangeRequired ? "/change-password" : "/dashboard", { replace: true });

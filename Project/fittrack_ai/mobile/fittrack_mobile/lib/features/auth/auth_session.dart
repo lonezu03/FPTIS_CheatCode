@@ -19,6 +19,7 @@ class AuthUser {
     required this.chatbotEnabled,
     required this.todoEnabled,
     required this.scheduleEnabled,
+    this.quoteEnabled = false,
     required this.passwordChangeRequired,
   });
 
@@ -32,6 +33,7 @@ class AuthUser {
   final bool chatbotEnabled;
   final bool todoEnabled;
   final bool scheduleEnabled;
+  final bool quoteEnabled;
   final bool passwordChangeRequired;
 
   bool get isAdmin => role == 'ADMIN';
@@ -47,6 +49,7 @@ class AuthUser {
     chatbotEnabled: json['chatbotEnabled'] == true,
     todoEnabled: json['todoEnabled'] == true,
     scheduleEnabled: json['scheduleEnabled'] == true,
+    quoteEnabled: json['quoteEnabled'] == true,
     passwordChangeRequired: json['passwordChangeRequired'] == true,
   );
 
@@ -61,6 +64,7 @@ class AuthUser {
     'chatbotEnabled': chatbotEnabled,
     'todoEnabled': todoEnabled,
     'scheduleEnabled': scheduleEnabled,
+    'quoteEnabled': quoteEnabled,
     'passwordChangeRequired': passwordChangeRequired,
   };
 }

@@ -49,6 +49,7 @@ type UserAccessPayload = {
   chatbotEnabled: boolean;
   todoEnabled: boolean;
   scheduleEnabled: boolean;
+  quoteEnabled: boolean;
 };
 
 export default function AdminUsersPage() {
@@ -328,6 +329,7 @@ function EditUserDialog({
   const [chatbotEnabled, setChatbotEnabled] = useState(user.chatbotEnabled);
   const [todoEnabled, setTodoEnabled] = useState(user.todoEnabled);
   const [scheduleEnabled, setScheduleEnabled] = useState(user.scheduleEnabled);
+  const [quoteEnabled, setQuoteEnabled] = useState(user.quoteEnabled);
 
   const isSelf = user.id === currentUserId;
 
@@ -385,6 +387,7 @@ function EditUserDialog({
             <PermissionToggle label="Trợ lý AI" checked={chatbotEnabled} onChange={setChatbotEnabled} />
             <PermissionToggle label="Todo" checked={todoEnabled} onChange={setTodoEnabled} />
             <PermissionToggle label="Thời khóa biểu" checked={scheduleEnabled} onChange={setScheduleEnabled} />
+            <PermissionToggle label="Câu nói yêu thích" checked={quoteEnabled} onChange={setQuoteEnabled} />
           </div>
         </div>
 
@@ -404,6 +407,7 @@ function EditUserDialog({
                 chatbotEnabled,
                 todoEnabled,
                 scheduleEnabled,
+                quoteEnabled,
               })
             }
             disabled={pending || !fullName.trim()}

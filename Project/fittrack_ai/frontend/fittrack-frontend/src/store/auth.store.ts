@@ -11,6 +11,7 @@ export type AuthUser = {
   chatbotEnabled: boolean;
   todoEnabled: boolean;
   scheduleEnabled: boolean;
+  quoteEnabled: boolean;
   passwordChangeRequired: boolean;
 };
 

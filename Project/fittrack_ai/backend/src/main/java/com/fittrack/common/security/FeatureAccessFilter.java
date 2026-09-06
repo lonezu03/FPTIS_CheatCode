@@ -75,6 +75,10 @@ public class FeatureAccessFilter extends OncePerRequestFilter {
                 && !Boolean.TRUE.equals(user.getScheduleEnabled())) {
             return "Thời khóa biểu";
         }
+        if ((path.startsWith("/api/quotes") || path.startsWith("/api/quote-tags"))
+                && !Boolean.TRUE.equals(user.getQuoteEnabled())) {
+            return "Câu nói yêu thích";
+        }
         return null;
     }
 

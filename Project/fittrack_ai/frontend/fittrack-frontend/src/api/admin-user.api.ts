@@ -14,6 +14,7 @@ export type AdminUser = {
   chatbotEnabled: boolean;
   todoEnabled: boolean;
   scheduleEnabled: boolean;
+  quoteEnabled: boolean;
   createdAt: string;
 };
 
@@ -47,6 +48,7 @@ export async function updateAdminUser(
     chatbotEnabled?: boolean;
     todoEnabled?: boolean;
     scheduleEnabled?: boolean;
+    quoteEnabled?: boolean;
   },
 ): Promise<AdminUser> {
   const response = await api.patch<AdminUser>(`/admin/users/${id}`, payload);

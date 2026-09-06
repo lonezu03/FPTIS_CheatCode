@@ -13,6 +13,7 @@ export type AuthResponse = {
   chatbotEnabled: boolean;
   todoEnabled: boolean;
   scheduleEnabled: boolean;
+  quoteEnabled: boolean;
   passwordChangeRequired: boolean;
 };
 

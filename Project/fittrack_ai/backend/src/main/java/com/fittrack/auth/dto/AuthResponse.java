@@ -20,6 +20,7 @@ public class AuthResponse {
     private Boolean chatbotEnabled;
     private Boolean todoEnabled;
     private Boolean scheduleEnabled;
+    private Boolean quoteEnabled;
     private Boolean passwordChangeRequired;
     private String refreshToken;
 }

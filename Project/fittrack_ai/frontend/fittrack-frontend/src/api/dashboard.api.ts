@@ -20,6 +20,7 @@ export type DashboardToday = {
   healthEnabled: boolean;
   todoEnabled: boolean;
   scheduleEnabled: boolean;
+  quoteEnabled: boolean;
   latestWorkoutNote: string | null;
 };
 

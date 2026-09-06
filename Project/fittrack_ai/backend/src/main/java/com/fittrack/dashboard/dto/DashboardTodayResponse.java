@@ -29,6 +29,7 @@ public class DashboardTodayResponse {
     private boolean healthEnabled;
     private boolean todoEnabled;
     private boolean scheduleEnabled;
+    private boolean quoteEnabled;
     private String latestWorkoutNote;
 }
 

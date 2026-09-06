@@ -11,6 +11,7 @@ export type UserProfile = {
   chatbotEnabled: boolean;
   todoEnabled: boolean;
   scheduleEnabled: boolean;
+  quoteEnabled: boolean;
   passwordChangeRequired: boolean;
   assistantConsent: boolean;
   emailNotificationsEnabled: boolean;

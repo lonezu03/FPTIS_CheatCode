@@ -116,6 +116,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         avatar: Icon(Icons.fitness_center, size: 18),
                         label: Text('Fitness'),
                       ),
+                    if (auth.quoteEnabled || auth.isAdmin)
+                      const Chip(
+                        avatar: Icon(Icons.format_quote_outlined, size: 18),
+                        label: Text('Câu nói'),
+                      ),
                     if (auth.healthEnabled || auth.isAdmin)
                       const Chip(
                         avatar: Icon(Icons.favorite, size: 18),

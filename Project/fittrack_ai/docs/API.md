@@ -516,9 +516,11 @@ DELETE /schedule/{id}
 
 ## Kho câu nói
 
-Kho câu nói là tiện ích cá nhân dành cho mọi tài khoản đã đăng nhập và không phụ
-thuộc quyền Đặt cơm, Rèn luyện hoặc Sức khỏe. Mọi truy vấn và thao tác ghi đều
-được giới hạn theo `user` lấy từ phiên xác thực.
+Kho câu nói là module cá nhân yêu cầu quyền `quoteEnabled`; admin luôn được truy
+cập. Backend chặn cả `/quotes` và `/quote-tags` với HTTP 403 khi tài khoản thường
+chưa được cấp quyền. Thu hồi quyền không xóa dữ liệu; khi cấp lại, người dùng tiếp
+tục thấy kho câu nói của chính mình. Mọi truy vấn và thao tác ghi đều được giới
+hạn theo `user` lấy từ phiên xác thực.
 
 ```http
 GET    /quotes?q=&tag=&status=ACTIVE&page=0&size=20

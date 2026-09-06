@@ -96,6 +96,29 @@ class AdminUserServiceTest {
         verify(userRepository).save(targetUser);
     }
 
+    @Test
+    void adminCanGrantQuotePermission() {
+        User currentAdmin = user("admin-1", "ADMIN", true);
+        User targetUser = user("user-1", "USER", true);
+        targetUser.setQuoteEnabled(false);
+        when(userRepository.findByIdForUpdate(targetUser.getId()))
+                .thenReturn(Optional.of(targetUser));
+        when(userRepository.save(targetUser)).thenReturn(targetUser);
+
+        var response = service.updateUser(
+                currentAdmin,
+                targetUser.getId(),
+                new UpdateAdminUserRequest(
+                        null, null, null,
+                        null, null, null, null, null, null, true
+                )
+        );
+
+        assertTrue(response.quoteEnabled());
+        assertTrue(targetUser.getQuoteEnabled());
+        verify(userRepository).save(targetUser);
+    }
+
     private User user(String id, String role, boolean active) {
         return User.builder()
                 .id(id)

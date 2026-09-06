@@ -32,7 +32,7 @@ Last updated: 2026-09-06
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
 
-## Current task: Personal Quote Library and daily resurfacing (2026-09-06)
+## Current task: Personal Quote Library, permission and daily resurfacing (2026-09-06)
 
 Status: implemented locally and verified; backend/web deployment and mobile
 release build are pending.
@@ -60,22 +60,29 @@ release build are pending.
   tags, duplicate confirmation, archive/restore/delete, detail/history and copy.
   The phone entry is under **Thêm**, wide layouts have a direct destination, and
   Dashboard shows the same server-selected daily quote.
-- The Quote Library is a base personal utility for every authenticated active
-  account; it does not add or depend on a module-permission flag.
+- Added independent `quoteEnabled` authorization through Flyway V18, User,
+  login/refresh/profile/dashboard responses and admin account management. New
+  and existing regular accounts default to disabled; admins bypass the flag.
+- Backend rejects both `/api/quotes` and `/api/quote-tags` with HTTP 403 without
+  Quote access. Revoking permission preserves all owner-scoped quote data.
+- Web and Flutter hide the Quote navigation/library, permission-aware guide and
+  Dashboard daily quote when access is absent. Both admin clients can grant or
+  revoke the permission; Flutter also shows it in the profile permission chips.
 - No file under backend/web/mobile Lunch modules was edited. Existing Lunch APIs,
   state, payment rules and UI remain unchanged.
 
 ### Verification
 
-- Backend full Maven suite passed: 64 tests, 0 failures, 2 PostgreSQL/
+- Backend full Maven suite passed: 68 tests, 0 failures, 2 PostgreSQL/
   Testcontainers tests skipped because Docker was unavailable. The 3 new quote
   integration tests cover metadata/search/duplicate handling, no-repeat daily
   rotation, same-day stability, archive replacement, ownership and deletion.
+  Added filter tests cover denial, grant and admin bypass; admin/auth tests cover
+  permission grant and the disabled registration default.
 - Web ESLint passed, Vitest passed 4 files / 7 tests, and the production
   TypeScript/Vite build passed with 2611 modules transformed.
-- Flutter targeted analysis for Quote and integration files passed with no
-  issues; widget tests passed. Full analysis reports only 26 existing info-level
-  findings in Admin/Lunch/Planner and no new Quote warning/error.
+- Flutter targeted analysis reports only existing info-level findings and no
+  warning/error in the changed permission integration. Widget tests passed.
 - No APK was built. PostgreSQL execution of V17 remains pending because Docker/
   Testcontainers was unavailable; its SQL uses the same varchar UUID/FK and
   Flyway conventions as the deployed schema.
@@ -83,7 +90,7 @@ release build are pending.
 ### Deployment / next step
 
 1. Review and commit this Quote batch only. Deploy backend first so Flyway V17
-   creates the schema, then deploy web.
+   and V18 create the schema and permission column, then deploy web.
 2. Test create/edit/duplicate/archive, the daily card and cycle behavior with an
    authenticated account on production. Retain `X-Request-Id` for any failure.
 3. Include Flutter changes in the next explicitly requested APK build and test

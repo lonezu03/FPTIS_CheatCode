@@ -61,7 +61,9 @@ export default function AppRoutes() {
                 <Route path="/health" element={<HealthPage />} />
               </Route>
               <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/quotes" element={<QuotesPage />} />
+              <Route element={<FeatureRoute feature="quoteEnabled" />}>
+                <Route path="/quotes" element={<QuotesPage />} />
+              </Route>
               <Route element={<FeatureRoute feature="todoEnabled" />}><Route path="/todos" element={<TodoPage />} /></Route>
               <Route element={<FeatureRoute feature="scheduleEnabled" />}><Route path="/schedule" element={<SchedulePage />} /></Route>
 

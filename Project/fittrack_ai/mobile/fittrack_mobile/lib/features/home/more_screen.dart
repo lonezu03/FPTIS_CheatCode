@@ -77,20 +77,22 @@ class MoreScreen extends StatelessWidget {
                   await showUserGuideSheet(context, session.user!);
                 },
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const CircleAvatar(
-                  child: Icon(Icons.format_quote_outlined),
+              if (user.quoteEnabled || user.isAdmin) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.format_quote_outlined),
+                  ),
+                  title: const Text('Kho câu nói'),
+                  subtitle: const Text('Lưu câu yêu thích và xem lại mỗi ngày'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(
+                    context,
+                    title: 'Kho câu nói',
+                    page: const QuoteScreen(),
+                  ),
                 ),
-                title: const Text('Kho câu nói'),
-                subtitle: const Text('Lưu câu yêu thích và xem lại mỗi ngày'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _open(
-                  context,
-                  title: 'Kho câu nói',
-                  page: const QuoteScreen(),
-                ),
-              ),
+              ],
               if (user.isAdmin) ...[
                 const Divider(height: 1),
                 ListTile(

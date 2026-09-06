@@ -24,6 +24,7 @@ public class UserMapper {
                 .chatbotEnabled(Boolean.TRUE.equals(user.getChatbotEnabled()))
                 .todoEnabled(Boolean.TRUE.equals(user.getTodoEnabled()))
                 .scheduleEnabled(Boolean.TRUE.equals(user.getScheduleEnabled()))
+                .quoteEnabled(Boolean.TRUE.equals(user.getQuoteEnabled()))
                 .passwordChangeRequired(Boolean.TRUE.equals(user.getPasswordChangeRequired()))
                 .assistantConsent(Boolean.TRUE.equals(user.getAssistantConsent()))
                 .emailNotificationsEnabled(Boolean.TRUE.equals(user.getEmailNotificationsEnabled()))

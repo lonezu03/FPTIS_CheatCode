@@ -56,8 +56,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             subtitle: 'Đây là tổng quan hoạt động của bạn hôm nay.',
           ),
           const SizedBox(height: 20),
-          const DailyQuoteCard(),
-          const SizedBox(height: 20),
+          if (user.quoteEnabled || user.isAdmin) ...[
+            const DailyQuoteCard(),
+            const SizedBox(height: 20),
+          ],
           if (!user.fitnessEnabled && !user.healthEnabled && !user.isAdmin)
             const Card(
               child: Padding(

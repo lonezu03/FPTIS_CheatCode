@@ -14,6 +14,7 @@ const lunchOnlyUser: AuthUser = {
   chatbotEnabled: false,
   todoEnabled: false,
   scheduleEnabled: false,
+  quoteEnabled: false,
   passwordChangeRequired: false,
 };
 
@@ -29,6 +30,7 @@ describe("getAvailableGuideModuleIds", () => {
     expect(ids).not.toContain("health");
     expect(ids).not.toContain("todos");
     expect(ids).not.toContain("schedule");
+    expect(ids).not.toContain("quotes");
     expect(ids).not.toContain("assistant");
     expect(ids).not.toContain("admin");
   });
@@ -44,6 +46,7 @@ describe("getAvailableGuideModuleIds", () => {
       "schedule",
       "fitness",
       "health",
+      "quotes",
       "assistant",
       "notifications",
       "profile",

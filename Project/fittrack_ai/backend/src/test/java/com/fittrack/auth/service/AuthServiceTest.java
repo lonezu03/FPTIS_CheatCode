@@ -59,6 +59,7 @@ class AuthServiceTest {
                         && Boolean.FALSE.equals(user.getFitnessEnabled())
                         && Boolean.FALSE.equals(user.getHealthEnabled())
                         && Boolean.FALSE.equals(user.getChatbotEnabled())
+                        && Boolean.FALSE.equals(user.getQuoteEnabled())
         ));
     }
 
@@ -82,6 +83,7 @@ class AuthServiceTest {
                         && Boolean.FALSE.equals(user.getFitnessEnabled())
                         && Boolean.FALSE.equals(user.getHealthEnabled())
                         && Boolean.FALSE.equals(user.getChatbotEnabled())
+                        && Boolean.FALSE.equals(user.getQuoteEnabled())
         ));
     }
 

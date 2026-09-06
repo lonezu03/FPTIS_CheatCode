@@ -24,6 +24,7 @@ public final class AdminUserDtos {
             boolean chatbotEnabled,
             boolean todoEnabled,
             boolean scheduleEnabled,
+            boolean quoteEnabled,
             LocalDateTime createdAt
     ) {
     }
@@ -38,10 +39,11 @@ public final class AdminUserDtos {
             Boolean healthEnabled,
             Boolean chatbotEnabled,
             Boolean todoEnabled,
-            Boolean scheduleEnabled
+            Boolean scheduleEnabled,
+            Boolean quoteEnabled
     ) {
         public UpdateAdminUserRequest(String fullName, String role, Boolean active) {
-            this(fullName, role, active, null, null, null, null, null, null);
+            this(fullName, role, active, null, null, null, null, null, null, null);
         }
     }
 

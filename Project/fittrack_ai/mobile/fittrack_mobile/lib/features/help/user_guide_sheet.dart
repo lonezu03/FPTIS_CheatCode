@@ -267,6 +267,7 @@ class _PermissionSummary extends StatelessWidget {
       ('Sức khỏe', user.isAdmin || user.healthEnabled),
       ('Việc cần làm', user.isAdmin || user.todoEnabled),
       ('Thời khóa biểu', user.isAdmin || user.scheduleEnabled),
+      ('Câu nói', user.isAdmin || user.quoteEnabled),
       ('Chatbot', user.isAdmin || user.chatbotEnabled),
     ];
     return Padding(
@@ -330,7 +331,7 @@ class _PermissionSummary extends StatelessWidget {
   }
 }
 
-enum _GuidePermission { lunch, fitness, health, todo, schedule, admin }
+enum _GuidePermission { lunch, fitness, health, todo, schedule, quote, admin }
 
 class _GuideModule {
   const _GuideModule({
@@ -356,6 +357,7 @@ class _GuideModule {
       _GuidePermission.health => user.healthEnabled,
       _GuidePermission.todo => user.todoEnabled,
       _GuidePermission.schedule => user.scheduleEnabled,
+      _GuidePermission.quote => user.quoteEnabled,
       _GuidePermission.admin => false,
     };
   }
@@ -565,6 +567,28 @@ const _guideModules = <_GuideModule>[
         action: 'Đọc biểu đồ xu hướng thay vì kết luận từ một lần đo.',
         visual: _GuideVisual.health,
         focusLabel: 'Biểu đồ xu hướng',
+      ),
+    ],
+  ),
+  _GuideModule(
+    id: 'quotes',
+    title: 'Câu nói',
+    icon: Icons.format_quote_outlined,
+    permission: _GuidePermission.quote,
+    steps: [
+      _GuideStep(
+        title: 'Lưu câu nói kèm nguồn',
+        description: 'Ghi nội dung, tác giả, nguồn và thẻ để dễ tìm lại. Ứng dụng sẽ cảnh báo nếu câu tương tự đã có trong kho cá nhân.',
+        action: 'Mở Kho câu nói, nhập nội dung rồi lưu.',
+        visual: _GuideVisual.profile,
+        focusLabel: 'Kho câu nói',
+      ),
+      _GuideStep(
+        title: 'Xem câu nói ngẫu nhiên hằng ngày',
+        description: 'Dashboard chỉ hiển thị Câu nói hôm nay khi tài khoản được cấp quyền. Các câu được luân phiên và không lặp lại trước khi hết danh sách.',
+        action: 'Bật hiển thị hằng ngày cho những câu bạn muốn luân phiên.',
+        visual: _GuideVisual.navigation,
+        focusLabel: 'Câu nói hôm nay',
       ),
     ],
   ),
