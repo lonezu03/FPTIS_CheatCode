@@ -8,6 +8,7 @@ import '../auth/auth_session.dart';
 import '../help/user_guide_sheet.dart';
 import '../notifications/notifications_screen.dart';
 import '../profile/profile_screen.dart';
+import '../quotes/quote_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key, required this.user});
@@ -75,6 +76,20 @@ class MoreScreen extends StatelessWidget {
                   if (!context.mounted || session.user == null) return;
                   await showUserGuideSheet(context, session.user!);
                 },
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const CircleAvatar(
+                  child: Icon(Icons.format_quote_outlined),
+                ),
+                title: const Text('Kho câu nói'),
+                subtitle: const Text('Lưu câu yêu thích và xem lại mỗi ngày'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _open(
+                  context,
+                  title: 'Kho câu nói',
+                  page: const QuoteScreen(),
+                ),
               ),
               if (user.isAdmin) ...[
                 const Divider(height: 1),

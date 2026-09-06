@@ -15,6 +15,7 @@ import DeferredFitnessTrendCharts from "../components/DeferredFitnessTrendCharts
 import MacroProgressCard from "../components/MacroProgressCard";
 import PageHeader from "../components/PageHeader";
 import RecommendationCard from "../components/RecommendationCard";
+import DailyQuoteCard from "../components/quotes/DailyQuoteCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -115,6 +116,7 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+    <DailyQuoteCard />
     <PageHeader title="Tổng quan hôm nay" description={healthEnabled || fitnessEnabled ? "Nắm nhanh tiến độ dinh dưỡng, luyện tập và các việc cần ưu tiên." : "Các thông tin liên quan đến quyền Đặt cơm và hồ sơ cá nhân của bạn."} />
     <div className={`grid gap-4 sm:grid-cols-2 ${cards.length >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>{cards.map((card) => { const Icon = card.icon; return <Card key={card.title} className={`border-0 bg-gradient-to-br ${card.tone}`}><CardHeader className="flex flex-row items-center justify-between pb-0"><CardTitle className="text-sm text-muted-foreground">{card.title}</CardTitle><span className={`grid size-9 place-items-center rounded-xl ${card.iconTone}`}><Icon className="size-4"/></span></CardHeader><CardContent><p className="text-3xl font-semibold tracking-[-0.04em]">{card.value}</p><p className="mt-1 text-xs text-muted-foreground">{card.detail}</p></CardContent></Card>; })}</div>
     {todoEnabled || scheduleEnabled ? <div className="grid gap-4 md:grid-cols-2">{todoEnabled&&<QuickLinkCard icon={ListTodo} title="Việc cần làm" description="Giữ các việc quan trọng trong tầm mắt và đánh dấu khi hoàn tất." to="/todos" action="Mở danh sách việc"/>}{scheduleEnabled&&<QuickLinkCard icon={CheckCircle2} title="Thời khóa biểu" description="Xếp mốc thời gian và nhận thông báo trước khi hoạt động bắt đầu." to="/schedule" action="Mở thời khóa biểu"/>}</div>:null}

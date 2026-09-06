@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 ## Repository and deployment
 
@@ -32,7 +32,66 @@ Last updated: 2026-09-05
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
 
-## Current task: Permission-aware user guide (2026-09-05)
+## Current task: Personal Quote Library and daily resurfacing (2026-09-06)
+
+Status: implemented locally and verified; backend/web deployment and mobile
+release build are pending.
+
+### Completed
+
+- Added Flyway `V17__favorite_quotes.sql` with separate personal quotes, tags,
+  many-to-many tag links and daily-display history. Quote metadata keeps author,
+  source type/title/URL/location, personal note, language, archive state and the
+  independent `includeInDaily` preference.
+- Added authenticated, owner-scoped `/api/quotes` CRUD, archive/restore,
+  duplicate-check, paginated search/filter, detail/history and `/api/quote-tags`.
+  Normalized SHA-256 content hashes warn about case/whitespace/Unicode duplicates
+  while an explicit `allowDuplicate=true` preserves the user's **Vẫn lưu** choice.
+- `GET /api/quotes/today` uses a pessimistic user lock plus database uniqueness
+  constraints so concurrent web/mobile requests return one stable quote per
+  Vietnam date. Eligible quotes are sampled without replacement; the cycle only
+  advances after the user's active daily pool is exhausted. Empty pools return
+  HTTP 200 with `quote: null`.
+- Added the responsive web **Kho câu nói** route/sidebar entry with card layout,
+  quick and expanded form, tags, search/filter/pagination, duplicate warning,
+  copy, detail, archive/restore/delete and display history. Dashboard has an
+  isolated **Câu nói hôm nay** card; quote API failure cannot fail the dashboard.
+- Added Flutter parity: Quote Library CRUD/search/filter/load-more, source/note/
+  tags, duplicate confirmation, archive/restore/delete, detail/history and copy.
+  The phone entry is under **Thêm**, wide layouts have a direct destination, and
+  Dashboard shows the same server-selected daily quote.
+- The Quote Library is a base personal utility for every authenticated active
+  account; it does not add or depend on a module-permission flag.
+- No file under backend/web/mobile Lunch modules was edited. Existing Lunch APIs,
+  state, payment rules and UI remain unchanged.
+
+### Verification
+
+- Backend full Maven suite passed: 64 tests, 0 failures, 2 PostgreSQL/
+  Testcontainers tests skipped because Docker was unavailable. The 3 new quote
+  integration tests cover metadata/search/duplicate handling, no-repeat daily
+  rotation, same-day stability, archive replacement, ownership and deletion.
+- Web ESLint passed, Vitest passed 4 files / 7 tests, and the production
+  TypeScript/Vite build passed with 2611 modules transformed.
+- Flutter targeted analysis for Quote and integration files passed with no
+  issues; widget tests passed. Full analysis reports only 26 existing info-level
+  findings in Admin/Lunch/Planner and no new Quote warning/error.
+- No APK was built. PostgreSQL execution of V17 remains pending because Docker/
+  Testcontainers was unavailable; its SQL uses the same varchar UUID/FK and
+  Flyway conventions as the deployed schema.
+
+### Deployment / next step
+
+1. Review and commit this Quote batch only. Deploy backend first so Flyway V17
+   creates the schema, then deploy web.
+2. Test create/edit/duplicate/archive, the daily card and cycle behavior with an
+   authenticated account on production. Retain `X-Request-Id` for any failure.
+3. Include Flutter changes in the next explicitly requested APK build and test
+   the bottom sheets on a narrow physical Android device.
+4. Deferred by scope: daily Quote notifications, themed rotation, CSV/OCR/import,
+   image sharing and AI tagging/explanation.
+
+## Previously completed: Permission-aware user guide (2026-09-05)
 
 Status: implemented locally and verified; deployment/app release build are pending.
 

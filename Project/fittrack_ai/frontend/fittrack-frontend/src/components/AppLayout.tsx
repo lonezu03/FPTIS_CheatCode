@@ -20,6 +20,7 @@ import {
   LogOut,
   Menu,
   ChefHat,
+  Quote as QuoteIcon,
   ShieldCheck,
   Soup,
  
@@ -58,6 +59,7 @@ const navGroups: NavGroup[] = [
       { to: "/lunch", label: "Đặt cơm", description: "Menu hằng ngày", icon: Soup, highlight: true, feature: "lunchEnabled" },
       { to: "/todos", label: "Việc cần làm", description: "Task cá nhân", icon: ListPlus, feature: "todoEnabled" },
       { to: "/schedule", label: "Thời khóa biểu", description: "Lịch & nhắc việc", icon: CalendarDays, feature: "scheduleEnabled" },
+      { to: "/quotes", label: "Câu nói", description: "Kho câu yêu thích", icon: QuoteIcon },
     ],
   },
   {

@@ -81,6 +81,12 @@ Deployment:
 - Menu import supports `@DRINKS` or `@EXTRAS` followed by priced lines such as `Trà đào | 45000` or `Trà vải 50000`. Extra IDs may repeat in an order to represent quantity; each repeated line contributes its `unitPrice` to the order total and refund.
 - Email notification delivery is opt-in per user via `emailNotificationsEnabled`; menu broadcasts, generic notifications and playbooks must honor it. Password-reset OTP is security-critical and remains independent of this preference.
 - User-submitted foods and exercises require admin approval before general use.
+- The personal Quote Library is available to every authenticated active user and
+  is not tied to a module-permission flag. Daily quotes use
+  `Asia/Ho_Chi_Minh`, remain stable across web/app for the same day, and cannot
+  repeat for that user until every eligible active quote has appeared in the
+  current cycle. Archived quotes and quotes with `includeInDaily=false` are
+  excluded from rotation.
 - Nutrition days use `UNLOGGED`, `PARTIAL`, `COMPLETE`, or `FASTING`. A day
   containing meals defaults to `PARTIAL` until the user confirms it; only
   `COMPLETE` and `FASTING` days may affect nutrition averages, achievements,

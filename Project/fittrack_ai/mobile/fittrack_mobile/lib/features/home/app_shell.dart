@@ -11,6 +11,7 @@ import '../lunch/lunch_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../planner/planner_screen.dart';
 import '../profile/profile_screen.dart';
+import '../quotes/quote_screen.dart';
 import 'dashboard_screen.dart';
 import 'more_screen.dart';
 
@@ -90,6 +91,12 @@ class _AppShellState extends State<AppShell> {
         Icons.event_note,
         PlannerScreen(user: user),
       ),
+    const _Destination(
+      'Câu nói',
+      Icons.format_quote_outlined,
+      Icons.format_quote,
+      QuoteScreen(),
+    ),
     const _Destination(
       'Thông báo',
       Icons.notifications_outlined,

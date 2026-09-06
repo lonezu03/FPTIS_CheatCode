@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../auth/auth_session.dart';
+import '../quotes/daily_quote_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -54,6 +55,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             title: 'Xin chào, ${user.fullName}',
             subtitle: 'Đây là tổng quan hoạt động của bạn hôm nay.',
           ),
+          const SizedBox(height: 20),
+          const DailyQuoteCard(),
           const SizedBox(height: 20),
           if (!user.fitnessEnabled && !user.healthEnabled && !user.isAdmin)
             const Card(

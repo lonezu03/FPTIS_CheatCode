@@ -513,3 +513,54 @@ DELETE /schedule/{id}
 ```
 
 `/schedule` quản lý event/cuộc hẹn. Event hỗ trợ `repeatRule=NONE|DAILY|WEEKLY|MONTHLY|YEARLY`, `repeatInterval`, `daysOfWeek`, `repeatEndAt`, `endAt` và reminder. `/schedule/calendar` là read model hợp nhất: trả cả event (`sourceType=EVENT`) và Todo có `startAt`/`dueAt` (`sourceType=TODO`) trong khoảng tối đa 370 ngày. Client không tạo thêm bản ghi Schedule khi một Todo được time-block.
+
+## Kho câu nói
+
+Kho câu nói là tiện ích cá nhân dành cho mọi tài khoản đã đăng nhập và không phụ
+thuộc quyền Đặt cơm, Rèn luyện hoặc Sức khỏe. Mọi truy vấn và thao tác ghi đều
+được giới hạn theo `user` lấy từ phiên xác thực.
+
+```http
+GET    /quotes?q=&tag=&status=ACTIVE&page=0&size=20
+POST   /quotes
+POST   /quotes/check-duplicate
+GET    /quotes/today
+GET    /quotes/history?page=0&size=30
+GET    /quotes/{id}
+PUT    /quotes/{id}
+POST   /quotes/{id}/archive
+POST   /quotes/{id}/restore
+DELETE /quotes/{id}
+GET    /quote-tags
+```
+
+Payload tạo/cập nhật:
+
+```json
+{
+  "content": "Thượng thiện nhược thủy",
+  "author": "Lão Tử",
+  "sourceType": "BOOK",
+  "sourceTitle": "Đạo Đức Kinh",
+  "sourceUrl": null,
+  "sourceLocation": "Chương 8",
+  "personalNote": "Nhắc mình biết thích nghi.",
+  "includeInDaily": true,
+  "language": "vi",
+  "tags": ["triết-lý", "đạo-gia"],
+  "allowDuplicate": false
+}
+```
+
+`sourceType` nhận `BOOK`, `ARTICLE`, `VIDEO`, `PODCAST`, `SONG`, `MOVIE`,
+`CONVERSATION`, `SOCIAL_POST` hoặc `OTHER`. `status` nhận `ACTIVE` hoặc
+`ARCHIVED`. Khi `allowDuplicate=false`, nội dung trùng sau khi chuẩn hóa khoảng
+trắng, chữ hoa/thường và Unicode trả HTTP 409. Client có thể kiểm tra trước qua
+`POST /quotes/check-duplicate`, sau đó chỉ gửi lại với `allowDuplicate=true` khi
+người dùng xác nhận **Vẫn lưu**.
+
+`GET /quotes/today` cố định một câu theo ngày `Asia/Ho_Chi_Minh` cho cùng tài
+khoản trên web và app. Chỉ các câu `ACTIVE` có `includeInDaily=true` tham gia.
+Một câu không lặp trong cùng chu kỳ; khi toàn bộ pool đã xuất hiện, backend mới
+tăng `cycleNumber`. Nếu chưa có câu phù hợp, response vẫn là HTTP 200 với
+`quote: null` để Dashboard hiển thị empty state mà không bị lỗi.
