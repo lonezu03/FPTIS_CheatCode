@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-09-06
+Last updated: 2026-09-09
 
 ## Repository and deployment
 
@@ -32,7 +32,46 @@ Last updated: 2026-09-06
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
 
-## Current task: Personal Quote Library, permission and daily resurfacing (2026-09-06)
+## Current task: Shared API loading and duplicate-submit guard (2026-09-09)
+
+Status: implemented locally and verified; web deployment and the next mobile
+release build are pending.
+
+### Completed
+
+- Web and Flutter now track all requests at their shared HTTP client, so API
+  coverage does not depend on each page remembering to implement loading.
+- Reads remain parallel/non-blocking and show a thin progress indicator. While
+  a `POST`, `PUT`, `PATCH` or `DELETE` is pending, a global Vietnamese loading
+  overlay blocks additional user interaction.
+- An identical concurrent write (method + endpoint + query + payload) is
+  rejected before reaching the backend. The guard is released on success,
+  network/API error and auth-refresh completion; retrying after completion is
+  allowed.
+- Duplicate-submit errors retain a clear user-facing message on both clients.
+  No backend endpoint, schema, API contract or Lunch module file changed.
+
+### Verification
+
+- Web full ESLint passed; Vitest passed 5 files / 10 tests, including three new
+  activity/duplicate-guard tests; TypeScript/Vite production build passed with
+  2613 modules transformed.
+- Flutter targeted analysis passed with no issues; full analysis has no errors
+  or warnings and only 26 pre-existing info-level lints. Full Flutter tests
+  passed 4 tests, including two new activity/duplicate-guard tests.
+- No APK was built. Flutter checks used a process-local Git safe-directory
+  setting for `E:/tools/flutter`; no global workstation configuration changed.
+
+### Deployment / next step
+
+1. Review and commit this client-only batch, then deploy web normally.
+2. Include the Flutter changes in the next requested APK and verify the overlay
+   on a physical phone during success, API failure and a slow Render cold start.
+3. For financial operations requiring cross-device idempotency, add a dedicated
+   backend idempotency key in a separate change; this client guard intentionally
+   prevents same-client double submit and does not replace server transactions.
+
+## Previously completed: Personal Quote Library, permission and daily resurfacing (2026-09-06)
 
 Status: implemented locally and verified; backend/web deployment and mobile
 release build are pending.

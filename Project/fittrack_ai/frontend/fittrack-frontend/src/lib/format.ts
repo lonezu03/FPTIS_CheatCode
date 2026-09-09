@@ -1,4 +1,5 @@
 import axios from "axios";
+import { DUPLICATE_MUTATION_MESSAGE } from "./api-activity";
 
 const currencyFormatter = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -72,7 +73,8 @@ export function getDefaultLunchCutoff(date = new Date()): string {
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError<{ message?: string }>(error)) {
-    return error.response?.data?.message?.trim() || fallback;
+    if (error.code === "ERR_DUPLICATE_MUTATION") return DUPLICATE_MUTATION_MESSAGE;
+    return error.response?.data?.message?.trim() || error.message?.trim() || fallback;
   }
 
   if (error instanceof Error && error.message.trim()) {

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/network/api_activity_controller.dart';
+import 'core/network/api_activity_overlay.dart';
 import 'core/network/api_client.dart';
 import 'core/notifications/notification_center.dart';
 import 'core/theme/app_theme.dart';
@@ -49,6 +51,7 @@ class _FitTrackBootstrapState extends State<FitTrackBootstrap> {
     unawaited(notifications.stop());
     session.dispose();
     notifications.dispose();
+    api.activity.dispose();
     super.dispose();
   }
 
@@ -56,6 +59,7 @@ class _FitTrackBootstrapState extends State<FitTrackBootstrap> {
   Widget build(BuildContext context) => MultiProvider(
     providers: [
       Provider.value(value: api),
+      ChangeNotifierProvider<ApiActivityController>.value(value: api.activity),
       ChangeNotifierProvider.value(value: session),
       ChangeNotifierProvider.value(value: notifications),
     ],
@@ -63,6 +67,8 @@ class _FitTrackBootstrapState extends State<FitTrackBootstrap> {
       debugShowCheckedModeBanner: false,
       title: 'FitTrack',
       theme: AppTheme.light,
+      builder: (context, child) =>
+          ApiActivityOverlay(child: child ?? const SizedBox.shrink()),
       home: const _AuthGate(),
     ),
   );

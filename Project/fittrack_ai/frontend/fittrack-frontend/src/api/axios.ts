@@ -1,4 +1,11 @@
-import axios from "axios";
+import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import {
+  apiActivityStore,
+  createMutationKey,
+  DUPLICATE_MUTATION_MESSAGE,
+  isMutationMethod,
+  MutationRequestGuard,
+} from "../lib/api-activity";
 import { useAuthStore, type AuthUser } from "../store/auth.store";
 
 // Mirrors the backend's local default: SERVER_PORT falls back to 8081.
@@ -24,6 +31,52 @@ const api = axios.create({
   withCredentials: true,
   headers: { "X-Requested-With": "XMLHttpRequest" },
 });
+
+type RequestTracking = {
+  finish: () => void;
+};
+
+const requestTracking = new WeakMap<InternalAxiosRequestConfig, RequestTracking>();
+const mutationGuard = new MutationRequestGuard();
+
+function startTracking(config: InternalAxiosRequestConfig): void {
+  const mutation = isMutationMethod(config.method);
+  const releaseMutation = mutation
+    ? mutationGuard.acquire(
+        createMutationKey({
+          method: config.method,
+          baseURL: config.baseURL,
+          url: config.url,
+          params: config.params,
+          data: config.data,
+        }),
+      )
+    : undefined;
+
+  if (mutation && !releaseMutation) {
+    throw new AxiosError(
+      DUPLICATE_MUTATION_MESSAGE,
+      "ERR_DUPLICATE_MUTATION",
+      config,
+    );
+  }
+
+  const finishActivity = apiActivityStore.begin(mutation);
+  let finished = false;
+  requestTracking.set(config, {
+    finish: () => {
+      if (finished) return;
+      finished = true;
+      releaseMutation?.();
+      finishActivity();
+      requestTracking.delete(config);
+    },
+  });
+}
+
+function finishTracking(config?: InternalAxiosRequestConfig): void {
+  if (config) requestTracking.get(config)?.finish();
+}
 
 const PUBLIC_AUTH_PATHS = [
   "/auth/login",
@@ -57,14 +110,20 @@ api.interceptors.request.use((config) => {
     delete config.headers.Authorization;
   }
 
+  startTracking(config);
+
   return config;
 });
 
 let refreshPromise: Promise<string> | null = null;
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    finishTracking(response.config);
+    return response;
+  },
   (error) => {
+    finishTracking(error.config);
     const original = error.config as (typeof error.config & { _retried?: boolean }) | undefined;
     const isAuthRequest = isPublicAuthUrl(original?.url);
 

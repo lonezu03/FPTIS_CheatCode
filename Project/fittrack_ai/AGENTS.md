@@ -124,6 +124,11 @@ Deployment:
   `dist/`, `node_modules/`, `.pub-cache/`, or `.local-android-sdk/`.
 - Keep user-facing web/mobile text in Vietnamese unless the user asks otherwise.
 - When a feature exists on web and mobile, keep API payload names and permission flags identical; do not silently fall back to mock data. Current parity includes email preference, multi-menu/extra lunch checkout, grouped workout history, and notification playbook administration.
+- Keep web and mobile network calls on their shared API clients. Both clients
+  track every request, show non-blocking progress for reads, block interaction
+  while a write is pending, and reject an identical concurrent
+  `POST`/`PUT`/`PATCH`/`DELETE`. Preserve auth-refresh retries inside the same
+  tracked operation so loading state is always released on success or failure.
 - Notification playbooks must support either all active users or an explicit selected-user list. SELECTED requires nonempty IDs for active users only; invalid or locked IDs are rejected. Prefer selected recipients for personal or sensitive wellness messages to avoid notification fatigue. Web and mobile both expose playbook CRUD/edit/toggle/delete.
 - For production HTTP failures, retain and report `X-Request-Id`, then correlate
   it with Render logs before guessing at the cause.

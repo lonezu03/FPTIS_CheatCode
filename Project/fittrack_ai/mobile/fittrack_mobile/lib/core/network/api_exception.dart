@@ -8,6 +8,9 @@ class ApiException implements Exception {
   final String? requestId;
 
   factory ApiException.fromDio(DioException error) {
+    final cause = error.error;
+    if (cause is ApiException) return cause;
+
     final data = error.response?.data;
     var message = 'Không thể kết nối máy chủ. Vui lòng thử lại.';
     if (data is Map && data['message']?.toString().trim().isNotEmpty == true) {
