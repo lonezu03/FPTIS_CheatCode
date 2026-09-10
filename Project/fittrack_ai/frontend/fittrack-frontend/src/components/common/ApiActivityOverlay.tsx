@@ -34,7 +34,7 @@ export default function ApiActivityOverlay() {
             <div>
               <p className="font-semibold text-slate-900">Đang xử lý...</p>
               <p className="mt-0.5 text-sm text-slate-600">
-                Vui lòng chờ API phản hồi và không gửi lại thao tác.
+                Đợ 1 chúc 
               </p>
             </div>
           </div>
