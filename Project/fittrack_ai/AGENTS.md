@@ -196,3 +196,9 @@ the context file.
 - Todo reminders use `Asia/Ho_Chi_Minh`, the shared in-app notification service, a deduplication key based on Todo ID and reminder time, and the same per-user email opt-in behavior as other notifications. Password-reset OTP remains independent.
 - The web and Flutter planner must expose the same P1 fields and Vietnamese labels. If Flutter/Dart is unavailable in the sandbox, document that limitation and run `flutter analyze` and `flutter test` on a Flutter workstation before release.
 - Schedule owns events/appointments only. `GET /api/schedule/calendar` is the unified read model for Schedule events plus timed Todos; clients must never duplicate a Todo into `schedule_items` merely to display it on a calendar.
+- A timed Todo in `OPEN` or `IN_PROGRESS` carries forward as a virtual calendar
+  entry on every day from its original `startAt`/`dueAt` date through the current
+  Vietnam date. Do not mutate the Todo's stored dates or insert Schedule rows for
+  carry-over. Once completed, carry-over stops on `completedAt`; calendar clients
+  render `DONE` Todo entries with a strikethrough. Skipped, cancelled and archived
+  Todos do not carry forward.

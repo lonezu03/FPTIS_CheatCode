@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-09-09
+Last updated: 2026-09-12
 
 ## Repository and deployment
 
@@ -32,7 +32,45 @@ Last updated: 2026-09-09
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
 
-## Current task: Shared API loading and duplicate-submit guard (2026-09-09)
+## Current task: Todo carry-over in unified calendar (2026-09-12)
+
+Status: implemented locally and verified; backend/web deployment and the next
+mobile release build are pending.
+
+### Completed
+
+- `GET /api/schedule/calendar` now emits virtual daily occurrences for each
+  timed `OPEN`/`IN_PROGRESS` Todo from its original scheduled date through the
+  current Vietnam date. It does not mutate Todo dates or create Schedule rows.
+- Completing an overdue Todo stops carry-over on `completedAt`. Its calendar
+  occurrences retain `status=DONE`; web Day/Week/Month/List views and the Flutter
+  schedule list render the title struck through with completed styling.
+- Skipped, cancelled and archived Todos do not carry forward. Todos without
+  `startAt` or `dueAt` remain absent from the time-based calendar.
+- Web Todo mutations invalidate both Todo and calendar caches, so completion
+  styling appears immediately when navigating to the calendar.
+- Updated the persistent Planner rule and API documentation. No migration or
+  stored API payload change is required.
+
+### Verification
+
+- Backend full Maven suite: 70 tests executed, 68 passed, 0 failures, with 2
+  PostgreSQL/Testcontainers tests skipped because Docker was unavailable. New coverage
+  verifies daily carry-over, unchanged stored dates, completion-day inclusion
+  and no occurrences after completion.
+- Targeted web ESLint passed, full Vitest passed 5 files / 10 tests, and the
+  TypeScript/Vite production build passed with 2613 modules transformed.
+- Targeted Flutter analysis has no errors/warnings; only 16 existing info-level
+  Planner lints remain. Full Flutter tests passed 3 tests.
+
+### Deployment / next step
+
+1. Deploy backend first, then web. No Flyway migration is needed.
+2. Test an overdue task across Day/Week/Month, complete it, and confirm immediate
+   strikethrough plus no carry-over on the following day.
+3. Include Flutter changes in the next explicitly requested APK build.
+
+## Previously completed: Shared API loading and duplicate-submit guard (2026-09-09)
 
 Status: implemented locally and verified; web deployment and the next mobile
 release build are pending.

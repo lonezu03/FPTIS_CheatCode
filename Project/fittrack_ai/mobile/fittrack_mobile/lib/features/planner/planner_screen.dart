@@ -1311,19 +1311,28 @@ class _ScheduleList extends StatelessWidget {
           );
         final item = items[index - 1];
         final isTodo = item['sourceType'] == 'TODO';
+        final completed = isTodo && item['status'] == 'DONE';
         return Card(
           child: ListTile(
             leading: CircleAvatar(
               child: Icon(
-                isTodo ? Icons.checklist_outlined : Icons.event_outlined,
+                completed
+                    ? Icons.check_circle_outline
+                    : isTodo
+                    ? Icons.checklist_outlined
+                    : Icons.event_outlined,
               ),
             ),
             title: Text(
               item['title']?.toString() ?? 'Hoạt động',
-              style: const TextStyle(fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                decoration: completed ? TextDecoration.lineThrough : null,
+                color: completed ? Colors.black54 : null,
+              ),
             ),
             subtitle: Text(
-              '${_dateLabel(item['startAt'])} • ${isTodo ? 'Việc cần làm' : 'Sự kiện'}${item['recurring'] == true ? ' • Lặp lại' : ''}',
+              '${_dateLabel(item['startAt'])} • ${isTodo ? 'Việc cần làm' : 'Sự kiện'}${completed ? ' • Đã hoàn thành' : ''}${item['recurring'] == true ? ' • Lặp lại' : ''}',
             ),
           ),
         );

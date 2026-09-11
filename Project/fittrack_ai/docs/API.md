@@ -514,6 +514,8 @@ DELETE /schedule/{id}
 
 `/schedule` quản lý event/cuộc hẹn. Event hỗ trợ `repeatRule=NONE|DAILY|WEEKLY|MONTHLY|YEARLY`, `repeatInterval`, `daysOfWeek`, `repeatEndAt`, `endAt` và reminder. `/schedule/calendar` là read model hợp nhất: trả cả event (`sourceType=EVENT`) và Todo có `startAt`/`dueAt` (`sourceType=TODO`) trong khoảng tối đa 370 ngày. Client không tạo thêm bản ghi Schedule khi một Todo được time-block.
 
+Todo ở trạng thái `OPEN` hoặc `IN_PROGRESS` được trả dưới dạng một calendar occurrence ảo cho từng ngày từ ngày bắt đầu/hạn gốc đến ngày hiện tại theo múi giờ `Asia/Ho_Chi_Minh`. Cơ chế này không thay đổi `startAt`/`dueAt` và không tạo dòng `schedule_items`. Khi Todo chuyển sang `DONE`, occurrence cuối cùng là ngày `completedAt`, các ngày sau không còn được tạo và client phải gạch ngang mục có `status=DONE`. `SKIPPED`, `CANCELLED` và `ARCHIVED` chỉ giữ mốc gốc, không carry-over.
+
 ## Kho câu nói
 
 Kho câu nói là module cá nhân yêu cầu quyền `quoteEnabled`; admin luôn được truy

@@ -20,6 +20,7 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,6 +32,8 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class ScheduleService {
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+
     private final ScheduleRepository repository;
     private final TodoRepository todoRepository;
     private final LunchNotificationService notificationService;
@@ -55,16 +58,9 @@ public class ScheduleService {
         }
         List<CalendarEntryResponse> result = new ArrayList<>();
         if (Boolean.TRUE.equals(user.getTodoEnabled()) || "ADMIN".equalsIgnoreCase(user.getRole())) {
+            LocalDate today = LocalDate.now(BUSINESS_ZONE);
             for (Todo todo : todoRepository.findByUserOrderByDueAtAscCreatedAtDesc(user)) {
-                LocalDateTime start = todo.getStartAt() != null ? todo.getStartAt() : todo.getDueAt();
-                if (start == null || start.isBefore(from) || !start.isBefore(to)) continue;
-                LocalDateTime end = todo.getDueAt() != null && todo.getDueAt().isAfter(start)
-                        ? todo.getDueAt() : todo.getEstimatedMinutes() == null ? null : start.plusMinutes(todo.getEstimatedMinutes());
-                result.add(new CalendarEntryResponse(
-                        "TODO:" + todo.getId(), "TODO", todo.getId(), todo.getTitle(), todo.getDescription(),
-                        todo.getCategory().name(), start, end, todo.getStatus().name(),
-                        todo.getRecurrenceRule() != Todo.RecurrenceRule.NONE
-                ));
+                addTodoOccurrences(todo, from, to, today, result);
             }
         }
         for (ScheduleItem item : repository.findByUserAndEnabledTrueOrderByStartAtAsc(user)) {
@@ -72,6 +68,44 @@ public class ScheduleService {
         }
         return result.stream().sorted(Comparator.comparing(CalendarEntryResponse::startAt)
                 .thenComparing(CalendarEntryResponse::title)).toList();
+    }
+
+    private void addTodoOccurrences(Todo todo, LocalDateTime from, LocalDateTime to, LocalDate today,
+                                    List<CalendarEntryResponse> target) {
+        LocalDateTime anchor = todo.getStartAt() != null ? todo.getStartAt() : todo.getDueAt();
+        if (anchor == null) return;
+
+        LocalDate firstDate = anchor.toLocalDate();
+        LocalDate lastDate = firstDate;
+        if (todo.getStatus() == Todo.TodoStatus.OPEN || todo.getStatus() == Todo.TodoStatus.IN_PROGRESS) {
+            if (today.isAfter(lastDate)) lastDate = today;
+        } else if (todo.getStatus() == Todo.TodoStatus.DONE && todo.getCompletedAt() != null
+                && todo.getCompletedAt().toLocalDate().isAfter(lastDate)) {
+            lastDate = todo.getCompletedAt().toLocalDate();
+        }
+
+        LocalDate cursor = firstDate.isBefore(from.toLocalDate()) ? from.toLocalDate() : firstDate;
+        LocalDate windowEnd = lastDate.isAfter(to.toLocalDate()) ? to.toLocalDate() : lastDate;
+        LocalDateTime originalEnd = todoEnd(todo, anchor);
+        Duration duration = originalEnd == null ? null : Duration.between(anchor, originalEnd);
+
+        while (!cursor.isAfter(windowEnd)) {
+            LocalDateTime occurrenceStart = LocalDateTime.of(cursor, anchor.toLocalTime());
+            if (!occurrenceStart.isBefore(from) && occurrenceStart.isBefore(to)) {
+                LocalDateTime occurrenceEnd = duration == null ? null : occurrenceStart.plus(duration);
+                target.add(new CalendarEntryResponse(
+                        "TODO:" + todo.getId() + ":" + cursor, "TODO", todo.getId(), todo.getTitle(),
+                        todo.getDescription(), todo.getCategory().name(), occurrenceStart, occurrenceEnd,
+                        todo.getStatus().name(), todo.getRecurrenceRule() != Todo.RecurrenceRule.NONE
+                ));
+            }
+            cursor = cursor.plusDays(1);
+        }
+    }
+
+    private LocalDateTime todoEnd(Todo todo, LocalDateTime start) {
+        if (todo.getDueAt() != null && todo.getDueAt().isAfter(start)) return todo.getDueAt();
+        return todo.getEstimatedMinutes() == null ? null : start.plusMinutes(todo.getEstimatedMinutes());
     }
 
     @Scheduled(cron = "20 * * * * *", zone = "Asia/Ho_Chi_Minh")

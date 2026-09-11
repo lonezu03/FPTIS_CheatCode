@@ -13,6 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,6 +22,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ScheduleServiceTest {
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+
     @Mock
     private ScheduleRepository scheduleRepository;
     @Mock
@@ -51,9 +55,56 @@ class ScheduleServiceTest {
                 LocalDateTime.of(2026, 9, 1, 0, 0),
                 LocalDateTime.of(2026, 9, 4, 0, 0));
 
-        assertThat(result).hasSize(4);
+        assertThat(result).hasSize(5);
         assertThat(result).filteredOn(entry -> entry.sourceType().equals("TODO"))
-                .singleElement().extracting(entry -> entry.sourceId()).isEqualTo("todo-1");
+                .hasSize(2).allSatisfy(entry -> assertThat(entry.sourceId()).isEqualTo("todo-1"));
         assertThat(result).filteredOn(entry -> entry.sourceType().equals("EVENT")).hasSize(3);
+    }
+
+    @Test
+    void unfinishedTodoCarriesIntoEachDayThroughTodayWithoutChangingItsStoredDate() {
+        User user = new User();
+        user.setTodoEnabled(true);
+        LocalDate today = LocalDate.now(BUSINESS_ZONE);
+        LocalDateTime originalStart = today.minusDays(2).atTime(9, 15);
+        Todo todo = Todo.builder().id("todo-overdue").user(user).title("Hoàn thành báo cáo")
+                .status(Todo.TodoStatus.OPEN).priority(Todo.TodoPriority.HIGH).category(Todo.TodoCategory.WORK)
+                .recurrenceRule(Todo.RecurrenceRule.NONE).recurrenceInterval(1)
+                .startAt(originalStart).estimatedMinutes(45)
+                .reminderEnabled(false).subtasks(List.of()).build();
+        when(todoRepository.findByUserOrderByDueAtAscCreatedAtDesc(user)).thenReturn(List.of(todo));
+        when(scheduleRepository.findByUserAndEnabledTrueOrderByStartAtAsc(user)).thenReturn(List.of());
+
+        var result = service.getCalendar(user, today.minusDays(2).atStartOfDay(), today.plusDays(1).atStartOfDay());
+
+        assertThat(result).hasSize(3);
+        assertThat(result).allSatisfy(entry -> {
+            assertThat(entry.sourceType()).isEqualTo("TODO");
+            assertThat(entry.status()).isEqualTo("OPEN");
+            assertThat(entry.startAt().toLocalTime()).isEqualTo(originalStart.toLocalTime());
+        });
+        assertThat(result.getLast().startAt().toLocalDate()).isEqualTo(today);
+        assertThat(todo.getStartAt()).isEqualTo(originalStart);
+    }
+
+    @Test
+    void completedOverdueTodoHasFinalCrossableOccurrenceOnCompletionDayAndStopsThere() {
+        User user = new User();
+        user.setTodoEnabled(true);
+        LocalDate today = LocalDate.now(BUSINESS_ZONE);
+        Todo todo = Todo.builder().id("todo-done").user(user).title("Gửi hồ sơ")
+                .status(Todo.TodoStatus.DONE).priority(Todo.TodoPriority.MEDIUM)
+                .category(Todo.TodoCategory.PERSONAL).recurrenceRule(Todo.RecurrenceRule.NONE)
+                .recurrenceInterval(1).dueAt(today.minusDays(2).atTime(17, 0))
+                .completedAt(today.atTime(10, 30)).reminderEnabled(false).subtasks(List.of()).build();
+        when(todoRepository.findByUserOrderByDueAtAscCreatedAtDesc(user)).thenReturn(List.of(todo));
+        when(scheduleRepository.findByUserAndEnabledTrueOrderByStartAtAsc(user)).thenReturn(List.of());
+
+        var result = service.getCalendar(user, today.minusDays(2).atStartOfDay(), today.plusDays(2).atStartOfDay());
+
+        assertThat(result).hasSize(3);
+        assertThat(result).allSatisfy(entry -> assertThat(entry.status()).isEqualTo("DONE"));
+        assertThat(result.getLast().startAt().toLocalDate()).isEqualTo(today);
+        assertThat(result).noneMatch(entry -> entry.startAt().toLocalDate().isAfter(today));
     }
 }

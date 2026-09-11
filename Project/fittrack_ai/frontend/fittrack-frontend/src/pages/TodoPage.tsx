@@ -86,7 +86,10 @@ export default function TodoPage() {
   const [quickAdd, setQuickAdd] = useState('');
   const [renderNow] = useState(() => Date.now());
 
-  const refresh = () => void client.invalidateQueries({ queryKey: ['todos'] });
+  const refresh = () => {
+    void client.invalidateQueries({ queryKey: ['todos'] });
+    void client.invalidateQueries({ queryKey: ['calendar'] });
+  };
   const createMutation = useMutation({
     mutationFn: createTodo,
     onSuccess: () => { setDraft(emptyDraft()); refresh(); toast.success('Đã thêm công việc'); },
