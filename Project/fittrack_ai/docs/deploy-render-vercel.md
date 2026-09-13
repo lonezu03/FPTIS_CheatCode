@@ -38,14 +38,16 @@ MAIL_FROM=<verified-sender-address>
 MAIL_SENDER_NAME=FitTrack
 MAIL_API_CONNECT_TIMEOUT_MS=10000
 MAIL_API_READ_TIMEOUT_MS=15000
+MAIL_HEALTH_ENABLED=false
 ```
 
 Use Aiven PostgreSQL for the database. Copy the host, port, database name, username, and password from the Aiven service Overview page.
 
-Set Render's Health Check Path to `/api/health`. Dùng cron/UptimeRobot bên ngoài
-để gọi health và `/api/internal/jobs/reminders`; backend không thể tự đánh thức
-chính nó khi Render đã cho ngủ. Do not put `GEMINI_API_KEY` in `render.yaml`,
-Git, Vercel, or any `VITE_` environment variable.
+Set Render's Health Check Path to `/actuator/health/readiness`. Dùng
+cron/UptimeRobot bên ngoài gọi `/api/health` và `/api/internal/jobs/reminders`;
+backend không thể tự đánh thức chính nó khi Render đã cho ngủ. Sau deploy,
+`/api/health` phải trả đúng source commit. Do not put `GEMINI_API_KEY` in
+`render.yaml`, Git, Vercel, or any `VITE_` environment variable.
 
 Render Free chặn outbound SMTP trên các cổng `25`, `465` và `587`, vì vậy production
 phải dùng Brevo Email API qua HTTPS. Tạo tài khoản Brevo, thêm sender, nhập mã xác
@@ -57,11 +59,11 @@ SMTP vẫn dùng được khi chạy local hoặc trên Render trả phí bằng
 `MAIL_PROVIDER=smtp` cùng `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`,
 `MAIL_PASSWORD` và `MAIL_FROM`.
 
-Production yêu cầu email để xác thực đăng ký. Vì vậy nếu `MAIL_ENABLED=false`
-hoặc thiếu API key/sender, đăng ký và quên mật khẩu sẽ trả `503`
-thay vì âm thầm tạo tài khoản không thể xác thực. Sau khi deploy, đăng nhập admin
-và dùng **Quản lý thông báo > Gửi email thử cho tôi**; nếu Brevo từ chối, Render
-log sẽ ghi HTTP status và thông báo an toàn nhưng không ghi API key.
+Tài khoản mới không cần xác thực email và có thể đăng nhập ngay. Email vẫn bắt
+buộc phải cấu hình đúng cho OTP quên mật khẩu và các thông báo opt-in. Sau khi
+deploy, đăng nhập admin và dùng **Quản lý thông báo > Gửi email thử cho tôi**;
+nếu Brevo từ chối, Render log sẽ ghi HTTP status và thông báo an toàn nhưng
+không ghi API key.
 
 ## Frontend: Vercel
 

@@ -23,5 +23,3 @@ app:
   auth:
     cookie-secure: true
     cookie-same-site: Lax
-  mail:
-    registration-requires-email: true

@@ -33,6 +33,15 @@ jobs:
       - run: chmod +x mvnw
       - name: Unit, integration and PostgreSQL migration tests
         run: ./mvnw --batch-mode verify
+      - name: Require PostgreSQL/Testcontainers release gates
+        run: python scripts/verify_postgres_test_reports.py
+      - name: Upload backend test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: Project/fittrack_ai/backend/target/surefire-reports/
+          if-no-files-found: error
       - name: Build backend Docker image
         run: docker build --tag fittrack-backend:ci .
 

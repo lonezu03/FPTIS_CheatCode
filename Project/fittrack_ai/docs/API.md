@@ -3,14 +3,28 @@
 Base URL:
 
 ```txt
-http://localhost:8080/api
+http://localhost:8081/api
 ```
 
 Authentication:
 
 ```txt
-Authorization: Bearer <JWT>
+Web: cookie HttpOnly qua proxy cùng origin
+Mobile: Authorization: Bearer <JWT>
 ```
+
+## Health
+
+```http
+GET /health
+GET /actuator/health/liveness
+GET /actuator/health/readiness
+```
+
+`GET /api/health` kiểm tra database và trả thêm `version`, `commit`, `timestamp`.
+Hai Actuator probe dùng đường dẫn ngoài `/api`; liveness chỉ phản ánh process,
+readiness phản ánh application readiness và database. Các endpoint này public
+nhưng không công khai health details.
 
 ## Auth
 
@@ -25,7 +39,7 @@ Request:
 ```json
 {
   "email": "test@gmail.com",
-  "password": "123456",
+  "password": "Example123!",
   "fullName": "Phan Thanh Vu",
   "height": 160,
   "weight": 60,
@@ -44,7 +58,7 @@ Request:
 ```json
 {
   "email": "test@gmail.com",
-  "password": "123456"
+  "password": "Example123!"
 }
 ```
 

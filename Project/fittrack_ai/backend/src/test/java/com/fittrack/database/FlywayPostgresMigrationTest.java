@@ -10,6 +10,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Testcontainers(disabledWithoutDocker = true)
@@ -32,7 +33,8 @@ class FlywayPostgresMigrationTest {
 
         var result = flyway.migrate();
 
-        assertTrue(result.migrationsExecuted >= 15);
+        assertEquals(18, result.migrationsExecuted);
+        assertEquals("18", flyway.info().current().getVersion().getVersion());
         try (Connection connection = DriverManager.getConnection(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()
         )) {
@@ -58,8 +60,12 @@ class FlywayPostgresMigrationTest {
                     "select 1 from information_schema.tables where table_name = 'water_logs'"));
             assertTrue(exists(connection,
                     "select 1 from information_schema.columns where table_name = 'meal_items' and column_name = 'serving_unit'"));
-            assertTrue(count(connection,
-                    "select count(*) from flyway_schema_history where success") >= 15);
+            assertTrue(exists(connection,
+                    "select 1 from information_schema.tables where table_name = 'favorite_quotes'"));
+            assertTrue(exists(connection,
+                    "select 1 from information_schema.columns where table_name = 'users' and column_name = 'quote_enabled'"));
+            assertEquals(18, count(connection,
+                    "select count(*) from flyway_schema_history where success"));
         }
     }
 

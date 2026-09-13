@@ -52,6 +52,12 @@ spring:
             enable: true
             required: true
 
+info:
+  app:
+    name: ${spring.application.name}
+    version: "@project.version@"
+    commit: ${RENDER_GIT_COMMIT:${GIT_COMMIT:unknown}}
+
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:https://datcom-nhalam.vercel.app,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173}
@@ -79,7 +85,6 @@ app:
     provider: ${MAIL_PROVIDER:smtp}
     from: ${MAIL_FROM:${MAIL_USERNAME:}}
     sender-name: ${MAIL_SENDER_NAME:FitTrack}
-    registration-requires-email: ${REGISTRATION_REQUIRES_EMAIL:false}
     api-connect-timeout-ms: ${MAIL_API_CONNECT_TIMEOUT_MS:10000}
     api-read-timeout-ms: ${MAIL_API_READ_TIMEOUT_MS:15000}
     brevo:
@@ -120,6 +125,19 @@ management:
   endpoint:
     health:
       show-details: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState,ping
+        readiness:
+          include: readinessState,db
+  health:
+    # Production email uses Brevo REST. Spring's SMTP health contributor would
+    # otherwise mark the whole service DOWN even when the API and database are
+    # healthy. Enable it explicitly only for deployments that truly use SMTP.
+    mail:
+      enabled: ${MAIL_HEALTH_ENABLED:false}
   tracing:
     sampling:
       probability: ${OTEL_TRACING_SAMPLE_RATE:0.1}

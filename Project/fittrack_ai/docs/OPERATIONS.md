@@ -14,6 +14,7 @@ JWT_REFRESH_EXPIRATION_DAYS=30
 AUTH_COOKIE_SECURE=true
 INTERNAL_SCHEDULER_ENABLED=false
 KEEP_ALIVE_ENABLED=false
+MAIL_HEALTH_ENABLED=false
 ```
 
 Không đặt database password, JWT secret, Gemini key, Cloudinary secret hoặc SMTP password trong Git/Vercel/biến `VITE_*`. Các secret từng bị gửi qua chat phải được thu hồi và tạo lại tại Aiven, Google AI/OpenAI và Cloudinary trước lần deploy kế tiếp.
@@ -89,7 +90,15 @@ Production Vercel dùng `VITE_API_MODE=proxy`; frontend luôn gọi `/api` qua r
 ## Quan sát và xử lý lỗi
 
 - Mọi response có `X-Request-Id`; log backend in cùng request ID.
+- Render Health Check nên dùng `/actuator/health/readiness`; endpoint này chỉ
+  `UP` khi application sẵn sàng và database hoạt động.
+- `/actuator/health/liveness` chỉ kiểm tra process; không thêm DB, Brevo, Gemini
+  hoặc Cloudinary vào liveness.
+- `/api/health` kiểm tra DB và trả `version`/`commit`. Sau deploy, giá trị commit
+  phải khớp commit dự kiến trong release checklist.
 - `/actuator/health` và `/actuator/prometheus` phục vụ health/metrics theo cấu hình Security.
+- SMTP health mặc định tắt vì production dùng Brevo REST. Chỉ bật
+  `MAIL_HEALTH_ENABLED=true` với deployment thực sự gửi qua SMTP.
 - Có thể bật OTLP bằng `OTEL_EXPORT_ENABLED=true` và đặt `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` tới collector/Sentry-compatible collector.
 - Admin xem sự kiện nhạy cảm tại `GET /api/admin/audit-events?page=0&size=20`.
 
@@ -97,4 +106,10 @@ Khi có HTTP 500, lấy `X-Request-Id` từ Network tab, tìm request ID đó tr
 
 ## CI
 
-Workflow `.github/workflows/fittrack-ci.yml` chạy backend test, migration trên PostgreSQL Testcontainers, frontend lint/Vitest/build, Playwright refresh-route, Docker build và secret scan cho mỗi push/PR.
+Workflow `.github/workflows/fittrack-ci.yml` chạy backend test, migration trên
+PostgreSQL Testcontainers, frontend lint/Vitest/build, Playwright refresh-route,
+Docker build và secret scan cho mỗi push/PR. Bước
+`verify_postgres_test_reports.py` làm CI thất bại nếu hai suite PostgreSQL bị
+thiếu hoặc skip; local không có Docker vẫn có thể chạy các test H2 còn lại.
+
+Checklist phát hành đầy đủ nằm tại [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).

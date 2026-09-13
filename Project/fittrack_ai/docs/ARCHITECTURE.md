@@ -1,218 +1,70 @@
-# FitTrack Architecture
+# Kiến trúc FitTrack
 
-## 1. System Overview
+## Tổng quan
 
-FitTrack is a modular monolith fullstack application.
+FitTrack là modular monolith có hai client dùng chung một API:
 
-```txt
-Frontend React App
-        |
-        v
-REST API
-        |
-        v
-Spring Boot Backend
-        |
-        v
-Database
+```text
+React/Vercel ----\
+                  -> Spring Boot/Render -> PostgreSQL/Aiven
+Flutter mobile --/          |
+                             +-> Brevo, Cloudinary, Gemini
 ```
 
-## 2. Backend Architecture
+- Web gọi `/api` qua Vercel same-origin proxy.
+- Mobile gọi URL backend được cấp bằng `--dart-define=API_BASE_URL=...`.
+- Backend là ranh giới xác thực, phân quyền, transaction và validation.
+- Flyway là nguồn sự thật duy nhất của schema production.
 
-The backend is organized by feature modules.
+## Ranh giới backend hiện tại
 
-```txt
-com.fittrack
-├── auth
-├── user
-├── workout
-├── workoutplan
-├── nutrition
-├── bodytracking
-├── dashboard
-├── report
-├── recommendation
-├── achievement
-├── demo
-└── common
+| Nhóm | Trách nhiệm |
+| --- | --- |
+| Auth/User | Phiên, OTP quên mật khẩu, hồ sơ, role và module permission |
+| Lunch | Menu, đơn, quỹ/công nợ, payment request, review và thông báo cơm |
+| Fitness | Bài tập, buổi tập, giáo án và thành tích |
+| Nutrition/Health | Nhật ký ăn, thực phẩm, nước, chỉ số cơ thể, báo cáo và nhắc nhở |
+| Planner | Todo tái diễn và Schedule event; calendar là read model hợp nhất |
+| Quote | Kho câu nói cá nhân và vòng quay câu nói hằng ngày |
+| Notification | In-app notification, email opt-in và playbook admin |
+| Assistant | Gemini server-side và các hành động cần user xác nhận |
+| Common/Audit | Security filters, lỗi chuẩn, media, request ID và audit trail |
+
+Các module vẫn có một số luồng liên kết có chủ đích: Lunch ghi dinh dưỡng;
+Dashboard tổng hợp nhiều module; Assistant đọc dữ liệu theo quyền để đề xuất.
+Các liên kết này phải được mô tả trước khi áp dụng Spring Modulith verification.
+
+## Luồng xác thực web
+
+```text
+Login -> backend kiểm tra mật khẩu
+      -> đặt access/refresh cookie HttpOnly
+      -> trả access token ngắn hạn cho memory
+      -> client gọi API
+401   -> refresh cookie được xoay vòng
+      -> request gốc được thử lại một lần
 ```
 
-Each module follows this flow:
+Không lưu credential trong `localStorage`. Browser route protection chỉ phục vụ
+UX; backend tải user và kiểm tra permission ở mỗi request.
 
-```txt
-controller -> service -> repository -> database
-                |
-              mapper
-                |
-               dto
-```
+## Dữ liệu và transaction
 
-## 3. Why Modular Monolith?
+- Repository chỉ được gọi qua service transaction phù hợp.
+- API dùng DTO/mapper, không serialize entity trực tiếp.
+- Soft delete giữ lịch sử Food/Exercise và các dữ liệu tham chiếu.
+- Giao dịch Lunch lưu ledger và audit; idempotency tài chính đầy đủ là giai đoạn
+  hardening tiếp theo, không thuộc release-baseline này.
+- Dữ liệu dinh dưỡng phân biệt `UNLOGGED`, `PARTIAL`, `COMPLETE`, `FASTING`; dữ
+  liệu thiếu không được diễn giải thành giá trị 0.
 
-A modular monolith was chosen because it is easier to build and operate than microservices while still keeping business domains separated. It is a strong fit for an MVP and portfolio project, and individual modules can be extracted later if needed.
+## Vận hành
 
-## 4. Authentication Flow
+- `X-Request-Id` được trả về và ghi cùng backend logs.
+- `/actuator/health/liveness` không phụ thuộc dịch vụ ngoài.
+- `/actuator/health/readiness` phụ thuộc application readiness và DB.
+- `/api/health` trả version/commit giúp đối chiếu source đang chạy.
+- Prometheus và OpenTelemetry đã có hạ tầng; business metrics và dashboard cảnh
+  báo là giai đoạn tiếp theo.
 
-```txt
-User submits login
-        |
-        v
-Backend validates email/password
-        |
-        v
-Backend returns JWT
-        |
-        v
-Frontend stores JWT in localStorage
-        |
-        v
-Axios attaches JWT to Authorization header
-        |
-        v
-Backend validates token per request
-```
-
-Authorization header:
-
-```txt
-Authorization: Bearer <token>
-```
-
-## 5. Frontend Architecture
-
-```txt
-src/
-├── api
-├── components
-├── pages
-├── routes
-├── store
-└── main.tsx
-```
-
-### API Layer
-
-All backend requests are isolated in `src/api/`.
-
-Examples:
-
-- `auth.api.ts`
-- `workout.api.ts`
-- `nutrition.api.ts`
-- `report.api.ts`
-- `recommendation.api.ts`
-- `achievement.api.ts`
-
-### Pages
-
-Each page represents a feature screen:
-
-- DashboardPage
-- WorkoutPage
-- NutritionPage
-- WorkoutPlansPage
-- WeeklyReportPage
-- AchievementsPage
-
-### State Management
-
-- Zustand for authentication token
-- React Query for server state
-
-## 6. Data Fetching Strategy
-
-React Query is used for fetching, caching, mutations, and invalidating stale data.
-
-Example invalidation after creating a meal log:
-
-- `meal-logs`
-- `dashboard-today`
-- `dashboard-progress`
-- `weekly-report`
-- `weekly-recommendations`
-- `achievements`
-
-## 7. Soft Delete Strategy
-
-Exercise and Food use soft delete.
-
-```txt
-active = false
-```
-
-Benefits:
-
-- Prevents foreign key errors
-- Preserves workout and nutrition history
-- Archived items disappear from dropdowns
-- Archived items can be restored later
-
-## 8. Goal Calculation
-
-User profile stores weight, height, age, gender, goal, and activity level.
-
-The backend calculates:
-
-- BMR
-- TDEE
-- Target Calories
-- Target Protein
-- Target Carbs
-- Target Fat
-
-These values are used by Dashboard, Nutrition, Weekly Report, Recommendation Engine, and Achievements.
-
-## 9. Weekly Report Logic
-
-Weekly report aggregates:
-
-- Meal logs
-- Workout sessions
-- Body measurements
-- User goals
-
-It calculates:
-
-- Average calories
-- Average protein
-- Workout days
-- Body changes
-- Target compliance
-- Insights
-
-## 10. Recommendation Engine
-
-The recommendation engine reads weekly report output and generates action items.
-
-Examples:
-
-- Calories too low -> increase calories
-- Protein too low -> add protein serving
-- Workout days low -> train at least 3 days
-- Weight and waist increase fast -> reduce calories slightly
-
-## 11. Achievement System
-
-Achievement system tracks:
-
-- Meal logging streak
-- Workout streak
-- Protein target hit days
-- Body tracking days
-- Weekly workout goals
-
-Achievements are calculated dynamically from logs.
-
-## 12. Demo Seed Module
-
-Demo seed module creates sample data for portfolio demos.
-
-It generates:
-
-- Foods
-- Exercises
-- Meal logs
-- Workout sessions
-- Body measurements
-
-This allows the dashboard, reports, recommendations, and achievements to show meaningful data instantly.
+Chi tiết deploy và xử lý sự cố nằm trong [OPERATIONS.md](OPERATIONS.md).

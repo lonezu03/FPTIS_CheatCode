@@ -1,6 +1,6 @@
 # FitTrack - Fullstack Fitness and Nutrition Platform
 
-FitTrack is a fullstack fitness and nutrition tracking platform built with Spring Boot, React TypeScript, JWT authentication, React Query, TailwindCSS, shadcn/ui, and a PostgreSQL-ready data model.
+FitTrack is a company lunch-ordering, fitness, nutrition, health and personal-planning platform. A React web client and Flutter mobile client share one Spring Boot API backed by PostgreSQL and versioned Flyway migrations.
 
 The application helps users track workouts, nutrition, body measurements, weekly progress, achievements, and smart recommendations based on their personal goals.
 
@@ -142,38 +142,20 @@ The application helps users track workouts, nutrition, body measurements, weekly
 ```txt
 fittrack_ai/
 ├── backend/
-│   └── demo/
-│       ├── src/main/java/com/fittrack/
-│       │   ├── auth/
-│       │   ├── user/
-│       │   ├── workout/
-│       │   ├── workoutplan/
-│       │   ├── nutrition/
-│       │   ├── bodytracking/
-│       │   ├── dashboard/
-│       │   ├── report/
-│       │   ├── recommendation/
-│       │   ├── achievement/
-│       │   ├── demo/
-│       │   └── common/
-│       ├── src/main/resources/
-│       ├── docker-compose.yml
-│       └── pom.xml
-│
+│   ├── src/main/java/com/fittrack/
+│   ├── src/main/resources/db/migration/
+│   ├── src/test/
+│   ├── Dockerfile
+│   └── pom.xml
 ├── frontend/
+│   ├── build-vercel.mjs
+│   ├── vercel.json
 │   └── fittrack-frontend/
-│       ├── src/
-│       │   ├── api/
-│       │   ├── components/
-│       │   ├── pages/
-│       │   ├── routes/
-│       │   ├── store/
-│       │   └── main.tsx
-│       ├── package.json
-│       └── vite.config.ts
-│
+├── mobile/fittrack_mobile/
 └── docs/
 ```
+
+`backend/demo/` là bản legacy không thuộc active build và không được sử dụng.
 
 ## Backend Architecture
 
@@ -189,19 +171,15 @@ controller -> service -> repository -> database
 
 | Module | Responsibility |
 | --- | --- |
-| Auth | Register, login, JWT |
-| User | Profile and goal engine |
-| Workout | Workout sessions and sets |
-| Workout Plan | Reusable workout plans |
-| Exercise | Exercise library |
-| Nutrition | Meal logs and macros |
-| Food | Food library |
-| Body Tracking | Body measurement logs |
-| Dashboard | Daily summary and progress |
-| Report | Weekly report |
-| Recommendation | Smart suggestions |
-| Achievement | Streaks and gamification |
-| Demo | Seed demo data |
+| Auth/User | Session, OTP, account, permissions, profile and goals |
+| Lunch | Menus, orders, fund/debt, payments, reviews and notifications |
+| Workout/Plan | Exercise catalog, live sessions and reusable plans |
+| Nutrition/Health | Diary quality, foods, water, body tracking and reports |
+| Todo/Schedule | Recurring tasks, events and unified calendar |
+| Quote | Personal quote library and daily rotation |
+| Notification | In-app delivery, email opt-in and admin playbooks |
+| Assistant | Server-side Gemini context and confirmed actions |
+| Common/Audit | Security, media, request correlation and audit trail |
 
 ## Database Overview
 
@@ -377,9 +355,10 @@ export GEMINI_MODEL="gemini-3.6-flash"
 export ASSISTANT_REQUESTS_PER_MINUTE="6"
 ```
 
-The public `GET /api/health` endpoint verifies both the application and its
-database connection. Use an external cron/uptime monitor because a sleeping
-Render process cannot wake itself:
+The public `GET /api/health` endpoint verifies the database and returns the
+deployed version/commit. Render should use `/actuator/health/readiness`; use an
+external cron/uptime monitor because a sleeping Render process cannot wake
+itself:
 
 ```bash
 export KEEP_ALIVE_ENABLED="false"
@@ -453,15 +432,12 @@ This project demonstrates:
 
 ## Future Improvements
 
-- Form validation with React Hook Form and Zod
-- Role-based admin panel
-- Image upload for body progress photos
-- AI-generated workout plans
-- Longer-lived AI conversation history
-- Export weekly report as PDF
-- Mobile app version
-- Deployment with Docker Compose
-- CI/CD pipeline
+- Backend idempotency for every financial Lunch operation
+- Cross-user BOLA regression matrix
+- Business metrics, dashboard and production alerts
+- OpenAPI compatibility checks for web/mobile
+- Evidence-based database index tuning
+- Notification category preferences and remote push
 
 ## Author
 

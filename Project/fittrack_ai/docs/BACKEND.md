@@ -1,151 +1,85 @@
-# Backend Documentation
+# Backend FitTrack
 
-## Tech Stack
+## Công nghệ và cách chạy
 
-```txt
-Java 21
-Spring Boot
-Spring Security
-JWT
-Spring Data JPA
-Hibernate
-H2
-PostgreSQL-ready
-Swagger
-Docker
-Maven
+- Java 21, Spring Boot 4, Maven Wrapper.
+- Spring MVC, Spring Security, JWT access/refresh và cookie HttpOnly.
+- Spring Data JPA/Hibernate, PostgreSQL và Flyway.
+- H2 chỉ dùng cho profile `local` và phần lớn test cô lập; PostgreSQL
+  Testcontainers là cổng kiểm tra migration/production compatibility.
+- Actuator, Prometheus và OpenTelemetry cho health, metric và trace.
+
+Backend đang hoạt động nằm trực tiếp trong `backend/`. Không sử dụng bản
+`backend/demo/` cũ.
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-## Modules
+Backend local mặc định: `http://localhost:8081`.
 
-```txt
-auth
-user
-workout
-workoutplan
-nutrition
-bodytracking
-dashboard
-report
-recommendation
-achievement
-demo
-common
+## Kiến trúc
+
+Backend là modular monolith, tổ chức theo feature:
+
+```text
+controller -> service -> repository -> PostgreSQL
+                |
+              mapper -> DTO
 ```
 
-## Common Package
+Các module chính gồm `auth`, `user`, `lunch`, `workout`, `workoutplan`,
+`nutrition`, `bodytracking`, `health`, `todo`, `schedule`, `quote`,
+`notification`, `dashboard`, `report`, `recommendation`, `achievement`,
+`assistant`, `audit` và hạ tầng dùng chung trong `common`.
 
-The `common` package contains shared infrastructure:
+Controller không trả JPA entity trực tiếp. Mọi thay đổi schema production phải
+được thêm bằng migration mới tại `src/main/resources/db/migration`; production
+dùng `ddl-auto=validate`.
 
-- security
-- exception
-- config
-- response
+## Xác thực và phân quyền
 
-## Security
+- Access token sống ngắn; refresh token được xoay vòng và có thể thu hồi.
+- Web dùng cookie `HttpOnly`, `Secure`, `SameSite=Lax` qua proxy cùng origin.
+- Mobile lưu refresh credential trong Keystore/Keychain cho đến khi logout.
+- Authorization được kiểm tra tại backend bằng role và module permission; việc
+  ẩn route ở client không phải ranh giới bảo mật.
+- Tài khoản mới active và chỉ có quyền Đặt cơm. Các module khác cần admin cấp.
+- Endpoint admin yêu cầu role `ADMIN`; dữ liệu cá nhân luôn phải giới hạn theo
+  authenticated user.
 
-Security is handled by:
+Endpoint public gồm auth flow, media public được cho phép, `/api/health` và các
+Actuator health probe. `/actuator/info` và `/actuator/prometheus` chỉ dành cho
+admin.
 
-- `SecurityConfig`
-- `JwtService`
-- `JwtAuthFilter`
+## Health và nhận diện bản deploy
 
-Public endpoints:
+- `GET /api/health`: kiểm tra kết nối DB, trả `version`, `commit` và timestamp.
+- `GET /actuator/health/liveness`: chỉ xác nhận JVM/app còn sống.
+- `GET /actuator/health/readiness`: xác nhận app sẵn sàng nhận traffic và DB UP.
+- `GET /actuator/health`: health tổng hợp.
 
-```txt
-/api/auth/register
-/api/auth/login
-/api/health
-/swagger-ui/**
-/v3/api-docs/**
+SMTP health mặc định tắt vì production gửi mail qua Brevo REST. Chỉ đặt
+`MAIL_HEALTH_ENABLED=true` nếu deployment thực sự dùng SMTP và muốn SMTP tham
+gia health tổng hợp. Render nên dùng `/actuator/health/readiness`; dịch vụ theo
+dõi bên ngoài có thể gọi `/api/health`.
+
+Render cấp commit qua `RENDER_GIT_COMMIT`. Ngoài Render có thể đặt `GIT_COMMIT`;
+nếu không có, health trả `unknown`.
+
+## Test và release gate
+
+```powershell
+cd backend
+.\mvnw.cmd test
+.\mvnw.cmd verify
 ```
 
-All other endpoints require JWT.
+Hai suite `FlywayPostgresMigrationTest` và `PostgresApplicationContextTest`
+chạy PostgreSQL thật qua Testcontainers. Local không có Docker được phép skip,
+nhưng CI chạy `scripts/verify_postgres_test_reports.py` và thất bại nếu một trong
+hai suite bị thiếu hoặc bị skip.
 
-## Exception Handling
-
-Global exceptions are handled by `GlobalExceptionHandler`.
-
-Error response format:
-
-```json
-{
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Food not found",
-  "timestamp": "..."
-}
-```
-
-## DTO Strategy
-
-The API does not return JPA entities directly.
-
-Instead, it uses:
-
-- Request DTO
-- Response DTO
-- Mapper
-
-Benefits:
-
-- Avoid JSON recursion
-- Avoid leaking sensitive fields
-- Stable API response
-- Frontend-friendly data
-
-## Soft Delete
-
-Soft delete is used for:
-
-- Exercise
-- Food
-
-Instead of deleting:
-
-```txt
-active = false
-```
-
-Archived items are hidden from dropdowns but preserved for historical data.
-
-## Goal Engine
-
-Goal engine calculates:
-
-- BMR
-- TDEE
-- Target Calories
-- Target Protein
-- Target Carbs
-- Target Fat
-
-Based on:
-
-- gender
-- age
-- height
-- weight
-- goal
-- activityLevel
-
-## Recommendation Engine
-
-The recommendation engine analyzes weekly report data and generates action items.
-
-Input:
-
-- `WeeklyReportResponse`
-
-Output:
-
-- `WeeklyRecommendationResponse`
-
-## Achievement Engine
-
-Achievements are calculated dynamically from:
-
-- Meal logs
-- Workout sessions
-- Body measurements
-- Protein target
+Xem thêm [API.md](API.md), [OPERATIONS.md](OPERATIONS.md) và
+[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).

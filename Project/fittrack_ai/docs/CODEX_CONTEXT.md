@@ -1,18 +1,19 @@
 # FitTrack Current Project State
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 ## Repository and deployment
 
 - Repository: `lonezu03/FPTIS_CheatCode`, branch `main`.
 - FitTrack root: `Project/fittrack_ai/`.
-- Current remote HEAD before the Nutrition change set: `f8301d2a`.
+- Source baseline before the release-hardening batch: `0a02f7b2`.
 - Production web: `https://datcom-nhalam.vercel.app`.
 - Production backend API:
   `https://https-github-com-lonezu03-fptis.onrender.com/api`.
 - Active backend is `backend/`; never use or stage the legacy `backend/demo/`.
-- Production schema is Flyway-managed with `ddl-auto=validate`. The current
-  uncommitted Nutrition batch adds migration V15.
+- Production schema is Flyway-managed with `ddl-auto=validate`. Active source
+  migrations are committed through V18; the actual production Flyway version
+  still requires a read-only `flyway_schema_history` check after deployment.
 
 ## Stable completed platform
 
@@ -32,7 +33,61 @@ Last updated: 2026-09-12
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
 
-## Current task: Todo carry-over in unified calendar (2026-09-12)
+## Current task: Release baseline, health and documentation (2026-09-13)
+
+Status: implemented and locally verified; commit, CI and production deployment
+verification are pending.
+
+### Completed
+
+- Added explicit public liveness/readiness probes. Liveness contains only
+  application state/ping; readiness contains application state and database.
+- Disabled Spring SMTP health by default because production uses Brevo REST.
+  This prevents an unused SMTP connection from marking the full Actuator health
+  DOWN; SMTP deployments may opt in with `MAIL_HEALTH_ENABLED=true`.
+- `GET /api/health` now returns the Maven version and Render/Git source commit.
+  Render should use `/actuator/health/readiness` as its health-check path.
+- Added integration coverage for unauthenticated `/api/health`, aggregate
+  health, liveness and readiness.
+- Updated the PostgreSQL release tests to require exactly all source migrations
+  through V18 and assert the Quote schema/permission.
+- CI now parses Surefire reports and fails if either PostgreSQL/Testcontainers
+  release suite is missing, skipped or failed. Backend reports are uploaded on
+  every CI outcome.
+- Reconciled README/backend/frontend/architecture/API/deployment/operations
+  documentation with the active source. Added `CHANGELOG.md`, security baseline,
+  release checklist and system-design summary.
+- Removed the unused production `registration-requires-email` setting. Current
+  stable behavior remains immediate login after registration; forgot-password
+  OTP still requires configured email.
+- No Lunch business code, frontend/mobile feature code or database migration was
+  changed.
+
+### Verification
+
+- `HealthEndpointIntegrationTest`: 2 tests passed, covering application health,
+  build identity, aggregate Actuator health and both public probes.
+- Full backend suite: 72 tests, 0 failures/errors, 2 PostgreSQL/Testcontainers
+  tests skipped because Docker Desktop is not running on this workstation.
+- The new CI report gate was run locally and correctly failed on those two
+  skipped suites. GitHub's Docker-enabled runner must execute them successfully.
+- `git diff --check` passed. No production database connection variables were
+  available locally, so production `flyway_schema_history` was not queried.
+
+### Deployment / exact next steps
+
+1. Commit/push and let FitTrack CI run. Confirm both PostgreSQL suites execute
+   with zero skipped tests and download the backend report artifact if needed.
+2. Deploy backend, set Render Health Check Path to
+   `/actuator/health/readiness`, and keep `MAIL_HEALTH_ENABLED=false` for Brevo.
+3. Verify `/api/health` returns the deployed commit, then run the read-only
+   Flyway query in `docs/RELEASE_CHECKLIST.md`; expected source baseline is V18.
+4. Smoke test and create a `fittrack-vYYYY.MM.DD.N` tag only after production
+   verification. Branch protection/required CI checks remain a GitHub setting.
+5. Next approved hardening batch: BOLA regression tests and backend financial
+   idempotency, isolated from unrelated Lunch UI/business changes.
+
+## Previously completed: Todo carry-over in unified calendar (2026-09-12)
 
 Status: implemented locally and verified; backend/web deployment and the next
 mobile release build are pending.

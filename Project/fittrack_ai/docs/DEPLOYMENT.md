@@ -42,6 +42,7 @@ FLYWAY_ENABLED=true
 SWAGGER_ENABLED=false
 INTERNAL_SCHEDULER_ENABLED=false
 KEEP_ALIVE_ENABLED=false
+MAIL_HEALTH_ENABLED=false
 JOB_SECRET=<random-job-secret>
 JPA_SHOW_SQL=false
 ```
@@ -49,17 +50,23 @@ JPA_SHOW_SQL=false
 ### Health Check
 
 ```txt
-GET https://your-render-service.onrender.com/api/health
+GET https://your-render-service.onrender.com/actuator/health/readiness
 ```
+
+`/actuator/health/liveness` checks the application process only. `/api/health`
+is the diagnostic uptime endpoint and also returns the backend version and
+source commit. Production email uses Brevo REST, therefore SMTP health is off by
+default; do not set `MAIL_HEALTH_ENABLED=true` unless SMTP is really in use.
 
 Expected response:
 
 ```json
 {
-  "status": "UP",
-  "timestamp": "2026-05-31T..."
+  "status": "UP"
 }
 ```
+
+`GET /api/health` trả thêm `database`, `version`, `commit` và `timestamp`.
 
 ## Database on Aiven
 
@@ -100,11 +107,13 @@ Vercel dùng proxy cùng origin. `VITE_API_MODE=proxy` buộc frontend gọi `/a
 1. Create the Aiven PostgreSQL service and copy its host, port, database, username, and password.
 2. Deploy backend on Render with `Project/fittrack_ai/backend` as root directory.
 3. Set Aiven database and backend environment variables in Render.
-4. Confirm `/api/health` returns `UP`.
+4. Confirm liveness, readiness and `/api/health` return `UP`; verify the commit.
 5. Deploy frontend on Vercel with `Project/fittrack_ai/frontend` as root directory.
 6. Set `VITE_API_MODE=proxy` và `VITE_API_URL=/api` trên Vercel.
 7. Set `CORS_ALLOWED_ORIGINS` on Render backend to the Vercel frontend URL.
 8. Cấu hình cron ngoài gọi `/api/health` và job nhắc nhở như hướng dẫn vận hành.
 9. Register/login and test demo seed.
 
-Quy trình backup, Flyway, Cloudinary, xoay secret và xử lý sự cố đầy đủ nằm trong [OPERATIONS.md](OPERATIONS.md).
+Quy trình backup, Flyway, Cloudinary, xoay secret và xử lý sự cố đầy đủ nằm trong
+[OPERATIONS.md](OPERATIONS.md). Trước mỗi release, dùng
+[RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
