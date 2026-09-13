@@ -8,11 +8,15 @@ import {
   CheckCircle2,
   Dumbbell,
   History,
+  Lightbulb,
   Plus,
   Play,
+  RefreshCw,
+  Star,
   Timer,
   Trash2,
   TrendingUp,
+  Trophy,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -21,11 +25,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createWorkoutSession,
   deleteWorkoutSession,
+  getAlternativeExercises,
+  getExercisePreferences,
   getExercises,
-  getPreviousWorkoutPerformance,
+  getWeeklyWorkoutVolume,
+  getWorkoutIntelligence,
   getWorkoutSessionsPage,
+  setExercisePreference,
+  type AlternativeExercise,
   type Exercise,
-  type PreviousWorkoutPerformance,
+  type ExercisePreference,
+  type WeeklyWorkoutVolume,
+  type WorkoutIntelligence,
   type WorkoutSession,
   type WorkoutSetType,
 } from "../api/workout.api";
@@ -56,6 +67,10 @@ type DraftExercise = {
   key: string;
   exerciseId: string;
   restSeconds: number;
+  targetSets: number;
+  minReps: number;
+  maxReps: number;
+  targetRir: number;
   sets: DraftSet[];
 };
 
@@ -90,7 +105,11 @@ const makeExercise = (
   key: draftKey(),
   exerciseId,
   restSeconds: 90,
-  sets: [makeSet()],
+  targetSets: 3,
+  minReps: 8,
+  maxReps: 12,
+  targetRir: 2,
+  sets: Array.from({ length: 3 }, () => makeSet()),
   ...overrides,
 });
 
@@ -106,6 +125,10 @@ export default function WorkoutPage() {
     queryKey: ["workout-sessions", workoutPager.page, workoutPager.pageSize],
     queryFn: () => getWorkoutSessionsPage(workoutPager.page - 1, workoutPager.pageSize),
     placeholderData: (previous) => previous,
+  });
+  const weeklyVolumeQuery = useQuery({
+    queryKey: ["weekly-workout-volume"],
+    queryFn: getWeeklyWorkoutVolume,
   });
 
   const exercises = exercisesQuery.data ?? [];
@@ -136,6 +159,7 @@ export default function WorkoutPage() {
       ["weekly-report"],
       ["weekly-recommendations"],
       ["achievements"],
+      ["weekly-workout-volume"],
     ]) {
       queryClient.invalidateQueries({ queryKey: key });
     }
@@ -143,8 +167,13 @@ export default function WorkoutPage() {
 
   const createMutation = useMutation({
     mutationFn: createWorkoutSession,
-    onSuccess: () => {
+    onSuccess: (session) => {
       toast.success("Đã hoàn thành và lưu buổi tập");
+      for (const record of session.newPersonalRecords ?? []) {
+        toast.success(`🏆 PR mới · ${record.exerciseName}`, {
+          description: `${personalRecordLabel(record.type)}: ${formatNumber(record.newValue)} ${record.unit}`,
+        });
+      }
       refreshWorkoutData();
     },
     onError: (error) => {
@@ -180,6 +209,10 @@ export default function WorkoutPage() {
       title: `${selected.plan.name} · ${selected.day.name}`,
       exercises: selected.day.exercises.map((item) =>
         makeExercise(item.exerciseId, {
+          targetSets: Math.max(1, item.targetSets || 1),
+          minReps: Math.max(1, (item.targetReps ?? 10) - 2),
+          maxReps: item.targetReps ?? 10,
+          targetRir: item.targetRir ?? 2,
           sets: Array.from({ length: Math.max(1, item.targetSets || 1) }, () =>
             makeSet({
               weight: item.targetWeight ?? 0,
@@ -246,6 +279,11 @@ export default function WorkoutPage() {
           </div>
         </CardContent>
       </Card>
+
+      <WeeklyVolumeCard
+        loading={weeklyVolumeQuery.isLoading}
+        data={weeklyVolumeQuery.data}
+      />
 
       <Card>
         <CardHeader>
@@ -315,7 +353,10 @@ function LiveWorkoutDialog({
   const [elapsed, setElapsed] = useState(0);
   const [restSeconds, setRestSeconds] = useState(0);
   const [restRunning, setRestRunning] = useState(false);
-  const [previous, setPrevious] = useState<Record<string, PreviousWorkoutPerformance | null>>({});
+  const [intelligence, setIntelligence] = useState<Record<string, WorkoutIntelligence | null>>({});
+  const [preferences, setPreferences] = useState<Record<string, ExercisePreference>>({});
+  const [alternatives, setAlternatives] = useState<Record<string, AlternativeExercise[] | null>>({});
+  const [announcedRecords] = useState(() => new Set<string>());
 
   useEffect(() => {
     const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
@@ -338,20 +379,39 @@ function LiveWorkoutDialog({
 
   useEffect(() => {
     let cancelled = false;
-    const missing = [...new Set(groups.map((group) => group.exerciseId))].filter(
-      (id) => id && !(id in previous),
-    );
-    for (const exerciseId of missing) {
-      getPreviousWorkoutPerformance(exerciseId)
+    const missing = groups.filter((group) => {
+      const key = intelligenceKey(group);
+      return group.exerciseId && !(key in intelligence);
+    });
+    for (const group of missing) {
+      const key = intelligenceKey(group);
+      getWorkoutIntelligence(group.exerciseId, {
+        targetSets: group.targetSets,
+        minReps: group.minReps,
+        maxReps: group.maxReps,
+        targetRir: group.targetRir,
+      })
         .then((result) => {
-          if (!cancelled) setPrevious((current) => ({ ...current, [exerciseId]: result }));
+          if (!cancelled) setIntelligence((current) => ({ ...current, [key]: result }));
         })
         .catch(() => {
-          if (!cancelled) setPrevious((current) => ({ ...current, [exerciseId]: null }));
+          if (!cancelled) setIntelligence((current) => ({ ...current, [key]: null }));
         });
     }
     return () => { cancelled = true; };
-  }, [groups, previous]);
+  }, [groups, intelligence]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getExercisePreferences()
+      .then((values) => {
+        if (!cancelled) {
+          setPreferences(Object.fromEntries(values.map((value) => [value.exerciseId, value.preference])));
+        }
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
 
   const updateGroup = (groupKey: string, updater: (group: DraftExercise) => DraftExercise) => {
     setGroups((current) => current.map((group) => (group.key === groupKey ? updater(group) : group)));
@@ -378,6 +438,72 @@ function LiveWorkoutDialog({
     if (willComplete && group && group.restSeconds > 0) {
       setRestSeconds(group.restSeconds);
       setRestRunning(true);
+    }
+    if (willComplete && group && target) {
+      announcePotentialRecord(group, target);
+    }
+  };
+
+  const announcePotentialRecord = (group: DraftExercise, set: DraftSet) => {
+    const insight = intelligence[intelligenceKey(group)];
+    if (!insight || set.setType === "WARMUP") return;
+    const heaviest = insight.personalBests.find((value) => value.type === "HEAVIEST_WEIGHT")?.value ?? 0;
+    const bestE1rm = insight.personalBests.find((value) => value.type === "ESTIMATED_1RM")?.value ?? 0;
+    const estimated = set.weight > 0 && set.reps <= 30 ? set.weight * (1 + set.reps / 30) : 0;
+    const candidates = [
+      { type: "weight", won: set.weight > heaviest, text: `Mức tạ mới ${set.weight} kg` },
+      { type: "e1rm", won: estimated > bestE1rm, text: `e1RM ước tính ${formatNumber(estimated)} kg` },
+    ];
+    for (const candidate of candidates) {
+      const key = `${set.key}:${candidate.type}`;
+      if (candidate.won && !announcedRecords.has(key)) {
+        announcedRecords.add(key);
+        toast.success("🏆 Có thể là PR mới", { description: candidate.text });
+      }
+    }
+  };
+
+  const applyProgression = (group: DraftExercise) => {
+    const suggestion = intelligence[intelligenceKey(group)]?.progression;
+    if (!suggestion || suggestion.suggestedWeight == null) return;
+    updateGroup(group.key, (current) => ({
+      ...current,
+      sets: Array.from({ length: suggestion.suggestedSets }, (_, index) =>
+        makeSet({
+          weight: suggestion.suggestedWeight ?? 0,
+          reps: suggestion.suggestedMinReps,
+          rir: suggestion.targetRir,
+          setType: current.sets[index]?.setType ?? "NORMAL",
+        })),
+    }));
+    toast.success("Đã áp dụng mức đề xuất vào buổi tập");
+  };
+
+  const updatePreference = async (exerciseId: string, preference: ExercisePreference) => {
+    const previousValue = preferences[exerciseId] ?? "NORMAL";
+    setPreferences((current) => ({ ...current, [exerciseId]: preference }));
+    try {
+      await setExercisePreference(exerciseId, preference);
+      toast.success("Đã lưu mức ưu tiên bài tập");
+    } catch {
+      setPreferences((current) => ({ ...current, [exerciseId]: previousValue }));
+      toast.error("Không thể lưu mức ưu tiên");
+    }
+  };
+
+  const loadAlternatives = async (group: DraftExercise) => {
+    setAlternatives((current) => ({ ...current, [group.key]: null }));
+    try {
+      const values = await getAlternativeExercises(group.exerciseId);
+      setAlternatives((current) => ({ ...current, [group.key]: values }));
+      if (!values.length) toast.info("Chưa có bài thay thế phù hợp cùng nhóm cơ");
+    } catch {
+      setAlternatives((current) => {
+        const next = { ...current };
+        delete next[group.key];
+        return next;
+      });
+      toast.error("Không thể tải bài thay thế");
     }
   };
 
@@ -442,7 +568,10 @@ function LiveWorkoutDialog({
         <div className="space-y-4">
           {groups.map((group, groupIndex) => {
             const exercise = exercises.find((item) => item.id === group.exerciseId);
-            const last = previous[group.exerciseId];
+            const insight = intelligence[intelligenceKey(group)];
+            const last = insight?.previousPerformance;
+            const alternativeState = alternatives[group.key];
+            const alternativesOpened = Object.prototype.hasOwnProperty.call(alternatives, group.key);
             return (
               <Card key={group.key} className="border-slate-200">
                 <CardHeader className="gap-3 pb-3">
@@ -466,9 +595,14 @@ function LiveWorkoutDialog({
                       id={`live-exercise-${group.key}`}
                       exercises={exercises}
                       value={group.exerciseId}
-                      onChange={(exerciseId) =>
-                        updateGroup(group.key, (item) => ({ ...item, exerciseId }))
-                      }
+                      onChange={(exerciseId) => {
+                        updateGroup(group.key, (item) => ({ ...item, exerciseId }));
+                        setAlternatives((current) => {
+                          const next = { ...current };
+                          delete next[group.key];
+                          return next;
+                        });
+                      }}
                     />
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
                       Nghỉ
@@ -476,6 +610,95 @@ function LiveWorkoutDialog({
                       giây
                     </label>
                   </div>
+                  <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3">
+                      {insight === undefined ? (
+                        <p className="text-sm text-muted-foreground">Đang phân tích lần tập trước...</p>
+                      ) : insight === null ? (
+                        <p className="text-sm text-muted-foreground">Chưa thể tải đề xuất. Bạn vẫn có thể tập và lưu bình thường.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <p className="flex items-center gap-1.5 text-sm font-bold text-emerald-950">
+                                <Lightbulb className="h-4 w-4" /> {progressionActionLabel(insight.progression.action)}
+                              </p>
+                              <p className="mt-1 text-xs text-emerald-900/75">{insight.progression.explanation}</p>
+                            </div>
+                            {insight.progression.suggestedWeight != null && (
+                              <Button type="button" size="sm" onClick={() => applyProgression(group)}>
+                                Áp dụng {formatNumber(insight.progression.suggestedWeight)} kg · {insight.progression.suggestedSets} set
+                              </Button>
+                            )}
+                          </div>
+                          {!!insight.personalBests.length && (
+                            <div className="flex flex-wrap gap-2">
+                              {insight.personalBests.map((best) => (
+                                <span key={best.type} className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-emerald-800 shadow-sm">
+                                  <Trophy className="mr-1 inline h-3.5 w-3.5" />
+                                  {personalRecordLabel(best.type)}: {formatNumber(best.value)} {best.type === "MAX_SESSION_VOLUME" ? "kg" : best.type === "MAX_REPS_AT_WEIGHT" ? "lần" : "kg"}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 lg:max-w-[330px] lg:justify-end">
+                      <label className="sr-only" htmlFor={`preference-${group.key}`}>Mức ưu tiên bài tập</label>
+                      <select
+                        id={`preference-${group.key}`}
+                        className="h-9 rounded-xl border bg-white px-3 text-sm"
+                        value={preferences[group.exerciseId] ?? "NORMAL"}
+                        onChange={(event) => updatePreference(group.exerciseId, event.target.value as ExercisePreference)}
+                      >
+                        <option value="FAVORITE">★ Yêu thích</option>
+                        <option value="NORMAL">Bình thường</option>
+                        <option value="LESS">Ít ưu tiên</option>
+                        <option value="EXCLUDED">Không đề xuất</option>
+                      </select>
+                      <Button type="button" variant="outline" size="sm" onClick={() => loadAlternatives(group)}>
+                        <RefreshCw className={`h-4 w-4 ${alternativesOpened && alternativeState === null ? "animate-spin" : ""}`} />
+                        Đổi bài tương đương
+                      </Button>
+                    </div>
+                  </div>
+                  {alternativesOpened && alternativeState !== null && (
+                    <div className="rounded-2xl border bg-slate-50 p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Cùng nhóm cơ {exercise?.muscleGroup ?? ""}
+                      </p>
+                      {alternativeState.length ? (
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {alternativeState.map((item) => (
+                            <button
+                              type="button"
+                              key={item.exercise.id}
+                              className="rounded-xl border bg-white p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50"
+                              onClick={() => {
+                                updateGroup(group.key, (current) => ({ ...current, exerciseId: item.exercise.id }));
+                                setAlternatives((current) => {
+                                  const next = { ...current };
+                                  delete next[group.key];
+                                  return next;
+                                });
+                              }}
+                            >
+                              <span className="flex items-center gap-1 font-semibold">
+                                {item.preference === "FAVORITE" && <Star className="h-4 w-4 fill-amber-400 text-amber-500" />}
+                                {item.exercise.name}
+                              </span>
+                              <span className="mt-1 block text-xs text-muted-foreground">
+                                {item.exercise.equipment}{item.sameEquipment ? " · Cùng dụng cụ" : ""}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Chưa có bài thay thế phù hợp đã được duyệt.</p>
+                      )}
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-[38px_1.2fr_0.8fr_0.8fr_0.7fr_42px] gap-2 px-1 pb-2 text-center text-xs font-semibold text-muted-foreground">
@@ -564,6 +787,81 @@ function StatCard({ icon: Icon, label, value, tone = "slate" }: { icon: typeof A
     slate: "bg-slate-100 text-slate-700",
   };
   return <Card><CardContent className="flex items-center gap-3 p-4"><div className={`rounded-xl p-2.5 ${tones[tone]}`}><Icon className="h-5 w-5" /></div><div><p className="text-xs font-medium text-muted-foreground">{label}</p><p className="text-xl font-bold">{value}</p></div></CardContent></Card>;
+}
+
+function WeeklyVolumeCard({ loading, data }: { loading: boolean; data?: WeeklyWorkoutVolume }) {
+  if (loading) {
+    return <Card><CardContent className="p-5 text-sm text-muted-foreground">Đang tổng hợp khối lượng tập tuần này...</CardContent></Card>;
+  }
+  if (!data) return null;
+  const maxSets = Math.max(1, ...data.muscleGroups.map((item) => item.workingSets));
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5 text-emerald-600" />Khối lượng theo nhóm cơ</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">{data.weekStart} đến {data.weekEnd} · chỉ tính set chính đã hoàn thành.</p>
+          </div>
+          <div className="flex gap-2 text-sm">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">{data.totalWorkingSets} set</span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">{formatNumber(data.totalVolume)} kg</span>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!data.muscleGroups.length ? (
+          <p className="rounded-xl bg-slate-50 p-4 text-sm text-muted-foreground">Chưa có set chính nào trong tuần này.</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {data.muscleGroups.map((item) => (
+              <div key={item.muscleGroup} className="rounded-2xl border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold">{item.muscleGroup}</p>
+                  <span className={`text-xs font-semibold ${item.changeSets >= 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                    {item.changeSets >= 0 ? "+" : ""}{item.changeSets} set so với tuần trước
+                  </span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.max(5, item.workingSets / maxSets * 100)}%` }} />
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">{item.workingSets} set · {formatNumber(item.totalVolume)} kg volume</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">{data.disclaimer}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function intelligenceKey(group: DraftExercise) {
+  return [group.exerciseId, group.targetSets, group.minReps, group.maxReps, group.targetRir].join(":");
+}
+
+function progressionActionLabel(action: WorkoutIntelligence["progression"]["action"]) {
+  const labels: Record<WorkoutIntelligence["progression"]["action"], string> = {
+    NO_DATA: "Mốc khởi đầu",
+    INCREASE_WEIGHT: "Sẵn sàng tăng tạ",
+    BUILD_REPS: "Tiếp tục tăng số lần lặp",
+    DECREASE_OR_HOLD: "Giữ hoặc giảm nhẹ mức tạ",
+  };
+  return labels[action];
+}
+
+function personalRecordLabel(type: WorkoutIntelligence["personalBests"][number]["type"]) {
+  const labels: Record<WorkoutIntelligence["personalBests"][number]["type"], string> = {
+    HEAVIEST_WEIGHT: "Mức tạ cao nhất",
+    MAX_REPS_AT_WEIGHT: "Số lần lặp cao nhất",
+    ESTIMATED_1RM: "e1RM ước tính",
+    MAX_SESSION_VOLUME: "Volume buổi cao nhất",
+  };
+  return labels[type];
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(value);
 }
 
 function formatClock(totalSeconds: number) {

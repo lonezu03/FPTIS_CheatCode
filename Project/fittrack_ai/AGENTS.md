@@ -82,6 +82,12 @@ Deployment:
 - Menu import supports `@DRINKS` or `@EXTRAS` followed by priced lines such as `Trà đào | 45000` or `Trà vải 50000`. Extra IDs may repeat in an order to represent quantity; each repeated line contributes its `unitPrice` to the order total and refund.
 - Email notification delivery is opt-in per user via `emailNotificationsEnabled`; menu broadcasts, generic notifications and playbooks must honor it. Password-reset OTP is security-critical and remains independent of this preference.
 - User-submitted foods and exercises require admin approval before general use.
+- Workout Intelligence is deterministic and owner-scoped. Progressive overload,
+  PR/e1RM and weekly muscle volume use completed working sets only (exclude
+  `WARMUP`). e1RM uses Epley only for 1–30 reps. Exercise alternatives must be
+  active, approved and in the same muscle group; honor the user's
+  `FAVORITE`/`NORMAL`/`LESS`/`EXCLUDED` preference and never recommend excluded
+  exercises. Treat every estimate as training guidance, not medical advice.
 - The personal Quote Library requires `quoteEnabled`; admins bypass the module
   flag. Backend authorization covers both `/api/quotes` and `/api/quote-tags`,
   while web/mobile hide the library and Dashboard daily quote without access.

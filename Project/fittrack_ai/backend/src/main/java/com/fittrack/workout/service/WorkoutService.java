@@ -27,6 +27,7 @@ public class WorkoutService {
     private final WorkoutSessionRepository workoutSessionRepository;
     private final ExerciseRepository exerciseRepository;
     private final WorkoutMapper workoutMapper;
+    private final WorkoutIntelligenceService workoutIntelligenceService;
 
     @Transactional
     public WorkoutSessionResponse createSession(User user, CreateWorkoutSessionRequest request) {
@@ -61,9 +62,14 @@ public class WorkoutService {
             }
         }
 
+        var newPersonalRecords = workoutIntelligenceService.detectNewRecords(
+                user, session
+        );
         WorkoutSession savedSession = workoutSessionRepository.save(session);
 
-        return workoutMapper.toWorkoutSessionResponse(savedSession);
+        return workoutMapper.toWorkoutSessionResponse(
+                savedSession, newPersonalRecords
+        );
     }
 
     @Transactional(readOnly = true)

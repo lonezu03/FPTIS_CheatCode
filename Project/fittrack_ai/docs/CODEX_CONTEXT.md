@@ -12,7 +12,7 @@ Last updated: 2026-09-13
   `https://https-github-com-lonezu03-fptis.onrender.com/api`.
 - Active backend is `backend/`; never use or stage the legacy `backend/demo/`.
 - Production schema is Flyway-managed with `ddl-auto=validate`. Active source
-  migrations are committed through V18; the actual production Flyway version
+  migrations are committed through V19; the actual production Flyway version
   still requires a read-only `flyway_schema_history` check after deployment.
 
 ## Stable completed platform
@@ -33,10 +33,59 @@ Last updated: 2026-09-13
   users or selected active users.
 - React web and Flutter mobile share backend contracts and Vietnamese labels.
 
-## Current task: Release baseline, health and documentation (2026-09-13)
+## Current task: Workout Intelligence V19 (2026-09-13)
 
-Status: implemented and locally verified; commit, CI and production deployment
-verification are pending.
+Status: implemented and verified locally; backend/web deployment and the next
+explicitly requested mobile release build are pending.
+
+### Completed
+
+- Added deterministic progressive-overload guidance from the authenticated
+  user's latest completed working sets. The engine supports target set/rep/RIR
+  ranges and recommends increasing weight, building reps, or holding/reducing
+  load with a Vietnamese explanation.
+- Added derived personal bests and new-record detection for heaviest weight,
+  reps at a weight, Epley estimated 1RM and per-exercise session volume. Warm-up
+  sets are excluded; saving a session returns its new PRs without a breaking
+  request change.
+- Added weekly completed working-set count and load volume grouped by muscle,
+  including comparison with the prior week.
+- Added V19 owner-scoped exercise preferences (`FAVORITE`, `NORMAL`, `LESS`,
+  `EXCLUDED`) and ranked same-muscle alternatives. Only active, approved
+  exercises are eligible and excluded choices are never recommended.
+- Web live workout shows prior performance, progression/apply action, PR cards,
+  weekly volume, preference control and equivalent replacement. Flutter exposes
+  the same workflow, potential-PR feedback when completing a set and a confirmed
+  PR result dialog after saving.
+- Updated API/changelog/README and persistent project rules. No Lunch module
+  source was changed and no APK was built.
+
+### Verification
+
+- Backend full Maven suite: 75 tests, 0 failures/errors, with the two PostgreSQL/
+  Testcontainers release suites skipped because Docker was unavailable. A final
+  targeted run passed all 4 Workout Intelligence tests covering progression,
+  weekly-volume warm-up exclusion/comparison, preference-aware alternative
+  ranking and PR detection that ignores warm-ups.
+- Web targeted ESLint and TypeScript project build passed. Flutter formatted
+  both changed files and targeted analysis passed with no issues.
+- PostgreSQL execution of V19 remains pending until CI/Render runs Flyway.
+
+### Deployment / exact next steps
+
+1. Commit this V19 batch, then deploy backend first so Flyway creates
+   `exercise_preferences`; confirm Render starts with `ddl-auto=validate`.
+2. Deploy web and smoke-test `/api/workouts/intelligence`, `/weekly-volume`,
+   preference update, alternatives and session save/PR using a Fitness-enabled
+   non-admin account. Retain `X-Request-Id` on any failure.
+3. Include Flutter changes only in the next explicitly requested APK build and
+   test apply-suggestion/replacement/PR on a physical phone.
+
+## Previously completed: Release baseline, health and documentation (2026-09-13)
+
+Status: deployed from commit `f4f165e520cc2277041342cf6c365cc7e54b421f`;
+public production health/proxy checks passed. Authenticated smoke tests and the
+read-only production Flyway query remain pending.
 
 ### Completed
 
@@ -76,16 +125,30 @@ verification are pending.
 
 ### Deployment / exact next steps
 
-1. Commit/push and let FitTrack CI run. Confirm both PostgreSQL suites execute
-   with zero skipped tests and download the backend report artifact if needed.
-2. Deploy backend, set Render Health Check Path to
-   `/actuator/health/readiness`, and keep `MAIL_HEALTH_ENABLED=false` for Brevo.
-3. Verify `/api/health` returns the deployed commit, then run the read-only
-   Flyway query in `docs/RELEASE_CHECKLIST.md`; expected source baseline is V18.
-4. Smoke test and create a `fittrack-vYYYY.MM.DD.N` tag only after production
+1. Confirm the Render dashboard Health Check Path is
+   `/actuator/health/readiness` and CI's PostgreSQL suites had zero skips.
+2. Run the read-only Flyway query in `docs/RELEASE_CHECKLIST.md`; expected source
+   baseline is V18.
+3. Complete authenticated smoke tests for lunch-only user, fully permitted user
+   and admin.
+4. Create a `fittrack-vYYYY.MM.DD.N` tag only after production
    verification. Branch protection/required CI checks remain a GitHub setting.
 5. Next approved hardening batch: BOLA regression tests and backend financial
    idempotency, isolated from unrelated Lunch UI/business changes.
+
+### Production verification (2026-09-13)
+
+- Render liveness, readiness and aggregate Actuator health returned HTTP 200
+  with `UP`; the previous aggregate 503 is resolved.
+- Direct and Vercel-proxied `/api/health` returned database `UP`, version
+  `0.0.1-SNAPSHOT` and commit `f4f165e520cc2277041342cf6c365cc7e54b421f`,
+  matching repository HEAD.
+- CORS preflight from `https://datcom-nhalam.vercel.app` to Render login returned
+  HTTP 200 with the expected origin, credentials, methods and request headers.
+- Direct and proxied protected Workout Plan requests without a session returned
+  HTTP 401, while `/actuator/info` remained admin-protected with HTTP 401.
+- Direct refresh of Vercel `/workout-plans` returned HTTP 200 `index.html`, so
+  the SPA rewrite remains healthy.
 
 ## Previously completed: Todo carry-over in unified calendar (2026-09-12)
 

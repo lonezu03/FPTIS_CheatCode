@@ -17,6 +17,7 @@ class _FitnessScreenState extends State<FitnessScreen>
     with SingleTickerProviderStateMixin {
   late final TabController tabs;
   List<Map<String, dynamic>> workouts = [];
+  Map<String, dynamic>? weeklyVolume;
   Object? error;
   bool loading = true;
 
@@ -40,10 +41,18 @@ class _FitnessScreenState extends State<FitnessScreen>
     });
     try {
       final api = context.read<ApiClient>();
-      final values = await Future.wait([api.get('/workouts/sessions')]);
+      final workoutRaw = await api.get('/workouts/sessions');
+      Map<String, dynamic>? volume;
+      try {
+        final volumeRaw = await api.get('/workouts/weekly-volume');
+        volume = volumeRaw is Map ? Map<String, dynamic>.from(volumeRaw) : null;
+      } catch (_) {
+        // Intelligence is supplemental; workout history must remain available.
+      }
       if (!mounted) return;
       setState(() {
-        workouts = _list(values[0]);
+        workouts = _list(workoutRaw);
+        weeklyVolume = volume;
       });
     } catch (e) {
       if (mounted) setState(() => error = e);
@@ -93,7 +102,11 @@ class _FitnessScreenState extends State<FitnessScreen>
           child: TabBarView(
             controller: tabs,
             children: [
-              _WorkoutList(items: workouts, onReload: _load),
+              _WorkoutList(
+                items: workouts,
+                weeklyVolume: weeklyVolume,
+                onReload: _load,
+              ),
               const NutritionDiaryTab(),
             ],
           ),
@@ -104,8 +117,13 @@ class _FitnessScreenState extends State<FitnessScreen>
 }
 
 class _WorkoutList extends StatelessWidget {
-  const _WorkoutList({required this.items, required this.onReload});
+  const _WorkoutList({
+    required this.items,
+    required this.weeklyVolume,
+    required this.onReload,
+  });
   final List<Map<String, dynamic>> items;
+  final Map<String, dynamic>? weeklyVolume;
   final Future<void> Function() onReload;
 
   @override
@@ -171,6 +189,10 @@ class _WorkoutList extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          if (weeklyVolume != null) ...[
+            _WeeklyVolumeCard(data: weeklyVolume!),
+            const SizedBox(height: 12),
+          ],
           FilledButton.icon(
             onPressed: () async {
               final created = await showModalBottomSheet<bool>(
@@ -244,6 +266,93 @@ class _WorkoutList extends StatelessWidget {
               );
             }),
         ],
+      ),
+    );
+  }
+}
+
+class _WeeklyVolumeCard extends StatelessWidget {
+  const _WeeklyVolumeCard({required this.data});
+  final Map<String, dynamic> data;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = data['muscleGroups'] is List
+        ? (data['muscleGroups'] as List).whereType<Map>().toList()
+        : const <Map>[];
+    final maxSets = groups.fold<int>(1, (current, item) {
+      final sets = (item['workingSets'] as num?)?.toInt() ?? 0;
+      return sets > current ? sets : current;
+    });
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Khối lượng theo nhóm cơ',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Chip(
+                  label: Text('${data['totalWorkingSets'] ?? 0} set'),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+            Text(
+              '${data['weekStart'] ?? ''} đến ${data['weekEnd'] ?? ''}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 10),
+            if (groups.isEmpty)
+              const Text('Chưa có set chính nào trong tuần này.')
+            else
+              ...groups.map((item) {
+                final sets = (item['workingSets'] as num?)?.toInt() ?? 0;
+                final change = (item['changeSets'] as num?)?.toInt() ?? 0;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item['muscleGroup']?.toString() ?? 'Nhóm cơ',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '$sets set · ${change >= 0 ? '+' : ''}$change',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: sets / maxSets,
+                        minHeight: 7,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            Text(
+              data['disclaimer']?.toString() ??
+                  'Các chỉ số chỉ mang tính tham khảo luyện tập.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
       ),
     );
   }

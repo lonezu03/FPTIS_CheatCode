@@ -239,6 +239,11 @@ Create request:
 GET /workouts/sessions
 GET /workouts/sessions/page?page=0&size=20
 GET /workouts/previous-performance?exerciseId={exerciseId}
+GET /workouts/intelligence?exerciseId={exerciseId}&targetSets=3&minReps=8&maxReps=12&targetRir=2
+GET /workouts/weekly-volume?weekStart=2026-09-07
+GET /workouts/exercise-preferences
+PUT /workouts/exercise-preferences/{exerciseId}
+GET /workouts/exercises/{exerciseId}/alternatives
 POST /workouts/sessions
 PUT /workouts/sessions/{id}
 DELETE /workouts/sessions/{id}
@@ -284,6 +289,33 @@ the order within that exercise. `setType` accepts `WARMUP`, `NORMAL`, `DROP`, or
 timer after a set is checked, and submit only completed sets when the user
 finishes the session. The previous-performance endpoint returns the most recent
 session containing the requested exercise, scoped to the authenticated user.
+
+`GET /workouts/intelligence` returns that previous performance together with a
+deterministic progressive-overload suggestion and the user's derived personal
+bests. The engine uses only completed working sets; warm-up sets are excluded.
+It increases load only after the requested set count reaches the top of the rep
+range with sufficient RIR, otherwise it recommends building reps or
+holding/reducing load. e1RM uses the Epley estimate for sets of 1–30 reps.
+
+`GET /workouts/weekly-volume` groups completed working sets and volume by muscle
+group for the selected Monday-based week and compares set count with the prior
+week. `weekStart` is optional and is normalized to Monday.
+
+Exercise preference request:
+
+```json
+{
+  "preference": "FAVORITE"
+}
+```
+
+Preference accepts `FAVORITE`, `NORMAL`, `LESS`, or `EXCLUDED`. Alternatives
+must be active, approved and in the same muscle group. Favorites and same-
+equipment choices are ranked first; excluded exercises are never returned.
+Preferences, history, PRs and volume are always scoped to the authenticated
+user. `POST /workouts/sessions` may additionally return
+`newPersonalRecords`; PRs are derived from retained workout history rather than
+stored as mutable counters.
 
 ## Workout Plans
 

@@ -25,6 +25,10 @@ The application helps users track workouts, nutrition, body measurements, weekly
 - Custom workout date
 - Edit and delete workout sessions
 - Workout history
+- Progressive-overload suggestions based on the latest completed working sets
+- Personal records and estimated 1RM (Epley)
+- Weekly working-set volume by muscle group
+- Favorite, deprioritize, exclude, and replace equivalent exercises
 
 ### Workout Plans
 - Create reusable workout plans

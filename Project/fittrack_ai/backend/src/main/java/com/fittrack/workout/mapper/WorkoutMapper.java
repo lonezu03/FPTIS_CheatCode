@@ -10,6 +10,7 @@ import com.fittrack.common.media.ImageReferences;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import com.fittrack.workout.dto.WorkoutIntelligenceDtos.NewPersonalRecordResponse;
 
 @Component
 public class WorkoutMapper {
@@ -68,6 +69,13 @@ public class WorkoutMapper {
     }
 
     public WorkoutSessionResponse toWorkoutSessionResponse(WorkoutSession session) {
+        return toWorkoutSessionResponse(session, List.of());
+    }
+
+    public WorkoutSessionResponse toWorkoutSessionResponse(
+            WorkoutSession session,
+            List<NewPersonalRecordResponse> newPersonalRecords
+    ) {
         return WorkoutSessionResponse.builder()
                 .id(session.getId())
                 .sessionDate(session.getSessionDate())
@@ -80,6 +88,7 @@ public class WorkoutMapper {
                                 .thenComparing(WorkoutSet::getSetNumber))
                         .map(this::toWorkoutSetResponse)
                         .toList())
+                .newPersonalRecords(newPersonalRecords)
                 .build();
     }
 

@@ -18,7 +18,9 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
   final title = TextEditingController(text: 'Buổi tập tự do');
   final note = TextEditingController();
   final startedAt = DateTime.now();
-  final previous = <String, Map<String, dynamic>?>{};
+  final intelligence = <String, Map<String, dynamic>?>{};
+  final preferences = <String, String>{};
+  final announcedRecords = <String>{};
 
   List<Map<String, dynamic>> exercises = [];
   List<Map<String, dynamic>> plans = [];
@@ -60,10 +62,19 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       ]);
       exercises = _list(values[0]);
       plans = _list(values[1]);
+      try {
+        final preferenceRaw = await api.get('/workouts/exercise-preferences');
+        for (final item in _list(preferenceRaw)) {
+          preferences[item['exerciseId'].toString()] =
+              item['preference']?.toString() ?? 'NORMAL';
+        }
+      } catch (_) {
+        // Preference is optional context; a failed request must not block a workout.
+      }
       if (exercises.isNotEmpty) {
         final first = _DraftExercise(exercises.first['id'].toString());
         draft = [first];
-        await _loadPrevious(first.exerciseId);
+        await _loadIntelligence(first);
       }
     } catch (error) {
       if (mounted) showMessage(context, displayError(error), error: true);
@@ -99,21 +110,26 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
     return result;
   }
 
-  Future<void> _loadPrevious(String exerciseId) async {
-    if (previous.containsKey(exerciseId)) return;
+  Future<void> _loadIntelligence(_DraftExercise exercise) async {
+    final key = exercise.intelligenceKey;
+    if (intelligence.containsKey(key)) return;
     try {
       final raw = await context.read<ApiClient>().get(
-        '/workouts/previous-performance',
-        queryParameters: {'exerciseId': exerciseId},
+        '/workouts/intelligence',
+        queryParameters: {
+          'exerciseId': exercise.exerciseId,
+          'targetSets': exercise.targetSets,
+          'minReps': exercise.minReps,
+          'maxReps': exercise.maxReps,
+          'targetRir': exercise.targetRir,
+        },
       );
       if (!mounted) return;
       setState(() {
-        previous[exerciseId] = raw is Map
-            ? Map<String, dynamic>.from(raw)
-            : null;
+        intelligence[key] = raw is Map ? Map<String, dynamic>.from(raw) : null;
       });
     } catch (_) {
-      if (mounted) setState(() => previous[exerciseId] = null);
+      if (mounted) setState(() => intelligence[key] = null);
     }
   }
 
@@ -137,6 +153,13 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       );
       return _DraftExercise(
         item['exerciseId'].toString(),
+        targetSets: targetSets,
+        minReps: (((item['targetReps'] as num?)?.toInt() ?? 10) - 2).clamp(
+          1,
+          500,
+        ),
+        maxReps: (item['targetReps'] as num?)?.toInt() ?? 10,
+        targetRir: (item['targetRir'] as num?)?.toInt() ?? 2,
         sets: List.generate(
           targetSets,
           (_) => _DraftSet(
@@ -156,7 +179,141 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       draft = next;
     });
     for (final exercise in next) {
-      unawaited(_loadPrevious(exercise.exerciseId));
+      unawaited(_loadIntelligence(exercise));
+    }
+  }
+
+  Future<void> _setPreference(String exerciseId, String preference) async {
+    final oldValue = preferences[exerciseId] ?? 'NORMAL';
+    setState(() => preferences[exerciseId] = preference);
+    try {
+      await context.read<ApiClient>().put(
+        '/workouts/exercise-preferences/$exerciseId',
+        data: {'preference': preference},
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => preferences[exerciseId] = oldValue);
+      showMessage(context, displayError(error), error: true);
+    }
+  }
+
+  Future<void> _showAlternatives(_DraftExercise exercise) async {
+    try {
+      final raw = await context.read<ApiClient>().get(
+        '/workouts/exercises/${exercise.exerciseId}/alternatives',
+      );
+      final alternatives = _list(raw);
+      if (!mounted) return;
+      if (alternatives.isEmpty) {
+        showMessage(context, 'Chưa có bài thay thế phù hợp đã được duyệt.');
+        return;
+      }
+      final selected = await showModalBottomSheet<String>(
+        context: context,
+        showDragHandle: true,
+        builder: (sheetContext) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              Text(
+                'Chọn bài tương đương',
+                style: Theme.of(sheetContext).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              ...alternatives.map((item) {
+                final candidate = item['exercise'] is Map
+                    ? Map<String, dynamic>.from(item['exercise'] as Map)
+                    : <String, dynamic>{};
+                return ListTile(
+                  leading: Icon(
+                    item['preference'] == 'FAVORITE'
+                        ? Icons.star
+                        : Icons.swap_horiz,
+                    color: item['preference'] == 'FAVORITE'
+                        ? Colors.amber.shade700
+                        : null,
+                  ),
+                  title: Text(candidate['name']?.toString() ?? 'Bài tập'),
+                  subtitle: Text(
+                    '${candidate['equipment'] ?? 'Không rõ dụng cụ'}${item['sameEquipment'] == true ? ' · Cùng dụng cụ' : ''}',
+                  ),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, candidate['id']?.toString()),
+                );
+              }),
+            ],
+          ),
+        ),
+      );
+      if (selected == null || !mounted) return;
+      setState(() => exercise.exerciseId = selected);
+      unawaited(_loadIntelligence(exercise));
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    }
+  }
+
+  void _applyProgression(_DraftExercise exercise) {
+    final suggestion = intelligence[exercise.intelligenceKey]?['progression'];
+    if (suggestion is! Map || suggestion['suggestedWeight'] == null) return;
+    final count = ((suggestion['suggestedSets'] as num?)?.toInt() ?? 1).clamp(
+      1,
+      20,
+    );
+    setState(() {
+      exercise.sets
+        ..clear()
+        ..addAll(
+          List.generate(
+            count,
+            (_) => _DraftSet(
+              weight: (suggestion['suggestedWeight'] as num).toDouble(),
+              reps:
+                  (suggestion['suggestedMinReps'] as num?)?.toInt() ??
+                  exercise.minReps,
+              rir:
+                  (suggestion['targetRir'] as num?)?.toInt() ??
+                  exercise.targetRir,
+            ),
+          ),
+        );
+    });
+    showMessage(context, 'Đã áp dụng mức đề xuất vào các set.');
+  }
+
+  void _announcePotentialRecord(_DraftExercise exercise, _DraftSet set) {
+    if (set.setType == 'WARMUP') return;
+    final bests = intelligence[exercise.intelligenceKey]?['personalBests'];
+    if (bests is! List) return;
+    double bestWeight = 0;
+    double bestEstimated = 0;
+    for (final raw in bests.whereType<Map>()) {
+      final value = (raw['value'] as num?)?.toDouble() ?? 0;
+      if (raw['type'] == 'HEAVIEST_WEIGHT') bestWeight = value;
+      if (raw['type'] == 'ESTIMATED_1RM') bestEstimated = value;
+    }
+    final estimated = set.weight > 0 && set.reps <= 30
+        ? set.weight * (1 + set.reps / 30)
+        : 0.0;
+    final candidates = <({String key, bool achieved, String message})>[
+      (
+        key: '${set.key}:weight',
+        achieved: set.weight > bestWeight,
+        message: 'Có thể là PR mới: ${_number(set.weight)} kg.',
+      ),
+      (
+        key: '${set.key}:e1rm',
+        achieved: estimated > bestEstimated,
+        message: 'Có thể là PR e1RM mới: ${_number(estimated)} kg.',
+      ),
+    ];
+    for (final candidate in candidates) {
+      if (candidate.achieved && announcedRecords.add(candidate.key)) {
+        showMessage(context, '🏆 ${candidate.message}');
+      }
     }
   }
 
@@ -211,7 +368,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
 
     setState(() => busy = true);
     try {
-      await context.read<ApiClient>().post(
+      final result = await context.read<ApiClient>().post(
         '/workouts/sessions',
         data: {
           'sessionDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
@@ -223,6 +380,38 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
           'sets': sets,
         },
       );
+      if (!mounted) return;
+      final records = result is Map && result['newPersonalRecords'] is List
+          ? result['newPersonalRecords'] as List
+          : const [];
+      if (records.isNotEmpty) {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            icon: const Icon(Icons.emoji_events, color: Colors.amber, size: 40),
+            title: const Text('Kỷ lục cá nhân mới!'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: records.map((raw) {
+                final record = raw as Map;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    '${record['exerciseName']}: ${_recordLabel(record['type']?.toString())} ${_number(record['newValue'])} ${record['unit'] ?? ''}',
+                  ),
+                );
+              }).toList(),
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Tuyệt vời'),
+              ),
+            ],
+          ),
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) showMessage(context, displayError(error), error: true);
@@ -338,13 +527,19 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
                       index: entry.key,
                       exercise: entry.value,
                       exercises: exercises,
-                      previous: previous[entry.value.exerciseId],
+                      intelligence: intelligence[entry.value.intelligenceKey],
+                      preference:
+                          preferences[entry.value.exerciseId] ?? 'NORMAL',
                       canDelete: draft.length > 1,
                       onChanged: () => setState(() {}),
                       onExerciseChanged: (id) {
                         setState(() => entry.value.exerciseId = id);
-                        unawaited(_loadPrevious(id));
+                        unawaited(_loadIntelligence(entry.value));
                       },
+                      onPreferenceChanged: (value) =>
+                          _setPreference(entry.value.exerciseId, value),
+                      onShowAlternatives: () => _showAlternatives(entry.value),
+                      onApplyProgression: () => _applyProgression(entry.value),
                       onMoveUp: entry.key == 0
                           ? null
                           : () => setState(() {
@@ -355,8 +550,12 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
                           ? null
                           : () => setState(() => draft.removeAt(entry.key)),
                       onSetCompleted: (set) {
+                        final willComplete = !set.completed;
                         setState(() => set.completed = !set.completed);
-                        if (set.completed) _startRest(entry.value.restSeconds);
+                        if (willComplete) {
+                          _announcePotentialRecord(entry.value, set);
+                          _startRest(entry.value.restSeconds);
+                        }
                       },
                     ),
                   ),
@@ -367,7 +566,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
                         exercises.first['id'].toString(),
                       );
                       setState(() => draft.add(item));
-                      unawaited(_loadPrevious(item.exerciseId));
+                      unawaited(_loadIntelligence(item));
                     },
                     icon: const Icon(Icons.add),
                     label: const Text('Thêm bài tập'),
@@ -416,10 +615,14 @@ class _ExerciseEditor extends StatelessWidget {
     required this.index,
     required this.exercise,
     required this.exercises,
-    required this.previous,
+    required this.intelligence,
+    required this.preference,
     required this.canDelete,
     required this.onChanged,
     required this.onExerciseChanged,
+    required this.onPreferenceChanged,
+    required this.onShowAlternatives,
+    required this.onApplyProgression,
     required this.onMoveUp,
     required this.onDelete,
     required this.onSetCompleted,
@@ -428,18 +631,27 @@ class _ExerciseEditor extends StatelessWidget {
   final int index;
   final _DraftExercise exercise;
   final List<Map<String, dynamic>> exercises;
-  final Map<String, dynamic>? previous;
+  final Map<String, dynamic>? intelligence;
+  final String preference;
   final bool canDelete;
   final VoidCallback onChanged;
   final ValueChanged<String> onExerciseChanged;
+  final ValueChanged<String> onPreferenceChanged;
+  final VoidCallback onShowAlternatives;
+  final VoidCallback onApplyProgression;
   final VoidCallback? onMoveUp;
   final VoidCallback? onDelete;
   final ValueChanged<_DraftSet> onSetCompleted;
 
   @override
   Widget build(BuildContext context) {
-    final previousSets = previous?['sets'] is List
-        ? previous!['sets'] as List
+    final previous = intelligence?['previousPerformance'];
+    final previousSets = previous is Map && previous['sets'] is List
+        ? previous['sets'] as List
+        : const [];
+    final progression = intelligence?['progression'];
+    final bests = intelligence?['personalBests'] is List
+        ? intelligence!['personalBests'] as List
         : const [];
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -487,14 +699,110 @@ class _ExerciseEditor extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                previous == null
+                previous is! Map
                     ? 'Chưa có dữ liệu lần tập trước'
-                    : 'Lần gần nhất ${previous!['sessionDate']}: ${previousSets.map((raw) {
+                    : 'Lần gần nhất ${previous['sessionDate']}: ${previousSets.map((raw) {
                         final set = raw as Map;
                         return '${set['weight']}kg × ${set['reps']}';
                       }).join(' · ')}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE9F8F0),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (progression is Map) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.lightbulb_outline, size: 18),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _progressionLabel(
+                              progression['action']?.toString(),
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        if (progression['suggestedWeight'] != null)
+                          TextButton(
+                            onPressed: onApplyProgression,
+                            child: Text(
+                              'Áp dụng ${_number(progression['suggestedWeight'])} kg',
+                            ),
+                          ),
+                      ],
+                    ),
+                    Text(
+                      progression['explanation']?.toString() ?? '',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ] else
+                    Text(
+                      'Đang tải đề xuất...',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  if (bests.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: bests.map((raw) {
+                        final best = raw as Map;
+                        return Chip(
+                          avatar: const Icon(Icons.emoji_events, size: 15),
+                          label: Text(
+                            '${_recordLabel(best['type']?.toString())}: ${_number(best['value'])}',
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                PopupMenuButton<String>(
+                  initialValue: preference,
+                  onSelected: onPreferenceChanged,
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'FAVORITE',
+                      child: Text('★ Yêu thích'),
+                    ),
+                    PopupMenuItem(value: 'NORMAL', child: Text('Bình thường')),
+                    PopupMenuItem(value: 'LESS', child: Text('Ít ưu tiên')),
+                    PopupMenuItem(
+                      value: 'EXCLUDED',
+                      child: Text('Không đề xuất'),
+                    ),
+                  ],
+                  child: Chip(
+                    avatar: Icon(
+                      preference == 'FAVORITE' ? Icons.star : Icons.tune,
+                      size: 17,
+                    ),
+                    label: Text(_preferenceLabel(preference)),
+                  ),
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.swap_horiz, size: 17),
+                  label: const Text('Đổi bài tương đương'),
+                  onPressed: onShowAlternatives,
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             Row(
@@ -698,15 +1006,28 @@ class _PlanDayOption {
 }
 
 class _DraftExercise {
-  _DraftExercise(this.exerciseId, {List<_DraftSet>? sets})
-    : key = '${DateTime.now().microsecondsSinceEpoch}-${_nextKey++}',
-      sets = sets ?? [_DraftSet()];
+  _DraftExercise(
+    this.exerciseId, {
+    List<_DraftSet>? sets,
+    this.targetSets = 3,
+    this.minReps = 8,
+    this.maxReps = 12,
+    this.targetRir = 2,
+  }) : key = '${DateTime.now().microsecondsSinceEpoch}-${_nextKey++}',
+       sets = sets ?? List.generate(3, (_) => _DraftSet());
 
   static int _nextKey = 0;
   final String key;
   String exerciseId;
   int restSeconds = 90;
+  final int targetSets;
+  final int minReps;
+  final int maxReps;
+  final int targetRir;
   final List<_DraftSet> sets;
+
+  String get intelligenceKey =>
+      '$exerciseId:$targetSets:$minReps:$maxReps:$targetRir';
 }
 
 class _DraftSet {
@@ -745,4 +1066,32 @@ String _clock(int totalSeconds) {
   final minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
   final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
   return '$minutes:$seconds';
+}
+
+String _progressionLabel(String? action) => switch (action) {
+  'INCREASE_WEIGHT' => 'Sẵn sàng tăng tạ',
+  'BUILD_REPS' => 'Tiếp tục tăng số lần lặp',
+  'DECREASE_OR_HOLD' => 'Giữ hoặc giảm nhẹ mức tạ',
+  _ => 'Mốc khởi đầu',
+};
+
+String _preferenceLabel(String value) => switch (value) {
+  'FAVORITE' => 'Yêu thích',
+  'LESS' => 'Ít ưu tiên',
+  'EXCLUDED' => 'Không đề xuất',
+  _ => 'Bình thường',
+};
+
+String _recordLabel(String? type) => switch (type) {
+  'HEAVIEST_WEIGHT' => 'Mức tạ cao nhất',
+  'MAX_REPS_AT_WEIGHT' => 'Số lần lặp cao nhất',
+  'ESTIMATED_1RM' => 'e1RM ước tính',
+  'MAX_SESSION_VOLUME' => 'Volume buổi cao nhất',
+  _ => 'Kỷ lục',
+};
+
+String _number(dynamic value) {
+  final number = value is num ? value : num.tryParse(value?.toString() ?? '');
+  if (number == null) return '-';
+  return NumberFormat('#,##0.#', 'vi_VN').format(number);
 }
