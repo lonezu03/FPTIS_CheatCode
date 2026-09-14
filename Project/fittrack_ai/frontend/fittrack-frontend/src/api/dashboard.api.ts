@@ -1,6 +1,7 @@
 import api from "./axios";
 
 export type DashboardToday = {
+  date: string;
   totalCalories: number;
   totalProtein: number;
   totalCarbs: number;
@@ -22,6 +23,13 @@ export type DashboardToday = {
   scheduleEnabled: boolean;
   quoteEnabled: boolean;
   latestWorkoutNote: string | null;
+  remainingCalories: number;
+  remainingProtein: number;
+  openTodoCount: number;
+  scheduleCount: number;
+  agenda: { sourceId: string; sourceType: "TODO" | "EVENT"; title: string; category: string; startAt: string | null; endAt: string | null; status: string }[];
+  coachInsight: string | null;
+  coachActionPath: string | null;
 };
 
 export type ProgressPoint = {

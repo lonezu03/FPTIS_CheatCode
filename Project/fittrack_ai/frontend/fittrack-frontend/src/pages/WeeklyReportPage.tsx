@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { ElementType } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getWeeklyRecommendations, type WeeklyRecommendation } from "../api/recommendation.api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { decideWeeklyCheckIn, getCurrentWeeklyCheckIn, getWeeklyRecommendations, type WeeklyRecommendation } from "../api/recommendation.api";
+import { toast } from "sonner";
 import { getWeeklyReport, type WeeklyReport } from "../api/report.api";
 import { toLocalDateInput } from "../lib/format";
 
@@ -34,6 +35,7 @@ function getDefaultFromDate() {
 }
 
 export default function WeeklyReportPage() {
+  const queryClient = useQueryClient();
   const [fromDate, setFromDate] = useState(getDefaultFromDate());
   const [toDate, setToDate] = useState(getDefaultToDate());
 
@@ -49,6 +51,12 @@ export default function WeeklyReportPage() {
 
   const report = reportQuery.data;
   const recommendations = recommendationQuery.data;
+  const checkInQuery = useQuery({ queryKey: ["weekly-check-in", "current"], queryFn: getCurrentWeeklyCheckIn });
+  const decisionMutation = useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: "ACCEPT" | "IGNORE" }) => decideWeeklyCheckIn(id, decision),
+    onSuccess: async (_, variables) => { toast.success(variables.decision === "ACCEPT" ? "Đã áp dụng mục tiêu tuần mới" : "Đã giữ mục tiêu hiện tại"); await queryClient.invalidateQueries({ queryKey: ["weekly-check-in"] }); },
+    onError: () => toast.error("Không thể cập nhật quyết định check-in"),
+  });
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -82,6 +90,8 @@ export default function WeeklyReportPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {checkInQuery.data && <Card className="border-emerald-200 bg-emerald-50/40"><CardHeader><CardTitle>FitTrack Coach · Check-in tuần</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid gap-3 sm:grid-cols-4"><CoachMetric label="Dữ liệu đầy đủ" value={`${checkInQuery.data.completeDays}/7 ngày`} /><CoachMetric label="Độ tin cậy" value={`${Math.round(checkInQuery.data.confidencePercent)}%`} /><CoachMetric label="Thay đổi cân nặng" value={checkInQuery.data.weightChange == null ? "Chưa đủ dữ liệu" : `${checkInQuery.data.weightChange > 0 ? "+" : ""}${checkInQuery.data.weightChange} kg`} /><CoachMetric label="Số ngày tập" value={`${checkInQuery.data.workoutDays} ngày`} /></div><p className="rounded-xl bg-white/80 p-4 text-sm leading-6">{checkInQuery.data.rationale}</p><div className="grid gap-2 sm:grid-cols-2"><div className="rounded-xl border bg-white p-3 text-sm">Năng lượng: <b>{Math.round(checkInQuery.data.currentCalories)}</b> → <b>{Math.round(checkInQuery.data.proposedCalories)} kcal</b></div><div className="rounded-xl border bg-white p-3 text-sm">Chất đạm: <b>{Math.round(checkInQuery.data.currentProtein)}</b> → <b>{Math.round(checkInQuery.data.proposedProtein)} g</b></div></div>{checkInQuery.data.status === "PENDING" && <div className="flex flex-wrap gap-2"><Button disabled={decisionMutation.isPending || !checkInQuery.data.canApply} onClick={() => decisionMutation.mutate({ id: checkInQuery.data.id, decision: "ACCEPT" })}>Áp dụng đề xuất</Button><Button variant="outline" disabled={decisionMutation.isPending} onClick={() => decisionMutation.mutate({ id: checkInQuery.data.id, decision: "IGNORE" })}>Giữ hiện tại</Button></div>}{!checkInQuery.data.dataSufficient && <p className="text-xs text-amber-700">FitTrack không đổi mục tiêu khi dữ liệu nhật ký chưa đủ.</p>}</CardContent></Card>}
 
       {reportQuery.isLoading && <PageLoading />}
 
@@ -312,6 +322,8 @@ function WeeklyReportContent({
     </>
   );
 }
+
+function CoachMetric({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border bg-white p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-bold">{value}</p></div>; }
 
 function buildActionSummary(report: WeeklyReport) {
   if (!report.nutritionDataSufficient) return `Chưa đủ dữ liệu để đánh giá lượng ăn. Bạn mới xác nhận ${report.completeNutritionDays}/${report.periodDays} ngày đầy đủ; hãy hoàn tất nhật ký trước khi điều chỉnh mục tiêu.`;

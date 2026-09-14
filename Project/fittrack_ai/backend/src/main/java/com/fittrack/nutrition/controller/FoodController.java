@@ -58,6 +58,11 @@ public class FoodController {
         return foodService.getMySubmissions(user);
     }
 
+    @GetMapping("/barcode/{barcode}")
+    public FoodResponse getByBarcode(@PathVariable String barcode) {
+        return foodService.findByBarcode(barcode);
+    }
+
     @PostMapping
     public FoodResponse create(@Valid @RequestBody CreateFoodRequest request) {
         return foodService.create(request);

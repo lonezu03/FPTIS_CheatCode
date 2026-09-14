@@ -31,6 +31,7 @@ public class NutritionMapper {
                 .vitaminC(food.getVitaminC())
                 .water(food.getWater())
                 .unit(food.getUnit())
+                .barcode(food.getBarcode())
                 .servingSizeGrams(food.getServingSizeGrams())
                 .dataSourceType(food.getDataSourceType())
                 .dataSourceName(food.getDataSourceName())

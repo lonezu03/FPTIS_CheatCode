@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
+
+import 'dart:convert';
 
 import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
+import '../../core/health/health_connect_service.dart';
 
 class HealthScreen extends StatefulWidget {
   const HealthScreen({super.key});
@@ -16,7 +20,10 @@ class _HealthScreenState extends State<HealthScreen>
   late final TabController tabs;
   Map<String, dynamic>? summary;
   List<Map<String, dynamic>> measurements = [];
+  List<Map<String, dynamic>> progressPhotos = [];
   List<Map<String, dynamic>> reminders = [];
+  Map<String, dynamic>? healthConnect;
+  Map<String, dynamic>? weeklyCoach;
   bool loading = true;
   Object? error;
 
@@ -44,12 +51,25 @@ class _HealthScreenState extends State<HealthScreen>
         api.get('/health-management/summary', queryParameters: {'days': 30}),
         api.get('/body-measurements'),
         api.get('/reminders'),
+        api.get('/health-connect/day'),
+        api.get('/progress-photos'),
       ]);
+      Map<String, dynamic>? coach;
+      try {
+        coach = Map<String, dynamic>.from(
+          await api.get('/recommendations/check-ins/current') as Map,
+        );
+      } catch (_) {
+        coach = null;
+      }
       if (!mounted) return;
       setState(() {
         summary = Map<String, dynamic>.from(result[0] as Map);
         measurements = _asList(result[1]);
         reminders = _asList(result[2]);
+        healthConnect = Map<String, dynamic>.from(result[3] as Map);
+        progressPhotos = _asList(result[4]);
+        weeklyCoach = coach;
       });
     } catch (e) {
       if (mounted) setState(() => error = e);
@@ -103,8 +123,17 @@ class _HealthScreenState extends State<HealthScreen>
           child: TabBarView(
             controller: tabs,
             children: [
-              _SummaryTab(data: summary!),
-              _BodyTab(items: measurements, onReload: _load),
+              _SummaryTab(
+                data: summary!,
+                healthConnect: healthConnect ?? const {},
+                weeklyCoach: weeklyCoach,
+                onReload: _load,
+              ),
+              _BodyTab(
+                items: measurements,
+                photos: progressPhotos,
+                onReload: _load,
+              ),
               _ReminderTab(items: reminders, onReload: _load),
             ],
           ),
@@ -115,8 +144,16 @@ class _HealthScreenState extends State<HealthScreen>
 }
 
 class _SummaryTab extends StatelessWidget {
-  const _SummaryTab({required this.data});
+  const _SummaryTab({
+    required this.data,
+    required this.healthConnect,
+    required this.weeklyCoach,
+    required this.onReload,
+  });
   final Map<String, dynamic> data;
+  final Map<String, dynamic> healthConnect;
+  final Map<String, dynamic>? weeklyCoach;
+  final Future<void> Function() onReload;
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +166,12 @@ class _SummaryTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(18),
       children: [
+        _HealthConnectCard(data: healthConnect, onReload: onReload),
+        const SizedBox(height: 12),
+        if (weeklyCoach != null) ...[
+          _WeeklyCoachCard(data: weeklyCoach!, onReload: onReload),
+          const SizedBox(height: 12),
+        ],
         Row(
           children: [
             Expanded(
@@ -284,6 +327,170 @@ class _SummaryTab extends StatelessWidget {
   }
 }
 
+class _WeeklyCoachCard extends StatefulWidget {
+  const _WeeklyCoachCard({required this.data, required this.onReload});
+  final Map<String, dynamic> data;
+  final Future<void> Function() onReload;
+  @override
+  State<_WeeklyCoachCard> createState() => _WeeklyCoachCardState();
+}
+
+class _WeeklyCoachCardState extends State<_WeeklyCoachCard> {
+  bool busy = false;
+  Future<void> decide(String decision) async {
+    setState(() => busy = true);
+    try {
+      await context.read<ApiClient>().post(
+        '/recommendations/check-ins/${widget.data['id']}/decision',
+        data: {'decision': decision},
+      );
+      if (mounted)
+        showMessage(
+          context,
+          decision == 'ACCEPT'
+              ? 'Đã áp dụng mục tiêu tuần mới.'
+              : 'Đã giữ mục tiêu hiện tại.',
+        );
+      await widget.onReload();
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'FitTrack Coach · Check-in tuần',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(widget.data['rationale']?.toString() ?? ''),
+          const SizedBox(height: 8),
+          Text(
+            '${widget.data['completeDays'] ?? 0}/7 ngày đủ dữ liệu · độ tin cậy ${widget.data['confidencePercent'] ?? 0}%',
+          ),
+          Text(
+            'Năng lượng ${widget.data['currentCalories'] ?? 0} → ${widget.data['proposedCalories'] ?? 0} kcal',
+          ),
+          Text(
+            'Chất đạm ${widget.data['currentProtein'] ?? 0} → ${widget.data['proposedProtein'] ?? 0} g',
+          ),
+          if (widget.data['status'] == 'PENDING')
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  FilledButton(
+                    onPressed: busy || widget.data['canApply'] != true
+                        ? null
+                        : () => decide('ACCEPT'),
+                    child: const Text('Áp dụng'),
+                  ),
+                  OutlinedButton(
+                    onPressed: busy ? null : () => decide('IGNORE'),
+                    child: const Text('Giữ hiện tại'),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _HealthConnectCard extends StatefulWidget {
+  const _HealthConnectCard({required this.data, required this.onReload});
+  final Map<String, dynamic> data;
+  final Future<void> Function() onReload;
+  @override
+  State<_HealthConnectCard> createState() => _HealthConnectCardState();
+}
+
+class _HealthConnectCardState extends State<_HealthConnectCard> {
+  bool syncing = false;
+
+  Future<void> sync() async {
+    setState(() => syncing = true);
+    try {
+      final result = await HealthConnectService(context.read<ApiClient>())
+          .syncLastSevenDays();
+      if (mounted)
+        showMessage(
+          context,
+          'Đã đồng bộ ${result['imported'] ?? 0} bản ghi mới; bỏ qua ${result['duplicates'] ?? 0} bản trùng.',
+        );
+      await widget.onReload();
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    } finally {
+      if (mounted) setState(() => syncing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Card(
+    color: Colors.teal.shade50,
+    child: Padding(
+      padding: const EdgeInsets.all(15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.health_and_safety_outlined),
+              SizedBox(width: 8),
+              Text(
+                'Health Connect',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Chỉ đọc bước chân, cân nặng, nhịp tim và buổi tập sau khi bạn đồng ý.',
+            style: TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              Text('${widget.data['steps'] ?? 0} bước'),
+              Text(
+                widget.data['latestWeightKg'] == null
+                    ? 'Chưa có cân nặng'
+                    : '${widget.data['latestWeightKg']} kg',
+              ),
+              Text(
+                widget.data['averageHeartRate'] == null
+                    ? 'Chưa có nhịp tim'
+                    : '${widget.data['averageHeartRate']} bpm',
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          FilledButton.icon(
+            onPressed: syncing ? null : sync,
+            icon: const Icon(Icons.sync),
+            label: Text(
+              syncing ? 'Đang đồng bộ...' : 'Kết nối / đồng bộ 7 ngày',
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _HealthMetric extends StatelessWidget {
   const _HealthMetric({
     required this.label,
@@ -315,8 +522,13 @@ class _HealthMetric extends StatelessWidget {
 }
 
 class _BodyTab extends StatelessWidget {
-  const _BodyTab({required this.items, required this.onReload});
+  const _BodyTab({
+    required this.items,
+    required this.photos,
+    required this.onReload,
+  });
   final List<Map<String, dynamic>> items;
+  final List<Map<String, dynamic>> photos;
   final Future<void> Function() onReload;
   @override
   Widget build(BuildContext context) => RefreshIndicator(
@@ -336,6 +548,71 @@ class _BodyTab extends StatelessWidget {
           icon: const Icon(Icons.add),
           label: const Text('Thêm chỉ số cơ thể'),
         ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final saved = await showModalBottomSheet<bool>(
+              context: context,
+              isScrollControlled: true,
+              builder: (_) => const _AddProgressPhotoSheet(),
+            );
+            if (saved == true) onReload();
+          },
+          icon: const Icon(Icons.add_a_photo_outlined),
+          label: const Text('Thêm ảnh tiến độ'),
+        ),
+        if (photos.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 220,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: photos.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              itemBuilder: (_, index) {
+                final photo = photos[index];
+                final api = context.read<ApiClient>();
+                final token = api.accessToken;
+                final apiBase = api.dio.options.baseUrl.replaceFirst(
+                  RegExp(r'/api/?$'),
+                  '',
+                );
+                final imagePath = '${photo['imageUrl'] ?? ''}';
+                final imageUrl = imagePath.startsWith('http')
+                    ? imagePath
+                    : '$apiBase${imagePath.startsWith('/') ? '' : '/'}$imagePath';
+                return SizedBox(
+                  width: 145,
+                  child: Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: Image.network(
+                            imageUrl,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            headers: token == null
+                                ? null
+                                : {'Authorization': 'Bearer $token'},
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            '${photo['takenDate']} · ${photo['pose']}',
+                            maxLines: 1,
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         if (items.isEmpty)
           const EmptyView(
@@ -435,6 +712,109 @@ class _ReminderTab extends StatelessWidget {
               ),
             ),
           ),
+      ],
+    ),
+  );
+}
+
+class _AddProgressPhotoSheet extends StatefulWidget {
+  const _AddProgressPhotoSheet();
+  @override
+  State<_AddProgressPhotoSheet> createState() => _AddProgressPhotoSheetState();
+}
+
+class _AddProgressPhotoSheetState extends State<_AddProgressPhotoSheet> {
+  PlatformFile? file;
+  String pose = 'FRONT';
+  final note = TextEditingController();
+  bool busy = false;
+  @override
+  void dispose() {
+    note.dispose();
+    super.dispose();
+  }
+
+  Future<void> pick() async {
+    final selected = await FilePicker.pickFile(type: FileType.image);
+    if (selected != null && mounted) setState(() => file = selected);
+  }
+
+  Future<void> save() async {
+    if (file == null)
+      return showMessage(context, 'Hãy chọn một ảnh.', error: true);
+    setState(() => busy = true);
+    try {
+      final bytes = await file!.readAsBytes();
+      final extension = (file!.extension ?? 'jpeg').toLowerCase();
+      final mime = extension == 'png'
+          ? 'image/png'
+          : extension == 'webp'
+          ? 'image/webp'
+          : 'image/jpeg';
+      if (!mounted) return;
+      await context.read<ApiClient>().post(
+        '/progress-photos',
+        data: {
+          'imageUrl': 'data:$mime;base64,${base64Encode(bytes)}',
+          'takenDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+          'pose': pose,
+          'note': note.text.trim(),
+        },
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(
+      20,
+      20,
+      20,
+      MediaQuery.viewInsetsOf(context).bottom + 20,
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Thêm ảnh tiến độ',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: busy ? null : pick,
+          icon: const Icon(Icons.photo_library_outlined),
+          label: Text(file?.name ?? 'Chọn ảnh'),
+        ),
+        const SizedBox(height: 10),
+        DropdownButtonFormField<String>(
+          initialValue: pose,
+          decoration: const InputDecoration(labelText: 'Góc chụp'),
+          items: const [
+            DropdownMenuItem(value: 'FRONT', child: Text('Chính diện')),
+            DropdownMenuItem(value: 'SIDE', child: Text('Nghiêng')),
+            DropdownMenuItem(value: 'BACK', child: Text('Phía sau')),
+            DropdownMenuItem(value: 'OTHER', child: Text('Khác')),
+          ],
+          onChanged: (value) => setState(() => pose = value!),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: note,
+          decoration: const InputDecoration(
+            labelText: 'Ghi chú (không bắt buộc)',
+          ),
+        ),
+        const SizedBox(height: 14),
+        FilledButton(
+          onPressed: busy ? null : save,
+          child: Text(busy ? 'Đang tải...' : 'Lưu ảnh'),
+        ),
       ],
     ),
   );

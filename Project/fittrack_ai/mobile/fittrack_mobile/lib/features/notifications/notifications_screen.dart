@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/notifications/notification_center.dart';
 import '../../core/widgets/common_widgets.dart';
+import '../../core/network/api_client.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -26,6 +27,28 @@ class NotificationsScreen extends StatelessWidget {
       if (context.mounted) {
         showMessage(context, displayError(error), error: true);
       }
+    }
+  }
+
+  Future<void> _snooze(
+    BuildContext context,
+    Map<String, dynamic> item,
+    int minutes,
+  ) async {
+    try {
+      await context.read<ApiClient>().post(
+        '/todos/${item['referenceId']}/snooze?minutes=$minutes',
+      );
+      if (context.mounted)
+        showMessage(
+          context,
+          minutes == 1440
+              ? 'Sẽ nhắc lại vào ngày mai.'
+              : 'Sẽ nhắc lại sau $minutes phút.',
+        );
+    } catch (error) {
+      if (context.mounted)
+        showMessage(context, displayError(error), error: true);
     }
   }
 
@@ -91,7 +114,31 @@ class NotificationsScreen extends StatelessWidget {
                       '${item['message'] ?? ''}${_time(item).isEmpty ? '' : '\n${_time(item)}'}',
                     ),
                     isThreeLine: true,
-                    trailing: unread
+                    trailing: item['referenceType'] == 'TODO'
+                        ? PopupMenuButton<int>(
+                            tooltip: 'Báo lại',
+                            onSelected: (minutes) =>
+                                _snooze(context, item, minutes),
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 10,
+                                child: Text('Nhắc lại sau 10 phút'),
+                              ),
+                              PopupMenuItem(
+                                value: 30,
+                                child: Text('Sau 30 phút'),
+                              ),
+                              PopupMenuItem(
+                                value: 60,
+                                child: Text('Sau 1 giờ'),
+                              ),
+                              PopupMenuItem(
+                                value: 1440,
+                                child: Text('Ngày mai'),
+                              ),
+                            ],
+                          )
+                        : unread
                         ? const Badge()
                         : const Icon(Icons.done, size: 18),
                   ),

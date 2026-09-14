@@ -56,6 +56,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
             subtitle: 'Đây là tổng quan hoạt động của bạn hôm nay.',
           ),
           const SizedBox(height: 20),
+          if (data!['coachInsight'] != null &&
+              (user.fitnessEnabled || user.healthEnabled || user.isAdmin)) ...[
+            Card(
+              color: Colors.green.shade50,
+              child: ListTile(
+                leading: const Icon(Icons.tips_and_updates_outlined),
+                title: const Text(
+                  'FitTrack Coach hôm nay',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(data!['coachInsight'].toString()),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (data!['agenda'] is List &&
+              (data!['agenda'] as List).isNotEmpty) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Lịch hôm nay',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    ...(data!['agenda'] as List).take(6).map((raw) {
+                      final item = Map<String, dynamic>.from(raw as Map);
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          item['sourceType'] == 'TODO'
+                              ? Icons.check_circle_outline
+                              : Icons.calendar_today_outlined,
+                        ),
+                        title: Text(
+                          item['title']?.toString() ?? '',
+                          style: TextStyle(
+                            decoration: item['status'] == 'DONE'
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                        subtitle: Text(
+                          item['startAt']?.toString() ?? 'Cả ngày',
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (user.quoteEnabled || user.isAdmin) ...[
             const DailyQuoteCard(),
             const SizedBox(height: 20),

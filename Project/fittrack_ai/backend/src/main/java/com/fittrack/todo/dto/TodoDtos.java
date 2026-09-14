@@ -41,7 +41,9 @@ public final class TodoDtos {
             LocalDateTime reminderAt,
             Boolean reminderEnabled,
             @Size(max = 50, message = "Tối đa 50 checklist")
-            List<@Valid SubtaskRequest> subtasks
+            List<@Valid SubtaskRequest> subtasks,
+            @Size(max = 5, message = "Tối đa 5 mốc nhắc cho một công việc")
+            List<LocalDateTime> reminderTimes
     ) {
         public TodoRequest(
                 String title,
@@ -61,7 +63,7 @@ public final class TodoDtos {
         ) {
             this(title, description, status, priority, startAt, dueAt, estimatedMinutes, category,
                     recurrenceRule, recurrenceInterval, daysOfWeek, null, null, null,
-                    reminderAt, reminderEnabled, subtasks);
+                    reminderAt, reminderEnabled, subtasks, null);
         }
 
         public TodoRequest(
@@ -74,7 +76,7 @@ public final class TodoDtos {
                 Boolean reminderEnabled
         ) {
             this(title, description, status, priority, null, dueAt, null, null,
-                    null, null, null, null, null, null, reminderAt, reminderEnabled, null);
+                    null, null, null, null, null, null, reminderAt, reminderEnabled, null, null);
         }
     }
 
@@ -119,6 +121,7 @@ public final class TodoDtos {
             String recurringSeriesId,
             List<SubtaskResponse> subtasks,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt
+            LocalDateTime updatedAt,
+            List<LocalDateTime> reminderTimes
     ) {}
 }

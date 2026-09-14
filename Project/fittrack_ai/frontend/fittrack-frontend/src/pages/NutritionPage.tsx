@@ -8,6 +8,12 @@ import {
   deleteMealLog,
   getFoods,
   getNutritionDiary,
+  getNutritionConvenience,
+  logNutritionCollection,
+  saveNutritionCollection,
+  setFoodFavorite,
+  getFoodByBarcode,
+  analyzeFoodPhoto,
   updateMealLog,
   updateNutritionDayStatus,
   type Food,
@@ -27,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Check, ChevronLeft, ChevronRight, Droplets, LockKeyhole, Plus, Trash2, Utensils } from "lucide-react";
+import { BookmarkPlus, Camera, Check, ChevronLeft, ChevronRight, Droplets, Heart, LockKeyhole, Plus, ScanLine, Trash2, Utensils } from "lucide-react";
 
 type MealDraftItem = {
   foodId: string;
@@ -54,12 +60,14 @@ export default function NutritionPage() {
   const [date, setDate] = useState(toLocalDateInput());
   const [editor, setEditor] = useState<{ mealType: string; log?: MealLog } | null>(null);
   const [waterAmount, setWaterAmount] = useState(350);
+  const [quickMealType, setQuickMealType] = useState<string>("BREAKFAST");
 
   const diaryQuery = useQuery({
     queryKey: ["nutrition-diary", date],
     queryFn: () => getNutritionDiary(date),
   });
   const foodsQuery = useQuery({ queryKey: ["foods", "diary"], queryFn: () => getFoods() });
+  const convenienceQuery = useQuery({ queryKey: ["nutrition-convenience"], queryFn: getNutritionConvenience });
 
   const refresh = async () => {
     await Promise.all([
@@ -69,6 +77,7 @@ export default function NutritionPage() {
       queryClient.invalidateQueries({ queryKey: ["weekly-report"] }),
       queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] }),
       queryClient.invalidateQueries({ queryKey: ["achievements"] }),
+      queryClient.invalidateQueries({ queryKey: ["nutrition-convenience"] }),
     ]);
   };
 
@@ -93,6 +102,8 @@ export default function NutritionPage() {
     },
     onError: showMutationError("Không thể xóa bữa ăn"),
   });
+  const favoriteMutation = useMutation({ mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) => setFoodFavorite(id, favorite), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["nutrition-convenience"] }), onError: showMutationError("Không thể cập nhật món yêu thích") });
+  const logCollectionMutation = useMutation({ mutationFn: (id: string) => logNutritionCollection(id, { mealType: quickMealType, logDate: date, servings: 1 }), onSuccess: async () => { toast.success("Đã thêm cả bữa vào nhật ký"); await refresh(); }, onError: showMutationError("Không thể thêm bữa đã lưu") });
 
   if (diaryQuery.isLoading || foodsQuery.isLoading) return <PageLoading />;
   if (diaryQuery.isError || foodsQuery.isError || !diaryQuery.data) {
@@ -105,6 +116,8 @@ export default function NutritionPage() {
   return (
     <div className="space-y-5">
       <PageHeader title="Nhật ký ăn uống" description="Ghi theo từng bữa và xác nhận chất lượng dữ liệu trước khi FitTrack đưa ra đánh giá." />
+
+      {convenienceQuery.data && (convenienceQuery.data.recent.length > 0 || convenienceQuery.data.collections.length > 0) && <Card><CardHeader className="flex flex-row items-center justify-between gap-3"><div><CardTitle>Ghi nhanh</CardTitle><p className="mt-1 text-xs text-muted-foreground">Món gần đây, yêu thích và bữa đã lưu của bạn.</p></div><select className="h-10 rounded-md border bg-background px-3 text-sm" value={quickMealType} onChange={(event) => setQuickMealType(event.target.value)}>{mealTypes.map(type => <option key={type} value={type}>{mealLabels[type]}</option>)}</select></CardHeader><CardContent className="space-y-4">{convenienceQuery.data.collections.length > 0 && <div><p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Bữa đã lưu / công thức</p><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{convenienceQuery.data.collections.map(collection => <button key={collection.id} disabled={logCollectionMutation.isPending} onClick={() => logCollectionMutation.mutate(collection.id)} className="rounded-xl border p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50"><p className="font-semibold">{collection.name}</p><p className="mt-1 text-xs text-muted-foreground">{Math.round(collection.totalCalories)} kcal · P {Math.round(collection.totalProtein)}g · {collection.items.length} món</p><span className="mt-2 inline-flex items-center text-xs font-semibold text-emerald-700"><Plus className="mr-1 size-3" /> Thêm cả bữa</span></button>)}</div></div>}<div><p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Gần đây</p><div className="flex gap-2 overflow-x-auto pb-1">{convenienceQuery.data.recent.map(shortcut => <div key={shortcut.food.id} className="flex min-w-48 items-center gap-2 rounded-xl border px-3 py-2"><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{shortcut.food.name}</p><p className="text-xs text-muted-foreground">Đã dùng {shortcut.useCount} lần</p></div><button aria-label="Yêu thích" onClick={() => favoriteMutation.mutate({ id: shortcut.food.id, favorite: !shortcut.favorite })}><Heart className={`size-4 ${shortcut.favorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`} /></button></div>)}</div></div></CardContent></Card>}
 
       <Card>
         <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -221,6 +234,9 @@ function MealSection({ mealType, logs, onAdd, onEdit, onDelete }: { mealType: st
 
 function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { open: boolean; mealType: string; date: string; log?: MealLog; foods: Food[]; onClose: () => void; onSaved: () => Promise<void> }) {
   const [search, setSearch] = useState("");
+  const [collectionName, setCollectionName] = useState("");
+  const [barcode, setBarcode] = useState("");
+  const [photoAnalysis, setPhotoAnalysis] = useState<{ items: { name: string; estimatedGrams: number | null; calories: number | null }[]; note: string } | null>(null);
   const [items, setItems] = useState<MealDraftItem[]>(() => log
     ? log.items.map((item) => ({
       foodId: item.foodId,
@@ -239,6 +255,9 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
     onSuccess: async () => { toast.success(log ? "Đã cập nhật bữa ăn" : "Đã lưu bữa ăn"); await onSaved(); },
     onError: showMutationError("Không thể lưu bữa ăn"),
   });
+  const collectionMutation = useMutation({ mutationFn: () => saveNutritionCollection({ name: collectionName.trim(), type: "SAVED_MEAL", servings: 1, items: items.map(item => ({ foodId: item.foodId, amount: item.amount, unit: item.unit })) }), onSuccess: () => { toast.success("Đã lưu bữa để dùng nhanh"); setCollectionName(""); }, onError: showMutationError("Không thể lưu bộ bữa") });
+  const barcodeMutation = useMutation({ mutationFn: () => getFoodByBarcode(barcode), onSuccess: food => { setItems(current => current.some(item => item.foodId === food.id) ? current : [...current, { foodId: food.id, amount: 1, unit: "SERVING" }]); toast.success(`Đã tìm thấy ${food.name}`); }, onError: showMutationError("Chưa tìm thấy thực phẩm theo mã vạch") });
+  const photoMutation = useMutation({ mutationFn: analyzeFoodPhoto, onSuccess: data => setPhotoAnalysis(data), onError: showMutationError("Không thể phân tích ảnh món ăn") });
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
       <DialogContent className="flex max-h-[min(90dvh,760px)] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:w-full sm:max-w-3xl sm:p-0">
@@ -248,6 +267,9 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
         </DialogHeader>
 
         <div className="shrink-0 border-y bg-muted/25 px-5 py-4 sm:px-6">
+          <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><Input placeholder="Nhập hoặc quét mã vạch" value={barcode} onChange={event => setBarcode(event.target.value)} /><Button variant="outline" disabled={!barcode.trim() || barcodeMutation.isPending} onClick={() => barcodeMutation.mutate()}><ScanLine className="size-4" /> Tra mã</Button><label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-muted"><Camera className="size-4" /> Phân tích ảnh<input className="hidden" type="file" accept="image/*" capture="environment" onChange={async event => { const file = event.target.files?.[0]; if (file) photoMutation.mutate(await fileToDataUri(file)); }} /></label></div>
+          {photoMutation.isPending && <p className="mb-3 text-xs text-emerald-700">Gemini đang phân tích ảnh…</p>}
+          {photoAnalysis && <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs"><p className="font-semibold">Ước tính từ ảnh — cần kiểm tra trước khi lưu</p><ul className="mt-1 list-disc pl-4">{photoAnalysis.items.map((item, index) => <li key={`${item.name}-${index}`}>{item.name}: khoảng {item.estimatedGrams ?? "?"}g, {item.calories ?? "?"} kcal</li>)}</ul><p className="mt-1 text-muted-foreground">{photoAnalysis.note}</p></div>}
           <Input
             autoFocus
             placeholder="Tìm món ăn..."
@@ -314,11 +336,14 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
           )}
         </div>
 
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-background px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+        <div className="shrink-0 border-t bg-background px-5 py-4 sm:px-6">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row"><Input placeholder="Tên bữa muốn lưu, ví dụ: Bữa sáng thường ngày" value={collectionName} onChange={event => setCollectionName(event.target.value)} /><Button variant="outline" disabled={!collectionName.trim() || items.length === 0 || collectionMutation.isPending} onClick={() => collectionMutation.mutate()}><BookmarkPlus className="size-4" /> Lưu dùng nhanh</Button></div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button className="w-full sm:w-auto" variant="outline" onClick={onClose}>Hủy</Button>
           <Button className="w-full sm:w-auto" disabled={mutation.isPending || items.length === 0} onClick={() => mutation.mutate()}>
             {mutation.isPending ? "Đang lưu..." : `Lưu ${items.length} món`}
           </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -334,3 +359,4 @@ function shiftDate(value: string, days: number) { const date = new Date(`${value
 function unitLabel(unit?: ServingUnit | null) { return unit === "GRAM" ? "g" : unit === "ML" ? "ml" : "khẩu phần"; }
 function round(value: number) { return Math.round(value * 10) / 10; }
 function showMutationError(fallback: string) { return (error: unknown) => { const message = axios.isAxiosError(error) ? error.response?.data?.message : error instanceof Error && error.message !== "EMPTY" ? error.message : undefined; toast.error(message || fallback); }; }
+function fileToDataUri(file: File): Promise<string> { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); }); }

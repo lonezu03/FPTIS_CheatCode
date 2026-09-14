@@ -49,6 +49,9 @@ public class Food {
 
     private String unit;
 
+    @Column(length = 80)
+    private String barcode;
+
     private Double servingSizeGrams;
 
     @Column(nullable = false, length = 30)

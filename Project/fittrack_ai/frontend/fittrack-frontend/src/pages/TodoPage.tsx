@@ -51,6 +51,7 @@ type Draft = {
   estimatedMinutes: string;
   reminderAt: string;
   reminderEnabled: boolean;
+  reminderTimes: string[];
   recurrenceRule: Todo['recurrenceRule'];
   recurrenceInterval: string;
   daysOfWeek: string[];
@@ -62,7 +63,7 @@ type Draft = {
 
 const emptyDraft = (): Draft => ({
   title: '', description: '', priority: 'MEDIUM', category: 'PERSONAL', startAt: '', dueAt: '', estimatedMinutes: '',
-  reminderAt: '', reminderEnabled: false, recurrenceRule: 'NONE', recurrenceInterval: '1', daysOfWeek: [],
+  reminderAt: '', reminderEnabled: false, reminderTimes: [], recurrenceRule: 'NONE', recurrenceInterval: '1', daysOfWeek: [],
   recurrenceBasis: 'SCHEDULED_DATE', recurrenceEndAt: '', recurrenceMaxOccurrences: '', subtasks: [],
 });
 const localIso = (value: string) => value ? `${value}:00` : null;
@@ -144,6 +145,7 @@ export default function TodoPage() {
       title: todo.title, description: todo.description ?? '', priority: todo.priority, category: todo.category,
       startAt: inputDateTime(todo.startAt), dueAt: inputDateTime(todo.dueAt), estimatedMinutes: todo.estimatedMinutes?.toString() ?? '',
       reminderAt: inputDateTime(todo.reminderAt), reminderEnabled: todo.reminderEnabled, recurrenceRule: todo.recurrenceRule,
+      reminderTimes: (todo.reminderTimes ?? []).filter(value => value !== todo.reminderAt).map(value => inputDateTime(value)),
       recurrenceInterval: todo.recurrenceInterval.toString(), daysOfWeek: todo.daysOfWeek, subtasks: todo.subtasks.map(item => ({ title: item.title, completed: item.completed, sortOrder: item.sortOrder })),
       recurrenceBasis: todo.recurrenceBasis ?? 'SCHEDULED_DATE', recurrenceEndAt: inputDateTime(todo.recurrenceEndAt),
       recurrenceMaxOccurrences: todo.recurrenceMaxOccurrences?.toString() ?? '',
@@ -155,6 +157,7 @@ export default function TodoPage() {
       title: draft.title.trim(), description: draft.description.trim() || null, status: editingId ? allTodos.find(item => item.id === editingId)?.status ?? 'OPEN' : 'OPEN',
       priority: draft.priority, category: draft.category, startAt: localIso(draft.startAt), dueAt: localIso(draft.dueAt),
       estimatedMinutes: draft.estimatedMinutes ? Number(draft.estimatedMinutes) : null, reminderAt: localIso(draft.reminderAt), reminderEnabled: draft.reminderEnabled,
+      reminderTimes: draft.reminderTimes.map(localIso).filter((value): value is string => Boolean(value)),
       recurrenceRule: draft.recurrenceRule, recurrenceInterval: Number(draft.recurrenceInterval) || 1, daysOfWeek: draft.daysOfWeek.join(','),
       recurrenceBasis: draft.recurrenceBasis, recurrenceEndAt: localIso(draft.recurrenceEndAt),
       recurrenceMaxOccurrences: draft.recurrenceMaxOccurrences ? Number(draft.recurrenceMaxOccurrences) : null,
@@ -221,7 +224,7 @@ function TodoEditor({ draft, editing, pending, onChange, onSave, onCancel }: { d
       <div className="grid gap-3 sm:grid-cols-2"><Field label="Bắt đầu làm lúc" htmlFor="todo-start"><Input id="todo-start" type="datetime-local" value={draft.startAt} onChange={event => update('startAt', event.target.value)} /></Field><Field label="Hạn hoàn thành" htmlFor="todo-due"><Input id="todo-due" type="datetime-local" value={draft.dueAt} onChange={event => update('dueAt', event.target.value)} /></Field></div>
       <div className="grid gap-3 sm:grid-cols-2"><Field label="Thời lượng dự kiến (phút)" htmlFor="todo-duration"><Input id="todo-duration" type="number" min={1} max={1440} value={draft.estimatedMinutes} onChange={event => update('estimatedMinutes', event.target.value)} placeholder="Ví dụ: 45" /></Field><Field label="Mức ưu tiên" htmlFor="todo-priority"><select id="todo-priority" value={draft.priority} onChange={event => update('priority', event.target.value as Todo['priority'])} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"><option value="HIGH">Cao</option><option value="MEDIUM">Trung bình</option><option value="LOW">Thấp</option></select></Field></div>
       <Field label="Danh mục" htmlFor="todo-category"><select id="todo-category" value={draft.category} onChange={event => update('category', event.target.value as TodoCategory)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm">{categories.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
-      <div className="rounded-xl border bg-background/70 p-3"><div className="mb-2 flex items-center justify-between"><Label>Nhắc việc</Label><label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={draft.reminderEnabled} onChange={event => update('reminderEnabled', event.target.checked)} /> Bật nhắc</label></div><Input type="datetime-local" value={draft.reminderAt} onChange={event => update('reminderAt', event.target.value)} disabled={!draft.reminderEnabled} /><p className="mt-2 text-xs text-muted-foreground">Chọn thời điểm FitTrack gửi thông báo, không phải deadline.</p></div>
+      <div className="rounded-xl border bg-background/70 p-3"><div className="mb-2 flex items-center justify-between"><Label>Nhắc việc</Label><label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" checked={draft.reminderEnabled} onChange={event => update('reminderEnabled', event.target.checked)} /> Bật nhắc</label></div><Input type="datetime-local" value={draft.reminderAt} onChange={event => update('reminderAt', event.target.value)} disabled={!draft.reminderEnabled} /><div className="mt-2 space-y-2">{draft.reminderTimes.map((time, index) => <div className="flex gap-2" key={index}><Input type="datetime-local" value={time} disabled={!draft.reminderEnabled} onChange={event => onChange({ ...draft, reminderTimes: draft.reminderTimes.map((value, position) => position === index ? event.target.value : value) })} /><Button type="button" size="icon" variant="ghost" onClick={() => onChange({ ...draft, reminderTimes: draft.reminderTimes.filter((_, position) => position !== index) })}><Trash2 className="size-4 text-red-600" /></Button></div>)}{draft.reminderTimes.length < 4 && <Button type="button" size="sm" variant="outline" disabled={!draft.reminderEnabled} onClick={() => onChange({ ...draft, reminderTimes: [...draft.reminderTimes, ''] })}><Plus className="size-4" /> Thêm mốc nhắc</Button>}</div><p className="mt-2 text-xs text-muted-foreground">Có thể tạo tối đa 5 mốc nhắc. Mốc đầu tiên ở trên được giữ để tương thích dữ liệu cũ.</p></div>
       <div className="space-y-3 rounded-xl border bg-background/70 p-3">
         <Label>Lặp lại</Label>
         <div className="grid gap-2 sm:grid-cols-2"><select value={draft.recurrenceRule} onChange={event => update('recurrenceRule', event.target.value as Todo['recurrenceRule'])} className="h-10 rounded-lg border border-input bg-background px-3 text-sm"><option value="NONE">Không lặp</option><option value="DAILY">Hàng ngày</option><option value="WEEKLY">Hàng tuần</option><option value="MONTHLY">Hàng tháng</option><option value="YEARLY">Hàng năm</option><option value="CUSTOM">Tùy chỉnh theo ngày</option></select><Input type="number" min={1} max={365} value={draft.recurrenceInterval} onChange={event => update('recurrenceInterval', event.target.value)} disabled={draft.recurrenceRule === 'NONE'} placeholder="Chu kỳ" /></div>
@@ -238,7 +241,7 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; 
 function priorityLabel(priority: Todo['priority']) { return priority === 'HIGH' ? 'Ưu tiên cao' : priority === 'LOW' ? 'Thấp' : 'Trung bình'; }
 function categoryLabel(category: TodoCategory) { return categories.find(item => item.value === category)?.label ?? 'Cá nhân'; }
 function recurrenceLabel(todo: Todo) { const unit = todo.recurrenceRule === 'WEEKLY' ? 'tuần' : todo.recurrenceRule === 'MONTHLY' ? 'tháng' : todo.recurrenceRule === 'YEARLY' ? 'năm' : 'ngày'; return `Mỗi ${todo.recurrenceInterval} ${unit} · ${todo.recurrenceBasis === 'COMPLETION_DATE' ? 'từ lúc hoàn thành' : 'theo lịch'}`; }
-function todoPayload(todo: Todo, status: Todo['status']): TodoPayload { return { title: todo.title, description: todo.description, status, priority: todo.priority, startAt: todo.startAt, dueAt: todo.dueAt, estimatedMinutes: todo.estimatedMinutes, category: todo.category, recurrenceRule: todo.recurrenceRule, recurrenceInterval: todo.recurrenceInterval, daysOfWeek: todo.daysOfWeek.join(','), recurrenceBasis: todo.recurrenceBasis, recurrenceEndAt: todo.recurrenceEndAt, recurrenceMaxOccurrences: todo.recurrenceMaxOccurrences, reminderAt: todo.reminderAt, reminderEnabled: todo.reminderEnabled, subtasks: todo.subtasks.map(item => ({ title: item.title, completed: item.completed, sortOrder: item.sortOrder })) }; }
+function todoPayload(todo: Todo, status: Todo['status']): TodoPayload { return { title: todo.title, description: todo.description, status, priority: todo.priority, startAt: todo.startAt, dueAt: todo.dueAt, estimatedMinutes: todo.estimatedMinutes, category: todo.category, recurrenceRule: todo.recurrenceRule, recurrenceInterval: todo.recurrenceInterval, daysOfWeek: todo.daysOfWeek.join(','), recurrenceBasis: todo.recurrenceBasis, recurrenceEndAt: todo.recurrenceEndAt, recurrenceMaxOccurrences: todo.recurrenceMaxOccurrences, reminderAt: todo.reminderAt, reminderEnabled: todo.reminderEnabled, reminderTimes: todo.reminderTimes, subtasks: todo.subtasks.map(item => ({ title: item.title, completed: item.completed, sortOrder: item.sortOrder })) }; }
 
 function parseQuickTodo(input: string): Draft {
   const normalized = input.trim().replace(/\s+/g, ' ');

@@ -38,6 +38,7 @@ export type Todo = {
   subtasks: TodoSubtask[];
   createdAt: string;
   updatedAt: string;
+  reminderTimes: string[];
 };
 
 export type TodoPayload = {
@@ -58,6 +59,7 @@ export type TodoPayload = {
   reminderAt?: string | null;
   reminderEnabled?: boolean;
   subtasks?: TodoSubtask[];
+  reminderTimes?: string[];
 };
 
 export type TodoQuery = {
@@ -73,3 +75,5 @@ export const updateTodo = async (id: string, payload: TodoPayload) => (await api
 export const completeTodo = async (id: string) => (await api.post<Todo>(`/todos/${id}/complete`)).data;
 export const skipTodo = async (id: string) => (await api.post<Todo>(`/todos/${id}/skip`)).data;
 export const deleteTodo = async (id: string) => { await api.delete(`/todos/${id}`); };
+export const snoozeTodo = async (id: string, minutes: 10 | 30 | 60 | 1440) =>
+  (await api.post<Todo>(`/todos/${id}/snooze`, null, { params: { minutes } })).data;

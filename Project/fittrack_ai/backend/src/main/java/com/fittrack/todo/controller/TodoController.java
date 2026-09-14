@@ -54,4 +54,10 @@ public class TodoController {
     public TodoResponse skip(@AuthenticationPrincipal User user, @PathVariable String id) {
         return todoService.skip(user, id);
     }
+
+    @PostMapping("/{id}/snooze")
+    public TodoResponse snooze(@AuthenticationPrincipal User user, @PathVariable String id,
+                               @RequestParam(defaultValue = "10") int minutes) {
+        return todoService.snooze(user, id, minutes);
+    }
 }

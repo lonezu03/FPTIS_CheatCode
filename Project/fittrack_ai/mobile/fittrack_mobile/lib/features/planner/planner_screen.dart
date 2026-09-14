@@ -844,6 +844,7 @@ class _TodoEditorDialogState extends State<_TodoEditorDialog> {
   DateTime? startAt;
   DateTime? dueAt;
   DateTime? reminderAt;
+  List<DateTime> reminderTimes = [];
   String priority = 'MEDIUM';
   String category = 'PERSONAL';
   String recurrence = 'NONE';
@@ -875,6 +876,11 @@ class _TodoEditorDialogState extends State<_TodoEditorDialog> {
     startAt = _parseDate(todo?['startAt']);
     dueAt = _parseDate(todo?['dueAt']);
     reminderAt = _parseDate(todo?['reminderAt']);
+    reminderTimes = _stringList(todo?['reminderTimes'])
+        .where((value) => value != todo?['reminderAt'])
+        .map(DateTime.tryParse)
+        .whereType<DateTime>()
+        .toList();
     priority = todo?['priority']?.toString() ?? 'MEDIUM';
     category = todo?['category']?.toString() ?? 'PERSONAL';
     recurrence = todo?['recurrenceRule']?.toString() ?? 'NONE';
@@ -958,6 +964,7 @@ class _TodoEditorDialogState extends State<_TodoEditorDialog> {
           : int.tryParse(maxOccurrencesController.text.trim()),
       'reminderAt': _iso(reminderAt),
       'reminderEnabled': reminderEnabled && reminderAt != null,
+      'reminderTimes': reminderTimes.map(_iso).whereType<String>().toList(),
       'subtasks': items,
     });
   }
@@ -1074,6 +1081,41 @@ class _TodoEditorDialogState extends State<_TodoEditorDialog> {
                   final value = await _pickDateTime(reminderAt ?? dueAt);
                   if (value != null) setState(() => reminderAt = value);
                 },
+              ),
+            if (reminderEnabled)
+              ...reminderTimes.asMap().entries.map(
+                (entry) => Row(
+                  children: [
+                    Expanded(
+                      child: _DateButton(
+                        label: 'Mốc nhắc ${entry.key + 2}',
+                        value: entry.value,
+                        onTap: () async {
+                          final value = await _pickDateTime(entry.value);
+                          if (value != null)
+                            setState(() => reminderTimes[entry.key] = value);
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () =>
+                          setState(() => reminderTimes.removeAt(entry.key)),
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    ),
+                  ],
+                ),
+              ),
+            if (reminderEnabled && reminderTimes.length < 4)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final value = await _pickDateTime(dueAt ?? reminderAt);
+                    if (value != null) setState(() => reminderTimes.add(value));
+                  },
+                  icon: const Icon(Icons.add_alarm),
+                  label: const Text('Thêm mốc nhắc'),
+                ),
               ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
@@ -1377,6 +1419,7 @@ Map<String, dynamic> _todoPayload(
   'recurrenceMaxOccurrences': todo['recurrenceMaxOccurrences'],
   'reminderAt': todo['reminderAt'],
   'reminderEnabled': todo['reminderEnabled'] == true,
+  'reminderTimes': todo['reminderTimes'] ?? const [],
   'subtasks': _subtasks(todo),
 };
 

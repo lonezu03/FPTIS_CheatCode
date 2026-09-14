@@ -24,6 +24,7 @@ public interface TodoRepository extends JpaRepository<Todo, String> {
               and t.reminderAt is not null
               and t.reminderAt <= :now
               and t.reminderSentAt is null
+              and t.reminders is empty
             order by t.reminderAt asc
             """)
     List<Todo> findDueRemindersForUpdate(@Param("now") java.time.LocalDateTime now, Pageable pageable);

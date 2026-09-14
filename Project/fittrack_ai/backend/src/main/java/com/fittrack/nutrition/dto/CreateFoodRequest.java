@@ -39,6 +39,8 @@ public class CreateFoodRequest {
     private Double water;
     @Size(max = 100)
     private String unit;
+    @Size(max = 80)
+    private String barcode;
     @Positive
     private Double servingSizeGrams;
     @Size(max = 30)

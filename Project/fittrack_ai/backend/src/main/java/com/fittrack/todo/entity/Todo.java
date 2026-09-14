@@ -91,6 +91,11 @@ public class Todo {
     @Builder.Default
     private List<TodoSubtask> subtasks = new ArrayList<>();
 
+    @OneToMany(mappedBy = "todo", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("scheduledAt ASC")
+    @Builder.Default
+    private List<TodoReminderEntry> reminders = new ArrayList<>();
+
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now();

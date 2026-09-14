@@ -11,6 +11,11 @@ import com.fittrack.nutrition.dto.WaterLogResponse;
 import com.fittrack.nutrition.service.FoodService;
 import com.fittrack.nutrition.service.NutritionService;
 import com.fittrack.nutrition.service.WaterLogService;
+import com.fittrack.nutrition.service.NutritionConvenienceService;
+import com.fittrack.nutrition.dto.NutritionConvenienceDtos.*;
+import com.fittrack.nutrition.dto.FoodPhotoAnalysisDtos.FoodPhotoAnalysisRequest;
+import com.fittrack.nutrition.dto.FoodPhotoAnalysisDtos.FoodPhotoAnalysisResponse;
+import com.fittrack.nutrition.service.FoodPhotoAnalysisService;
 import com.fittrack.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +34,61 @@ public class NutritionController {
     private final FoodService foodService;
     private final NutritionService nutritionService;
     private final WaterLogService waterLogService;
+    private final NutritionConvenienceService convenienceService;
+    private final FoodPhotoAnalysisService foodPhotoAnalysisService;
+
+    @PostMapping("/photo-analysis")
+    public FoodPhotoAnalysisResponse analyzePhoto(Authentication authentication,
+                                                   @Valid @RequestBody FoodPhotoAnalysisRequest request) {
+        return foodPhotoAnalysisService.analyze((User) authentication.getPrincipal(), request);
+    }
+
+    @GetMapping("/convenience")
+    public ConvenienceResponse getConvenience(Authentication authentication) {
+        return convenienceService.overview((User) authentication.getPrincipal());
+    }
+
+    @PutMapping("/foods/{foodId}/favorite")
+    public FoodShortcutResponse setFavorite(
+            Authentication authentication,
+            @PathVariable String foodId,
+            @RequestBody FavoriteFoodRequest request
+    ) {
+        return convenienceService.setFavorite(
+                (User) authentication.getPrincipal(), foodId, request.favorite()
+        );
+    }
+
+    @PostMapping("/collections")
+    public CollectionResponse createCollection(
+            Authentication authentication,
+            @Valid @RequestBody CollectionRequest request
+    ) {
+        return convenienceService.create((User) authentication.getPrincipal(), request);
+    }
+
+    @PutMapping("/collections/{id}")
+    public CollectionResponse updateCollection(
+            Authentication authentication,
+            @PathVariable String id,
+            @Valid @RequestBody CollectionRequest request
+    ) {
+        return convenienceService.update((User) authentication.getPrincipal(), id, request);
+    }
+
+    @DeleteMapping("/collections/{id}")
+    public void deleteCollection(Authentication authentication, @PathVariable String id) {
+        convenienceService.delete((User) authentication.getPrincipal(), id);
+    }
+
+    @PostMapping("/collections/{id}/log")
+    public MealLogResponse logCollection(
+            Authentication authentication,
+            @PathVariable String id,
+            @Valid @RequestBody LogCollectionRequest request
+    ) {
+        return convenienceService.log((User) authentication.getPrincipal(), id, request);
+    }
 
     @GetMapping("/foods")
     public List<FoodResponse> getFoods(

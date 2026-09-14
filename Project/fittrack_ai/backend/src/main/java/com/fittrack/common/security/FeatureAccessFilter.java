@@ -96,6 +96,8 @@ public class FeatureAccessFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/reports")
                 || path.startsWith("/api/recommendations")
                 || path.startsWith("/api/health-management")
+                || path.startsWith("/api/health-connect")
+                || path.startsWith("/api/progress-photos")
                 || path.startsWith("/api/reminders");
     }
 }

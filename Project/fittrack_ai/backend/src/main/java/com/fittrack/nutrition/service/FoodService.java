@@ -67,6 +67,7 @@ public class FoodService {
                 .vitaminC(request.getVitaminC())
                 .water(request.getWater())
                 .unit(request.getUnit())
+                .barcode(normalizeBarcode(request.getBarcode()))
                 .servingSizeGrams(request.getServingSizeGrams())
                 .dataSourceType(sourceType(request.getDataSourceType()))
                 .dataSourceName(request.getDataSourceName())
@@ -117,6 +118,7 @@ public class FoodService {
                 .vitaminC(request.getVitaminC())
                 .water(request.getWater())
                 .unit(request.getUnit())
+                .barcode(normalizeBarcode(request.getBarcode()))
                 .servingSizeGrams(request.getServingSizeGrams())
                 .dataSourceType(sourceType(request.getDataSourceType()))
                 .dataSourceName(request.getDataSourceName())
@@ -200,6 +202,7 @@ public class FoodService {
         food.setVitaminC(request.getVitaminC());
         food.setWater(request.getWater());
         food.setUnit(request.getUnit());
+        food.setBarcode(normalizeBarcode(request.getBarcode()));
         if (request.getServingSizeGrams() != null) {
             food.setServingSizeGrams(request.getServingSizeGrams());
         }
@@ -263,6 +266,27 @@ public class FoodService {
                 "ESTIMATED"
         ).contains(normalized)) {
             throw new IllegalArgumentException("Nguồn dữ liệu thực phẩm không hợp lệ");
+        }
+        return normalized;
+    }
+
+    public FoodResponse findByBarcode(String barcode) {
+        String normalized = normalizeBarcode(barcode);
+        if (normalized == null) {
+            throw new IllegalArgumentException("Mã vạch không hợp lệ");
+        }
+        return foodRepository.findFirstByBarcodeAndActiveTrueAndApprovalStatus(normalized, "APPROVED")
+                .map(nutritionMapper::toFoodResponse)
+                .orElseThrow(() -> new com.fittrack.common.exception.ResourceNotFoundException(
+                        "Chưa có thực phẩm cho mã vạch này"
+                ));
+    }
+
+    private String normalizeBarcode(String value) {
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.replaceAll("[^0-9A-Za-z-]", "");
+        if (normalized.length() < 4 || normalized.length() > 80) {
+            throw new IllegalArgumentException("Mã vạch phải có từ 4 đến 80 ký tự");
         }
         return normalized;
     }

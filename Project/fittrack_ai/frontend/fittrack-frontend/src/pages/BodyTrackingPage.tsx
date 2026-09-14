@@ -18,6 +18,8 @@ import ErrorState from "../components/common/ErrorState";
 import DataPagination from "../components/common/DataPagination";
 import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
+import { createProgressPhoto, deleteProgressPhoto, getProgressPhotos } from "../api/progress-photo.api";
+import { Camera, Trash2 } from "lucide-react";
 
 export default function BodyTrackingPage() {
   const queryClient = useQueryClient();
@@ -29,6 +31,8 @@ export default function BodyTrackingPage() {
   const [chest, setChest] = useState(90);
   const [arm, setArm] = useState(30);
   const [thigh, setThigh] = useState(52);
+  const [photoData, setPhotoData] = useState("");
+  const [photoPose, setPhotoPose] = useState("FRONT");
   const [editingBody, setEditingBody] = useState<{
     id: string;
     weight: number;
@@ -45,6 +49,7 @@ export default function BodyTrackingPage() {
     queryFn: () => getBodyMeasurementsPage(measurementPager.page - 1, measurementPager.pageSize),
     placeholderData: (previous) => previous,
   });
+  const photosQuery = useQuery({ queryKey: ["progress-photos"], queryFn: getProgressPhotos });
 
   const items = measurementsQuery.data?.content ?? [];
   const measurementPagination = {
@@ -118,6 +123,8 @@ export default function BodyTrackingPage() {
       toast.error(message || "Không thể cập nhật chỉ số");
     },
   });
+  const photoMutation = useMutation({ mutationFn: () => createProgressPhoto({ imageUrl: photoData, takenDate: recordDate, pose: photoPose, weight }), onSuccess: async () => { toast.success("Đã lưu ảnh tiến độ"); setPhotoData(""); await queryClient.invalidateQueries({ queryKey: ["progress-photos"] }); }, onError: (error) => { const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined; toast.error(message || "Không thể lưu ảnh tiến độ"); } });
+  const deletePhotoMutation = useMutation({ mutationFn: deleteProgressPhoto, onSuccess: () => queryClient.invalidateQueries({ queryKey: ["progress-photos"] }) });
 
   const handleCreate = () => {
     createMutation.mutate({
@@ -211,6 +218,11 @@ export default function BodyTrackingPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Camera className="size-5 text-emerald-700" /> Ảnh tiến độ</CardTitle></CardHeader>
+        <CardContent className="space-y-4"><p className="text-sm text-muted-foreground">Chụp cùng góc, ánh sáng và thời điểm để so sánh khách quan. Ảnh chỉ chủ tài khoản mới xem được.</p><div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.target.files?.[0]; if (file) setPhotoData(await fileToDataUri(file)); }} /><select className="h-10 rounded-md border bg-background px-3 text-sm" value={photoPose} onChange={event => setPhotoPose(event.target.value)}><option value="FRONT">Chính diện</option><option value="SIDE">Nghiêng</option><option value="BACK">Phía sau</option><option value="OTHER">Góc khác</option></select><Button disabled={!photoData || photoMutation.isPending} onClick={() => photoMutation.mutate()}>{photoMutation.isPending ? "Đang tải..." : "Lưu ảnh"}</Button></div>{photosQuery.data && photosQuery.data.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{photosQuery.data.map(photo => <div key={photo.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20"><img className="aspect-[3/4] w-full object-cover" src={photo.imageUrl} alt={`Tiến độ ${photo.takenDate}`} /><div className="flex items-center justify-between p-3"><div><p className="text-sm font-semibold">{photo.takenDate}</p><p className="text-xs text-muted-foreground">{photo.weight ? `${photo.weight} kg · ` : ""}{photo.pose}</p></div><Button size="icon" variant="ghost" disabled={deletePhotoMutation.isPending} onClick={() => { if (window.confirm("Xóa ảnh tiến độ này?")) deletePhotoMutation.mutate(photo.id); }}><Trash2 className="size-4 text-red-600" /></Button></div></div>)}</div> : <EmptyState title="Chưa có ảnh tiến độ" description="Thêm ảnh đầu tiên để theo dõi thay đổi cơ thể theo thời gian." />}</CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -332,3 +344,5 @@ export default function BodyTrackingPage() {
     </div>
   );
 }
+
+function fileToDataUri(file: File): Promise<string> { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); }); }

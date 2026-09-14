@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:file_picker/file_picker.dart';
+
+import 'dart:convert';
 
 import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
@@ -16,6 +20,7 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
   DateTime date = DateTime.now();
   Map<String, dynamic>? diary;
   List<Map<String, dynamic>> foods = [];
+  Map<String, dynamic> convenience = const {};
   Object? error;
   bool loading = true;
 
@@ -39,6 +44,7 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
       final values = await Future.wait([
         api.get('/nutrition/diary', queryParameters: {'date': dateValue}),
         api.get('/nutrition/foods'),
+        api.get('/nutrition/convenience'),
       ]);
       if (!mounted) return;
       setState(() {
@@ -46,6 +52,7 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
         foods = (values[1] as List)
             .map((item) => Map<String, dynamic>.from(item as Map))
             .toList();
+        convenience = Map<String, dynamic>.from(values[2] as Map);
       });
     } catch (exception) {
       if (mounted) setState(() => error = exception);
@@ -123,6 +130,8 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
           ),
           const SizedBox(height: 10),
           _StatusBanner(status: status),
+          const SizedBox(height: 12),
+          _ConvenienceCard(data: convenience, date: dateValue, onReload: _load),
           const SizedBox(height: 12),
           GridView.count(
             crossAxisCount: 2,
@@ -225,6 +234,132 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ConvenienceCard extends StatefulWidget {
+  const _ConvenienceCard({
+    required this.data,
+    required this.date,
+    required this.onReload,
+  });
+  final Map<String, dynamic> data;
+  final String date;
+  final Future<void> Function() onReload;
+  @override
+  State<_ConvenienceCard> createState() => _ConvenienceCardState();
+}
+
+class _ConvenienceCardState extends State<_ConvenienceCard> {
+  String mealType = 'BREAKFAST';
+  bool busy = false;
+
+  Future<void> addCollection(Map<String, dynamic> collection) async {
+    setState(() => busy = true);
+    try {
+      await context.read<ApiClient>().post(
+        '/nutrition/collections/${collection['id']}/log',
+        data: {'mealType': mealType, 'logDate': widget.date, 'servings': 1},
+      );
+      if (mounted) showMessage(context, 'Đã thêm cả bữa vào nhật ký.');
+      await widget.onReload();
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final recent = _list(widget.data['recentFoods']);
+    final favorites = _list(widget.data['favoriteFoods']);
+    final collections = [
+      ..._list(widget.data['savedMeals']),
+      ..._list(widget.data['recipes']),
+    ];
+    if (recent.isEmpty && favorites.isEmpty && collections.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Ghi nhanh',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                DropdownButton<String>(
+                  value: mealType,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'BREAKFAST',
+                      child: Text('Bữa sáng'),
+                    ),
+                    DropdownMenuItem(value: 'LUNCH', child: Text('Bữa trưa')),
+                    DropdownMenuItem(value: 'DINNER', child: Text('Bữa tối')),
+                    DropdownMenuItem(value: 'SNACK', child: Text('Ăn phụ')),
+                  ],
+                  onChanged: busy
+                      ? null
+                      : (value) => setState(() => mealType = value!),
+                ),
+              ],
+            ),
+            if (collections.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Bữa đã lưu / công thức',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 82,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: collections.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (_, index) {
+                    final item = collections[index];
+                    return ActionChip(
+                      onPressed: busy ? null : () => addCollection(item),
+                      avatar: const Icon(Icons.add, size: 17),
+                      label: SizedBox(
+                        width: 145,
+                        child: Text(
+                          '${item['name']}\n${(item['totalCalories'] as num?)?.round() ?? 0} kcal',
+                          maxLines: 2,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+            if (recent.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Gần đây: ${recent.take(5).map((item) => (item['food'] as Map?)?['name']).whereType<String>().join(' · ')}',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
+            if (favorites.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Yêu thích: ${favorites.take(5).map((item) => (item['food'] as Map?)?['name']).whereType<String>().join(' · ')}',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -491,6 +626,158 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
   String search = '';
   bool busy = false;
 
+  Future<void> _saveCollection() async {
+    if (selected.isEmpty)
+      return showMessage(context, 'Chọn ít nhất một món.', error: true);
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Lưu bữa dùng nhanh'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Tên bữa'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.isEmpty || !mounted) return;
+    setState(() => busy = true);
+    try {
+      await context.read<ApiClient>().post(
+        '/nutrition/collections',
+        data: {
+          'name': name,
+          'type': 'SAVED_MEAL',
+          'servings': 1,
+          'items': selected.entries
+              .map(
+                (entry) => {
+                  'foodId': entry.key,
+                  'servingAmount': entry.value.amount,
+                  'servingUnit': entry.value.unit,
+                },
+              )
+              .toList(),
+        },
+      );
+      if (mounted) showMessage(context, 'Đã lưu bữa để dùng nhanh.');
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _scanBarcode() async {
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        bool found = false;
+        return Dialog(
+          child: SizedBox(
+            height: 420,
+            width: 360,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'Đưa mã vạch vào giữa khung',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Expanded(
+                  child: MobileScanner(
+                    onDetect: (capture) {
+                      if (found) return;
+                      final value = capture.barcodes.firstOrNull?.rawValue;
+                      if (value != null) {
+                        found = true;
+                        Navigator.pop(context, value);
+                      }
+                    },
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Đóng'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (code == null || !mounted) return;
+    setState(() => busy = true);
+    try {
+      final raw = await context.read<ApiClient>().get('/foods/barcode/$code');
+      final food = Map<String, dynamic>.from(raw as Map);
+      if (!widget.foods.any((item) => item['id'] == food['id']))
+        widget.foods.add(food);
+      setState(() => selected[food['id'].toString()] = _FoodAmount());
+      if (mounted) showMessage(context, 'Đã thêm ${food['name']}.');
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _analyzePhoto() async {
+    final file = await FilePicker.pickFile(type: FileType.image);
+    if (file == null || !mounted) return;
+    final bytes = await file.readAsBytes();
+    if (!mounted) return;
+    setState(() => busy = true);
+    try {
+      final extension = (file.extension ?? 'jpeg').toLowerCase();
+      final mime = extension == 'png'
+          ? 'image/png'
+          : extension == 'webp'
+          ? 'image/webp'
+          : 'image/jpeg';
+      final raw = await context.read<ApiClient>().post(
+        '/nutrition/photo-analysis',
+        data: {'imageData': 'data:$mime;base64,${base64Encode(bytes)}'},
+      );
+      if (!mounted) return;
+      final result = Map<String, dynamic>.from(raw as Map);
+      final items = _list(result['items']);
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Ước tính từ ảnh'),
+          content: Text(
+            '${items.map((item) => '${item['name']}: ~${item['estimatedGrams'] ?? '?'}g, ${item['calories'] ?? '?'} kcal').join('\n')}\n\n${result['note'] ?? ''}\n\nHãy kiểm tra và chọn món tương ứng trước khi lưu.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đã hiểu'),
+            ),
+          ],
+        ),
+      );
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> _save() async {
     if (selected.isEmpty) {
       return showMessage(context, 'Chọn ít nhất một món.', error: true);
@@ -562,6 +849,26 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
               labelText: 'Tìm thực phẩm',
             ),
             onChanged: (value) => setState(() => search = value),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : _scanBarcode,
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text('Quét mã vạch'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : _analyzePhoto,
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  label: const Text('Ảnh món ăn'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           ...visible.map((food) {
@@ -639,6 +946,11 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
             );
           }),
           const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: busy ? null : _saveCollection,
+            icon: const Icon(Icons.bookmark_add_outlined),
+            label: const Text('Lưu thành bữa dùng nhanh'),
+          ),
           FilledButton(
             onPressed: busy ? null : _save,
             child: Text(busy ? 'Đang lưu...' : 'Lưu ${selected.length} món'),

@@ -8,7 +8,9 @@ import com.fittrack.todo.dto.TodoDtos.TodoRequest;
 import com.fittrack.todo.dto.TodoDtos.TodoResponse;
 import com.fittrack.todo.entity.Todo;
 import com.fittrack.todo.entity.TodoSubtask;
+import com.fittrack.todo.entity.TodoReminderEntry;
 import com.fittrack.todo.repository.TodoRepository;
+import com.fittrack.todo.repository.TodoReminderEntryRepository;
 import com.fittrack.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +38,7 @@ public class TodoService {
     private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final TodoRepository repository;
+    private final TodoReminderEntryRepository reminderRepository;
     private final LunchNotificationService notificationService;
 
     @Value("${app.scheduler.internal-enabled:true}")
@@ -117,6 +120,20 @@ public class TodoService {
     public int dispatchDueRemindersNow() {
         LocalDateTime now = LocalDateTime.now(BUSINESS_ZONE);
         int dispatched = 0;
+        for (TodoReminderEntry reminder : reminderRepository.findDueForUpdate(now, PageRequest.of(0, 100))) {
+            Todo todo = reminder.getTodo();
+            if (todo.getStatus() != Todo.TodoStatus.DONE
+                    && todo.getStatus() != Todo.TodoStatus.SKIPPED
+                    && todo.getStatus() != Todo.TodoStatus.CANCELLED
+                    && todo.getStatus() != Todo.TodoStatus.ARCHIVED) {
+                boolean created = notificationService.notifyUserOnce(
+                        todo.getUser(), "TODO_REMINDER", "Đến giờ thực hiện công việc", reminderMessage(todo),
+                        "TODO", todo.getId(), "todo-reminder-entry:" + reminder.getId() + ":" + reminder.getScheduledAt()
+                );
+                if (created) dispatched++;
+            }
+            reminder.setSentAt(now);
+        }
         for (Todo todo : repository.findDueRemindersForUpdate(now, PageRequest.of(0, 100))) {
             if (todo.getStatus() == Todo.TodoStatus.DONE || todo.getStatus() == Todo.TodoStatus.ARCHIVED) {
                 todo.setReminderSentAt(now);
@@ -130,6 +147,22 @@ public class TodoService {
             if (created) dispatched++;
         }
         return dispatched;
+    }
+
+    @Transactional
+    public TodoResponse snooze(User user, String id, int minutes) {
+        if (!Set.of(10, 30, 60, 1440).contains(minutes)) {
+            throw new IllegalArgumentException("Thời gian báo lại chỉ hỗ trợ 10, 30, 60 phút hoặc ngày mai");
+        }
+        Todo todo = repository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công việc"));
+        if (isFinishedOccurrence(todo.getStatus())) {
+            throw new IllegalArgumentException("Công việc đã kết thúc nên không thể báo lại");
+        }
+        LocalDateTime scheduled = LocalDateTime.now(BUSINESS_ZONE).plusMinutes(minutes).withSecond(0).withNano(0);
+        boolean exists = todo.getReminders().stream().anyMatch(item -> item.getScheduledAt().equals(scheduled));
+        if (!exists) todo.getReminders().add(TodoReminderEntry.builder().todo(todo).scheduledAt(scheduled).build());
+        return toResponse(repository.save(todo));
     }
 
     private void apply(Todo todo, TodoRequest request, boolean creating) {
@@ -173,6 +206,31 @@ public class TodoService {
             todo.setRecurrenceMaxOccurrences(null);
         }
         if (request.subtasks() != null || creating) replaceSubtasks(todo, request.subtasks());
+        if (request.reminderTimes() != null) {
+            java.util.ArrayList<LocalDateTime> times = new java.util.ArrayList<>(request.reminderTimes());
+            if (request.reminderAt() != null) times.add(request.reminderAt());
+            replaceReminders(todo, times);
+        }
+    }
+
+    private void replaceReminders(Todo todo, List<LocalDateTime> requestedTimes) {
+        if (todo.getReminders() == null) todo.setReminders(new java.util.ArrayList<>());
+        else todo.getReminders().clear();
+        long distinctCount = requestedTimes.stream().filter(Objects::nonNull).distinct().count();
+        if (distinctCount > 5) {
+            throw new IllegalArgumentException("Tối đa 5 mốc nhắc cho một công việc");
+        }
+        requestedTimes.stream().filter(Objects::nonNull).distinct().sorted().limit(5).forEach(time -> {
+            if (todo.getDueAt() != null && time.isAfter(todo.getDueAt())) {
+                throw new IllegalArgumentException("Mốc nhắc phải trước hạn hoàn thành");
+            }
+            todo.getReminders().add(TodoReminderEntry.builder().todo(todo).scheduledAt(time).build());
+        });
+        if (!todo.getReminders().isEmpty()) {
+            todo.setReminderEnabled(true);
+            todo.setReminderAt(todo.getReminders().getFirst().getScheduledAt());
+            todo.setReminderSentAt(null);
+        }
     }
 
     private void replaceSubtasks(Todo todo, List<SubtaskRequest> requests) {
@@ -240,6 +298,12 @@ public class TodoService {
             next.getSubtasks().add(TodoSubtask.builder().todo(next).title(subtask.getTitle())
                     .completed(false).sortOrder(subtask.getSortOrder()).build());
         }
+        if (current.getReminders() != null) {
+            for (TodoReminderEntry reminder : current.getReminders()) {
+                LocalDateTime shifted = shift(reminder.getScheduledAt(), anchor, nextAnchor);
+                next.getReminders().add(TodoReminderEntry.builder().todo(next).scheduledAt(shifted).build());
+            }
+        }
         repository.save(next);
     }
 
@@ -302,7 +366,8 @@ public class TodoService {
                 todo.getRecurrenceEndAt(), todo.getRecurrenceMaxOccurrences(), todo.getOccurrenceNumber(),
                 todo.getCompletedAt(), todo.getSkippedAt(), todo.getReminderAt(),
                 Boolean.TRUE.equals(todo.getReminderEnabled()), todo.getRecurringSeriesId(), subtasks,
-                todo.getCreatedAt(), todo.getUpdatedAt());
+                todo.getCreatedAt(), todo.getUpdatedAt(), todo.getReminders().stream()
+                        .map(TodoReminderEntry::getScheduledAt).sorted().toList());
     }
 
     private String reminderMessage(Todo todo) {

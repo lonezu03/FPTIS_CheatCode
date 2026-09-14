@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight, Beef, CheckCircle2, ChefHat, Dumbbell, Flame, ListTodo, Soup, Trophy } from "lucide-react";
+import { ArrowRight, Beef, CalendarClock, CheckCircle2, ChefHat, Dumbbell, Flame, ListTodo, Soup, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { getAchievementSummary } from "../api/achievement.api";
 import { getProgressDashboard, getTodayDashboard } from "../api/dashboard.api";
@@ -17,6 +17,7 @@ import PageHeader from "../components/PageHeader";
 import RecommendationCard from "../components/RecommendationCard";
 import DailyQuoteCard from "../components/quotes/DailyQuoteCard";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function DashboardPage() {
@@ -118,6 +119,22 @@ export default function DashboardPage() {
         )}
       </div>
     </div>
+    {today.coachInsight && (healthEnabled || fitnessEnabled) && (
+      <Card className="border-emerald-200 bg-emerald-50/60">
+        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="text-sm font-bold text-emerald-900">FitTrack Coach hôm nay</p><p className="mt-1 text-sm text-emerald-950/75">{today.coachInsight}</p></div>
+          {today.coachActionPath && <Button asChild size="sm"><Link to={today.coachActionPath}>Thực hiện ngay <ArrowRight className="size-4" /></Link></Button>}
+        </CardContent>
+      </Card>
+    )}
+    {today.agenda.length > 0 && (todoEnabled || scheduleEnabled) && (
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><CalendarClock className="size-5 text-emerald-700" /> Lịch hôm nay</CardTitle></CardHeader>
+        <CardContent className="grid gap-2 sm:grid-cols-2">
+          {today.agenda.map((item) => <div key={`${item.sourceType}-${item.sourceId}`} className="rounded-xl border bg-muted/20 p-3"><div className="flex items-center justify-between gap-2"><p className={`font-semibold ${item.status === "DONE" ? "line-through text-muted-foreground" : ""}`}>{item.title}</p><Badge variant="outline">{item.sourceType === "TODO" ? "Việc" : "Lịch"}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{item.startAt ? new Date(item.startAt).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "Cả ngày"}</p></div>)}
+        </CardContent>
+      </Card>
+    )}
     {(quoteEnabled || authUser?.role === "ADMIN") && <DailyQuoteCard />}
     <PageHeader title="Tổng quan hôm nay" description={healthEnabled || fitnessEnabled ? "Nắm nhanh tiến độ dinh dưỡng, luyện tập và các việc cần ưu tiên." : "Các thông tin liên quan đến quyền Đặt cơm và hồ sơ cá nhân của bạn."} />
     <div className={`grid gap-4 sm:grid-cols-2 ${cards.length >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>{cards.map((card) => { const Icon = card.icon; return <Card key={card.title} className={`border-0 bg-gradient-to-br ${card.tone}`}><CardHeader className="flex flex-row items-center justify-between pb-0"><CardTitle className="text-sm text-muted-foreground">{card.title}</CardTitle><span className={`grid size-9 place-items-center rounded-xl ${card.iconTone}`}><Icon className="size-4"/></span></CardHeader><CardContent><p className="text-3xl font-semibold tracking-[-0.04em]">{card.value}</p><p className="mt-1 text-xs text-muted-foreground">{card.detail}</p></CardContent></Card>; })}</div>

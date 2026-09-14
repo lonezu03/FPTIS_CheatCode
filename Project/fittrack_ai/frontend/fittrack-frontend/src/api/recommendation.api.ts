@@ -29,3 +29,17 @@ export const getWeeklyRecommendations = async (params?: {
 
   return response.data;
 };
+
+export type WeeklyCoachCheckIn = {
+  id: string; weekStart: string; weekEnd: string; status: "PENDING" | "ACCEPTED" | "IGNORED";
+  weightChange: number | null; completeDays: number;
+  workoutDays: number; confidencePercent: number; dataSufficient: boolean;
+  currentCalories: number; proposedCalories: number; currentProtein: number; proposedProtein: number;
+  rationale: string; canApply: boolean; decidedAt: string | null;
+};
+
+export const getCurrentWeeklyCheckIn = async (): Promise<WeeklyCoachCheckIn> =>
+  (await api.get("/recommendations/check-ins/current")).data;
+
+export const decideWeeklyCheckIn = async (id: string, decision: "ACCEPT" | "IGNORE"): Promise<WeeklyCoachCheckIn> =>
+  (await api.post(`/recommendations/check-ins/${id}/decision`, { decision })).data;

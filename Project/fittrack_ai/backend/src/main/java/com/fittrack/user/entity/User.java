@@ -34,6 +34,10 @@ public class User {
 
     private Double weight;
 
+    private Double calorieTargetOverride;
+
+    private Double proteinTargetOverride;
+
     private String goal;
 
     private String activityLevel;

@@ -9,6 +9,7 @@ export type Food = {
   carbs: number;
   fat: number;
   unit: string;
+  barcode?: string | null;
   custom: boolean;
   active: boolean;
   servingSizeGrams?: number | null;
@@ -16,6 +17,14 @@ export type Food = {
   dataSourceName?: string | null;
   verified?: boolean;
 };
+
+export type FoodShortcut = { food: Food; favorite: boolean; useCount: number; lastUsedAt: string | null };
+export type NutritionCollection = {
+  id: string; name: string; description: string | null; type: "SAVED_MEAL" | "RECIPE";
+  servings: number; totalCalories: number; totalProtein: number; totalCarbs: number; totalFat: number;
+  items: { food: Food; amount: number; unit: ServingUnit; orderIndex: number }[];
+};
+export type NutritionConvenience = { recent: FoodShortcut[]; favorites: FoodShortcut[]; collections: NutritionCollection[] };
 
 export type ServingUnit = "SERVING" | "GRAM" | "ML";
 export type NutritionDayStatus = "COMPLETE" | "PARTIAL" | "UNLOGGED" | "FASTING";
@@ -146,3 +155,25 @@ export const updateNutritionDayStatus = async (
 export const addWaterLog = async (amountMl: number, date: string): Promise<void> => {
   await api.post("/nutrition/water-logs", { amountMl, loggedAt: `${date}T12:00:00` });
 };
+
+export const getNutritionConvenience = async (): Promise<NutritionConvenience> =>
+  (await api.get("/nutrition/convenience")).data;
+
+export const setFoodFavorite = async (foodId: string, favorite: boolean): Promise<FoodShortcut> =>
+  (await api.put(`/nutrition/foods/${foodId}/favorite`, { favorite })).data;
+
+export const saveNutritionCollection = async (payload: {
+  name: string; description?: string; type: "SAVED_MEAL" | "RECIPE"; servings: number;
+  items: { foodId: string; amount: number; unit: ServingUnit }[];
+}): Promise<NutritionCollection> => (await api.post("/nutrition/collections", payload)).data;
+
+export const logNutritionCollection = async (id: string, payload: { mealType: string; logDate: string; servings: number }): Promise<MealLog> =>
+  (await api.post(`/nutrition/collections/${id}/log`, payload)).data;
+
+export const getFoodByBarcode = async (barcode: string): Promise<Food> =>
+  (await api.get(`/foods/barcode/${encodeURIComponent(barcode)}`)).data;
+
+export const analyzeFoodPhoto = async (imageData: string): Promise<{
+  items: { name: string; estimatedGrams: number | null; calories: number | null; protein: number | null; carbs: number | null; fat: number | null }[];
+  note: string; requiresConfirmation: boolean;
+}> => (await api.post("/nutrition/photo-analysis", { imageData })).data;

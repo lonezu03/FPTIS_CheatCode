@@ -5,6 +5,7 @@ import com.fittrack.todo.dto.TodoDtos.SubtaskRequest;
 import com.fittrack.todo.dto.TodoDtos.TodoRequest;
 import com.fittrack.todo.entity.Todo;
 import com.fittrack.todo.repository.TodoRepository;
+import com.fittrack.todo.repository.TodoReminderEntryRepository;
 import com.fittrack.user.entity.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,9 @@ class TodoServiceTest {
 
     @Mock
     private TodoRepository repository;
+
+    @Mock
+    private TodoReminderEntryRepository reminderRepository;
 
     @Mock
     private LunchNotificationService notificationService;
@@ -159,5 +163,26 @@ class TodoServiceTest {
         assertThat(captor.getAllValues().get(0).getStatus()).isEqualTo(Todo.TodoStatus.SKIPPED);
         assertThat(captor.getAllValues().get(1).getDueAt()).isEqualTo(due.plusWeeks(1));
         assertThat(captor.getAllValues().get(1).getOccurrenceNumber()).isEqualTo(5);
+    }
+
+    @Test
+    void createStoresMultipleDistinctReminderTimes() {
+        User user = new User();
+        LocalDateTime first = LocalDateTime.of(2026, 9, 15, 8, 0);
+        LocalDateTime second = LocalDateTime.of(2026, 9, 15, 8, 30);
+        TodoRequest request = new TodoRequest(
+                "Uống nước", null, Todo.TodoStatus.OPEN, Todo.TodoPriority.MEDIUM,
+                null, LocalDateTime.of(2026, 9, 15, 9, 0), null,
+                Todo.TodoCategory.HEALTH, Todo.RecurrenceRule.NONE, 1, null,
+                Todo.RecurrenceBasis.SCHEDULED_DATE, null, null,
+                first, true, List.of(), List.of(first, second)
+        );
+        when(repository.save(any(Todo.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = service.create(user, request);
+
+        assertThat(response.reminderTimes()).containsExactly(first, second);
+        assertThat(response.reminderAt()).isEqualTo(first);
+        assertThat(response.reminderEnabled()).isTrue();
     }
 }

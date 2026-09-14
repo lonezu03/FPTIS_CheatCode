@@ -34,6 +34,7 @@ public class NutritionService {
     private final NutritionDayQualityService dayQualityService;
     private final WaterLogService waterLogService;
     private final GoalCalculatorService goalCalculatorService;
+    private final FoodUsageService foodUsageService;
 
     @Transactional
     public MealLogResponse createMealLog(User user, CreateMealLogRequest request) {
@@ -95,6 +96,10 @@ public class NutritionService {
         }
 
         MealLog savedMealLog = mealLogRepository.save(mealLog);
+        foodUsageService.record(
+                user,
+                savedMealLog.getItems().stream().map(MealItem::getFood).toList()
+        );
         dayQualityService.markPartial(user, savedMealLog.getLogDate(), true);
 
         return nutritionMapper.toMealLogResponse(savedMealLog);

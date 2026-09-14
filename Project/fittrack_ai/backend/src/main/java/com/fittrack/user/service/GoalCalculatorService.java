@@ -32,6 +32,9 @@ public class GoalCalculatorService {
     }
 
     public double calculateTargetCalories(User user) {
+        if (user.getCalorieTargetOverride() != null) {
+            return user.getCalorieTargetOverride();
+        }
         double tdee = calculateTdee(user);
 
         return switch (safe(user.getGoal())) {
@@ -43,6 +46,9 @@ public class GoalCalculatorService {
     }
 
     public double calculateProtein(User user) {
+        if (user.getProteinTargetOverride() != null) {
+            return user.getProteinTargetOverride();
+        }
         double weight = user.getWeight() == null ? 60 : user.getWeight();
         return weight * 1.8;
     }
