@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Soup,
   UserRound,
+  WalletCards,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ type GuideVisual =
   | "schedule"
   | "fitness"
   | "health"
+  | "finance"
   | "assistant"
   | "notifications"
   | "profile"
@@ -309,6 +311,42 @@ const guideModules: GuideModule[] = [
     ],
   },
   {
+    id: "finance",
+    title: "Tài chính cá nhân",
+    summary: "Ghi thu chi, lập ngân sách và chuẩn bị khoản định kỳ.",
+    icon: WalletCards,
+    feature: "financeEnabled",
+    steps: [
+      {
+        title: "Tạo tài khoản và ghi giao dịch",
+        description:
+          "Bắt đầu bằng tiền mặt, ngân hàng hoặc ví điện tử. Số dư đầu không được tính là thu nhập. Khi ghi giao dịch, luôn nhập số tiền dương rồi chọn Thu, Chi hoặc Chuyển khoản.",
+        action: "Tạo ít nhất một tài khoản, sau đó nhấn Ghi giao dịch và chọn đúng loại.",
+        visual: "finance",
+        focusLabel: "Tài khoản & giao dịch",
+        route: "/finance",
+      },
+      {
+        title: "Phân loại đúng tính chất khoản chi",
+        description:
+          "Danh mục cho biết tiền đi đâu; tính chất cho biết mức độ ưu tiên. Hãy phân biệt bắt buộc cố định, thiết yếu biến động, khoản phải chuẩn bị, tiết kiệm và chi tùy ý để số tiền linh hoạt phản ánh đúng thực tế.",
+        action: "Kiểm tra tính chất mặc định của danh mục và đổi lại ngay trên từng giao dịch khi cần.",
+        visual: "finance",
+        focusLabel: "5 nhóm khoản chi",
+        route: "/finance",
+      },
+      {
+        title: "Theo dõi ngân sách và khoản định kỳ",
+        description:
+          "Ngân sách cảnh báo ở 80% và 100%. Khoản định kỳ chỉ tạo lời nhắc; hệ thống không tự ghi giao dịch hay tự chuyển tiền. Bạn phải xác nhận Đã thanh toán, Đã nhận hoặc Đã chuyển.",
+        action: "Đặt hạn mức theo tháng, khai báo ngày đến hạn và chỉ xác nhận sau khi giao dịch thật đã xảy ra.",
+        visual: "finance",
+        focusLabel: "Ngân sách & định kỳ",
+        route: "/finance",
+      },
+    ],
+  },
+  {
     id: "assistant",
     title: "Trợ lý FitTrack PT",
     summary: "Hỏi đáp và yêu cầu hỗ trợ trong phạm vi được cấp.",
@@ -420,6 +458,7 @@ const permissionLabels: Array<{ feature: FeaturePermission; label: string }> = [
   { feature: "todoEnabled", label: "Việc cần làm" },
   { feature: "scheduleEnabled", label: "Thời khóa biểu" },
   { feature: "quoteEnabled", label: "Câu nói" },
+  { feature: "financeEnabled", label: "Tài chính" },
   { feature: "chatbotEnabled", label: "Chatbot" },
 ];
 
@@ -661,6 +700,7 @@ const guideTargets: Record<GuideVisual, { left: number; top: number; width: numb
   schedule: { left: 10, top: 36, width: 57, height: 43 },
   fitness: { left: 36, top: 43, width: 49, height: 39 },
   health: { left: 10, top: 39, width: 57, height: 44 },
+  finance: { left: 10, top: 38, width: 77, height: 45 },
   assistant: { left: 46, top: 58, width: 41, height: 26 },
   notifications: { left: 11, top: 48, width: 56, height: 34 },
   profile: { left: 11, top: 48, width: 56, height: 34 },
@@ -714,6 +754,32 @@ function MockScreen({ visual }: { visual: GuideVisual }) {
   if (visual === "health") {
     return (
       <div className="p-4"><div className="grid grid-cols-3 gap-2">{["1.850 kcal", "102 g đạm", "1,8 lít nước"].map((item) => <div key={item} className="rounded-lg bg-emerald-50 p-3 text-center text-[0.6rem] font-bold text-emerald-900">{item}</div>)}</div><div className="mt-4 flex h-20 items-end gap-2 rounded-lg bg-slate-50 px-4 pt-3">{[35, 60, 48, 75, 66, 88, 70].map((height, index) => <div key={index} className="flex-1 rounded-t bg-emerald-400" style={{ height: `${height}%` }} />)}</div></div>
+    );
+  }
+  if (visual === "finance") {
+    return (
+      <div className="h-full p-4">
+        <div className="grid grid-cols-4 gap-2">
+          {["Thu nhập", "Chi tiêu", "Bắt buộc", "Linh hoạt"].map((item, index) => (
+            <div key={item} className={`rounded-lg p-2 text-center text-[0.55rem] font-bold ${index === 3 ? "bg-blue-100 text-blue-900" : "bg-emerald-50 text-emerald-900"}`}>
+              <span className="block">{item}</span>
+              <span className="mt-1 block">{["18,0 tr", "7,2 tr", "5,4 tr", "5,4 tr"][index]}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 grid grid-cols-[42%_1fr] gap-3">
+          <div className="space-y-2 rounded-lg border p-2 text-[0.55rem]">
+            <p className="font-bold">Tài khoản</p>
+            <p>Ngân hàng · 12,5 tr</p>
+            <p>Tiền mặt · 750 nghìn</p>
+          </div>
+          <div className="space-y-2 rounded-lg border p-2 text-[0.55rem]">
+            <p className="font-bold">Ngân sách tháng</p>
+            <div className="h-2 overflow-hidden rounded bg-slate-100"><div className="h-full w-4/5 bg-amber-400" /></div>
+            <p>Ăn uống đã dùng 80%</p>
+          </div>
+        </div>
+      </div>
     );
   }
   if (visual === "assistant") {

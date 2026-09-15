@@ -35,6 +35,7 @@ public class FinanceController {
     @PutMapping("/recurring/{id}") public RecurringResponse updateRecurring(@AuthenticationPrincipal User user,@PathVariable String id,@Valid @RequestBody RecurringRequest request){return service.updateRecurring(user,id,request);}
     @DeleteMapping("/recurring/{id}") public void archiveRecurring(@AuthenticationPrincipal User user,@PathVariable String id){service.archiveRecurring(user,id);}
     @PostMapping("/recurring/{id}/confirm") public TransactionResponse confirmRecurring(@AuthenticationPrincipal User user,@PathVariable String id){return service.confirmRecurring(user,id);}
+    @PostMapping("/recurring/{id}/snooze") public RecurringResponse snoozeRecurring(@AuthenticationPrincipal User user,@PathVariable String id){return service.snoozeRecurring(user,id);}
     @GetMapping("/dashboard") public DashboardResponse dashboard(@AuthenticationPrincipal User user,@RequestParam(required=false) LocalDate month){return service.dashboard(user,month);}
     @GetMapping("/reports/monthly") public MonthlyReportResponse report(@AuthenticationPrincipal User user,@RequestParam(required=false) LocalDate month){return service.report(user,month);}
 }

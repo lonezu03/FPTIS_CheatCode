@@ -7,6 +7,14 @@ theo dạng `fittrack-vYYYY.MM.DD.N`; chỉ tạo tag sau khi production smoke t
 
 ### Added
 
+- Personal Finance V1 for permissioned users: owner-scoped money accounts,
+  positive-value income/expense/transfer transactions, five expense-nature
+  groups, category budgets with 80%/100% alerts, user-confirmed recurring items,
+  monthly reports and a responsive web dashboard.
+- `financeEnabled` account permission and Flyway V25 Finance schema.
+- Full web create/edit/archive workflows, transaction filters/pagination and a
+  permission-aware Finance usage guide, recent-category shortcuts and recurring
+  snooze action.
 - Workout Intelligence V19: progressive-overload suggestions, derived personal
   records/e1RM, weekly volume by muscle group, per-user exercise preferences and
   ranked equivalent-exercise replacement on web and Flutter.
@@ -18,6 +26,9 @@ theo dạng `fittrack-vYYYY.MM.DD.N`; chỉ tạo tag sau khi production smoke t
 
 ### Changed
 
+- Finance forms now expose transaction-level expense classification, preserve
+  archived history, stop recurring rules when their account is archived and
+  reject invalid category-parent combinations.
 - Workout-session creation now returns newly achieved PRs without changing the
   existing set payload; warm-up sets do not affect PR/progression/weekly volume.
 - SMTP không còn làm health tổng hợp `DOWN` mặc định khi production dùng Brevo

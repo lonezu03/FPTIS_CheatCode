@@ -1,8 +1,10 @@
 package com.fittrack.finance.service;
 
+import com.fittrack.finance.dto.FinanceDtos.CategoryRequest;
 import com.fittrack.finance.dto.FinanceDtos.TransactionRequest;
 import com.fittrack.finance.entity.FinanceAccount;
 import com.fittrack.finance.entity.FinanceCategory;
+import com.fittrack.finance.entity.FinanceRecurringRule;
 import com.fittrack.finance.entity.FinanceTransaction;
 import com.fittrack.finance.repository.*;
 import com.fittrack.lunch.service.LunchNotificationService;
@@ -11,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,7 +23,9 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.atLeastOnce;
 
 class FinanceServiceTest {
     @Mock FinanceAccountRepository accounts;
@@ -50,6 +55,7 @@ class FinanceServiceTest {
         when(categories.findByIdAndUser("food", user)).thenReturn(Optional.of(food));
         when(budgets.findByUserAndMonthStartOrderByCategoryNameAsc(any(), any())).thenReturn(List.of());
         when(transactions.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(recurring.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -94,6 +100,109 @@ class FinanceServiceTest {
                 () -> service.createTransaction(user, request));
 
         assertTrue(error.getMessage().contains("khác tài khoản nguồn"));
+    }
+
+    @Test
+    void archivedAccountAlsoStopsItsActiveRecurringRules() {
+        var rule = FinanceRecurringRule.builder()
+                .id("rent-rule")
+                .user(user)
+                .account(bank)
+                .active(true)
+                .build();
+        when(recurring.findByUserOrderByActiveDescNextDueDateAsc(user)).thenReturn(List.of(rule));
+
+        service.archiveAccount(user, bank.getId());
+
+        assertFalse(bank.getActive());
+        assertFalse(rule.getActive());
+        verify(accounts).save(bank);
+    }
+
+    @Test
+    void categoryParentMustUseTheSameTransactionKind() {
+        var incomeParent = FinanceCategory.builder()
+                .id("salary")
+                .user(user)
+                .name("Lương")
+                .transactionKind("INCOME")
+                .active(true)
+                .build();
+        when(categories.findByIdAndUser("salary", user)).thenReturn(Optional.of(incomeParent));
+
+        var error = assertThrows(IllegalArgumentException.class, () -> service.createCategory(
+                user,
+                new CategoryRequest("Ăn trưa", "EXPENSE", "ESSENTIAL_VARIABLE", "salary", null)
+        ));
+
+        assertTrue(error.getMessage().contains("cùng loại thu hoặc chi"));
+    }
+
+    @Test
+    void voidTransactionCannotBeRestoredByEditing() {
+        var value = transaction(
+                "void-expense", "EXPENSE", 100_000, bank, null, food, LocalDateTime.now()
+        );
+        value.setStatus("VOID");
+        when(transactions.findByIdAndUser(value.getId(), user)).thenReturn(Optional.of(value));
+
+        var request = new TransactionRequest(
+                "EXPENSE", BigDecimal.valueOf(120_000), "bank", null, "food",
+                "ESSENTIAL_VARIABLE", LocalDateTime.now(), null, null
+        );
+
+        var error = assertThrows(IllegalArgumentException.class,
+                () -> service.updateTransaction(user, value.getId(), request));
+
+        assertTrue(error.getMessage().contains("đã hủy"));
+    }
+
+    @Test
+    void snoozeClearsTheNotificationGateWithoutPostingATransaction() {
+        var rule = FinanceRecurringRule.builder()
+                .id("internet-rule")
+                .user(user)
+                .account(bank)
+                .name("Internet")
+                .transactionType("EXPENSE")
+                .category(food)
+                .expenseNature("FIXED_MANDATORY")
+                .amount(BigDecimal.valueOf(220_000))
+                .frequency("MONTHLY")
+                .nextDueDate(LocalDate.of(2026, 9, 20))
+                .remindDaysBefore(1)
+                .lastNotifiedFor(LocalDate.of(2026, 9, 20))
+                .active(true)
+                .build();
+        when(recurring.findByIdAndUser(rule.getId(), user)).thenReturn(Optional.of(rule));
+
+        var response = service.snoozeRecurring(user, rule.getId());
+
+        assertNull(rule.getLastNotifiedFor());
+        assertEquals("internet-rule", response.id());
+        verify(recurring).save(rule);
+    }
+
+    @Test
+    void defaultCategoriesIncludeVietnameseSubcategories() {
+        when(categories.findByUserOrderByTransactionKindAscNameAsc(user)).thenReturn(List.of());
+        when(categories.save(any())).thenAnswer(invocation -> {
+            FinanceCategory category = invocation.getArgument(0);
+            category.setId("seed-" + category.getName());
+            return category;
+        });
+
+        service.categories(user);
+
+        var captor = ArgumentCaptor.forClass(FinanceCategory.class);
+        verify(categories, atLeastOnce()).save(captor.capture());
+        var cafe = captor.getAllValues().stream()
+                .filter(category -> "Cafe".equals(category.getName()))
+                .findFirst()
+                .orElseThrow();
+        assertNotNull(cafe.getParent());
+        assertEquals("Ăn uống", cafe.getParent().getName());
+        assertEquals("DISCRETIONARY", cafe.getExpenseNature());
     }
 
     private FinanceAccount account(String id, String name) {

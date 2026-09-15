@@ -13,6 +13,76 @@ Web: cookie HttpOnly qua proxy cùng origin
 Mobile: Authorization: Bearer <JWT>
 ```
 
+## Tài chính cá nhân
+
+Tất cả endpoint dưới đây yêu cầu đăng nhập và quyền `financeEnabled`; admin được
+bypass cờ module. Dữ liệu luôn được giới hạn theo chủ sở hữu đang đăng nhập.
+Module này độc lập với quỹ/công nợ Đặt cơm.
+
+```http
+GET    /finance/dashboard?month=2026-09-01
+GET    /finance/reports/monthly?month=2026-09-01
+
+GET    /finance/accounts
+POST   /finance/accounts
+PUT    /finance/accounts/{id}
+DELETE /finance/accounts/{id}
+
+GET    /finance/categories
+POST   /finance/categories
+PUT    /finance/categories/{id}
+DELETE /finance/categories/{id}
+
+GET    /finance/transactions?from=2026-09-01&to=2026-09-30&type=EXPENSE&accountId=&categoryId=&q=&page=0&size=20
+POST   /finance/transactions
+PUT    /finance/transactions/{id}
+DELETE /finance/transactions/{id}
+
+GET    /finance/budgets?month=2026-09-01
+POST   /finance/budgets
+PUT    /finance/budgets/{id}
+DELETE /finance/budgets/{id}
+
+GET    /finance/recurring
+POST   /finance/recurring
+PUT    /finance/recurring/{id}
+DELETE /finance/recurring/{id}
+POST   /finance/recurring/{id}/confirm
+POST   /finance/recurring/{id}/snooze
+```
+
+Giao dịch luôn gửi `amount > 0`; `type` quyết định chiều tiền:
+
+```json
+{
+  "type": "EXPENSE",
+  "amount": 85000,
+  "accountId": "account-id",
+  "destinationAccountId": null,
+  "categoryId": "category-id",
+  "expenseNature": "DISCRETIONARY",
+  "occurredAt": "2026-09-15T12:00:00",
+  "merchant": "Quán cà phê",
+  "note": "Gặp bạn"
+}
+```
+
+`expenseNature` của khoản chi là một trong:
+
+- `FIXED_MANDATORY`: bắt buộc cố định;
+- `ESSENTIAL_VARIABLE`: thiết yếu biến động;
+- `TRUE_EXPENSE`: khoản ít xuất hiện nhưng phải chuẩn bị;
+- `SAVING`: tiết kiệm/mục tiêu;
+- `DISCRETIONARY`: tùy ý/hưởng thụ.
+
+Danh mục cung cấp giá trị mặc định nhưng từng giao dịch/khoản định kỳ có thể ghi
+đè `expenseNature`. `TRANSFER` yêu cầu hai tài khoản khác nhau, cùng loại tiền,
+không có danh mục và bị loại khỏi thu/chi. `DELETE /transactions/{id}` chuyển
+giao dịch sang `VOID`, không xóa lịch sử. Khoản định kỳ không tự tạo giao dịch;
+chỉ endpoint `/confirm` mới ghi nhận giao dịch thật rồi chuyển ngày đến hạn.
+`/snooze` không đổi ngày đến hạn và không tạo giao dịch; nó cho phép bộ lập lịch
+gửi lại lời nhắc vào ngày kế tiếp.
+
 ## Health
 
 ```http

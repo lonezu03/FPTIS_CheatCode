@@ -32,6 +32,7 @@ describe("getAvailableGuideModuleIds", () => {
     expect(ids).not.toContain("todos");
     expect(ids).not.toContain("schedule");
     expect(ids).not.toContain("quotes");
+    expect(ids).not.toContain("finance");
     expect(ids).not.toContain("assistant");
     expect(ids).not.toContain("admin");
   });
@@ -48,6 +49,7 @@ describe("getAvailableGuideModuleIds", () => {
       "fitness",
       "health",
       "quotes",
+      "finance",
       "assistant",
       "notifications",
       "profile",

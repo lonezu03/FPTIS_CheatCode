@@ -96,6 +96,18 @@ Deployment:
   day, and cannot repeat for that user until every eligible active quote has
   appeared in the current cycle. Archived quotes and quotes with
   `includeInDaily=false` are excluded from rotation.
+- Personal Finance requires `financeEnabled`; admins bypass the module flag and
+  every account, category, transaction, budget and recurring rule is
+  owner-scoped. Store transaction amounts as positive values and derive their
+  effect from `EXPENSE`, `INCOME` or `TRANSFER`. Opening balances are not income;
+  transfers affect account balances but never income/expense reports; `VOID`
+  transactions remain auditable and are excluded from balances and reports.
+- Every expense stores one of `FIXED_MANDATORY`, `ESSENTIAL_VARIABLE`,
+  `TRUE_EXPENSE`, `SAVING` or `DISCRETIONARY` on the transaction so a user may
+  override the category default. Budget notifications are deduplicated at 80%
+  and 100%. Recurring rules are reminders/plans only and must never create a
+  posted transaction until the owner explicitly confirms it. Finance V1 remains
+  independent from the company Lunch fund/debt ledger.
 - Nutrition days use `UNLOGGED`, `PARTIAL`, `COMPLETE`, or `FASTING`. A day
   containing meals defaults to `PARTIAL` until the user confirms it; only
   `COMPLETE` and `FASTING` days may affect nutrition averages, achievements,
