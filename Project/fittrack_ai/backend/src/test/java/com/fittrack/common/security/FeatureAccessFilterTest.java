@@ -60,6 +60,31 @@ class FeatureAccessFilterTest {
         assertTrue(continued.get());
     }
 
+    @Test
+    void financeEndpointsRequireIndependentPermission() throws Exception {
+        User denied = user("USER", false);
+        denied.setFinanceEnabled(false);
+        authenticate(denied);
+        MockHttpServletResponse deniedResponse = new MockHttpServletResponse();
+        filter.doFilter(
+                new MockHttpServletRequest("GET", "/api/finance/dashboard"),
+                deniedResponse,
+                (request, response) -> { throw new AssertionError("Must not continue"); }
+        );
+        assertEquals(403, deniedResponse.getStatus());
+
+        User allowed = user("USER", false);
+        allowed.setFinanceEnabled(true);
+        authenticate(allowed);
+        AtomicBoolean continued = new AtomicBoolean(false);
+        filter.doFilter(
+                new MockHttpServletRequest("GET", "/api/finance/dashboard"),
+                new MockHttpServletResponse(),
+                (request, response) -> continued.set(true)
+        );
+        assertTrue(continued.get());
+    }
+
     private void assertDenied(String uri) throws Exception {
         MockHttpServletResponse response = new MockHttpServletResponse();
         AtomicBoolean continued = new AtomicBoolean(false);

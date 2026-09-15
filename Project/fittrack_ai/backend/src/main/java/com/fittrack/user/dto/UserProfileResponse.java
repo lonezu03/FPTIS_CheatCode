@@ -17,6 +17,7 @@ public class UserProfileResponse {
     private Boolean todoEnabled;
     private Boolean scheduleEnabled;
     private Boolean quoteEnabled;
+    private Boolean financeEnabled;
     private Boolean passwordChangeRequired;
     private Boolean assistantConsent;
     private Boolean emailNotificationsEnabled;

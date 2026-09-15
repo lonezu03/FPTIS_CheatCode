@@ -50,6 +50,7 @@ public class AuthService {
                 .healthEnabled(false)
                 .chatbotEnabled(false)
                 .quoteEnabled(false)
+                .financeEnabled(false)
                 .emailVerified(true)
                 .build();
 
@@ -155,6 +156,7 @@ public class AuthService {
                 .todoEnabled(Boolean.TRUE.equals(user.getTodoEnabled()))
                 .scheduleEnabled(Boolean.TRUE.equals(user.getScheduleEnabled()))
                 .quoteEnabled(Boolean.TRUE.equals(user.getQuoteEnabled()))
+                .financeEnabled(Boolean.TRUE.equals(user.getFinanceEnabled()))
                 .passwordChangeRequired(Boolean.TRUE.equals(user.getPasswordChangeRequired()))
                 .build();
     }

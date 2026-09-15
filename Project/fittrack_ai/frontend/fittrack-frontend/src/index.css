@@ -133,3 +133,9 @@
     }
   }
 }
+
+@layer components {
+  .field {
+    @apply h-10 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}

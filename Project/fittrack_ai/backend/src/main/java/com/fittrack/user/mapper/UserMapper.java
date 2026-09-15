@@ -25,6 +25,7 @@ public class UserMapper {
                 .todoEnabled(Boolean.TRUE.equals(user.getTodoEnabled()))
                 .scheduleEnabled(Boolean.TRUE.equals(user.getScheduleEnabled()))
                 .quoteEnabled(Boolean.TRUE.equals(user.getQuoteEnabled()))
+                .financeEnabled(Boolean.TRUE.equals(user.getFinanceEnabled()))
                 .passwordChangeRequired(Boolean.TRUE.equals(user.getPasswordChangeRequired()))
                 .assistantConsent(Boolean.TRUE.equals(user.getAssistantConsent()))
                 .emailNotificationsEnabled(Boolean.TRUE.equals(user.getEmailNotificationsEnabled()))

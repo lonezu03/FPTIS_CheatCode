@@ -15,6 +15,7 @@ const lunchOnlyUser: AuthUser = {
   todoEnabled: false,
   scheduleEnabled: false,
   quoteEnabled: false,
+  financeEnabled: false,
   passwordChangeRequired: false,
 };
 

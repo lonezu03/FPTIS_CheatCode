@@ -50,6 +50,7 @@ type UserAccessPayload = {
   todoEnabled: boolean;
   scheduleEnabled: boolean;
   quoteEnabled: boolean;
+  financeEnabled: boolean;
 };
 
 export default function AdminUsersPage() {
@@ -330,6 +331,7 @@ function EditUserDialog({
   const [todoEnabled, setTodoEnabled] = useState(user.todoEnabled);
   const [scheduleEnabled, setScheduleEnabled] = useState(user.scheduleEnabled);
   const [quoteEnabled, setQuoteEnabled] = useState(user.quoteEnabled);
+  const [financeEnabled, setFinanceEnabled] = useState(user.financeEnabled);
 
   const isSelf = user.id === currentUserId;
 
@@ -388,6 +390,7 @@ function EditUserDialog({
             <PermissionToggle label="Todo" checked={todoEnabled} onChange={setTodoEnabled} />
             <PermissionToggle label="Thời khóa biểu" checked={scheduleEnabled} onChange={setScheduleEnabled} />
             <PermissionToggle label="Câu nói yêu thích" checked={quoteEnabled} onChange={setQuoteEnabled} />
+            <PermissionToggle label="Tài chính cá nhân" checked={financeEnabled} onChange={setFinanceEnabled} />
           </div>
         </div>
 
@@ -408,6 +411,7 @@ function EditUserDialog({
                 todoEnabled,
                 scheduleEnabled,
                 quoteEnabled,
+                financeEnabled,
               })
             }
             disabled={pending || !fullName.trim()}

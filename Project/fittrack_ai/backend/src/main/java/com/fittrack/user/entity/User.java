@@ -72,6 +72,9 @@ public class User {
     private Boolean quoteEnabled;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean financeEnabled;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean passwordChangeRequired;
 
     @Column(nullable = false, columnDefinition = "bigint default 0")
@@ -131,6 +134,9 @@ public class User {
 
         if (this.quoteEnabled == null) {
             this.quoteEnabled = false;
+        }
+        if (this.financeEnabled == null) {
+            this.financeEnabled = false;
         }
 
         if (this.passwordChangeRequired == null) {

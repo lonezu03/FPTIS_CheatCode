@@ -134,6 +134,7 @@ public class DashboardService {
                 .todoEnabled(Boolean.TRUE.equals(user.getTodoEnabled()))
                 .scheduleEnabled(Boolean.TRUE.equals(user.getScheduleEnabled()))
                 .quoteEnabled(Boolean.TRUE.equals(user.getQuoteEnabled()))
+                .financeEnabled(Boolean.TRUE.equals(user.getFinanceEnabled()))
                 .latestWorkoutNote(latestWorkoutNote)
                 .remainingCalories(round(targetCalories - totalCalories))
                 .remainingProtein(round(targetProtein - totalProtein))

@@ -1,13 +1,14 @@
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { ArrowRight, Beef, CalendarClock, CheckCircle2, ChefHat, Dumbbell, Flame, ListTodo, Soup, Trophy } from "lucide-react";
+import { ArrowRight, Beef, CalendarClock, CheckCircle2, ChefHat, Dumbbell, Flame, ListTodo, Soup, Trophy, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 import { getAchievementSummary } from "../api/achievement.api";
 import { getProgressDashboard, getTodayDashboard } from "../api/dashboard.api";
 import { seedDemoData } from "../api/demo.api";
 import { getWeeklyRecommendations } from "../api/recommendation.api";
 import { requestFitnessModuleAccess } from "../api/notification.api";
+import { getFinanceDashboard } from "../api/finance.api";
 import { useAuthStore } from "../store/auth.store";
 import ErrorState from "../components/common/ErrorState";
 import PageLoading from "../components/common/PageLoading";
@@ -42,6 +43,7 @@ export default function DashboardPage() {
   const todoEnabled = today?.todoEnabled ?? authUser?.todoEnabled ?? false;
   const scheduleEnabled = today?.scheduleEnabled ?? authUser?.scheduleEnabled ?? false;
   const quoteEnabled = today?.quoteEnabled ?? authUser?.quoteEnabled ?? false;
+  const financeEnabled = today?.financeEnabled ?? authUser?.financeEnabled ?? false;
   const lunchOnly = Boolean(
     authUser?.role !== "ADMIN"
       && lunchEnabled
@@ -50,11 +52,13 @@ export default function DashboardPage() {
       && !todoEnabled
       && !scheduleEnabled
       && !quoteEnabled
+      && !financeEnabled
       && !authUser?.chatbotEnabled
   );
   const progressQuery = useQuery({ queryKey: ["dashboard-progress"], queryFn: getProgressDashboard, enabled: fitnessEnabled || healthEnabled });
   const recommendationQuery = useQuery({ queryKey: ["weekly-recommendations"], queryFn: () => getWeeklyRecommendations(), enabled: healthEnabled });
   const achievementQuery = useQuery({ queryKey: ["achievements"], queryFn: getAchievementSummary, enabled: fitnessEnabled });
+  const financeQuery = useQuery({ queryKey: ["finance-dashboard-card"], queryFn: () => getFinanceDashboard(new Date().toISOString().slice(0, 7) + "-01"), enabled: financeEnabled || authUser?.role === "ADMIN" });
   if (todayQuery.isLoading || (fitnessEnabled && progressQuery.isLoading)) return <PageLoading />;
   if (todayQuery.isError || !today) return <ErrorState title="Không thể tải trang tổng quan" message="Vui lòng kiểm tra kết nối hoặc đăng nhập lại." />;
   const points = progressQuery.data?.points ?? [];
@@ -136,6 +140,17 @@ export default function DashboardPage() {
       </Card>
     )}
     {(quoteEnabled || authUser?.role === "ADMIN") && <DailyQuoteCard />}
+    {(financeEnabled || authUser?.role === "ADMIN") && financeQuery.data && (
+      <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-white">
+        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-100 text-blue-800"><WalletCards className="size-5" /></span>
+            <div><p className="font-semibold">Tài chính tháng này</p><p className="mt-1 text-sm text-muted-foreground">Đã chi {new Intl.NumberFormat("vi-VN").format(financeQuery.data.expense)} đ · Còn linh hoạt {new Intl.NumberFormat("vi-VN").format(financeQuery.data.flexibleAvailable)} đ</p></div>
+          </div>
+          <Button asChild variant="outline"><Link to="/finance">Xem tài chính <ArrowRight className="size-4" /></Link></Button>
+        </CardContent>
+      </Card>
+    )}
     <PageHeader title="Tổng quan hôm nay" description={healthEnabled || fitnessEnabled ? "Nắm nhanh tiến độ dinh dưỡng, luyện tập và các việc cần ưu tiên." : "Các thông tin liên quan đến quyền Đặt cơm và hồ sơ cá nhân của bạn."} />
     <div className={`grid gap-4 sm:grid-cols-2 ${cards.length >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>{cards.map((card) => { const Icon = card.icon; return <Card key={card.title} className={`border-0 bg-gradient-to-br ${card.tone}`}><CardHeader className="flex flex-row items-center justify-between pb-0"><CardTitle className="text-sm text-muted-foreground">{card.title}</CardTitle><span className={`grid size-9 place-items-center rounded-xl ${card.iconTone}`}><Icon className="size-4"/></span></CardHeader><CardContent><p className="text-3xl font-semibold tracking-[-0.04em]">{card.value}</p><p className="mt-1 text-xs text-muted-foreground">{card.detail}</p></CardContent></Card>; })}</div>
     {todoEnabled || scheduleEnabled ? <div className="grid gap-4 md:grid-cols-2">{todoEnabled&&<QuickLinkCard icon={ListTodo} title="Việc cần làm" description="Giữ các việc quan trọng trong tầm mắt và đánh dấu khi hoàn tất." to="/todos" action="Mở danh sách việc"/>}{scheduleEnabled&&<QuickLinkCard icon={CheckCircle2} title="Thời khóa biểu" description="Xếp mốc thời gian và nhận thông báo trước khi hoạt động bắt đầu." to="/schedule" action="Mở thời khóa biểu"/>}</div>:null}

@@ -17,6 +17,7 @@ import {
   HeartPulse,
   LayoutDashboard,
   ListPlus,
+  WalletCards,
   LogOut,
   Menu,
   ChefHat,
@@ -60,6 +61,7 @@ const navGroups: NavGroup[] = [
       { to: "/todos", label: "Việc cần làm", description: "Task cá nhân", icon: ListPlus, feature: "todoEnabled" },
       { to: "/schedule", label: "Thời khóa biểu", description: "Lịch & nhắc việc", icon: CalendarDays, feature: "scheduleEnabled" },
       { to: "/quotes", label: "Câu nói", description: "Kho câu yêu thích", icon: QuoteIcon, feature: "quoteEnabled" },
+      { to: "/finance", label: "Tài chính", description: "Thu chi & ngân sách", icon: WalletCards, feature: "financeEnabled" },
     ],
   },
   {
@@ -118,6 +120,7 @@ export default function AppLayout() {
         todoEnabled: profile.todoEnabled,
         scheduleEnabled: profile.scheduleEnabled,
         quoteEnabled: profile.quoteEnabled,
+        financeEnabled: profile.financeEnabled,
         passwordChangeRequired: profile.passwordChangeRequired,
       });
       return profile;
@@ -144,6 +147,7 @@ export default function AppLayout() {
       todoEnabled: profile.todoEnabled,
       scheduleEnabled: profile.scheduleEnabled,
       quoteEnabled: profile.quoteEnabled,
+      financeEnabled: profile.financeEnabled,
       passwordChangeRequired: profile.passwordChangeRequired,
     };
   }, [authUser, profileQuery.data]);

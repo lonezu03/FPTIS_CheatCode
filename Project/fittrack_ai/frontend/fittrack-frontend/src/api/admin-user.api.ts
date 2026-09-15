@@ -15,6 +15,7 @@ export type AdminUser = {
   todoEnabled: boolean;
   scheduleEnabled: boolean;
   quoteEnabled: boolean;
+  financeEnabled: boolean;
   createdAt: string;
 };
 
@@ -49,6 +50,7 @@ export async function updateAdminUser(
     todoEnabled?: boolean;
     scheduleEnabled?: boolean;
     quoteEnabled?: boolean;
+    financeEnabled?: boolean;
   },
 ): Promise<AdminUser> {
   const response = await api.patch<AdminUser>(`/admin/users/${id}`, payload);

@@ -12,6 +12,7 @@ export type AuthUser = {
   todoEnabled: boolean;
   scheduleEnabled: boolean;
   quoteEnabled: boolean;
+  financeEnabled: boolean;
   passwordChangeRequired: boolean;
 };
 

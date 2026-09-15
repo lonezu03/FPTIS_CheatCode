@@ -12,6 +12,7 @@ export type UserProfile = {
   todoEnabled: boolean;
   scheduleEnabled: boolean;
   quoteEnabled: boolean;
+  financeEnabled: boolean;
   passwordChangeRequired: boolean;
   assistantConsent: boolean;
   emailNotificationsEnabled: boolean;

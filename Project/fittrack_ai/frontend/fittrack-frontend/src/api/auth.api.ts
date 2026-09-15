@@ -14,6 +14,7 @@ export type AuthResponse = {
   todoEnabled: boolean;
   scheduleEnabled: boolean;
   quoteEnabled: boolean;
+  financeEnabled: boolean;
   passwordChangeRequired: boolean;
 };
 

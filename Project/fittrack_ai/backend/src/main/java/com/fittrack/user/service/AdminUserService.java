@@ -114,6 +114,9 @@ public class AdminUserService {
         if (request.quoteEnabled() != null) {
             target.setQuoteEnabled(request.quoteEnabled());
         }
+        if (request.financeEnabled() != null) {
+            target.setFinanceEnabled(request.financeEnabled());
+        }
         AdminUserResponse response = toResponse(userRepository.save(target));
         auditService.record(currentAdmin, "USER_UPDATED", "USER", target.getId(), Map.of(
                 "role", target.getRole(),
@@ -124,7 +127,8 @@ public class AdminUserService {
                 "chatbotEnabled", Boolean.TRUE.equals(target.getChatbotEnabled()),
                 "todoEnabled", Boolean.TRUE.equals(target.getTodoEnabled()),
                 "scheduleEnabled", Boolean.TRUE.equals(target.getScheduleEnabled()),
-                "quoteEnabled", Boolean.TRUE.equals(target.getQuoteEnabled())
+                "quoteEnabled", Boolean.TRUE.equals(target.getQuoteEnabled()),
+                "financeEnabled", Boolean.TRUE.equals(target.getFinanceEnabled())
         ));
         return response;
     }
@@ -190,6 +194,7 @@ public class AdminUserService {
                 Boolean.TRUE.equals(user.getTodoEnabled()),
                 Boolean.TRUE.equals(user.getScheduleEnabled()),
                 Boolean.TRUE.equals(user.getQuoteEnabled()),
+                Boolean.TRUE.equals(user.getFinanceEnabled()),
                 user.getCreatedAt()
         );
     }

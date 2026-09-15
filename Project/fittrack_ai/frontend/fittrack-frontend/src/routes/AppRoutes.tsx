@@ -27,6 +27,7 @@ const AdminNotificationPlaybooksPage = lazy(() => import("../pages/AdminNotifica
 const TodoPage = lazy(() => import("../pages/TodoPage"));
 const SchedulePage = lazy(() => import("../pages/SchedulePage"));
 const QuotesPage = lazy(() => import("../pages/QuotesPage"));
+const FinancePage = lazy(() => import("../pages/FinancePage"));
 const ChangePasswordPage = lazy(() => import("../pages/ChangePasswordPage"));
 
 export default function AppRoutes() {
@@ -63,6 +64,9 @@ export default function AppRoutes() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route element={<FeatureRoute feature="quoteEnabled" />}>
                 <Route path="/quotes" element={<QuotesPage />} />
+              </Route>
+              <Route element={<FeatureRoute feature="financeEnabled" />}>
+                <Route path="/finance" element={<FinancePage />} />
               </Route>
               <Route element={<FeatureRoute feature="todoEnabled" />}><Route path="/todos" element={<TodoPage />} /></Route>
               <Route element={<FeatureRoute feature="scheduleEnabled" />}><Route path="/schedule" element={<SchedulePage />} /></Route>
