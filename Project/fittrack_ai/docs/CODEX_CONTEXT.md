@@ -6,7 +6,7 @@ Last updated: 2026-09-15
 
 - Repository: `lonezu03/FPTIS_CheatCode`, branch `main`.
 - FitTrack root: `Project/fittrack_ai/`.
-- Current pushed baseline: `c4f1f1b6` (`15092026- lan 1`).
+- Current pushed baseline: `4827472b` (`15092026- Lần 2`).
 - Active backend: `backend/`; do not use or stage `backend/demo/`.
 - Web source: `frontend/fittrack-frontend/`; Vercel build root remains
   `frontend/`.
@@ -17,12 +17,25 @@ Last updated: 2026-09-15
   currently committed through V25; production `flyway_schema_history` has not
   been checked during this session.
 
-## Current task: Personal Finance V1 on backend and web
+## Current task: Finance transaction-list production hotfix
 
-Status: the first Finance batch is in pushed commit `c4f1f1b6`; the follow-up
-web/backend completion below is implemented locally and awaiting final full
-verification, review, commit and deployment. The user explicitly deferred all
-mobile Finance work, so `mobile/` must remain unchanged.
+Status: Finance V1 backend/web is pushed. A local hotfix now addresses the
+production HTTP 500 on `GET /api/finance/transactions` when optional filters are
+absent. It is verified and awaiting commit, push and Render deployment. The user
+explicitly deferred all mobile Finance work, so `mobile/` remains unchanged.
+
+### Current production hotfix
+
+- Replaced the static JPQL transaction search containing nullable parameters
+  with a dynamic JPA Specification. Empty account, category, type and text
+  filters are now omitted from SQL instead of being bound as untyped nulls,
+  avoiding PostgreSQL parameter type-inference failures.
+- Preserved owner scoping, inclusive date selection, destination-account
+  matching for transfers, text/type/category filters, pagination and descending
+  transaction ordering.
+- Added `FinanceTransactionQueryIntegrationTest` to execute the no-filter
+  monthly request and a combined-filter request through real Hibernate/JPA.
+- No schema migration, web contract, Lunch file or mobile file changed.
 
 ### Completed in the pushed Finance baseline
 
@@ -71,9 +84,12 @@ mobile Finance work, so `mobile/` must remain unchanged.
 
 ### Verification
 
-- Full backend Maven suite passed: 87 tests, 0 failures/errors; the two
+- Full backend Maven suite passed after the transaction-query hotfix: 91 tests,
+  0 failures/errors; the two
   PostgreSQL/Testcontainers release suites were skipped because Docker was not
   available to this test run.
+- The backend release JAR also packaged successfully with
+  `mvnw -DskipTests package`.
 - The final Finance service suite passed 8 tests, including default Vietnamese
   subcategory seeding and recurring snooze; the earlier combined Finance/
   permission/admin run passed 14 tests.
@@ -84,11 +100,9 @@ mobile Finance work, so `mobile/` must remain unchanged.
 
 ### Deployment order and smoke tests
 
-1. Run final backend/web checks and review `git diff --check`; keep `mobile/`
-   clean and do not build an APK.
-2. Commit/push only the Finance follow-up and documentation changes.
-3. Deploy backend first. Confirm Flyway V25 and successful startup with
-   `ddl-auto=validate`; then deploy Vercel web.
+1. Commit/push the Finance transaction-query hotfix and this context update.
+2. Deploy only the backend on Render; this hotfix has no web or schema change.
+3. Retry the exact September transaction request and confirm HTTP 200.
 4. As admin, grant Finance to one non-admin user. Verify a user without Finance
    gets HTTP 403 and sees no Finance navigation/guide/dashboard card.
 5. With the permitted user: create two accounts and an income; add an expense

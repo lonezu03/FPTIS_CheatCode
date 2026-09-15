@@ -7,8 +7,12 @@ import com.fittrack.finance.entity.*;
 import com.fittrack.finance.repository.*;
 import com.fittrack.lunch.service.LunchNotificationService;
 import com.fittrack.user.entity.User;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,8 +74,9 @@ public class FinanceService {
 
     @Transactional(readOnly=true)
     public PageResponse<TransactionResponse> transactions(User user,LocalDate from,LocalDate to,String accountId,String categoryId,String type,String q,int page,int size){
-        int safeSize=Math.max(1,Math.min(size,100)); var result=transactions.search(user,from==null?null:from.atStartOfDay(),
-            to==null?null:to.plusDays(1).atStartOfDay(),blank(accountId),blank(categoryId),upper(type),blank(q),PageRequest.of(Math.max(0,page),safeSize));
+        int safeSize=Math.max(1,Math.min(size,100));
+        var result=transactions.findAll(transactionFilter(user,from,to,blank(accountId),blank(categoryId),upper(type),blank(q)),
+            PageRequest.of(Math.max(0,page),safeSize,Sort.by(Sort.Order.desc("occurredAt"),Sort.Order.desc("createdAt"))));
         return PageResponse.from(result.map(this::transactionResponse));
     }
     @Transactional public TransactionResponse createTransaction(User user,TransactionRequest r){var tx=new FinanceTransaction();tx.setUser(user);applyTransaction(user,tx,r);var saved=transactions.save(tx);checkBudgetAlerts(user,saved.getOccurredAt().toLocalDate());return transactionResponse(saved);}
@@ -182,6 +187,25 @@ public class FinanceService {
     private FinanceTransaction transaction(User u,String id){return transactions.findByIdAndUser(id,u).orElseThrow(()->new ResourceNotFoundException("Không tìm thấy giao dịch"));}
     private FinanceBudget budget(User u,String id){return budgets.findByIdAndUser(id,u).orElseThrow(()->new ResourceNotFoundException("Không tìm thấy ngân sách"));}
     private FinanceRecurringRule rule(User u,String id){return recurring.findByIdAndUser(id,u).orElseThrow(()->new ResourceNotFoundException("Không tìm thấy khoản định kỳ"));}
+    private Specification<FinanceTransaction> transactionFilter(User user,LocalDate from,LocalDate to,String accountId,String categoryId,String type,String q){
+        return (root,query,cb)->{
+            List<Predicate> filters=new ArrayList<>();
+            filters.add(cb.equal(root.get("user").get("id"),user.getId()));
+            if(from!=null)filters.add(cb.greaterThanOrEqualTo(root.<LocalDateTime>get("occurredAt"),from.atStartOfDay()));
+            if(to!=null)filters.add(cb.lessThan(root.<LocalDateTime>get("occurredAt"),to.plusDays(1).atStartOfDay()));
+            if(accountId!=null){
+                var destination=root.join("destinationAccount",JoinType.LEFT);
+                filters.add(cb.or(cb.equal(root.get("account").get("id"),accountId),cb.equal(destination.get("id"),accountId)));
+            }
+            if(categoryId!=null)filters.add(cb.equal(root.get("category").get("id"),categoryId));
+            if(type!=null)filters.add(cb.equal(root.get("type"),type));
+            if(q!=null){
+                String pattern="%"+q.toLowerCase(Locale.ROOT)+"%";
+                filters.add(cb.or(cb.like(cb.lower(root.<String>get("merchant")),pattern),cb.like(cb.lower(root.<String>get("note")),pattern)));
+            }
+            return cb.and(filters.toArray(Predicate[]::new));
+        };
+    }
     private void validateAccount(AccountRequest r){if(!ACCOUNT_TYPES.contains(upper(r.accountType())))throw new IllegalArgumentException("Loại tài khoản không hợp lệ");}
     private void validateCategory(CategoryRequest r){if(!Set.of("EXPENSE","INCOME").contains(r.transactionKind()))throw new IllegalArgumentException("Loại danh mục không hợp lệ");if("EXPENSE".equals(r.transactionKind())&&(r.expenseNature()==null||!NATURES.contains(r.expenseNature())))throw new IllegalArgumentException("Tính chất khoản chi không hợp lệ");}
     private FinanceCategory validatedParent(User user,String categoryId,CategoryRequest request){
