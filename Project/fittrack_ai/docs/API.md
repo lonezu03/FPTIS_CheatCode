@@ -392,11 +392,12 @@ stored as mutable counters.
 ```http
 GET /workout-plans
 POST /workout-plans
+PUT /workout-plans/{id}
 DELETE /workout-plans/{id}
 POST /workout-plans/{id}/generate-session
 ```
 
-Create request:
+Create/update request:
 
 ```json
 {
@@ -459,6 +460,10 @@ Create request:
   "verified": false
 }
 ```
+
+`PUT /workout-plans/{id}` replaces the authenticated owner's plan days and
+exercise targets transactionally while preserving the plan ID and creation
+time. Every referenced exercise must be active and approved.
 
 `dataSourceType` nhận `VERIFIED_DATABASE`, `PRODUCT_LABEL`,
 `RECIPE_CALCULATED`, `COMMUNITY`, hoặc `ESTIMATED`. Vi chất chưa biết nên để

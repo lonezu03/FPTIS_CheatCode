@@ -58,6 +58,15 @@ public class WorkoutPlanController {
         return workoutPlanService.getPlanDetail(user, id);
     }
 
+    @PutMapping("/{id}")
+    public WorkoutPlanResponse updatePlan(
+            Authentication authentication,
+            @PathVariable String id,
+            @RequestBody CreateWorkoutPlanRequest request
+    ) {
+        return workoutPlanService.updatePlan((User) authentication.getPrincipal(), id, request);
+    }
+
     @DeleteMapping("/{id}")
     public void deletePlan(
             Authentication authentication,

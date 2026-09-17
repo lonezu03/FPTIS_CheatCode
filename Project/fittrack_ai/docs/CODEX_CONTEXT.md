@@ -1,12 +1,12 @@
 # FitTrack Current Project State
 
-Last updated: 2026-09-15
+Last updated: 2026-09-17
 
 ## Repository and deployment
 
 - Repository: `lonezu03/FPTIS_CheatCode`, branch `main`.
 - FitTrack root: `Project/fittrack_ai/`.
-- Current pushed baseline: `4827472b` (`15092026- Lần 2`).
+- Current pushed baseline: `ba5cdb11` (`15092026- Lần 3`).
 - Active backend: `backend/`; do not use or stage `backend/demo/`.
 - Web source: `frontend/fittrack-frontend/`; Vercel build root remains
   `frontend/`.
@@ -17,14 +17,36 @@ Last updated: 2026-09-15
   currently committed through V25; production `flyway_schema_history` has not
   been checked during this session.
 
-## Current task: Finance transaction-list production hotfix
+## Current task: Schedule completion, workout-plan editing and catalog enrichment
 
-Status: Finance V1 backend/web is pushed. A local hotfix now addresses the
-production HTTP 500 on `GET /api/finance/transactions` when optional filters are
-absent. It is verified and awaiting commit, push and Render deployment. The user
-explicitly deferred all mobile Finance work, so `mobile/` remains unchanged.
+Status: implemented and verified locally; awaiting review, commit and deployment.
+The user explicitly requested web/backend only, and no mobile file changed.
 
-### Current production hotfix
+### Completed in the current local change
+
+- Schedule DAY/WEEK/MONTH/LIST views now let users complete an OPEN or
+  IN_PROGRESS Todo directly. The UI calls the existing Todo transition API and
+  invalidates calendar, Todo and Dashboard caches; recurring Todo behavior
+  remains owned by `TodoService`.
+- Added owner-scoped `PUT /api/workout-plans/{id}`. Updating a plan replaces its
+  nested days/exercises transactionally through orphan removal while preserving
+  the plan identity and creation date. Only active, approved exercises can be
+  saved, and create/update now share structural validation.
+- The workout-plan web editor supports load/edit/cancel/save with gym-oriented
+  defaults and keeps create/delete/generate-session behavior unchanged.
+- Reworked `ExerciseSeeder` into an idempotent upsert and added 49 commercial
+  gym exercises focused on machines, Smith machine, barbells, dumbbells,
+  adjustable benches and cables, with Vietnamese technique/safety descriptions.
+  Existing user-submitted exercises are not overwritten.
+- Enriched 23 common seeded foods with fiber, sugar, sodium, potassium, calcium,
+  iron, vitamin C, water and gram-equivalent serving data. Values are explicitly
+  marked ESTIMATED and do not replace existing non-null or verified values.
+- Per the user's follow-up, no image was added or changed. Both seeders preserve
+  `imageUrl` so the admin can curate exercise and food images manually.
+- No Flyway migration was needed because the existing schema already contains
+  all fields; the idempotent seeders update Aiven data on backend startup.
+
+### Finance transaction hotfix already in the pushed baseline
 
 - Replaced the static JPQL transaction search containing nullable parameters
   with a dynamic JPA Specification. Empty account, category, type and text
@@ -57,7 +79,7 @@ explicitly deferred all mobile Finance work, so `mobile/` remains unchanged.
   rules notify but never auto-post; the owner explicitly confirms the real
   transaction.
 
-### Completed in the current local follow-up
+### Completed in the pushed Finance follow-up
 
 - Rebuilt the Finance web page with typed API payloads and create/edit flows for
   transactions, money accounts, categories, budgets and recurring rules.
@@ -84,8 +106,7 @@ explicitly deferred all mobile Finance work, so `mobile/` remains unchanged.
 
 ### Verification
 
-- Full backend Maven suite passed after the transaction-query hotfix: 91 tests,
-  0 failures/errors; the two
+- Full backend Maven suite passed: 93 tests, 0 failures/errors; the two
   PostgreSQL/Testcontainers release suites were skipped because Docker was not
   available to this test run.
 - The backend release JAR also packaged successfully with
@@ -100,17 +121,16 @@ explicitly deferred all mobile Finance work, so `mobile/` remains unchanged.
 
 ### Deployment order and smoke tests
 
-1. Commit/push the Finance transaction-query hotfix and this context update.
-2. Deploy only the backend on Render; this hotfix has no web or schema change.
-3. Retry the exact September transaction request and confirm HTTP 200.
-4. As admin, grant Finance to one non-admin user. Verify a user without Finance
-   gets HTTP 403 and sees no Finance navigation/guide/dashboard card.
-5. With the permitted user: create two accounts and an income; add an expense
-   with a transaction-level nature override; transfer between accounts and
-   confirm it does not change monthly income/expense.
-6. Create/edit/void a transaction, create a category with a parent, set an 80%
-   budget, create/edit/confirm a recurring item and verify its next due date.
-7. Preserve `X-Request-Id` and correlate Render logs for any production failure.
+1. Commit/push only the FitTrack files from this task; unrelated deletions above
+   the FitTrack root belong to the user and must remain untouched.
+2. Deploy Render backend first. Startup runs the idempotent catalog seeders; no
+   Flyway version is added by this change.
+3. Deploy Vercel web, then complete a Todo from each calendar presentation used
+   in production and verify recurring Todos create at most one next occurrence.
+4. Create a plan, edit its name/days/exercises, reload, and generate a workout
+   from an updated day.
+5. Verify gym exercises and food micronutrients are present; add images manually
+   through the existing admin catalog UI when ready.
 
 ## Stable platform summary
 
@@ -136,3 +156,5 @@ explicitly deferred all mobile Finance work, so `mobile/` remains unchanged.
   categorization and Lunch-ledger integration are outside Finance V1.
 - Production Flyway version and authenticated Finance smoke tests must be
   confirmed after deployment; do not infer them from a successful source build.
+- Exercise and food images are intentionally left for manual admin curation;
+  the catalog seeders preserve existing `imageUrl` values.

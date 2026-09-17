@@ -7,6 +7,12 @@ theo dạng `fittrack-vYYYY.MM.DD.N`; chỉ tạo tag sau khi production smoke t
 
 ### Added
 
+- Direct Todo completion from the Schedule day, week, month and list views.
+- Owner-scoped workout-plan editing through `PUT /api/workout-plans/{id}` and
+  the web plan editor.
+- Idempotent commercial-gym exercise catalog enrichment and detailed estimated
+  micronutrients for common seeded foods. Existing catalog images are kept for
+  manual admin curation.
 - Personal Finance V1 for permissioned users: owner-scoped money accounts,
   positive-value income/expense/transfer transactions, five expense-nature
   groups, category budgets with 80%/100% alerts, user-confirmed recurring items,
@@ -26,6 +32,8 @@ theo dạng `fittrack-vYYYY.MM.DD.N`; chỉ tạo tag sau khi production smoke t
 
 ### Changed
 
+- Workout-plan create/update now share validation and only accept active,
+  approved exercises.
 - Finance forms now expose transaction-level expense classification, preserve
   archived history, stop recurring rules when their account is archived and
   reject invalid category-parent combinations.

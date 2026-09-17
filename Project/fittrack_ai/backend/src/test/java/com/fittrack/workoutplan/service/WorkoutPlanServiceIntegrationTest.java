@@ -82,5 +82,19 @@ class WorkoutPlanServiceIntegrationTest {
                 .getExercises().getFirst().getEquipment());
         assertEquals("Đẩy tạ qua đầu và kiểm soát nhịp hạ tạ.", detail.getDays().getFirst()
                 .getExercises().getFirst().getDescription());
+
+        planExercise.setTargetSets(4);
+        planExercise.setTargetReps(8);
+        day.setName("Ngày vai cập nhật");
+        request.setName("Giáo án đã chỉnh sửa");
+        request.setDescription("Kiểm tra cập nhật lồng nhau");
+
+        var updated = assertDoesNotThrow(() -> workoutPlanService.updatePlan(user, planId, request));
+        var reloaded = assertDoesNotThrow(() -> workoutPlanService.getPlanDetail(user, planId));
+
+        assertEquals("Giáo án đã chỉnh sửa", updated.getName());
+        assertEquals("Ngày vai cập nhật", reloaded.getDays().getFirst().getName());
+        assertEquals(4, reloaded.getDays().getFirst().getExercises().getFirst().getTargetSets());
+        assertEquals(8, reloaded.getDays().getFirst().getExercises().getFirst().getTargetReps());
     }
 }

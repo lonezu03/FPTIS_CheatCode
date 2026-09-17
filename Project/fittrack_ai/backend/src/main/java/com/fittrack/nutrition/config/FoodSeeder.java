@@ -20,6 +20,8 @@ public class FoodSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         Map<String, Food> existingFoods = foodRepository.findAll().stream()
+                .filter(food -> food.getSubmittedBy() == null)
+                .filter(food -> !Boolean.TRUE.equals(food.getCustom()))
                 .collect(Collectors.toMap(
                         food -> normalizeName(food.getName()),
                         Function.identity(),
@@ -37,6 +39,7 @@ public class FoodSeeder implements CommandLineRunner {
                     food.setUnit(seed.unit());
                     food.setCustom(false);
                     food.setActive(true);
+                    applyNutritionDetails(food, DETAILS.get(normalizeName(seed.name())));
 
                     return food;
                 })
@@ -49,8 +52,58 @@ public class FoodSeeder implements CommandLineRunner {
         return name == null ? "" : name.trim().toLowerCase();
     }
 
+    private void applyNutritionDetails(Food food, NutritionDetails details) {
+        if (details == null) return;
+        if (food.getFiber() == null) food.setFiber(details.fiber());
+        if (food.getSugar() == null) food.setSugar(details.sugar());
+        if (food.getSodium() == null) food.setSodium(details.sodium());
+        if (food.getPotassium() == null) food.setPotassium(details.potassium());
+        if (food.getCalcium() == null) food.setCalcium(details.calcium());
+        if (food.getIron() == null) food.setIron(details.iron());
+        if (food.getVitaminC() == null) food.setVitaminC(details.vitaminC());
+        if (food.getWater() == null) food.setWater(details.water());
+        if (food.getServingSizeGrams() == null) food.setServingSizeGrams(details.servingSizeGrams());
+        if (food.getDataSourceName() == null || food.getDataSourceName().isBlank()) {
+            food.setDataSourceType("ESTIMATED");
+            food.setDataSourceName("FitTrack curated estimate; ưu tiên nhãn sản phẩm khi có");
+            food.setVerified(false);
+        }
+        // Deliberately preserve imageUrl so admins can curate images manually.
+    }
+
     private record SeedFood(String name, String unit, Double calories, Double protein, Double carbs, Double fat) {
     }
+
+    private record NutritionDetails(Double fiber, Double sugar, Double sodium, Double potassium,
+                                    Double calcium, Double iron, Double vitaminC, Double water,
+                                    Double servingSizeGrams) {
+    }
+
+    private static final Map<String, NutritionDetails> DETAILS = Map.ofEntries(
+            Map.entry("cơm trắng chín", new NutritionDetails(0.4, 0.1, 1.0, 35.0, 10.0, 0.2, 0.0, 68.4, 100.0)),
+            Map.entry("cơm gạo lứt chín", new NutritionDetails(1.8, 0.4, 5.0, 43.0, 10.0, 0.4, 0.0, 73.0, 100.0)),
+            Map.entry("khoai lang luộc", new NutritionDetails(3.0, 4.2, 55.0, 337.0, 30.0, 0.6, 2.4, 77.0, 100.0)),
+            Map.entry("khoai tây luộc", new NutritionDetails(1.8, 0.9, 4.0, 379.0, 5.0, 0.3, 7.4, 77.0, 100.0)),
+            Map.entry("yến mạch cán dẹt", new NutritionDetails(10.6, 0.9, 2.0, 429.0, 54.0, 4.7, 0.0, 8.2, 100.0)),
+            Map.entry("ức gà không da chín", new NutritionDetails(0.0, 0.0, 74.0, 256.0, 15.0, 1.0, 0.0, 65.0, 100.0)),
+            Map.entry("cá hồi chín", new NutritionDetails(0.0, 0.0, 59.0, 363.0, 9.0, 0.3, 0.0, 59.0, 100.0)),
+            Map.entry("cá ngừ chín", new NutritionDetails(0.0, 0.0, 47.0, 522.0, 37.0, 1.0, 0.0, 68.0, 100.0)),
+            Map.entry("tôm luộc", new NutritionDetails(0.0, 0.0, 111.0, 259.0, 70.0, 0.5, 0.0, 75.0, 100.0)),
+            Map.entry("trứng gà", new NutritionDetails(0.0, 0.2, 62.0, 63.0, 28.0, 0.9, 0.0, 38.0, 50.0)),
+            Map.entry("đậu hũ trắng", new NutritionDetails(0.3, 0.6, 7.0, 121.0, 350.0, 5.4, 0.0, 85.0, 100.0)),
+            Map.entry("đậu phộng rang", new NutritionDetails(8.5, 4.7, 18.0, 705.0, 92.0, 4.6, 0.0, 6.5, 100.0)),
+            Map.entry("bông cải xanh luộc", new NutritionDetails(3.3, 1.4, 41.0, 293.0, 40.0, 0.7, 64.9, 89.3, 100.0)),
+            Map.entry("cà rốt luộc", new NutritionDetails(3.0, 3.5, 58.0, 235.0, 30.0, 0.3, 3.6, 90.0, 100.0)),
+            Map.entry("dưa leo", new NutritionDetails(0.5, 1.7, 2.0, 147.0, 16.0, 0.3, 2.8, 95.2, 100.0)),
+            Map.entry("cà chua", new NutritionDetails(1.2, 2.6, 5.0, 237.0, 10.0, 0.3, 13.7, 94.5, 100.0)),
+            Map.entry("chuối", new NutritionDetails(2.6, 12.2, 1.0, 358.0, 5.0, 0.3, 8.7, 74.9, 100.0)),
+            Map.entry("táo", new NutritionDetails(2.4, 10.4, 1.0, 107.0, 6.0, 0.1, 4.6, 85.6, 100.0)),
+            Map.entry("cam", new NutritionDetails(2.4, 9.4, 0.0, 181.0, 40.0, 0.1, 53.2, 86.8, 100.0)),
+            Map.entry("bơ", new NutritionDetails(6.7, 0.7, 7.0, 485.0, 12.0, 0.6, 10.0, 73.2, 100.0)),
+            Map.entry("sữa tươi không đường", new NutritionDetails(0.0, 4.8, 43.0, 150.0, 113.0, 0.03, 0.0, 88.0, 100.0)),
+            Map.entry("sữa chua không đường", new NutritionDetails(0.0, 4.7, 46.0, 155.0, 121.0, 0.1, 0.5, 87.9, 100.0)),
+            Map.entry("sữa chua Hy Lạp", new NutritionDetails(0.0, 3.2, 36.0, 141.0, 110.0, 0.1, 0.0, 85.0, 100.0))
+    );
 
     private static final List<SeedFood> FOODS = List.of(
             new SeedFood("Cơm trắng chín", "100g", 130.0, 2.7, 28.0, 0.3),

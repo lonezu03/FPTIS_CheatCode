@@ -13,6 +13,7 @@ import {
   type SchedulePayload,
 } from '@/api/schedule.api';
 import { getApiErrorMessage } from '@/lib/format';
+import { completeTodo } from '@/api/todo.api';
 import PageHeader from '@/components/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,16 @@ export default function SchedulePage() {
     onSuccess: () => { refresh(); toast.success('Đã xóa sự kiện'); },
     onError: error => toast.error(getApiErrorMessage(error, 'Không thể xóa sự kiện')),
   });
+  const completeMutation = useMutation({
+    mutationFn: completeTodo,
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['calendar'] });
+      void client.invalidateQueries({ queryKey: ['todos'] });
+      void client.invalidateQueries({ queryKey: ['dashboard-today'] });
+      toast.success('Đã hoàn thành công việc');
+    },
+    onError: error => toast.error(getApiErrorMessage(error, 'Không thể hoàn thành công việc')),
+  });
   const entries = calendarQuery.data ?? [];
 
   const editEvent = (sourceId: string) => {
@@ -104,62 +115,66 @@ export default function SchedulePage() {
         <div className="flex flex-wrap gap-2">{([['DAY', 'Ngày'], ['WEEK', 'Tuần'], ['MONTH', 'Tháng'], ['LIST', 'Danh sách']] as const).map(([value, label]) => <button key={value} onClick={() => setView(value)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${view === value ? 'border-emerald-700 bg-emerald-700 text-white' : 'bg-background text-muted-foreground'}`}>{label}</button>)}</div>
       </CardHeader>
       <CardContent>
-        {calendarQuery.isLoading ? <p className="py-16 text-center text-sm text-muted-foreground">Đang tải lịch...</p> : calendarQuery.isError ? <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">Không thể tải lịch hợp nhất. Hãy thử lại.</p> : <CalendarBody view={view} focusDate={focusDate} entries={entries} onEdit={editEvent} onDelete={id => removeMutation.mutate(id)} />}
+        {calendarQuery.isLoading ? <p className="py-16 text-center text-sm text-muted-foreground">Đang tải lịch...</p> : calendarQuery.isError ? <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">Không thể tải lịch hợp nhất. Hãy thử lại.</p> : <CalendarBody view={view} focusDate={focusDate} entries={entries} onEdit={editEvent} onDelete={id => removeMutation.mutate(id)} onComplete={id => completeMutation.mutate(id)} completingId={completeMutation.isPending ? completeMutation.variables : undefined} />}
       </CardContent>
     </Card>
     <EventEditor draft={draft} editing={Boolean(editingId)} pending={saveMutation.isPending} onChange={setDraft} onSave={save} onCancel={() => { setEditingId(null); setDraft(emptyDraft()); }} />
   </div>;
 }
 
-function CalendarBody({ view, focusDate, entries, onEdit, onDelete }: { view: CalendarView; focusDate: Date; entries: CalendarEntry[]; onEdit: (id: string) => void; onDelete: (id: string) => void }) {
-  if (view === 'MONTH') return <MonthView focusDate={focusDate} entries={entries} />;
-  if (view === 'WEEK') return <WeekView focusDate={focusDate} entries={entries} onEdit={onEdit} onDelete={onDelete} />;
+function CalendarBody({ view, focusDate, entries, onEdit, onDelete, onComplete, completingId }: { view: CalendarView; focusDate: Date; entries: CalendarEntry[]; onEdit: (id: string) => void; onDelete: (id: string) => void; onComplete: (id: string) => void; completingId?: string }) {
+  if (view === 'MONTH') return <MonthView focusDate={focusDate} entries={entries} onComplete={onComplete} completingId={completingId} />;
+  if (view === 'WEEK') return <WeekView focusDate={focusDate} entries={entries} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} completingId={completingId} />;
   const filtered = view === 'DAY' ? entries.filter(item => dateKey(new Date(item.startAt)) === dateKey(focusDate)) : entries;
-  return <EntryList entries={filtered} onEdit={onEdit} onDelete={onDelete} empty={view === 'DAY' ? 'Ngày này chưa có công việc hoặc sự kiện.' : 'Chưa có lịch trong khoảng đang xem.'} />;
+  return <EntryList entries={filtered} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} completingId={completingId} empty={view === 'DAY' ? 'Ngày này chưa có công việc hoặc sự kiện.' : 'Chưa có lịch trong khoảng đang xem.'} />;
 }
 
-function WeekView({ focusDate, entries, onEdit, onDelete }: { focusDate: Date; entries: CalendarEntry[]; onEdit: (id: string) => void; onDelete: (id: string) => void }) {
+function WeekView({ focusDate, entries, onEdit, onDelete, onComplete, completingId }: { focusDate: Date; entries: CalendarEntry[]; onEdit: (id: string) => void; onDelete: (id: string) => void; onComplete: (id: string) => void; completingId?: string }) {
   const monday = startOfWeek(focusDate);
   return <div className="grid gap-3 lg:grid-cols-7">{Array.from({ length: 7 }, (_, index) => addDays(monday, index)).map(day => {
     const dayEntries = entries.filter(item => dateKey(new Date(item.startAt)) === dateKey(day));
     const today = dateKey(day) === dateKey(new Date());
-    return <div key={dateKey(day)} className={`min-h-44 rounded-2xl border p-3 ${today ? 'border-emerald-300 bg-emerald-50/50' : 'bg-background'}`}><div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold uppercase text-muted-foreground">{new Intl.DateTimeFormat('vi-VN', { weekday: 'short' }).format(day)}</span><span className={`grid size-7 place-items-center rounded-full text-sm font-bold ${today ? 'bg-emerald-700 text-white' : ''}`}>{day.getDate()}</span></div><div className="space-y-2">{dayEntries.length === 0 ? <p className="text-xs text-muted-foreground/60">Trống</p> : dayEntries.map(entry => <CompactEntry key={entry.occurrenceId} entry={entry} onEdit={onEdit} onDelete={onDelete} />)}</div></div>;
+    return <div key={dateKey(day)} className={`min-h-44 rounded-2xl border p-3 ${today ? 'border-emerald-300 bg-emerald-50/50' : 'bg-background'}`}><div className="mb-3 flex items-center justify-between"><span className="text-xs font-semibold uppercase text-muted-foreground">{new Intl.DateTimeFormat('vi-VN', { weekday: 'short' }).format(day)}</span><span className={`grid size-7 place-items-center rounded-full text-sm font-bold ${today ? 'bg-emerald-700 text-white' : ''}`}>{day.getDate()}</span></div><div className="space-y-2">{dayEntries.length === 0 ? <p className="text-xs text-muted-foreground/60">Trống</p> : dayEntries.map(entry => <CompactEntry key={entry.occurrenceId} entry={entry} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} completing={completingId === entry.sourceId} />)}</div></div>;
   })}</div>;
 }
 
-function MonthView({ focusDate, entries }: { focusDate: Date; entries: CalendarEntry[] }) {
+function MonthView({ focusDate, entries, onComplete, completingId }: { focusDate: Date; entries: CalendarEntry[]; onComplete: (id: string) => void; completingId?: string }) {
   const first = new Date(focusDate.getFullYear(), focusDate.getMonth(), 1);
   const mondayIndex = (first.getDay() + 6) % 7;
   const gridStart = addDays(first, -mondayIndex);
   return <div><div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-muted-foreground">{['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(day => <span key={day}>{day}</span>)}</div><div className="grid grid-cols-7 gap-1">{Array.from({ length: 42 }, (_, index) => addDays(gridStart, index)).map(day => {
     const dayEntries = entries.filter(item => dateKey(new Date(item.startAt)) === dateKey(day));
     const outside = day.getMonth() !== focusDate.getMonth();
-    return <div key={dateKey(day)} className={`min-h-24 rounded-xl border p-2 ${outside ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}`}><span className="text-xs font-semibold">{day.getDate()}</span><div className="mt-1 space-y-1">{dayEntries.slice(0, 3).map(entry => <div key={entry.occurrenceId} className={`truncate rounded px-1.5 py-1 text-[10px] font-medium ${entry.sourceType === 'TODO' ? 'bg-violet-100 text-violet-800' : 'bg-emerald-100 text-emerald-800'} ${isCompletedTodo(entry) ? 'line-through opacity-60' : ''}`} title={entry.title}>{timeLabel(entry.startAt)} {entry.title}</div>)}{dayEntries.length > 3 && <p className="text-[10px] text-muted-foreground">+{dayEntries.length - 3} mục</p>}</div></div>;
+    return <div key={dateKey(day)} className={`min-h-24 rounded-xl border p-2 ${outside ? 'bg-muted/30 text-muted-foreground' : 'bg-background'}`}><span className="text-xs font-semibold">{day.getDate()}</span><div className="mt-1 space-y-1">{dayEntries.slice(0, 3).map(entry => <div key={entry.occurrenceId} className={`flex items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium ${entry.sourceType === 'TODO' ? 'bg-violet-100 text-violet-800' : 'bg-emerald-100 text-emerald-800'} ${isCompletedTodo(entry) ? 'opacity-60' : ''}`} title={entry.title}><span className={`min-w-0 flex-1 truncate ${isCompletedTodo(entry) ? 'line-through' : ''}`}>{timeLabel(entry.startAt)} {entry.title}</span>{canCompleteTodo(entry) && <button type="button" disabled={completingId === entry.sourceId} onClick={() => onComplete(entry.sourceId)} className="grid size-5 shrink-0 place-items-center rounded-full hover:bg-violet-200" aria-label={`Hoàn thành ${entry.title}`}><CheckCircle2 className="size-3.5" /></button>}</div>)}{dayEntries.length > 3 && <p className="text-[10px] text-muted-foreground">+{dayEntries.length - 3} mục</p>}</div></div>;
   })}</div></div>;
 }
 
-function EntryList({ entries, onEdit, onDelete, empty }: { entries: CalendarEntry[]; onEdit: (id: string) => void; onDelete: (id: string) => void; empty: string }) {
+function EntryList({ entries, onEdit, onDelete, onComplete, completingId, empty }: { entries: CalendarEntry[]; onEdit: (id: string) => void; onDelete: (id: string) => void; onComplete: (id: string) => void; completingId?: string; empty: string }) {
   if (entries.length === 0) return <div className="rounded-2xl border border-dashed p-10 text-center"><CalendarDays className="mx-auto size-8 text-muted-foreground/40" /><p className="mt-3 font-medium">{empty}</p></div>;
   const groups = entries.reduce<Record<string, CalendarEntry[]>>((result, item) => {
     const key = dateKey(new Date(item.startAt));
     (result[key] ??= []).push(item);
     return result;
   }, {});
-  return <div className="space-y-5">{Object.entries(groups).map(([day, items]) => <section key={day}><h3 className="mb-2 text-sm font-semibold">{fullDate(new Date(`${day}T00:00:00`))}</h3><div className="space-y-2">{items.map(entry => <EntryCard key={entry.occurrenceId} entry={entry} onEdit={onEdit} onDelete={onDelete} />)}</div></section>)}</div>;
+  return <div className="space-y-5">{Object.entries(groups).map(([day, items]) => <section key={day}><h3 className="mb-2 text-sm font-semibold">{fullDate(new Date(`${day}T00:00:00`))}</h3><div className="space-y-2">{items.map(entry => <EntryCard key={entry.occurrenceId} entry={entry} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} completing={completingId === entry.sourceId} />)}</div></section>)}</div>;
 }
 
-function CompactEntry({ entry, onEdit, onDelete }: { entry: CalendarEntry; onEdit: (id: string) => void; onDelete: (id: string) => void }) {
+function CompactEntry({ entry, onEdit, onDelete, onComplete, completing }: { entry: CalendarEntry; onEdit: (id: string) => void; onDelete: (id: string) => void; onComplete: (id: string) => void; completing: boolean }) {
   const completed = isCompletedTodo(entry);
-  return <button onClick={() => entry.sourceType === 'EVENT' && onEdit(entry.sourceId)} className={`group w-full rounded-lg p-2 text-left text-xs ${entry.sourceType === 'TODO' ? 'bg-violet-100 text-violet-900' : 'bg-emerald-100 text-emerald-900'} ${completed ? 'opacity-60' : ''}`}><span className="font-semibold">{timeLabel(entry.startAt)}</span><span className={`mt-0.5 block line-clamp-2 ${completed ? 'line-through' : ''}`}>{entry.title}</span>{entry.sourceType === 'EVENT' && <span onClick={event => { event.stopPropagation(); onDelete(entry.sourceId); }} className="mt-1 hidden text-red-600 group-hover:block">Xóa</span>}</button>;
+  return <div className={`group w-full rounded-lg p-2 text-left text-xs ${entry.sourceType === 'TODO' ? 'bg-violet-100 text-violet-900' : 'bg-emerald-100 text-emerald-900'} ${completed ? 'opacity-60' : ''}`}><button type="button" onClick={() => entry.sourceType === 'EVENT' && onEdit(entry.sourceId)} className="w-full text-left"><span className="font-semibold">{timeLabel(entry.startAt)}</span><span className={`mt-0.5 block line-clamp-2 ${completed ? 'line-through' : ''}`}>{entry.title}</span></button>{canCompleteTodo(entry) && <button type="button" disabled={completing} onClick={() => onComplete(entry.sourceId)} className="mt-2 flex w-full items-center justify-center gap-1 rounded-md bg-white/70 px-2 py-1 font-semibold hover:bg-white disabled:opacity-50"><CheckCircle2 className="size-3.5" />{completing ? 'Đang lưu...' : 'Đánh dấu xong'}</button>}{entry.sourceType === 'EVENT' && <button type="button" onClick={() => onDelete(entry.sourceId)} className="mt-1 hidden text-red-600 group-hover:block">Xóa</button>}</div>;
 }
 
-function EntryCard({ entry, onEdit, onDelete }: { entry: CalendarEntry; onEdit: (id: string) => void; onDelete: (id: string) => void }) {
+function EntryCard({ entry, onEdit, onDelete, onComplete, completing }: { entry: CalendarEntry; onEdit: (id: string) => void; onDelete: (id: string) => void; onComplete: (id: string) => void; completing: boolean }) {
   const completed = isCompletedTodo(entry);
-  return <div className={`flex items-start gap-3 rounded-2xl border p-4 ${completed ? 'bg-muted/30 opacity-70' : ''}`}><div className={`grid size-11 shrink-0 place-items-center rounded-xl ${entry.sourceType === 'TODO' ? 'bg-violet-100 text-violet-800' : 'bg-emerald-100 text-emerald-800'}`}>{completed ? <CheckCircle2 className="size-5" /> : entry.sourceType === 'TODO' ? <ListTodo className="size-5" /> : <CalendarDays className="size-5" />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className={`font-semibold ${completed ? 'line-through' : ''}`}>{entry.title}</p><Badge variant="outline">{entry.sourceType === 'TODO' ? 'Việc cần làm' : 'Sự kiện'}</Badge>{completed && <Badge className="bg-emerald-100 text-emerald-800">Đã hoàn thành</Badge>}{entry.recurring && <Badge className="bg-violet-100 text-violet-800"><Repeat2 className="mr-1 size-3" />Lặp lại</Badge>}</div><p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground"><Clock3 className="size-3.5" />{timeLabel(entry.startAt)}{entry.endAt ? ` – ${timeLabel(entry.endAt)}` : ''}</p>{entry.description && <p className="mt-1 text-sm text-muted-foreground">{entry.description}</p>}</div>{entry.sourceType === 'EVENT' && <div className="flex"><button onClick={() => onEdit(entry.sourceId)} className="rounded-lg p-2 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700" aria-label="Sửa sự kiện"><Pencil className="size-4" /></button><button onClick={() => onDelete(entry.sourceId)} className="rounded-lg p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600" aria-label="Xóa sự kiện"><Trash2 className="size-4" /></button></div>}</div>;
+  return <div className={`flex items-start gap-3 rounded-2xl border p-4 ${completed ? 'bg-muted/30 opacity-70' : ''}`}><div className={`grid size-11 shrink-0 place-items-center rounded-xl ${entry.sourceType === 'TODO' ? 'bg-violet-100 text-violet-800' : 'bg-emerald-100 text-emerald-800'}`}>{completed ? <CheckCircle2 className="size-5" /> : entry.sourceType === 'TODO' ? <ListTodo className="size-5" /> : <CalendarDays className="size-5" />}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className={`font-semibold ${completed ? 'line-through' : ''}`}>{entry.title}</p><Badge variant="outline">{entry.sourceType === 'TODO' ? 'Việc cần làm' : 'Sự kiện'}</Badge>{completed && <Badge className="bg-emerald-100 text-emerald-800">Đã hoàn thành</Badge>}{entry.recurring && <Badge className="bg-violet-100 text-violet-800"><Repeat2 className="mr-1 size-3" />Lặp lại</Badge>}</div><p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground"><Clock3 className="size-3.5" />{timeLabel(entry.startAt)}{entry.endAt ? ` – ${timeLabel(entry.endAt)}` : ''}</p>{entry.description && <p className="mt-1 text-sm text-muted-foreground">{entry.description}</p>}</div>{canCompleteTodo(entry) && <Button type="button" size="sm" variant="outline" disabled={completing} onClick={() => onComplete(entry.sourceId)}><CheckCircle2 className="mr-1 size-4" />{completing ? 'Đang lưu...' : 'Hoàn thành'}</Button>}{entry.sourceType === 'EVENT' && <div className="flex"><button onClick={() => onEdit(entry.sourceId)} className="rounded-lg p-2 text-muted-foreground hover:bg-emerald-50 hover:text-emerald-700" aria-label="Sửa sự kiện"><Pencil className="size-4" /></button><button onClick={() => onDelete(entry.sourceId)} className="rounded-lg p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600" aria-label="Xóa sự kiện"><Trash2 className="size-4" /></button></div>}</div>;
 }
 
 function isCompletedTodo(entry: CalendarEntry) {
   return entry.sourceType === 'TODO' && entry.status === 'DONE';
+}
+
+function canCompleteTodo(entry: CalendarEntry) {
+  return entry.sourceType === 'TODO' && (entry.status === 'OPEN' || entry.status === 'IN_PROGRESS');
 }
 
 function EventEditor({ draft, editing, pending, onChange, onSave, onCancel }: { draft: EventDraft; editing: boolean; pending: boolean; onChange: (draft: EventDraft) => void; onSave: () => void; onCancel: () => void }) {

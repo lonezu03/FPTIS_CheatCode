@@ -10,7 +10,9 @@ import {
   deleteWorkoutPlan,
   generateSessionFromPlan,
   getWorkoutPlansPage,
+  updateWorkoutPlan,
   type WorkoutPlan,
+  type WorkoutPlanPayload,
 } from "../api/workout-plan.api";
 
 import PageHeader from "../components/PageHeader";
@@ -47,8 +49,9 @@ export default function WorkoutPlansPage() {
 
   const today = toLocalDateInput();
 
-  const [name, setName] = useState("Giáo án tăng cơ tại nhà");
-  const [description, setDescription] = useState("Giáo án 3 ngày với tạ đơn, vòng treo và xà đơn");
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [name, setName] = useState("Giáo án tăng cơ tại phòng gym");
+  const [description, setDescription] = useState("Giáo án với máy tập, Smith machine, tạ đòn và tạ đơn");
 
   const [draftDays, setDraftDays] = useState<PlanDayDraft[]>([
     {
@@ -89,15 +92,17 @@ export default function WorkoutPlansPage() {
   };
   const defaultExerciseId = exercises[0]?.id ?? "";
 
-  const createMutation = useMutation({
-    mutationFn: createWorkoutPlan,
+  const saveMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string | null; payload: WorkoutPlanPayload }) =>
+      id ? updateWorkoutPlan(id, payload) : createWorkoutPlan(payload),
     onSuccess: () => {
-      toast.success("Đã tạo giáo án");
+      toast.success(editingPlanId ? "Đã cập nhật giáo án" : "Đã tạo giáo án");
       queryClient.invalidateQueries({ queryKey: ["workout-plans"] });
+      resetEditor();
     },
     onError: (error) => {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Không thể tạo giáo án");
+      toast.error(message || "Không thể lưu giáo án");
     },
   });
 
@@ -239,8 +244,7 @@ export default function WorkoutPlansPage() {
     );
   };
 
-  const handleCreate = () => {
-    createMutation.mutate({
+  const planPayload = (): WorkoutPlanPayload => ({
       name,
       description,
       days: draftDays.map((day) => ({
@@ -255,7 +259,36 @@ export default function WorkoutPlansPage() {
           targetRir: exercise.targetRir,
         })),
       })),
-    });
+  });
+
+  const handleSave = () => {
+    saveMutation.mutate({ id: editingPlanId, payload: planPayload() });
+  };
+
+  const resetEditor = () => {
+    setEditingPlanId(null);
+    setName("Giáo án tăng cơ tại phòng gym");
+    setDescription("Giáo án với máy tập, Smith machine, tạ đòn và tạ đơn");
+    setDraftDays([{ name: "Ngày tập đẩy", dayOrder: 1, exercises: [{ exerciseId: defaultExerciseId, exerciseOrder: 1, targetSets: 3, targetReps: 10, targetWeight: 0, targetRir: 2 }] }]);
+  };
+
+  const startEditing = (plan: WorkoutPlan) => {
+    setEditingPlanId(plan.id);
+    setName(plan.name);
+    setDescription(plan.description ?? "");
+    setDraftDays(plan.days.map(day => ({
+      name: day.name,
+      dayOrder: day.dayOrder,
+      exercises: day.exercises.map(exercise => ({
+        exerciseId: exercise.exerciseId,
+        exerciseOrder: exercise.exerciseOrder,
+        targetSets: exercise.targetSets,
+        targetReps: exercise.targetReps,
+        targetWeight: exercise.targetWeight ?? 0,
+        targetRir: exercise.targetRir ?? 2,
+      })),
+    })));
+    window.setTimeout(() => document.getElementById("workout-plan-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
   };
 
   if (exercisesQuery.isLoading || plansQuery.isLoading) {
@@ -273,18 +306,18 @@ export default function WorkoutPlansPage() {
         description="Tạo giáo án dùng lại và khởi tạo nhanh các buổi tập."
       />
 
-      <Card>
+      <Card id="workout-plan-editor">
         <CardHeader>
-            <CardTitle>Tạo giáo án</CardTitle>
+            <CardTitle>{editingPlanId ? "Chỉnh sửa giáo án" : "Tạo giáo án"}</CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <FormField label="Tên giáo án" htmlFor="plan-name" hint="Tên ngắn gọn để bạn dễ tìm và sử dụng lại." required>
-              <Input id="plan-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ví dụ: Tăng cơ tại nhà" />
+              <Input id="plan-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ví dụ: Push/Pull/Legs tại phòng gym" />
             </FormField>
             <FormField label="Mô tả mục tiêu" htmlFor="plan-description" hint="Ghi mục tiêu, số ngày và dụng cụ cần thiết.">
-              <Input id="plan-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Ví dụ: 3 ngày/tuần với tạ đơn" />
+              <Input id="plan-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Ví dụ: 4 ngày/tuần với máy, Smith và tạ tự do" />
             </FormField>
           </div>
 
@@ -434,9 +467,10 @@ export default function WorkoutPlansPage() {
               Thêm ngày
             </Button>
 
-            <Button onClick={handleCreate} disabled={createMutation.isPending || exercises.length === 0}>
-              {createMutation.isPending ? "Đang tạo..." : "Tạo giáo án"}
+            <Button onClick={handleSave} disabled={saveMutation.isPending || exercises.length === 0}>
+              {saveMutation.isPending ? "Đang lưu..." : editingPlanId ? "Lưu thay đổi" : "Tạo giáo án"}
             </Button>
+            {editingPlanId && <Button variant="ghost" onClick={resetEditor} disabled={saveMutation.isPending}>Hủy chỉnh sửa</Button>}
           </div>
         </CardContent>
       </Card>
@@ -452,6 +486,7 @@ export default function WorkoutPlansPage() {
                 plan={plan}
                 isDeleting={deleteMutation.isPending}
                 isGenerating={generateMutation.isPending}
+                onEdit={() => startEditing(plan)}
                 onDelete={() => {
                   if (!window.confirm("Bạn có chắc muốn xóa giáo án này?")) {
                     return;
@@ -487,12 +522,14 @@ function PlanCard({
   plan,
   isDeleting,
   isGenerating,
+  onEdit,
   onDelete,
   onGenerate,
 }: {
   plan: WorkoutPlan;
   isDeleting: boolean;
   isGenerating: boolean;
+  onEdit: () => void;
   onDelete: () => void;
   onGenerate: (dayId: string, dayName: string) => void;
 }) {
@@ -505,9 +542,10 @@ function PlanCard({
             <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
           </div>
 
-          <Button variant="destructive" size="sm" onClick={onDelete} disabled={isDeleting}>
-            Xóa
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onEdit}>Chỉnh sửa</Button>
+            <Button variant="destructive" size="sm" onClick={onDelete} disabled={isDeleting}>Xóa</Button>
+          </div>
         </div>
       </CardHeader>
 

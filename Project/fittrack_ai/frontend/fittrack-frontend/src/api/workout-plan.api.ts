@@ -48,7 +48,7 @@ export const getWorkoutPlansPage = async (
   return response.data;
 };
 
-export const createWorkoutPlan = async (payload: {
+export type WorkoutPlanPayload = {
   name: string;
   description: string;
   days: {
@@ -63,9 +63,16 @@ export const createWorkoutPlan = async (payload: {
       targetRir: number;
     }[];
   }[];
-}): Promise<WorkoutPlan> => {
+};
+
+export const createWorkoutPlan = async (payload: WorkoutPlanPayload): Promise<WorkoutPlan> => {
   const response = await api.post("/workout-plans", payload);
 
+  return response.data;
+};
+
+export const updateWorkoutPlan = async (id: string, payload: WorkoutPlanPayload): Promise<WorkoutPlan> => {
+  const response = await api.put(`/workout-plans/${id}`, payload);
   return response.data;
 };
 
