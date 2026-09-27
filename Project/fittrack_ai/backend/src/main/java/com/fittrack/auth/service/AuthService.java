@@ -51,6 +51,7 @@ public class AuthService {
                 .chatbotEnabled(false)
                 .quoteEnabled(false)
                 .financeEnabled(false)
+                .journalEnabled(false)
                 .emailVerified(true)
                 .build();
 
@@ -157,6 +158,7 @@ public class AuthService {
                 .scheduleEnabled(Boolean.TRUE.equals(user.getScheduleEnabled()))
                 .quoteEnabled(Boolean.TRUE.equals(user.getQuoteEnabled()))
                 .financeEnabled(Boolean.TRUE.equals(user.getFinanceEnabled()))
+                .journalEnabled(Boolean.TRUE.equals(user.getJournalEnabled()))
                 .passwordChangeRequired(Boolean.TRUE.equals(user.getPasswordChangeRequired()))
                 .build();
     }

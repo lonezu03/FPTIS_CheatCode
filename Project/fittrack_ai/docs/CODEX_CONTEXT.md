@@ -1,6 +1,6 @@
 # FitTrack Current Project State
 
-Last updated: 2026-09-17
+Last updated: 2026-09-27
 
 ## Repository and deployment
 
@@ -17,7 +17,47 @@ Last updated: 2026-09-17
   currently committed through V25; production `flyway_schema_history` has not
   been checked during this session.
 
-## Current task: Schedule completion, workout-plan editing and catalog enrichment
+## Current task: Personal Journal V1
+
+Status: implemented and verified locally; awaiting commit and backend-first deployment.
+Web/backend only; no mobile or Lunch business/UI file changed.
+
+### Completed in the current local change
+
+- Added independent `journalEnabled` authorization to User, registration/auth,
+  profile/dashboard responses, account administration, backend feature filter,
+  web routes/sidebar and the permission-aware usage guide. New regular accounts
+  still default to Lunch only; admins bypass the flag.
+- Added Flyway V26 with 40 curated Vietnamese prompts and owner-scoped prompt
+  display, journal entry and reminder setting tables.
+- Added `/api/journal` for a stable daily prompt, skip/no-repeat cycles,
+  prompt/free-form entry CRUD, private search/filter/pagination, prompt browsing
+  and reminder settings. Deleting another user's entry is impossible.
+- Added `/api/admin/journal/prompts` management. There is intentionally no admin
+  endpoint for reading user entries.
+- Added the responsive web Journal page with Today, History and Prompt Library,
+  optional title/mood, free-form writing, editing/deleting and reminder time.
+- Added backend integration coverage for stable/no-immediate-repeat prompt
+  assignment, owner isolation, CRUD and reminder settings.
+
+### Verification for Journal V1
+
+- Full backend suite passed locally after the implementation.
+- Focused `JournalServiceIntegrationTest,AdminUserServiceTest` passed.
+- Web ESLint passed; Vitest passed 5 files / 10 tests; production build passed
+  with 2619 modules transformed.
+- Production PostgreSQL execution of V26 remains a Render deployment task.
+
+### Deployment and smoke test
+
+1. Deploy Render backend first and confirm Flyway V26 succeeds.
+2. As admin, grant `journalEnabled` to a test user and create/edit/hide one prompt.
+3. As that user, answer today's prompt, skip another prompt, write a free-form
+   entry, search/edit/delete it, then save a reminder time.
+4. Confirm another user and admin cannot query that user's entry by ID.
+5. Deploy Vercel web only after backend checks pass.
+
+## Previous task: Schedule completion, workout-plan editing and catalog enrichment
 
 Status: implemented and verified locally; awaiting review, commit and deployment.
 The user explicitly requested web/backend only, and no mobile file changed.

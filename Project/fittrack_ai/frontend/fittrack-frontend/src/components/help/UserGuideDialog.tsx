@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Apple,
   BellRing,
+  BookHeart,
   Bot,
   CalendarDays,
   CheckCircle2,
@@ -311,6 +312,31 @@ const guideModules: GuideModule[] = [
     ],
   },
   {
+    id: "journal",
+    title: "Nhật ký cá nhân",
+    summary: "Viết theo câu hỏi mỗi ngày hoặc ghi lại suy nghĩ theo cách riêng của bạn.",
+    icon: BookHeart,
+    feature: "journalEnabled",
+    steps: [
+      {
+        title: "Trả lời câu hỏi hôm nay",
+        description: "Mỗi ngày hệ thống giữ ổn định một câu hỏi. Bạn có thể chọn cảm xúc, viết câu trả lời hoặc đổi sang câu khác; câu đã bỏ qua không lặp lại trong cùng chu kỳ.",
+        action: "Mở Nhật ký, chọn Hôm nay, viết câu trả lời rồi nhấn Lưu nhật ký.",
+        visual: "navigation",
+        focusLabel: "Nhật ký hôm nay",
+        route: "/journal",
+      },
+      {
+        title: "Viết tự do và tìm lại",
+        description: "Bài viết không bắt buộc tiêu đề hay cảm xúc. Lịch sử chỉ thuộc tài khoản của bạn và hỗ trợ tìm kiếm, chỉnh sửa hoặc xóa.",
+        action: "Nhấn Viết tự do hoặc mở tab Lịch sử để quản lý các trang đã lưu.",
+        visual: "navigation",
+        focusLabel: "Viết tự do & Lịch sử",
+        route: "/journal",
+      },
+    ],
+  },
+  {
     id: "finance",
     title: "Tài chính cá nhân",
     summary: "Ghi thu chi, lập ngân sách và chuẩn bị khoản định kỳ.",
@@ -459,6 +485,7 @@ const permissionLabels: Array<{ feature: FeaturePermission; label: string }> = [
   { feature: "scheduleEnabled", label: "Thời khóa biểu" },
   { feature: "quoteEnabled", label: "Câu nói" },
   { feature: "financeEnabled", label: "Tài chính" },
+  { feature: "journalEnabled", label: "Nhật ký" },
   { feature: "chatbotEnabled", label: "Chatbot" },
 ];
 

@@ -28,6 +28,8 @@ const TodoPage = lazy(() => import("../pages/TodoPage"));
 const SchedulePage = lazy(() => import("../pages/SchedulePage"));
 const QuotesPage = lazy(() => import("../pages/QuotesPage"));
 const FinancePage = lazy(() => import("../pages/FinancePage"));
+const JournalPage = lazy(() => import("../pages/JournalPage"));
+const AdminJournalPromptsPage = lazy(() => import("../pages/AdminJournalPromptsPage"));
 const ChangePasswordPage = lazy(() => import("../pages/ChangePasswordPage"));
 
 export default function AppRoutes() {
@@ -68,6 +70,9 @@ export default function AppRoutes() {
               <Route element={<FeatureRoute feature="financeEnabled" />}>
                 <Route path="/finance" element={<FinancePage />} />
               </Route>
+              <Route element={<FeatureRoute feature="journalEnabled" />}>
+                <Route path="/journal" element={<JournalPage />} />
+              </Route>
               <Route element={<FeatureRoute feature="todoEnabled" />}><Route path="/todos" element={<TodoPage />} /></Route>
               <Route element={<FeatureRoute feature="scheduleEnabled" />}><Route path="/schedule" element={<SchedulePage />} /></Route>
 
@@ -76,6 +81,7 @@ export default function AppRoutes() {
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
                 <Route path="/admin/notification-playbooks" element={<AdminNotificationPlaybooksPage />} />
+                <Route path="/admin/journal-prompts" element={<AdminJournalPromptsPage />} />
               </Route>
             </Route>
           </Route>

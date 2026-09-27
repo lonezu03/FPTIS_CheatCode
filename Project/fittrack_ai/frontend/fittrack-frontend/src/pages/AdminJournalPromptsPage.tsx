@@ -1,0 +1,25 @@
+import { useState, type FormEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Plus } from "lucide-react";
+import { toast } from "sonner";
+import { createAdminJournalPrompt, getAdminJournalPrompts, updateAdminJournalPrompt, type JournalCategory, type JournalDepth, type JournalPrompt } from "@/api/journal.api";
+import DataPagination from "@/components/common/DataPagination";
+import PageHeader from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+
+const categories: Array<[JournalCategory, string]> = [["OBSERVATION","Quan sát"],["SELF","Bản thân"],["MEMORY","Ký ức"],["IMAGINATION","Tưởng tượng"],["REFLECTION","Chiêm nghiệm"],["RELATIONSHIP","Mối quan hệ"],["FUTURE","Tương lai"],["QUIRKY","Khác lạ"]];
+const depths: Array<[JournalDepth, string]> = [["LIGHT","Nhẹ nhàng"],["MEDIUM","Suy ngẫm"],["DEEP","Sâu sắc"]];
+
+export default function AdminJournalPromptsPage() {
+  const qc = useQueryClient(); const [page,setPage]=useState(1); const [size,setSize]=useState(20); const [q,setQ]=useState(""); const [editing,setEditing]=useState<JournalPrompt|null>(null); const [open,setOpen]=useState(false);
+  const list=useQuery({queryKey:["admin-journal-prompts",q,page,size],queryFn:()=>getAdminJournalPrompts({q,page:page-1,size})});
+  const saved=()=>{setOpen(false);qc.invalidateQueries({queryKey:["admin-journal-prompts"]});toast.success("Đã lưu câu hỏi");};
+  return <div className="space-y-6"><div className="flex flex-wrap items-end justify-between gap-4"><PageHeader title="Câu hỏi nhật ký" description="Quản lý kho câu hỏi chung. Admin không thể xem nội dung nhật ký riêng của người dùng."/><Button onClick={()=>{setEditing(null);setOpen(true)}}><Plus className="size-4"/>Thêm câu hỏi</Button></div>
+  <Card><CardContent className="p-0"><div className="border-b p-4"><Input placeholder="Tìm câu hỏi..." value={q} onChange={e=>{setQ(e.target.value);setPage(1)}}/></div><div className="divide-y">{list.data?.content.map(p=><div key={p.id} className="flex items-start justify-between gap-4 p-4"><div><div className="mb-1 flex gap-2 text-xs text-slate-500"><span>{categories.find(x=>x[0]===p.category)?.[1]}</span><span>·</span><span>{depths.find(x=>x[0]===p.depth)?.[1]}</span><span className={p.active?"text-emerald-700":"text-red-600"}>· {p.active?"Đang dùng":"Đã ẩn"}</span></div><p className="font-medium">{p.content}</p></div><Button size="icon" variant="ghost" onClick={()=>{setEditing(p);setOpen(true)}}><Pencil className="size-4"/></Button></div>)}</div>{list.data&&<DataPagination page={page} pageSize={size} totalItems={list.data.totalElements} totalPages={list.data.totalPages} onPageChange={setPage} onPageSizeChange={v=>{setSize(v);setPage(1)}}/>}</CardContent></Card>
+  <PromptDialog open={open} prompt={editing} onClose={()=>setOpen(false)} onSaved={saved}/></div>;
+}
+
+function PromptDialog({open,prompt,onClose,onSaved}:{open:boolean;prompt:JournalPrompt|null;onClose:()=>void;onSaved:()=>void}) { const [content,setContent]=useState("");const [category,setCategory]=useState<JournalCategory>("REFLECTION");const [depth,setDepth]=useState<JournalDepth>("MEDIUM");const [active,setActive]=useState(true);const mutation=useMutation({mutationFn:()=>{const payload={content,category,depth,active};return prompt?updateAdminJournalPrompt(prompt.id,payload):createAdminJournalPrompt(payload)},onSuccess:onSaved,onError:()=>toast.error("Chưa thể lưu câu hỏi")});const change=(v:boolean)=>{if(v){setContent(prompt?.content??"");setCategory(prompt?.category??"REFLECTION");setDepth(prompt?.depth??"MEDIUM");setActive(prompt?.active??true)}else onClose()};const submit=(e:FormEvent)=>{e.preventDefault();mutation.mutate()};return <Dialog open={open} onOpenChange={change}><DialogContent><form onSubmit={submit}><DialogHeader><DialogTitle>{prompt?"Sửa câu hỏi":"Thêm câu hỏi"}</DialogTitle></DialogHeader><div className="space-y-4 py-5"><textarea className="min-h-32 w-full rounded-xl border p-3" required maxLength={1000} value={content} onChange={e=>setContent(e.target.value)} placeholder="Nội dung câu hỏi..."/><div className="grid gap-3 sm:grid-cols-2"><select className="h-10 rounded-xl border bg-white px-3" value={category} onChange={e=>setCategory(e.target.value as JournalCategory)}>{categories.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><select className="h-10 rounded-xl border bg-white px-3" value={depth} onChange={e=>setDepth(e.target.value as JournalDepth)}>{depths.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></div><label className="flex gap-2 text-sm"><input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)}/>Cho phép sử dụng</label></div><DialogFooter><Button type="button" variant="outline" onClick={onClose}>Hủy</Button><Button disabled={mutation.isPending||!content.trim()}>Lưu</Button></DialogFooter></form></DialogContent></Dialog>}

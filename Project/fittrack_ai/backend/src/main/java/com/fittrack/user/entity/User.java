@@ -75,6 +75,9 @@ public class User {
     private Boolean financeEnabled;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
+    private Boolean journalEnabled;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean passwordChangeRequired;
 
     @Column(nullable = false, columnDefinition = "bigint default 0")
@@ -137,6 +140,9 @@ public class User {
         }
         if (this.financeEnabled == null) {
             this.financeEnabled = false;
+        }
+        if (this.journalEnabled == null) {
+            this.journalEnabled = false;
         }
 
         if (this.passwordChangeRequired == null) {

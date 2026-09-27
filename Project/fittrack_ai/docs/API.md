@@ -689,3 +689,34 @@ khoản trên web và app. Chỉ các câu `ACTIVE` có `includeInDaily=true` th
 Một câu không lặp trong cùng chu kỳ; khi toàn bộ pool đã xuất hiện, backend mới
 tăng `cycleNumber`. Nếu chưa có câu phù hợp, response vẫn là HTTP 200 với
 `quote: null` để Dashboard hiển thị empty state mà không bị lỗi.
+
+## Nhật ký cá nhân
+
+Module yêu cầu quyền `journalEnabled`. Mọi bài viết được giới hạn theo user đang
+đăng nhập; admin chỉ quản lý kho câu hỏi hệ thống và không có API đọc nhật ký
+của người khác.
+
+```http
+GET    /journal/today
+POST   /journal/today/skip
+GET    /journal/entries?q=&origin=PROMPT&page=0&size=20
+POST   /journal/entries
+GET    /journal/entries/{id}
+PUT    /journal/entries/{id}
+DELETE /journal/entries/{id}
+GET    /journal/prompts?category=SELF&depth=MEDIUM&page=0&size=20
+GET    /journal/settings
+PUT    /journal/settings
+
+GET    /admin/journal/prompts?q=&active=true&page=0&size=20
+POST   /admin/journal/prompts
+PUT    /admin/journal/prompts/{id}
+```
+
+`origin=PROMPT` phải dùng đúng `promptId` đang được giao hôm nay; `FREEFORM`
+không nhận `promptId`. `title` và `mood` là tùy chọn, `body` là bắt buộc. Mood
+nhận `VERY_LOW`, `LOW`, `NEUTRAL`, `GOOD`, `VERY_GOOD`.
+
+Câu hỏi hôm nay ổn định theo ngày `Asia/Ho_Chi_Minh`. Mỗi user có chu kỳ riêng;
+câu đã trả lời hoặc bỏ qua không lặp lại cho đến khi hết kho câu hỏi đang hoạt
+động. Cài đặt nhắc nhở gồm `reminderEnabled` và `reminderTime`, mặc định tắt.

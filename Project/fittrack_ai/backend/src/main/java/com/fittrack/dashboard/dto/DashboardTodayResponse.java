@@ -35,6 +35,7 @@ public class DashboardTodayResponse {
     private boolean scheduleEnabled;
     private boolean quoteEnabled;
     private boolean financeEnabled;
+    private boolean journalEnabled;
     private String latestWorkoutNote;
     private Double remainingCalories;
     private Double remainingProtein;

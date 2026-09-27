@@ -8,7 +8,8 @@ export type FeaturePermission =
   | "todoEnabled"
   | "scheduleEnabled"
   | "quoteEnabled"
-  | "financeEnabled";
+  | "financeEnabled"
+  | "journalEnabled";
 
 export function canUseFeature(user: AuthUser | null, feature: FeaturePermission) {
   return user?.role === "ADMIN" || user?.[feature] === true;

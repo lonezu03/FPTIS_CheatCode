@@ -108,6 +108,12 @@ Deployment:
   and 100%. Recurring rules are reminders/plans only and must never create a
   posted transaction until the owner explicitly confirms it. Finance V1 remains
   independent from the company Lunch fund/debt ledger.
+- Personal Journal requires `journalEnabled`; admins bypass the module flag but
+  never gain access to another user's entries. Prompt assignments are stable for
+  the Vietnam calendar day and rotate without replacement per user/cycle;
+  skipping consumes the prompt in that cycle. Admins may manage only the shared
+  prompt library. Entry titles and moods are optional, and reminders use the
+  shared deduplicated notification service.
 - Nutrition days use `UNLOGGED`, `PARTIAL`, `COMPLETE`, or `FASTING`. A day
   containing meals defaults to `PARTIAL` until the user confirms it; only
   `COMPLETE` and `FASTING` days may affect nutrition averages, achievements,

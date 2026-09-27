@@ -23,6 +23,7 @@ export type DashboardToday = {
   scheduleEnabled: boolean;
   quoteEnabled: boolean;
   financeEnabled: boolean;
+  journalEnabled: boolean;
   latestWorkoutNote: string | null;
   remainingCalories: number;
   remainingProtein: number;

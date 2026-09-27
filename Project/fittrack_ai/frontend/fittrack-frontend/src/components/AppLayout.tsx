@@ -22,6 +22,7 @@ import {
   Menu,
   ChefHat,
   Quote as QuoteIcon,
+  BookHeart,
   ShieldCheck,
   Soup,
  
@@ -62,6 +63,7 @@ const navGroups: NavGroup[] = [
       { to: "/schedule", label: "Thời khóa biểu", description: "Lịch & nhắc việc", icon: CalendarDays, feature: "scheduleEnabled" },
       { to: "/quotes", label: "Câu nói", description: "Kho câu yêu thích", icon: QuoteIcon, feature: "quoteEnabled" },
       { to: "/finance", label: "Tài chính", description: "Thu chi & ngân sách", icon: WalletCards, feature: "financeEnabled" },
+      { to: "/journal", label: "Nhật ký", description: "Một phút cho bản thân", icon: BookHeart, feature: "journalEnabled" },
     ],
   },
   {
@@ -91,6 +93,7 @@ const navGroups: NavGroup[] = [
       { to: "/admin/users", label: "Quản lý tài khoản", icon: UsersRound, adminOnly: true },
       { to: "/admin/notifications", label: "Gửi thông báo", icon: BellRing, adminOnly: true },
       { to: "/admin/notification-playbooks", label: "Kịch bản notification", icon: BellRing, adminOnly: true },
+      { to: "/admin/journal-prompts", label: "Câu hỏi nhật ký", icon: BookHeart, adminOnly: true },
     ],
   },
 ];
@@ -121,6 +124,7 @@ export default function AppLayout() {
         scheduleEnabled: profile.scheduleEnabled,
         quoteEnabled: profile.quoteEnabled,
         financeEnabled: profile.financeEnabled,
+        journalEnabled: profile.journalEnabled,
         passwordChangeRequired: profile.passwordChangeRequired,
       });
       return profile;
@@ -148,6 +152,7 @@ export default function AppLayout() {
       scheduleEnabled: profile.scheduleEnabled,
       quoteEnabled: profile.quoteEnabled,
       financeEnabled: profile.financeEnabled,
+      journalEnabled: profile.journalEnabled,
       passwordChangeRequired: profile.passwordChangeRequired,
     };
   }, [authUser, profileQuery.data]);

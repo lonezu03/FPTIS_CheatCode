@@ -83,6 +83,10 @@ public class FeatureAccessFilter extends OncePerRequestFilter {
                 && !Boolean.TRUE.equals(user.getFinanceEnabled())) {
             return "Tài chính cá nhân";
         }
+        if (path.startsWith("/api/journal")
+                && !Boolean.TRUE.equals(user.getJournalEnabled())) {
+            return "Nhật ký";
+        }
         return null;
     }
 

@@ -117,18 +117,21 @@ public class AdminUserService {
         if (request.financeEnabled() != null) {
             target.setFinanceEnabled(request.financeEnabled());
         }
+        if (request.journalEnabled() != null) {
+            target.setJournalEnabled(request.journalEnabled());
+        }
         AdminUserResponse response = toResponse(userRepository.save(target));
-        auditService.record(currentAdmin, "USER_UPDATED", "USER", target.getId(), Map.of(
-                "role", target.getRole(),
-                "active", Boolean.TRUE.equals(target.getActive()),
-                "lunchEnabled", Boolean.TRUE.equals(target.getLunchEnabled()),
-                "fitnessEnabled", Boolean.TRUE.equals(target.getFitnessEnabled()),
-                "healthEnabled", Boolean.TRUE.equals(target.getHealthEnabled()),
-                "chatbotEnabled", Boolean.TRUE.equals(target.getChatbotEnabled()),
-                "todoEnabled", Boolean.TRUE.equals(target.getTodoEnabled()),
-                "scheduleEnabled", Boolean.TRUE.equals(target.getScheduleEnabled()),
-                "quoteEnabled", Boolean.TRUE.equals(target.getQuoteEnabled()),
-                "financeEnabled", Boolean.TRUE.equals(target.getFinanceEnabled())
+        auditService.record(currentAdmin, "USER_UPDATED", "USER", target.getId(), Map.ofEntries(
+                Map.entry("role", target.getRole()), Map.entry("active", Boolean.TRUE.equals(target.getActive())),
+                Map.entry("lunchEnabled", Boolean.TRUE.equals(target.getLunchEnabled())),
+                Map.entry("fitnessEnabled", Boolean.TRUE.equals(target.getFitnessEnabled())),
+                Map.entry("healthEnabled", Boolean.TRUE.equals(target.getHealthEnabled())),
+                Map.entry("chatbotEnabled", Boolean.TRUE.equals(target.getChatbotEnabled())),
+                Map.entry("todoEnabled", Boolean.TRUE.equals(target.getTodoEnabled())),
+                Map.entry("scheduleEnabled", Boolean.TRUE.equals(target.getScheduleEnabled())),
+                Map.entry("quoteEnabled", Boolean.TRUE.equals(target.getQuoteEnabled())),
+                Map.entry("financeEnabled", Boolean.TRUE.equals(target.getFinanceEnabled())),
+                Map.entry("journalEnabled", Boolean.TRUE.equals(target.getJournalEnabled()))
         ));
         return response;
     }
@@ -159,6 +162,8 @@ public class AdminUserService {
         target.setTodoEnabled(false);
         target.setScheduleEnabled(false);
         target.setQuoteEnabled(false);
+        target.setFinanceEnabled(false);
+        target.setJournalEnabled(false);
         userRepository.save(target);
         auditService.record(currentAdmin, "USER_DELETED", "USER", targetId, Map.of(
                 "email", targetEmail,
@@ -195,6 +200,7 @@ public class AdminUserService {
                 Boolean.TRUE.equals(user.getScheduleEnabled()),
                 Boolean.TRUE.equals(user.getQuoteEnabled()),
                 Boolean.TRUE.equals(user.getFinanceEnabled()),
+                Boolean.TRUE.equals(user.getJournalEnabled()),
                 user.getCreatedAt()
         );
     }

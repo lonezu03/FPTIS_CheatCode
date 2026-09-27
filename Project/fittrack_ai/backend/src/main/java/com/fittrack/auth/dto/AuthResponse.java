@@ -22,6 +22,7 @@ public class AuthResponse {
     private Boolean scheduleEnabled;
     private Boolean quoteEnabled;
     private Boolean financeEnabled;
+    private Boolean journalEnabled;
     private Boolean passwordChangeRequired;
     private String refreshToken;
 }

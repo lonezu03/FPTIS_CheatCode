@@ -15,6 +15,7 @@ export type AuthResponse = {
   scheduleEnabled: boolean;
   quoteEnabled: boolean;
   financeEnabled: boolean;
+  journalEnabled: boolean;
   passwordChangeRequired: boolean;
 };
 

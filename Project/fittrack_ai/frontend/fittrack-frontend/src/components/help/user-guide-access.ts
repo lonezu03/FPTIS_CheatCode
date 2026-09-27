@@ -10,6 +10,7 @@ export function getAvailableGuideModuleIds(user: AuthUser | null, isAdmin: boole
   if (canUseFeature(user, "healthEnabled")) ids.push("health");
   if (canUseFeature(user, "quoteEnabled")) ids.push("quotes");
   if (canUseFeature(user, "financeEnabled")) ids.push("finance");
+  if (canUseFeature(user, "journalEnabled")) ids.push("journal");
   if (canUseFeature(user, "chatbotEnabled")) ids.push("assistant");
   ids.push("notifications", "profile");
   if (isAdmin) ids.push("admin");
