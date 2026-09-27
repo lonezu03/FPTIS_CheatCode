@@ -699,18 +699,37 @@ của người khác.
 ```http
 GET    /journal/today
 POST   /journal/today/skip
-GET    /journal/entries?q=&origin=PROMPT&page=0&size=20
+POST   /journal/today/depth/{LIGHT|MEDIUM|DEEP}
+GET    /journal/entries?q=&origin=PROMPT&mood=GOOD&tag=&from=&to=&page=0&size=20
 POST   /journal/entries
 GET    /journal/entries/{id}
 PUT    /journal/entries/{id}
 DELETE /journal/entries/{id}
 GET    /journal/prompts?category=SELF&depth=MEDIUM&page=0&size=20
+GET    /journal/on-this-day
+GET    /journal/stats?month=2026-09
+GET    /journal/tags
+GET    /journal/packs
+PUT    /journal/packs/{id}/follow
+DELETE /journal/packs/{id}/follow
 GET    /journal/settings
 PUT    /journal/settings
+POST   /journal/ai/follow-up
+GET    /journal/ai/personalized-prompt
+GET    /journal/lock/status
+PUT    /journal/lock/pin
+DELETE /journal/lock/pin
+POST   /journal/lock/unlock
+GET    /journal/export/markdown
+GET    /journal/export/print
 
 GET    /admin/journal/prompts?q=&active=true&page=0&size=20
 POST   /admin/journal/prompts
 PUT    /admin/journal/prompts/{id}
+GET    /admin/journal/prompts/packs
+POST   /admin/journal/prompts/packs
+PUT    /admin/journal/prompts/packs/{id}
+DELETE /admin/journal/prompts/packs/{id}
 ```
 
 `origin=PROMPT` phải dùng đúng `promptId` đang được giao hôm nay; `FREEFORM`
@@ -720,3 +739,15 @@ nhận `VERY_LOW`, `LOW`, `NEUTRAL`, `GOOD`, `VERY_GOOD`.
 Câu hỏi hôm nay ổn định theo ngày `Asia/Ho_Chi_Minh`. Mỗi user có chu kỳ riêng;
 câu đã trả lời hoặc bỏ qua không lặp lại cho đến khi hết kho câu hỏi đang hoạt
 động. Cài đặt nhắc nhở gồm `reminderEnabled` và `reminderTime`, mặc định tắt.
+
+`tags` nhận tối đa 10 nhãn và `imageUrls` nhận tối đa 4 ảnh cho mỗi entry. Xóa
+entry là soft-delete. Prompt pack được user theo dõi sẽ được ưu tiên trong phần
+pool chưa dùng của chu kỳ. Lịch sử hỗ trợ lọc theo loại, tâm trạng, nhãn và
+khoảng ngày; tìm kiếm bao phủ tiêu đề, nội dung, prompt và nhãn.
+
+Hai tính năng AI mặc định tắt và chỉ gọi model khi setting tương ứng của Journal
+cùng `assistantConsent` của tài khoản đều bật. Khi bật PIN, mọi API Journal ngoại
+trừ `lock/status` và `lock/unlock` yêu cầu header `X-Journal-Unlock`. Server chỉ
+lưu hash của token mở khóa, token hết hạn sau 12 giờ; 5 lần nhập PIN sai liên
+tiếp sẽ khóa thử lại trong 15 phút. Mobile có thể dùng sinh trắc học thiết bị để
+mở credential đã lưu; server vẫn là nơi xác thực token.

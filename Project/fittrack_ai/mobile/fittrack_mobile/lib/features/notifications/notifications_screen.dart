@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../core/notifications/notification_center.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../../core/network/api_client.dart';
+import '../auth/auth_session.dart';
+import '../journal/journal_screen.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -20,9 +22,24 @@ class NotificationsScreen extends StatelessWidget {
   }
 
   Future<void> _mark(BuildContext context, Map<String, dynamic> item) async {
-    if (item['readAt'] != null) return;
+    final user = context.read<AuthSession>().user;
     try {
-      await context.read<NotificationCenter>().markRead(item['id'].toString());
+      if (item['readAt'] == null) {
+        await context.read<NotificationCenter>().markRead(
+          item['id'].toString(),
+        );
+      }
+      if (item['referenceType'] == 'JOURNAL' &&
+          user != null &&
+          (user.journalEnabled || user.isAdmin) &&
+          context.mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) =>
+                const Scaffold(body: SafeArea(child: JournalScreen())),
+          ),
+        );
+      }
     } catch (error) {
       if (context.mounted) {
         showMessage(context, displayError(error), error: true);

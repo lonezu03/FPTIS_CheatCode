@@ -20,6 +20,7 @@ class AuthUser {
     required this.todoEnabled,
     required this.scheduleEnabled,
     this.quoteEnabled = false,
+    this.journalEnabled = false,
     required this.passwordChangeRequired,
   });
 
@@ -34,6 +35,7 @@ class AuthUser {
   final bool todoEnabled;
   final bool scheduleEnabled;
   final bool quoteEnabled;
+  final bool journalEnabled;
   final bool passwordChangeRequired;
 
   bool get isAdmin => role == 'ADMIN';
@@ -50,6 +52,7 @@ class AuthUser {
     todoEnabled: json['todoEnabled'] == true,
     scheduleEnabled: json['scheduleEnabled'] == true,
     quoteEnabled: json['quoteEnabled'] == true,
+    journalEnabled: json['journalEnabled'] == true,
     passwordChangeRequired: json['passwordChangeRequired'] == true,
   );
 
@@ -65,6 +68,7 @@ class AuthUser {
     'todoEnabled': todoEnabled,
     'scheduleEnabled': scheduleEnabled,
     'quoteEnabled': quoteEnabled,
+    'journalEnabled': journalEnabled,
     'passwordChangeRequired': passwordChangeRequired,
   };
 }
@@ -202,10 +206,12 @@ class AuthSession extends ChangeNotifier {
   Future<void> _clear() async {
     api.accessToken = null;
     api.refreshToken = null;
+    api.journalUnlockToken = null;
     user = null;
     await _storage.delete(key: AuthStorageKeys.accessToken);
     await _storage.delete(key: AuthStorageKeys.refreshToken);
     await _storage.delete(key: AuthStorageKeys.user);
+    await _storage.delete(key: AuthStorageKeys.journalUnlock);
   }
 
   void _handleUnauthorized() {

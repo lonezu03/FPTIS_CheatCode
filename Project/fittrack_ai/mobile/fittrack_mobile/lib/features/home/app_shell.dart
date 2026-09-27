@@ -8,6 +8,7 @@ import '../fitness/fitness_screen.dart';
 import '../health/health_screen.dart';
 import '../help/user_guide_sheet.dart';
 import '../lunch/lunch_screen.dart';
+import '../journal/journal_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../planner/planner_screen.dart';
 import '../profile/profile_screen.dart';
@@ -97,6 +98,13 @@ class _AppShellState extends State<AppShell> {
         Icons.format_quote_outlined,
         Icons.format_quote,
         QuoteScreen(),
+      ),
+    if (user.journalEnabled || user.isAdmin)
+      const _Destination(
+        'Nhật ký',
+        Icons.menu_book_outlined,
+        Icons.menu_book,
+        JournalScreen(),
       ),
     const _Destination(
       'Thông báo',

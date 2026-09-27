@@ -33,6 +33,12 @@ class ApiClient {
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          if (options.path.contains('/journal') &&
+              !options.path.endsWith('/journal/lock/status') &&
+              !options.path.endsWith('/journal/lock/unlock') &&
+              journalUnlockToken?.isNotEmpty == true) {
+            options.headers['X-Journal-Unlock'] = journalUnlockToken;
+          }
           final duplicateError = _startTracking(options);
           if (duplicateError != null) {
             handler.reject(duplicateError);
@@ -85,6 +91,7 @@ class ApiClient {
   final ApiMutationGuard _mutationGuard = ApiMutationGuard();
   String? accessToken;
   String? refreshToken;
+  String? journalUnlockToken;
   void Function()? onUnauthorized;
   Future<void> Function(Map<String, dynamic> session)? onSessionRefreshed;
   Future<bool>? _refreshing;

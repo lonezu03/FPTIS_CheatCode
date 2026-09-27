@@ -13,14 +13,15 @@ Last updated: 2026-09-27
 - Production web: `https://datcom-nhalam.vercel.app`.
 - Production API:
   `https://https-github-com-lonezu03-fptis.onrender.com/api`.
-- Production schema uses Flyway and `ddl-auto=validate`. Source migrations are
-  currently committed through V25; production `flyway_schema_history` has not
-  been checked during this session.
+- Production schema uses Flyway and `ddl-auto=validate`. The pushed baseline is
+  through V25 and the current local Journal work adds V26-V29; production
+  `flyway_schema_history` has not been checked during this session.
 
-## Current task: Personal Journal V1
+## Current task: Personal Journal V1/P1/P2
 
 Status: implemented and verified locally; awaiting commit and backend-first deployment.
-Web/backend only; no mobile or Lunch business/UI file changed.
+Backend, web and mobile were completed together. No Lunch business or UI file
+was changed.
 
 ### Completed in the current local change
 
@@ -39,23 +40,53 @@ Web/backend only; no mobile or Lunch business/UI file changed.
   optional title/mood, free-form writing, editing/deleting and reminder time.
 - Added backend integration coverage for stable/no-immediate-repeat prompt
   assignment, owner isolation, CRUD and reminder settings.
+- Added Flyway V27-V29 for prompt packs, followed packs, owner-scoped tags,
+  entry images, private lock sessions and PIN rate limiting. V28 expands the
+  curated seed library from 40 base prompts to 320 controlled prompt variants.
+- Added prompt depth switching, pack priority, On This Day, month/mood stats,
+  advanced history filters, complete prompt-library search/filter/pagination
+  and soft-delete while keeping prompts and free-form writing in one entry model.
+- Added explicit opt-in personalization from FitTrack activity and AI follow-up.
+  Both require the Journal toggle and account-level assistant consent; content
+  is not sent to Gemini unless both are enabled.
+- Added Markdown and print-to-PDF export. Admin prompt management now includes
+  pack create/edit/archive and prompt assignment, without any user-entry read
+  endpoint.
+- Added a 4-8 digit Journal PIN with hashed, revocable 12-hour unlock sessions,
+  five-attempt/15-minute rate limiting and a web unlock header. Flutter stores
+  the unlock credential securely and may gate its reuse with device biometrics.
+- Added web and Flutter Journal experiences for prompt/free-form writing, mood,
+  tags, up to four images, packs, fully paged prompt discovery, reminders, lock
+  and private history. Journal notifications deep-link to the module on both
+  clients.
 
-### Verification for Journal V1
+### Verification for Journal V1/P1/P2
 
-- Full backend suite passed locally after the implementation.
-- Focused `JournalServiceIntegrationTest,AdminUserServiceTest` passed.
-- Web ESLint passed; Vitest passed 5 files / 10 tests; production build passed
-  with 2619 modules transformed.
-- Production PostgreSQL execution of V26 remains a Render deployment task.
+- Full backend Maven suite passed locally: 97 tests, 0 failures/errors and 2
+  PostgreSQL/Testcontainers release suites skipped because Docker was not
+  available. The final Journal-focused suite passed 5/5 after adding coverage
+  for the five-failure PIN lockout; the release JAR packaged successfully.
+- Web ESLint passed; Vitest passed 5 files / 10 tests; the TypeScript/Vite
+  production build passed with 2,619 modules transformed.
+- Flutter tests passed 3/3. The new Journal screen passes targeted analysis with
+  no issue; full `flutter analyze` reports 36 pre-existing `info`-level notices
+  elsewhere and no warning/error. Android/iOS release signing was not performed.
+- Production PostgreSQL execution of V26-V29 remains a Render deployment task.
 
 ### Deployment and smoke test
 
-1. Deploy Render backend first and confirm Flyway V26 succeeds.
-2. As admin, grant `journalEnabled` to a test user and create/edit/hide one prompt.
-3. As that user, answer today's prompt, skip another prompt, write a free-form
-   entry, search/edit/delete it, then save a reminder time.
-4. Confirm another user and admin cannot query that user's entry by ID.
-5. Deploy Vercel web only after backend checks pass.
+1. Deploy Render backend first and confirm Flyway V26, V27, V28 and V29 succeed.
+2. As admin, grant `journalEnabled` to a test user; create/edit/archive a prompt
+   pack and assign a prompt to it.
+3. As that user, answer/skip/switch depth, write a free-form entry with tag,
+   mood and image, follow a pack, then verify filters, On This Day and exports.
+4. Turn on assistant consent plus each Journal AI toggle separately and confirm
+   no AI call is allowed until both consents are active.
+5. Set a PIN, confirm other Journal calls return 423 without an unlock header,
+   unlock successfully, and verify repeated wrong attempts are rate-limited.
+6. Confirm another user and admin cannot query that user's entry by ID.
+7. Deploy Vercel web after backend checks; build/release mobile only after the
+   deployed API smoke test succeeds.
 
 ## Previous task: Schedule completion, workout-plan editing and catalog enrichment
 

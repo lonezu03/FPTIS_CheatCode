@@ -20,4 +20,12 @@ public class AdminJournalPromptController {
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public PromptResponse create(@Valid @RequestBody AdminPromptRequest request) { return service.createPrompt(request); }
     @PutMapping("/{id}") public PromptResponse update(@PathVariable String id, @Valid @RequestBody AdminPromptRequest request) { return service.updatePrompt(id, request); }
+
+    @GetMapping("/packs") public java.util.List<AdminPackResponse> packs() { return service.adminPacks(); }
+    @PostMapping("/packs") @ResponseStatus(HttpStatus.CREATED)
+    public AdminPackResponse createPack(@Valid @RequestBody AdminPackRequest request) { return service.createPack(request); }
+    @PutMapping("/packs/{id}")
+    public AdminPackResponse updatePack(@PathVariable String id, @Valid @RequestBody AdminPackRequest request) { return service.updatePack(id, request); }
+    @DeleteMapping("/packs/{id}") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void archivePack(@PathVariable String id) { service.archivePack(id); }
 }

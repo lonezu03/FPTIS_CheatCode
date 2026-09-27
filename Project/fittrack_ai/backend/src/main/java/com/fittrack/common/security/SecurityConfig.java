@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
+import com.fittrack.journal.service.JournalLockFilter;
 
 @Configuration
 @RequiredArgsConstructor
@@ -27,7 +28,7 @@ public class SecurityConfig {
     private final PasswordChangeFilter passwordChangeFilter;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JournalLockFilter journalLockFilter) throws Exception {
         return http
                 .cors(cors -> {})
                 .csrf(csrf -> csrf.disable())
@@ -90,6 +91,7 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthFilter, AnonymousAuthenticationFilter.class)
                 .addFilterBefore(passwordChangeFilter, ExceptionTranslationFilter.class)
                 .addFilterBefore(featureAccessFilter, AuthorizationFilter.class)
+                .addFilterAfter(journalLockFilter, FeatureAccessFilter.class)
                 .build();
     }
 

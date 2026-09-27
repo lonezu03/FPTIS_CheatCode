@@ -109,6 +109,10 @@ api.interceptors.request.use((config) => {
   } else {
     delete config.headers.Authorization;
   }
+  if (config.url?.includes("/journal") && !config.url.includes("/lock/unlock") && !config.url.includes("/lock/status")) {
+    const journalToken = sessionStorage.getItem("fittrack-journal-unlock");
+    if (journalToken) config.headers["X-Journal-Unlock"] = journalToken;
+  }
 
   startTracking(config);
 
@@ -124,6 +128,9 @@ api.interceptors.response.use(
   },
   (error) => {
     finishTracking(error.config);
+    if (error.response?.status === 423 && error.config?.url?.includes("/journal")) {
+      sessionStorage.removeItem("fittrack-journal-unlock");
+    }
     const original = error.config as (typeof error.config & { _retried?: boolean }) | undefined;
     const isAuthRequest = isPublicAuthUrl(original?.url);
 

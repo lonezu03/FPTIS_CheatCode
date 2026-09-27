@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.*;
 
 @Entity
 @Table(name = "journal_entries")
@@ -39,6 +40,15 @@ public class JournalEntry {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
     private LocalDateTime archivedAt;
+
+    @ManyToMany
+    @JoinTable(name="journal_entry_tag_links", joinColumns=@JoinColumn(name="entry_id"), inverseJoinColumns=@JoinColumn(name="tag_id"))
+    @OrderBy("name ASC") @Builder.Default
+    private Set<JournalTag> tags = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy="entry", cascade=CascadeType.ALL, orphanRemoval=true)
+    @OrderBy("sortOrder ASC") @Builder.Default
+    private List<JournalEntryImage> images = new ArrayList<>();
 
     @PrePersist
     void onCreate() {

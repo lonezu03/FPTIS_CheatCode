@@ -7,9 +7,13 @@ theo dạng `fittrack-vYYYY.MM.DD.N`; chỉ tạo tag sau khi production smoke t
 
 ### Added
 
-- Personal Journal V1 with daily no-repeat prompts, free-form writing, mood,
-  private searchable history, optional reminders, admin prompt management and
-  the independent `journalEnabled` permission through Flyway V26.
+- Personal Journal V1/P1/P2 with 320 curated prompts, no-repeat daily rotation,
+  prompt packs, depth switching, free-form writing, mood, tags, images,
+  On This Day, advanced private search, gentle reminders and monthly activity.
+  Optional FitTrack-personalized prompts and AI follow-up require explicit AI
+  consent; Markdown/print-to-PDF export and PIN/biometric unlock are available.
+  Admins can manage prompts/packs but can never read user entries. Flyway
+  V26-V29 add the module, advanced journal data and PIN rate limiting.
 - Direct Todo completion from the Schedule day, week, month and list views.
 - Owner-scoped workout-plan editing through `PUT /api/workout-plans/{id}` and
   the web plan editor.

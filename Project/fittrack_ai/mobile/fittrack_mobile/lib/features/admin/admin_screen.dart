@@ -60,7 +60,13 @@ class _AdminScreenState extends State<AdminScreen>
       Expanded(
         child: TabBarView(
           controller: tabs,
-          children: const [_UsersAdminTab(), _MenuImportTab(), _BroadcastTab(), _FundAdminTab(), _PlaybooksAdminTab()],
+          children: const [
+            _UsersAdminTab(),
+            _MenuImportTab(),
+            _BroadcastTab(),
+            _FundAdminTab(),
+            _PlaybooksAdminTab(),
+          ],
         ),
       ),
     ],
@@ -131,10 +137,18 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Xóa tài khoản?'),
-        content: Text('Xóa vĩnh viễn ${user['email'] ?? 'tài khoản này'}? Dữ liệu liên quan không thể khôi phục.'),
+        content: Text(
+          'Xóa vĩnh viễn ${user['email'] ?? 'tài khoản này'}? Dữ liệu liên quan không thể khôi phục.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Hủy')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Xóa')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Xóa'),
+          ),
         ],
       ),
     );
@@ -219,10 +233,21 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
                       value: user['quoteEnabled'] == true,
                       onChanged: (v) => _toggle(user, 'quoteEnabled', v),
                     ),
+                    SwitchListTile(
+                      title: const Text('Nhật ký cá nhân'),
+                      value: user['journalEnabled'] == true,
+                      onChanged: (v) => _toggle(user, 'journalEnabled', v),
+                    ),
                     if (user['active'] != true)
                       ListTile(
-                        leading: const Icon(Icons.delete_forever_outlined, color: Colors.red),
-                        title: const Text('Xóa tài khoản đã khóa', style: TextStyle(color: Colors.red)),
+                        leading: const Icon(
+                          Icons.delete_forever_outlined,
+                          color: Colors.red,
+                        ),
+                        title: const Text(
+                          'Xóa tài khoản đã khóa',
+                          style: TextStyle(color: Colors.red),
+                        ),
                         onTap: () => _deleteLocked(user),
                       ),
                   ],
@@ -246,14 +271,24 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
   final name = TextEditingController();
   final triggerTime = TextEditingController(text: '21:30');
   final threshold = TextEditingController();
-  final messages = TextEditingController(text: 'Chúc bạn ngủ ngon và phục hồi thật tốt.');
+  final messages = TextEditingController(
+    text: 'Chúc bạn ngủ ngon và phục hồi thật tốt.',
+  );
   List<Map<String, dynamic>> playbooks = [];
   List<Map<String, dynamic>> users = [];
   String category = 'WELLNESS';
   String mode = 'RANDOM';
   String conditionType = 'ANY';
   String recipientMode = 'ALL_ACTIVE';
-  final days = <String>{'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'};
+  final days = <String>{
+    'MONDAY',
+    'TUESDAY',
+    'WEDNESDAY',
+    'THURSDAY',
+    'FRIDAY',
+    'SATURDAY',
+    'SUNDAY',
+  };
   final selectedUsers = <String>{};
   String? editingId;
   bool loading = true;
@@ -277,17 +312,25 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
   }
 
   Future<void> _load() async {
-    setState(() { loading = true; playbookError = null; usersError = null; });
+    setState(() {
+      loading = true;
+      playbookError = null;
+      usersError = null;
+    });
     final api = context.read<ApiClient>();
     try {
       final value = await api.get('/admin/notification-playbooks');
-      playbooks = value is List ? value.map((e) => Map<String, dynamic>.from(e as Map)).toList() : [];
+      playbooks = value is List
+          ? value.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+          : [];
     } catch (e) {
       playbookError = e;
     }
     try {
       final value = await api.get('/admin/users');
-      users = value is List ? value.map((e) => Map<String, dynamic>.from(e as Map)).toList() : [];
+      users = value is List
+          ? value.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+          : [];
     } catch (e) {
       usersError = e;
     }
@@ -308,7 +351,15 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
       selectedUsers.clear();
       days
         ..clear()
-        ..addAll({'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'});
+        ..addAll({
+          'MONDAY',
+          'TUESDAY',
+          'WEDNESDAY',
+          'THURSDAY',
+          'FRIDAY',
+          'SATURDAY',
+          'SUNDAY',
+        });
     });
   }
 
@@ -325,10 +376,19 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
       recipientMode = item['recipientMode']?.toString() ?? 'ALL_ACTIVE';
       days
         ..clear()
-        ..addAll((item['daysOfWeek']?.toString() ?? '').split(',').where((value) => value.isNotEmpty));
+        ..addAll(
+          (item['daysOfWeek']?.toString() ?? '')
+              .split(',')
+              .where((value) => value.isNotEmpty),
+        );
       selectedUsers
         ..clear()
-        ..addAll((item['recipientUserIds'] is List ? item['recipientUserIds'] as List : const []).map((id) => id.toString()));
+        ..addAll(
+          (item['recipientUserIds'] is List
+                  ? item['recipientUserIds'] as List
+                  : const [])
+              .map((id) => id.toString()),
+        );
     });
   }
 
@@ -340,23 +400,41 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
     'daysOfWeek': days.join(','),
     'messages': messages.text.trim(),
     'conditionType': conditionType,
-    'threshold': threshold.text.trim().isEmpty ? null : num.tryParse(threshold.text.trim()),
+    'threshold': threshold.text.trim().isEmpty
+        ? null
+        : num.tryParse(threshold.text.trim()),
     'recipientMode': recipientMode,
     'recipientUserIds': selectedUsers.toList(),
     'enabled': enabled ?? true,
   };
 
   Future<void> _save() async {
-    if (name.text.trim().isEmpty || messages.text.trim().isEmpty || days.isEmpty || (recipientMode == 'SELECTED' && selectedUsers.isEmpty)) {
-      showMessage(context, 'Vui lòng điền tên, câu thông báo, ngày gửi và người nhận.', error: true);
+    if (name.text.trim().isEmpty ||
+        messages.text.trim().isEmpty ||
+        days.isEmpty ||
+        (recipientMode == 'SELECTED' && selectedUsers.isEmpty)) {
+      showMessage(
+        context,
+        'Vui lòng điền tên, câu thông báo, ngày gửi và người nhận.',
+        error: true,
+      );
       return;
     }
-    if (!RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$').hasMatch(triggerTime.text.trim())) {
-      showMessage(context, 'Giờ gửi phải theo định dạng HH:mm, ví dụ 21:30.', error: true);
+    if (!RegExp(r'^(?:[01]\d|2[0-3]):[0-5]\d$')
+        .hasMatch(triggerTime.text.trim())) {
+      showMessage(
+        context,
+        'Giờ gửi phải theo định dạng HH:mm, ví dụ 21:30.',
+        error: true,
+      );
       return;
     }
     if (recipientMode == 'SELECTED' && usersError != null) {
-      showMessage(context, 'Chưa tải được danh sách tài khoản. Vui lòng thử lại trước khi chọn người nhận.', error: true);
+      showMessage(
+        context,
+        'Chưa tải được danh sách tài khoản. Vui lòng thử lại trước khi chọn người nhận.',
+        error: true,
+      );
       return;
     }
     setState(() => busy = true);
@@ -365,8 +443,14 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
       if (editingId == null) {
         await api.post('/admin/notification-playbooks', data: _payload());
       } else {
-        final current = playbooks.firstWhere((item) => item['id'].toString() == editingId, orElse: () => {'enabled': true});
-        await api.patch('/admin/notification-playbooks/$editingId', data: _payload(enabled: current['enabled'] == true));
+        final current = playbooks.firstWhere(
+          (item) => item['id'].toString() == editingId,
+          orElse: () => {'enabled': true},
+        );
+        await api.patch(
+          '/admin/notification-playbooks/$editingId',
+          data: _payload(enabled: current['enabled'] == true),
+        );
       }
       _reset();
       await _load();
@@ -380,19 +464,22 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
 
   Future<void> _toggle(Map<String, dynamic> item) async {
     try {
-      await context.read<ApiClient>().patch('/admin/notification-playbooks/${item['id']}', data: {
-        'name': item['name'],
-        'category': item['category'],
-        'mode': item['mode'],
-        'triggerTime': item['triggerTime'],
-        'daysOfWeek': item['daysOfWeek'],
-        'messages': item['messages'],
-        'conditionType': item['conditionType'],
-        'threshold': item['threshold'],
-        'recipientMode': item['recipientMode'],
-        'recipientUserIds': item['recipientUserIds'] ?? [],
-        'enabled': item['enabled'] != true,
-      });
+      await context.read<ApiClient>().patch(
+        '/admin/notification-playbooks/${item['id']}',
+        data: {
+          'name': item['name'],
+          'category': item['category'],
+          'mode': item['mode'],
+          'triggerTime': item['triggerTime'],
+          'daysOfWeek': item['daysOfWeek'],
+          'messages': item['messages'],
+          'conditionType': item['conditionType'],
+          'threshold': item['threshold'],
+          'recipientMode': item['recipientMode'],
+          'recipientUserIds': item['recipientUserIds'] ?? [],
+          'enabled': item['enabled'] != true,
+        },
+      );
       await _load();
     } catch (e) {
       if (mounted) showMessage(context, displayError(e), error: true);
@@ -400,14 +487,28 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
   }
 
   Future<void> _delete(Map<String, dynamic> item) async {
-    final confirmed = await showDialog<bool>(context: context, builder: (dialogContext) => AlertDialog(
-      title: const Text('Xóa kịch bản?'),
-      content: Text('Xóa “${item['name'] ?? 'kịch bản'}” khỏi lịch gửi?'),
-      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Hủy')), FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Xóa'))],
-    ));
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xóa kịch bản?'),
+        content: Text('Xóa “${item['name'] ?? 'kịch bản'}” khỏi lịch gửi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
     if (confirmed != true) return;
     try {
-      await context.read<ApiClient>().delete('/admin/notification-playbooks/${item['id']}');
+      await context.read<ApiClient>().delete(
+        '/admin/notification-playbooks/${item['id']}',
+      );
       await _load();
     } catch (e) {
       if (mounted) showMessage(context, displayError(e), error: true);
@@ -417,7 +518,8 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
   @override
   Widget build(BuildContext context) {
     if (loading) return const LoadingView();
-    if (playbookError != null) return ErrorView(message: displayError(playbookError!), onRetry: _load);
+    if (playbookError != null)
+      return ErrorView(message: displayError(playbookError!), onRetry: _load);
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -426,57 +528,326 @@ class _PlaybooksAdminTabState extends State<_PlaybooksAdminTab> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(editingId == null ? 'Tạo kịch bản' : 'Chỉnh sửa kịch bản', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
-                const SizedBox(height: 12),
-                TextField(controller: name, decoration: const InputDecoration(labelText: 'Tên kịch bản', hintText: 'Ví dụ: Chúc ngủ ngon')),
-                const SizedBox(height: 10),
-                Row(children: [
-                  Expanded(child: DropdownButtonFormField<String>(value: category, isExpanded: true, decoration: const InputDecoration(labelText: 'Nhóm'), items: const [DropdownMenuItem(value: 'WELLNESS', child: Text('Sức khỏe')), DropdownMenuItem(value: 'MEAL', child: Text('Ăn uống')), DropdownMenuItem(value: 'SLEEP', child: Text('Giấc ngủ')), DropdownMenuItem(value: 'PRODUCTIVITY', child: Text('Hiệu suất'))], onChanged: (value) { if (value != null) setState(() => category = value); })),
-                  const SizedBox(width: 10),
-                  Expanded(child: DropdownButtonFormField<String>(value: mode, isExpanded: true, decoration: const InputDecoration(labelText: 'Cách chọn câu'), items: const [DropdownMenuItem(value: 'RANDOM', child: Text('Ngẫu nhiên')), DropdownMenuItem(value: 'FIXED', child: Text('Câu đầu tiên'))], onChanged: (value) { if (value != null) setState(() => mode = value); })),
-                ]),
-                const SizedBox(height: 10),
-                TextField(controller: triggerTime, keyboardType: TextInputType.datetime, decoration: const InputDecoration(labelText: 'Giờ gửi', hintText: '21:30')),
-                const SizedBox(height: 10),
-                const Text('Ngày gửi', style: TextStyle(fontWeight: FontWeight.w700)),
-                Wrap(spacing: 6, children: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].asMap().entries.map((entry) {
-                  final day = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'][entry.key];
-                  return FilterChip(label: Text(entry.value), selected: days.contains(day), onSelected: (value) => setState(() { value ? days.add(day) : days.remove(day); }));
-                }).toList()),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(value: conditionType, decoration: const InputDecoration(labelText: 'Điều kiện'), items: const [DropdownMenuItem(value: 'ANY', child: Text('Luôn gửi')), DropdownMenuItem(value: 'NO_MEAL', child: Text('Chưa ghi bữa')), DropdownMenuItem(value: 'MEALS_LT', child: Text('Số bữa dưới ngưỡng')), DropdownMenuItem(value: 'PROTEIN_GT', child: Text('Đạm vượt ngưỡng'))], onChanged: (value) { if (value != null) setState(() => conditionType = value); }),
-                if (conditionType == 'MEALS_LT' || conditionType == 'PROTEIN_GT') ...[const SizedBox(height: 10), TextField(controller: threshold, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ngưỡng'))],
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(value: recipientMode, decoration: const InputDecoration(labelText: 'Người nhận'), items: const [DropdownMenuItem(value: 'ALL_ACTIVE', child: Text('Tất cả user đang hoạt động')), DropdownMenuItem(value: 'SELECTED', child: Text('Chỉ user được chọn'))], onChanged: (value) { if (value != null) setState(() => recipientMode = value); }),
-                if (recipientMode == 'SELECTED') ...[
-                  const SizedBox(height: 6),
-                  if (usersError != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('Không tải được danh sách tài khoản. Hãy bấm làm mới.', style: TextStyle(color: Colors.red.shade700))),
-                  ...users.where((user) => user['active'] == true).map((user) => CheckboxListTile(contentPadding: EdgeInsets.zero, dense: true, value: selectedUsers.contains(user['id'].toString()), title: Text(user['fullName']?.toString() ?? user['email']?.toString() ?? 'User'), onChanged: (value) => setState(() { value == true ? selectedUsers.add(user['id'].toString()) : selectedUsers.remove(user['id'].toString()); }))),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    editingId == null ? 'Tạo kịch bản' : 'Chỉnh sửa kịch bản',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 17,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: name,
+                    decoration: const InputDecoration(
+                      labelText: 'Tên kịch bản',
+                      hintText: 'Ví dụ: Chúc ngủ ngon',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: category,
+                          isExpanded: true,
+                          decoration: const InputDecoration(labelText: 'Nhóm'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'WELLNESS',
+                              child: Text('Sức khỏe'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'MEAL',
+                              child: Text('Ăn uống'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'SLEEP',
+                              child: Text('Giấc ngủ'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'PRODUCTIVITY',
+                              child: Text('Hiệu suất'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) setState(() => category = value);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: mode,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Cách chọn câu',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'RANDOM',
+                              child: Text('Ngẫu nhiên'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'FIXED',
+                              child: Text('Câu đầu tiên'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) setState(() => mode = value);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: triggerTime,
+                    keyboardType: TextInputType.datetime,
+                    decoration: const InputDecoration(
+                      labelText: 'Giờ gửi',
+                      hintText: '21:30',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Ngày gửi',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  Wrap(
+                    spacing: 6,
+                    children: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+                        .asMap()
+                        .entries
+                        .map((entry) {
+                          final day = [
+                            'MONDAY',
+                            'TUESDAY',
+                            'WEDNESDAY',
+                            'THURSDAY',
+                            'FRIDAY',
+                            'SATURDAY',
+                            'SUNDAY',
+                          ][entry.key];
+                          return FilterChip(
+                            label: Text(entry.value),
+                            selected: days.contains(day),
+                            onSelected: (value) => setState(() {
+                              value ? days.add(day) : days.remove(day);
+                            }),
+                          );
+                        })
+                        .toList(),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: conditionType,
+                    decoration: const InputDecoration(labelText: 'Điều kiện'),
+                    items: const [
+                      DropdownMenuItem(value: 'ANY', child: Text('Luôn gửi')),
+                      DropdownMenuItem(
+                        value: 'NO_MEAL',
+                        child: Text('Chưa ghi bữa'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'MEALS_LT',
+                        child: Text('Số bữa dưới ngưỡng'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'PROTEIN_GT',
+                        child: Text('Đạm vượt ngưỡng'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) setState(() => conditionType = value);
+                    },
+                  ),
+                  if (conditionType == 'MEALS_LT' ||
+                      conditionType == 'PROTEIN_GT') ...[
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: threshold,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Ngưỡng'),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: recipientMode,
+                    decoration: const InputDecoration(labelText: 'Người nhận'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'ALL_ACTIVE',
+                        child: Text('Tất cả user đang hoạt động'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'SELECTED',
+                        child: Text('Chỉ user được chọn'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) setState(() => recipientMode = value);
+                    },
+                  ),
+                  if (recipientMode == 'SELECTED') ...[
+                    const SizedBox(height: 6),
+                    if (usersError != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          'Không tải được danh sách tài khoản. Hãy bấm làm mới.',
+                          style: TextStyle(color: Colors.red.shade700),
+                        ),
+                      ),
+                    ...users
+                        .where((user) => user['active'] == true)
+                        .map(
+                          (user) => CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            value: selectedUsers.contains(
+                              user['id'].toString(),
+                            ),
+                            title: Text(
+                              user['fullName']?.toString() ??
+                                  user['email']?.toString() ??
+                                  'User',
+                            ),
+                            onChanged: (value) => setState(() {
+                              value == true
+                                  ? selectedUsers.add(user['id'].toString())
+                                  : selectedUsers.remove(user['id'].toString());
+                            }),
+                          ),
+                        ),
+                  ],
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: messages,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'Các câu thông báo (mỗi câu một dòng)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: busy ? null : _save,
+                          child: Text(
+                            busy
+                                ? 'Đang lưu...'
+                                : editingId == null
+                                ? 'Lưu kịch bản'
+                                : 'Lưu thay đổi',
+                          ),
+                        ),
+                      ),
+                      if (editingId != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: busy ? null : _reset,
+                          tooltip: 'Hủy sửa',
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
-                const SizedBox(height: 10),
-                TextField(controller: messages, maxLines: 5, decoration: const InputDecoration(labelText: 'Các câu thông báo (mỗi câu một dòng)')),
-                const SizedBox(height: 12),
-                Row(children: [Expanded(child: FilledButton(onPressed: busy ? null : _save, child: Text(busy ? 'Đang lưu...' : editingId == null ? 'Lưu kịch bản' : 'Lưu thay đổi'))), if (editingId != null) ...[const SizedBox(width: 8), IconButton(onPressed: busy ? null : _reset, tooltip: 'Hủy sửa', icon: const Icon(Icons.close))]]),
-              ]),
+              ),
             ),
           ),
           const SizedBox(height: 14),
-          if (playbooks.isEmpty) const EmptyView(icon: Icons.notifications_none, title: 'Chưa có kịch bản', subtitle: 'Tạo kịch bản để nhắc đúng người, đúng lúc.'),
-          ...playbooks.map((item) => Card(child: Padding(padding: const EdgeInsets.all(12), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            CircleAvatar(child: Icon(item['enabled'] == true ? Icons.notifications_active_outlined : Icons.notifications_off_outlined)),
-            const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(item['name']?.toString() ?? 'Kịch bản', style: const TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text('${_shortTime(item['triggerTime'])} • ${item['recipientMode'] == 'SELECTED' ? '${(item['recipientUserIds'] as List? ?? []).length} người' : 'Tất cả tài khoản hoạt động'}', style: const TextStyle(color: Colors.black54)),
-            ])),
-            PopupMenuButton<String>(tooltip: 'Thao tác', onSelected: (value) { if (value == 'edit') _edit(item); if (value == 'toggle') _toggle(item); if (value == 'delete') _delete(item); }, itemBuilder: (_) => [
-              const PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Chỉnh sửa'), contentPadding: EdgeInsets.zero)),
-              PopupMenuItem(value: 'toggle', child: ListTile(leading: Icon(item['enabled'] == true ? Icons.pause_circle_outline : Icons.play_circle_outline), title: Text(item['enabled'] == true ? 'Tạm dừng' : 'Kích hoạt'), contentPadding: EdgeInsets.zero)),
-              const PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete_outline, color: Colors.red), title: Text('Xóa'), contentPadding: EdgeInsets.zero)),
-            ]),
-          ])))),
+          if (playbooks.isEmpty)
+            const EmptyView(
+              icon: Icons.notifications_none,
+              title: 'Chưa có kịch bản',
+              subtitle: 'Tạo kịch bản để nhắc đúng người, đúng lúc.',
+            ),
+          ...playbooks.map(
+            (item) => Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      child: Icon(
+                        item['enabled'] == true
+                            ? Icons.notifications_active_outlined
+                            : Icons.notifications_off_outlined,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['name']?.toString() ?? 'Kịch bản',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_shortTime(item['triggerTime'])} • ${item['recipientMode'] == 'SELECTED' ? '${(item['recipientUserIds'] as List? ?? []).length} người' : 'Tất cả tài khoản hoạt động'}',
+                            style: const TextStyle(color: Colors.black54),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuButton<String>(
+                      tooltip: 'Thao tác',
+                      onSelected: (value) {
+                        if (value == 'edit') _edit(item);
+                        if (value == 'toggle') _toggle(item);
+                        if (value == 'delete') _delete(item);
+                      },
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: ListTile(
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Chỉnh sửa'),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'toggle',
+                          child: ListTile(
+                            leading: Icon(
+                              item['enabled'] == true
+                                  ? Icons.pause_circle_outline
+                                  : Icons.play_circle_outline,
+                            ),
+                            title: Text(
+                              item['enabled'] == true
+                                  ? 'Tạm dừng'
+                                  : 'Kích hoạt',
+                            ),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                            ),
+                            title: Text('Xóa'),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -514,13 +885,20 @@ class _FundAdminTabState extends State<_FundAdminTab> {
   }
 
   Future<void> _load() async {
-    setState(() { loading = true; error = null; });
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
       final raw = await context.read<ApiClient>().get('/lunch/admin/members');
       if (!mounted) return;
       setState(() {
-        members = raw is List ? raw.map((e) => Map<String, dynamic>.from(e as Map)).toList() : [];
-        selectedUserId ??= members.isNotEmpty ? members.first['id']?.toString() : null;
+        members = raw is List
+            ? raw.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+            : [];
+        selectedUserId ??= members.isNotEmpty
+            ? members.first['id']?.toString()
+            : null;
       });
     } catch (e) {
       if (mounted) setState(() => error = e);
@@ -533,17 +911,24 @@ class _FundAdminTabState extends State<_FundAdminTab> {
     final userId = selectedUserId;
     final value = int.tryParse(amount.text.replaceAll(',', '').trim());
     if (userId == null || value == null || value <= 0) {
-      showMessage(context, 'Chọn thành viên và nhập số tiền hợp lệ.', error: true);
+      showMessage(
+        context,
+        'Chọn thành viên và nhập số tiền hợp lệ.',
+        error: true,
+      );
       return;
     }
     setState(() => busy = true);
     try {
-      await context.read<ApiClient>().post('/lunch/admin/funds/adjust', data: {
-        'userId': userId,
-        'amount': value,
-        'action': action,
-        'note': note.text.trim(),
-      });
+      await context.read<ApiClient>().post(
+        '/lunch/admin/funds/adjust',
+        data: {
+          'userId': userId,
+          'amount': value,
+          'action': action,
+          'note': note.text.trim(),
+        },
+      );
       if (!mounted) return;
       note.clear();
       await _load();
@@ -558,8 +943,11 @@ class _FundAdminTabState extends State<_FundAdminTab> {
   @override
   Widget build(BuildContext context) {
     if (loading) return const LoadingView();
-    if (error != null) return ErrorView(message: displayError(error!), onRetry: _load);
-    final matchingMembers = members.where((member) => member['id']?.toString() == selectedUserId).toList();
+    if (error != null)
+      return ErrorView(message: displayError(error!), onRetry: _load);
+    final matchingMembers = members
+        .where((member) => member['id']?.toString() == selectedUserId)
+        .toList();
     final selected = matchingMembers.isEmpty ? null : matchingMembers.first;
     return RefreshIndicator(
       onRefresh: _load,
@@ -568,7 +956,8 @@ class _FundAdminTabState extends State<_FundAdminTab> {
         children: [
           const PageIntro(
             title: 'Quỹ & công nợ',
-            subtitle: 'Cộng, trừ quỹ hoặc điều chỉnh công nợ với lý do rõ ràng.',
+            subtitle:
+                'Cộng, trừ quỹ hoặc điều chỉnh công nợ với lý do rõ ràng.',
           ),
           const SizedBox(height: 14),
           Card(
@@ -580,54 +969,113 @@ class _FundAdminTabState extends State<_FundAdminTab> {
                   DropdownButtonFormField<String>(
                     value: selectedUserId,
                     decoration: const InputDecoration(labelText: 'Thành viên'),
-                    items: members.map((member) => DropdownMenuItem<String>(
-                      value: member['id']?.toString(),
-                      child: Text(member['fullName']?.toString() ?? 'Người dùng'),
-                    )).toList(),
-                    onChanged: busy ? null : (value) => setState(() => selectedUserId = value),
+                    items: members
+                        .map(
+                          (member) => DropdownMenuItem<String>(
+                            value: member['id']?.toString(),
+                            child: Text(
+                              member['fullName']?.toString() ?? 'Người dùng',
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: busy
+                        ? null
+                        : (value) => setState(() => selectedUserId = value),
                   ),
                   if (selected != null) ...[
                     const SizedBox(height: 10),
-                    Text('Số dư ròng: ${_formatMoney(selected['walletBalance'])} • Công nợ: ${_formatMoney(selected['outstandingDebt'])}', style: const TextStyle(color: Colors.black54)),
+                    Text(
+                      'Số dư ròng: ${_formatMoney(selected['walletBalance'])} • Công nợ: ${_formatMoney(selected['outstandingDebt'])}',
+                      style: const TextStyle(color: Colors.black54),
+                    ),
                   ],
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     value: action,
                     decoration: const InputDecoration(labelText: 'Thao tác'),
                     items: const [
-                      DropdownMenuItem(value: 'ADD_FUND', child: Text('Cộng tiền vào quỹ')),
-                      DropdownMenuItem(value: 'REMOVE_FUND', child: Text('Trừ tiền khỏi quỹ')),
-                      DropdownMenuItem(value: 'ADD_DEBT', child: Text('Ghi tăng công nợ')),
-                      DropdownMenuItem(value: 'REMOVE_DEBT', child: Text('Ghi giảm công nợ')),
+                      DropdownMenuItem(
+                        value: 'ADD_FUND',
+                        child: Text('Cộng tiền vào quỹ'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'REMOVE_FUND',
+                        child: Text('Trừ tiền khỏi quỹ'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ADD_DEBT',
+                        child: Text('Ghi tăng công nợ'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'REMOVE_DEBT',
+                        child: Text('Ghi giảm công nợ'),
+                      ),
                     ],
-                    onChanged: busy ? null : (value) => setState(() => action = value ?? 'ADD_FUND'),
+                    onChanged: busy
+                        ? null
+                        : (value) =>
+                              setState(() => action = value ?? 'ADD_FUND'),
                   ),
                   const SizedBox(height: 10),
-                  TextField(controller: amount, enabled: !busy, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Số tiền', suffixText: 'đ')),
+                  TextField(
+                    controller: amount,
+                    enabled: !busy,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Số tiền',
+                      suffixText: 'đ',
+                    ),
+                  ),
                   const SizedBox(height: 10),
-                  TextField(controller: note, enabled: !busy, maxLength: 500, decoration: const InputDecoration(labelText: 'Ghi chú đối soát', hintText: 'Ví dụ: điều chỉnh theo biên bản tháng này')),
+                  TextField(
+                    controller: note,
+                    enabled: !busy,
+                    maxLength: 500,
+                    decoration: const InputDecoration(
+                      labelText: 'Ghi chú đối soát',
+                      hintText: 'Ví dụ: điều chỉnh theo biên bản tháng này',
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  FilledButton.icon(onPressed: busy ? null : _adjust, icon: const Icon(Icons.account_balance_wallet_outlined), label: Text(busy ? 'Đang ghi nhận...' : 'Xác nhận điều chỉnh')),
+                  FilledButton.icon(
+                    onPressed: busy ? null : _adjust,
+                    icon: const Icon(Icons.account_balance_wallet_outlined),
+                    label: Text(
+                      busy ? 'Đang ghi nhận...' : 'Xác nhận điều chỉnh',
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 14),
-          ...members.map((member) => Card(
-            child: ListTile(
-              leading: CircleAvatar(child: Text(_shortName(member['fullName']?.toString() ?? 'U'))),
-              title: Text(member['fullName']?.toString() ?? 'Người dùng'),
-              subtitle: Text('Quỹ: ${_formatMoney(member['walletBalance'])} • Nợ: ${_formatMoney(member['outstandingDebt'])}'),
-              onTap: () => setState(() => selectedUserId = member['id']?.toString()),
+          ...members.map(
+            (member) => Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Text(
+                    _shortName(member['fullName']?.toString() ?? 'U'),
+                  ),
+                ),
+                title: Text(member['fullName']?.toString() ?? 'Người dùng'),
+                subtitle: Text(
+                  'Quỹ: ${_formatMoney(member['walletBalance'])} • Nợ: ${_formatMoney(member['outstandingDebt'])}',
+                ),
+                onTap: () =>
+                    setState(() => selectedUserId = member['id']?.toString()),
+              ),
             ),
-          )),
+          ),
         ],
       ),
     );
   }
 
   String _formatMoney(dynamic value) {
-    final number = value is num ? value : num.tryParse(value?.toString() ?? '') ?? 0;
+    final number = value is num
+        ? value
+        : num.tryParse(value?.toString() ?? '') ?? 0;
     return '${NumberFormat('#,##0', 'vi_VN').format(number)}đ';
   }
 }
@@ -807,11 +1255,13 @@ class _MenuImportTabState extends State<_MenuImportTab> {
     final special = _itemsFor(menu, 'specialItems')
         .map((item) => item['name']?.toString().trim() ?? '')
         .where((name) => name.isNotEmpty);
-    final extras = _itemsFor(menu, 'extraItems').map((item) {
-      final name = item['name']?.toString().trim() ?? '';
-      final itemPrice = item['unitPrice'];
-      return itemPrice == null ? name : '$name | ${itemPrice.toString()}';
-    }).where((name) => name.isNotEmpty);
+    final extras = _itemsFor(menu, 'extraItems')
+        .map((item) {
+          final name = item['name']?.toString().trim() ?? '';
+          final itemPrice = item['unitPrice'];
+          return itemPrice == null ? name : '$name | ${itemPrice.toString()}';
+        })
+        .where((name) => name.isNotEmpty);
     final lines = <String>[...regular];
     if (special.isNotEmpty) lines.add('+');
     lines.addAll(special);
@@ -1000,7 +1450,9 @@ class _MenuImportTabState extends State<_MenuImportTab> {
               '$totalOrders phần đã đặt',
               style: const TextStyle(color: Colors.black54),
             ),
-            if (regularItems.isNotEmpty || specialItems.isNotEmpty || extraItems.isNotEmpty) ...[
+            if (regularItems.isNotEmpty ||
+                specialItems.isNotEmpty ||
+                extraItems.isNotEmpty) ...[
               const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
@@ -1014,7 +1466,19 @@ class _MenuImportTabState extends State<_MenuImportTab> {
                       ),
                   if (regularItems.length > 4)
                     Chip(label: Text('+${regularItems.length - 4} món')),
-                  ...extraItems.take(3).map((item) => Chip(avatar: const Icon(Icons.local_drink_outlined, size: 16), label: Text('${item['name'] ?? ''} ${item['unitPrice'] == null ? '' : '${item['unitPrice']}đ'}'))),
+                  ...extraItems
+                      .take(3)
+                      .map(
+                        (item) => Chip(
+                          avatar: const Icon(
+                            Icons.local_drink_outlined,
+                            size: 16,
+                          ),
+                          label: Text(
+                            '${item['name'] ?? ''} ${item['unitPrice'] == null ? '' : '${item['unitPrice']}đ'}',
+                          ),
+                        ),
+                      ),
                   ...specialItems
                       .take(2)
                       .map(

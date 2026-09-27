@@ -24,6 +24,10 @@ public class JournalPrompt {
     @Column(nullable = false, length = 20)
     private JournalDepth depth;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pack_id")
+    private JournalPromptPack pack;
+
     @Column(nullable = false)
     private Boolean active;
 

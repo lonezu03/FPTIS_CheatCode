@@ -141,6 +141,23 @@ public class GeminiChatClient {
         return model;
     }
 
+    public String respondTextOnly(String systemInstruction, String userMessage) {
+        if (apiKey.isBlank()) throw new ExternalServiceException("Chatbot chưa được cấu hình GEMINI_API_KEY trên backend");
+        Map<String,Object> payload=new LinkedHashMap<>();
+        payload.put("model",model);
+        payload.put("messages",List.of(Map.of("role","system","content",systemInstruction),Map.of("role","user","content",userMessage)));
+        payload.put("max_tokens",300);
+        try {
+            String body=objectMapper.writeValueAsString(payload);
+            HttpRequest request=HttpRequest.newBuilder(chatCompletionsUri).timeout(Duration.ofSeconds(45)).header("Authorization","Bearer "+apiKey).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build();
+            HttpResponse<String> response=httpClient.send(request,HttpResponse.BodyHandlers.ofString());
+            if(response.statusCode()<200||response.statusCode()>=300)throw new ExternalServiceException("Gemini tạm thời không xử lý được yêu cầu (HTTP "+response.statusCode()+")");
+            String text=objectMapper.readTree(response.body()).path("choices").path(0).path("message").path("content").asText("").trim();
+            if(text.isBlank())throw new ExternalServiceException("Gemini không trả về nội dung hợp lệ");
+            return text;
+        } catch(InterruptedException e){Thread.currentThread().interrupt();throw new ExternalServiceException("Yêu cầu tới Gemini bị gián đoạn",e);} catch(IOException e){throw new ExternalServiceException("Không thể kết nối tới Gemini",e);}
+    }
+
     private AiResult parseResponse(String responseBody) throws JacksonException {
         JsonNode message = objectMapper.readTree(responseBody)
                 .path("choices")

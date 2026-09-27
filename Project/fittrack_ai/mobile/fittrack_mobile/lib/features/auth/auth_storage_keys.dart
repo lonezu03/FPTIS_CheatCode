@@ -4,4 +4,5 @@ class AuthStorageKeys {
   static const accessToken = 'fittrack_access_token';
   static const refreshToken = 'fittrack_refresh_token';
   static const user = 'fittrack_user';
+  static const journalUnlock = 'fittrack_journal_unlock';
 }

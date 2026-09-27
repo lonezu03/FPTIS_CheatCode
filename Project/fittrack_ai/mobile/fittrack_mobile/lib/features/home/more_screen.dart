@@ -9,6 +9,7 @@ import '../help/user_guide_sheet.dart';
 import '../notifications/notifications_screen.dart';
 import '../profile/profile_screen.dart';
 import '../quotes/quote_screen.dart';
+import '../journal/journal_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key, required this.user});
@@ -90,6 +91,24 @@ class MoreScreen extends StatelessWidget {
                     context,
                     title: 'Kho câu nói',
                     page: const QuoteScreen(),
+                  ),
+                ),
+              ],
+              if (user.journalEnabled || user.isAdmin) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.menu_book_outlined),
+                  ),
+                  title: const Text('Nhật ký'),
+                  subtitle: const Text(
+                    'Câu hỏi hôm nay và những trang riêng tư',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(
+                    context,
+                    title: 'Nhật ký',
+                    page: const JournalScreen(),
                   ),
                 ),
               ],

@@ -9,6 +9,7 @@ import java.util.List;
 
 public interface JournalPromptRepository extends JpaRepository<JournalPrompt, String> {
     List<JournalPrompt> findByActiveTrueOrderByCreatedAtAsc();
+    int countByPackAndActiveTrue(JournalPromptPack pack);
 
     @Query("""
             select p from JournalPrompt p

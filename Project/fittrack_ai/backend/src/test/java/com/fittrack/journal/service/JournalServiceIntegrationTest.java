@@ -2,6 +2,7 @@ package com.fittrack.journal.service;
 
 import com.fittrack.FittrackBackendApplication;
 import com.fittrack.common.exception.ResourceNotFoundException;
+import com.fittrack.common.exception.TooManyRequestsException;
 import com.fittrack.journal.dto.JournalDtos.*;
 import com.fittrack.journal.entity.*;
 import com.fittrack.journal.repository.*;
@@ -13,6 +14,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalTime;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -69,6 +72,40 @@ class JournalServiceIntegrationTest {
         var saved = service.updateSettings(user, new ReminderSettingsRequest(true, LocalTime.of(7, 15)));
         assertTrue(saved.reminderEnabled());
         assertEquals(LocalTime.of(7, 15), saved.reminderTime());
+    }
+
+    @Test
+    void tagsFiltersSoftDeleteAndPinUnlockRemainOwnerScoped() {
+        User owner = user("journal-advanced");
+        var created = service.create(owner, new EntryRequest(
+                JournalOrigin.FREEFORM, null, null, "Một ngày tốt", "Nội dung có nhãn",
+                JournalMood.GOOD, List.of("Công việc", "công việc", "Cá nhân"), List.of()));
+
+        assertEquals(Set.of("cá-nhân", "công-việc"), Set.copyOf(created.tags()));
+        assertEquals(1, service.list(owner, "", null, JournalMood.GOOD,
+                "công-việc", null, null, 0, 20).totalElements());
+
+        var locked = service.setPin(owner, "123456");
+        assertTrue(locked.lockEnabled());
+        assertFalse(service.isUnlocked(owner, null));
+        var unlock = service.unlock(owner, "123456");
+        assertTrue(service.isUnlocked(owner, unlock.unlockToken()));
+
+        service.delete(owner, created.id());
+        assertEquals(0, service.list(owner, "", null, 0, 20).totalElements());
+        assertThrows(ResourceNotFoundException.class, () -> service.get(owner, created.id()));
+    }
+
+    @Test
+    void pinUnlockIsRateLimitedAfterFiveFailures() {
+        User owner = user("journal-pin-limit");
+        service.setPin(owner, "123456");
+
+        for (int attempt = 1; attempt < 5; attempt++) {
+            assertThrows(IllegalArgumentException.class, () -> service.unlock(owner, "000000"));
+        }
+        assertThrows(TooManyRequestsException.class, () -> service.unlock(owner, "000000"));
+        assertThrows(TooManyRequestsException.class, () -> service.unlock(owner, "123456"));
     }
 
     private JournalPrompt prompt(String content) {

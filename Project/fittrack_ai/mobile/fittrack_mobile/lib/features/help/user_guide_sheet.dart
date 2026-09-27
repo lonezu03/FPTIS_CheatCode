@@ -268,6 +268,7 @@ class _PermissionSummary extends StatelessWidget {
       ('Việc cần làm', user.isAdmin || user.todoEnabled),
       ('Thời khóa biểu', user.isAdmin || user.scheduleEnabled),
       ('Câu nói', user.isAdmin || user.quoteEnabled),
+      ('Nhật ký', user.isAdmin || user.journalEnabled),
       ('Chatbot', user.isAdmin || user.chatbotEnabled),
     ];
     return Padding(
@@ -331,7 +332,16 @@ class _PermissionSummary extends StatelessWidget {
   }
 }
 
-enum _GuidePermission { lunch, fitness, health, todo, schedule, quote, admin }
+enum _GuidePermission {
+  lunch,
+  fitness,
+  health,
+  todo,
+  schedule,
+  quote,
+  journal,
+  admin,
+}
 
 class _GuideModule {
   const _GuideModule({
@@ -358,6 +368,7 @@ class _GuideModule {
       _GuidePermission.todo => user.todoEnabled,
       _GuidePermission.schedule => user.scheduleEnabled,
       _GuidePermission.quote => user.quoteEnabled,
+      _GuidePermission.journal => user.journalEnabled,
       _GuidePermission.admin => false,
     };
   }
@@ -589,6 +600,28 @@ const _guideModules = <_GuideModule>[
         action: 'Bật hiển thị hằng ngày cho những câu bạn muốn luân phiên.',
         visual: _GuideVisual.navigation,
         focusLabel: 'Câu nói hôm nay',
+      ),
+    ],
+  ),
+  _GuideModule(
+    id: 'journal',
+    title: 'Nhật ký',
+    icon: Icons.menu_book_outlined,
+    permission: _GuidePermission.journal,
+    steps: [
+      _GuideStep(
+        title: 'Bắt đầu từ một câu hỏi',
+        description: 'Câu hỏi hôm nay giữ nguyên trong ngày. Bạn có thể đổi câu, chọn câu nhẹ hơn hoặc sâu hơn mà không lặp lại trong cùng chu kỳ.',
+        action: 'Mở Nhật ký → Hôm nay, viết vài dòng rồi nhấn Lưu.',
+        visual: _GuideVisual.navigation,
+        focusLabel: 'Câu hỏi hôm nay',
+      ),
+      _GuideStep(
+        title: 'Giữ nội dung riêng tư',
+        description: 'Admin chỉ cấp quyền module, không thể đọc hoặc xuất bài viết của bạn. Có thể bật PIN và dùng sinh trắc học trên thiết bị để mở lại.',
+        action: 'Nhấn biểu tượng Cài đặt trong Nhật ký để đặt giờ nhắc và khóa PIN.',
+        visual: _GuideVisual.profile,
+        focusLabel: 'Khóa Nhật ký',
       ),
     ],
   ),

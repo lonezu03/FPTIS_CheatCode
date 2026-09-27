@@ -112,8 +112,13 @@ Deployment:
   never gain access to another user's entries. Prompt assignments are stable for
   the Vietnam calendar day and rotate without replacement per user/cycle;
   skipping consumes the prompt in that cycle. Admins may manage only the shared
-  prompt library. Entry titles and moods are optional, and reminders use the
-  shared deduplicated notification service.
+  prompt library and prompt packs. Entry titles, moods, tags and images are
+  optional, and reminders use the shared deduplicated notification service.
+  Personalized prompts and AI follow-up are separate opt-ins and additionally
+  require the account-level assistant consent; journal content must never be
+  sent to the model without both consents. A Journal PIN creates a revocable,
+  hashed, 12-hour unlock session and rate-limits repeated failures. Mobile may
+  protect the locally stored unlock credential with device biometrics.
 - Nutrition days use `UNLOGGED`, `PARTIAL`, `COMPLETE`, or `FASTING`. A day
   containing meals defaults to `PARTIAL` until the user confirms it; only
   `COMPLETE` and `FASTING` days may affect nutrition averages, achievements,

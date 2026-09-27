@@ -39,6 +39,10 @@ export default function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
     void queryClient.invalidateQueries({ queryKey: lunchKeys.transactions() });
     void queryClient.invalidateQueries({ queryKey: lunchKeys.paymentRequests() });
     setOpen(false);
+    if (notification.referenceType === "JOURNAL" || notification.type === "JOURNAL_REMINDER") {
+      navigate("/journal");
+      return;
+    }
     navigate(
       isAdmin && notification.type === "MODULE_ACCESS_REQUEST"
         ? "/admin/users"
