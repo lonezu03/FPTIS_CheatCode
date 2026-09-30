@@ -10,6 +10,12 @@ import '../notifications/notifications_screen.dart';
 import '../profile/profile_screen.dart';
 import '../quotes/quote_screen.dart';
 import '../journal/journal_screen.dart';
+import '../finance/finance_screen.dart';
+import '../assistant/assistant_screen.dart';
+import '../fitness/fitness_screen.dart';
+import '../health/health_screen.dart';
+import '../lunch/lunch_screen.dart';
+import '../planner/planner_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key, required this.user});
@@ -78,6 +84,72 @@ class MoreScreen extends StatelessWidget {
                   await showUserGuideSheet(context, session.user!);
                 },
               ),
+              if (user.lunchEnabled || user.isAdmin) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.lunch_dining_outlined),
+                  ),
+                  title: const Text('Đặt cơm'),
+                  subtitle: const Text('Menu, giỏ món, quỹ và lịch sử đặt cơm'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(
+                    context,
+                    title: 'Đặt cơm',
+                    page: const LunchScreen(),
+                  ),
+                ),
+              ],
+              if (user.fitnessEnabled || user.isAdmin) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.fitness_center_outlined),
+                  ),
+                  title: const Text('Luyện tập'),
+                  subtitle: const Text('Buổi tập và nhật ký dinh dưỡng'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(
+                    context,
+                    title: 'Luyện tập',
+                    page: const FitnessScreen(),
+                  ),
+                ),
+              ],
+              if (user.healthEnabled || user.isAdmin) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.favorite_outline),
+                  ),
+                  title: const Text('Sức khỏe'),
+                  subtitle: const Text('Tổng hợp, chỉ số cơ thể và nhắc nhở'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(
+                    context,
+                    title: 'Sức khỏe',
+                    page: const HealthScreen(),
+                  ),
+                ),
+              ],
+              if (user.todoEnabled || user.scheduleEnabled || user.isAdmin) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.event_note_outlined),
+                  ),
+                  title: const Text('Lịch & việc'),
+                  subtitle: const Text(
+                    'Việc cần làm và thời khóa biểu hợp nhất',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(
+                    context,
+                    title: 'Lịch & việc',
+                    page: PlannerScreen(user: user),
+                  ),
+                ),
+              ],
               if (user.quoteEnabled || user.isAdmin) ...[
                 const Divider(height: 1),
                 ListTile(
@@ -109,6 +181,40 @@ class MoreScreen extends StatelessWidget {
                     context,
                     title: 'Nhật ký',
                     page: const JournalScreen(),
+                  ),
+                ),
+              ],
+              if (user.financeEnabled || user.isAdmin) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.account_balance_wallet_outlined),
+                  ),
+                  title: const Text('Tài chính cá nhân'),
+                  subtitle: const Text(
+                    'Thu chi, tài khoản, ngân sách và khoản định kỳ',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(
+                    context,
+                    title: 'Tài chính cá nhân',
+                    page: const FinanceScreen(),
+                  ),
+                ),
+              ],
+              if (user.chatbotEnabled || user.isAdmin) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(
+                    child: Icon(Icons.smart_toy_outlined),
+                  ),
+                  title: const Text('FitTrack PT'),
+                  subtitle: const Text('Tư vấn và thao tác có xác nhận'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _open(
+                    context,
+                    title: 'FitTrack PT',
+                    page: const AssistantScreen(),
                   ),
                 ),
               ],

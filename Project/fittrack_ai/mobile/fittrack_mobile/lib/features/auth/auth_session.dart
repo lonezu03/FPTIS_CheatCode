@@ -20,6 +20,7 @@ class AuthUser {
     required this.todoEnabled,
     required this.scheduleEnabled,
     this.quoteEnabled = false,
+    this.financeEnabled = false,
     this.journalEnabled = false,
     required this.passwordChangeRequired,
   });
@@ -35,6 +36,7 @@ class AuthUser {
   final bool todoEnabled;
   final bool scheduleEnabled;
   final bool quoteEnabled;
+  final bool financeEnabled;
   final bool journalEnabled;
   final bool passwordChangeRequired;
 
@@ -52,6 +54,7 @@ class AuthUser {
     todoEnabled: json['todoEnabled'] == true,
     scheduleEnabled: json['scheduleEnabled'] == true,
     quoteEnabled: json['quoteEnabled'] == true,
+    financeEnabled: json['financeEnabled'] == true,
     journalEnabled: json['journalEnabled'] == true,
     passwordChangeRequired: json['passwordChangeRequired'] == true,
   );
@@ -68,6 +71,7 @@ class AuthUser {
     'todoEnabled': todoEnabled,
     'scheduleEnabled': scheduleEnabled,
     'quoteEnabled': quoteEnabled,
+    'financeEnabled': financeEnabled,
     'journalEnabled': journalEnabled,
     'passwordChangeRequired': passwordChangeRequired,
   };

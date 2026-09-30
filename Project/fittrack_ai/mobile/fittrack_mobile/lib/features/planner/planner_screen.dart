@@ -72,7 +72,9 @@ class _PlannerScreenState extends State<PlannerScreen>
 
   Future<List<Map<String, dynamic>>> _loadCalendar(ApiClient api) async {
     final from = DateTime.now().subtract(const Duration(days: 30));
-    final to = DateTime.now().add(const Duration(days: 365));
+    // Backend limits a calendar request to 370 days. Keep the whole window
+    // below that limit instead of silently falling back to the legacy endpoint.
+    final to = DateTime.now().add(const Duration(days: 330));
     try {
       return _list(
         await api.get(
@@ -1334,7 +1336,7 @@ class _ScheduleList extends StatelessWidget {
     onRefresh: onReload,
     child: ListView.builder(
       padding: const EdgeInsets.all(18),
-      itemCount: items.length + 2,
+      itemCount: items.isEmpty ? 2 : items.length + 1,
       itemBuilder: (context, index) {
         if (index == 0)
           return Padding(

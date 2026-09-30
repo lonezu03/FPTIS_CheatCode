@@ -5,7 +5,9 @@ import '../../core/notifications/notification_center.dart';
 import '../admin/admin_screen.dart';
 import '../auth/auth_session.dart';
 import '../fitness/fitness_screen.dart';
+import '../finance/finance_screen.dart';
 import '../health/health_screen.dart';
+import '../assistant/assistant_screen.dart';
 import '../help/user_guide_sheet.dart';
 import '../lunch/lunch_screen.dart';
 import '../journal/journal_screen.dart';
@@ -106,6 +108,20 @@ class _AppShellState extends State<AppShell> {
         Icons.menu_book,
         JournalScreen(),
       ),
+    if (user.financeEnabled || user.isAdmin)
+      const _Destination(
+        'Tài chính',
+        Icons.account_balance_wallet_outlined,
+        Icons.account_balance_wallet,
+        FinanceScreen(),
+      ),
+    if (user.chatbotEnabled || user.isAdmin)
+      const _Destination(
+        'FitTrack PT',
+        Icons.smart_toy_outlined,
+        Icons.smart_toy,
+        AssistantScreen(),
+      ),
     const _Destination(
       'Thông báo',
       Icons.notifications_outlined,
@@ -128,49 +144,54 @@ class _AppShellState extends State<AppShell> {
     ),
   ];
 
-  List<_Destination> _phoneDestinations(AuthUser user) => [
-    const _Destination(
-      'Tổng quan',
-      Icons.dashboard_outlined,
-      Icons.dashboard,
-      DashboardScreen(),
-    ),
-    if (user.lunchEnabled || user.isAdmin)
+  List<_Destination> _phoneDestinations(AuthUser user) {
+    final primaryModules = <_Destination>[
+      if (user.lunchEnabled || user.isAdmin)
+        const _Destination(
+          'Đặt cơm',
+          Icons.lunch_dining_outlined,
+          Icons.lunch_dining,
+          LunchScreen(),
+        ),
+      if (user.fitnessEnabled || user.isAdmin)
+        const _Destination(
+          'Luyện tập',
+          Icons.fitness_center_outlined,
+          Icons.fitness_center,
+          FitnessScreen(),
+        ),
+      if (user.healthEnabled || user.isAdmin)
+        const _Destination(
+          'Sức khỏe',
+          Icons.favorite_outline,
+          Icons.favorite,
+          HealthScreen(),
+        ),
+      if (user.todoEnabled || user.scheduleEnabled || user.isAdmin)
+        _Destination(
+          'Lịch & việc',
+          Icons.event_note_outlined,
+          Icons.event_note,
+          PlannerScreen(user: user),
+        ),
+    ];
+    return [
       const _Destination(
-        'Đặt cơm',
-        Icons.lunch_dining_outlined,
-        Icons.lunch_dining,
-        LunchScreen(),
+        'Tổng quan',
+        Icons.dashboard_outlined,
+        Icons.dashboard,
+        DashboardScreen(),
       ),
-    if (user.fitnessEnabled || user.isAdmin)
-      const _Destination(
-        'Luyện tập',
-        Icons.fitness_center_outlined,
-        Icons.fitness_center,
-        FitnessScreen(),
-      ),
-    if (user.healthEnabled || user.isAdmin)
-      const _Destination(
-        'Sức khỏe',
-        Icons.favorite_outline,
-        Icons.favorite,
-        HealthScreen(),
-      ),
-    if (user.todoEnabled || user.scheduleEnabled || user.isAdmin)
+      ...primaryModules.take(3),
       _Destination(
-        'Lịch & việc',
-        Icons.event_note_outlined,
-        Icons.event_note,
-        PlannerScreen(user: user),
+        'Thêm',
+        Icons.apps_outlined,
+        Icons.apps,
+        MoreScreen(user: user),
+        notification: true,
       ),
-    _Destination(
-      'Thêm',
-      Icons.apps_outlined,
-      Icons.apps,
-      MoreScreen(user: user),
-      notification: true,
-    ),
-  ];
+    ];
+  }
 
   Future<void> _offerNotifications() async {
     final notifications = context.read<NotificationCenter>();
@@ -219,7 +240,10 @@ class _AppShellState extends State<AppShell> {
     final user = context.watch<AuthSession>().user!;
     final unreadCount = context.watch<NotificationCenter>().unreadCount;
     final wide = MediaQuery.sizeOf(context).width >= 760;
-    final destinations = wide ? _destinations(user) : _phoneDestinations(user);
+    final allDestinations = _destinations(user);
+    final destinations = allDestinations.length > 5
+        ? _phoneDestinations(user)
+        : allDestinations;
     if (index >= destinations.length) index = 0;
     final content = IndexedStack(
       index: index,
@@ -233,7 +257,9 @@ class _AppShellState extends State<AppShell> {
               radius: 18,
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
-              child: const Icon(Icons.health_and_safety_outlined, size: 20),
+              backgroundImage: const AssetImage(
+                'assets/branding/app_icon_master.png',
+              ),
             ),
             const SizedBox(width: 10),
             const Column(

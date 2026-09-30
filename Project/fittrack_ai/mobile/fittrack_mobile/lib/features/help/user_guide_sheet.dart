@@ -270,6 +270,7 @@ class _PermissionSummary extends StatelessWidget {
       ('Câu nói', user.isAdmin || user.quoteEnabled),
       ('Nhật ký', user.isAdmin || user.journalEnabled),
       ('Chatbot', user.isAdmin || user.chatbotEnabled),
+      ('Tài chính', user.isAdmin || user.financeEnabled),
     ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -340,6 +341,8 @@ enum _GuidePermission {
   schedule,
   quote,
   journal,
+  finance,
+  assistant,
   admin,
 }
 
@@ -369,6 +372,8 @@ class _GuideModule {
       _GuidePermission.schedule => user.scheduleEnabled,
       _GuidePermission.quote => user.quoteEnabled,
       _GuidePermission.journal => user.journalEnabled,
+      _GuidePermission.finance => user.financeEnabled,
+      _GuidePermission.assistant => user.chatbotEnabled,
       _GuidePermission.admin => false,
     };
   }
@@ -622,6 +627,50 @@ const _guideModules = <_GuideModule>[
         action: 'Nhấn biểu tượng Cài đặt trong Nhật ký để đặt giờ nhắc và khóa PIN.',
         visual: _GuideVisual.profile,
         focusLabel: 'Khóa Nhật ký',
+      ),
+    ],
+  ),
+  _GuideModule(
+    id: 'finance',
+    title: 'Tài chính',
+    icon: Icons.account_balance_wallet_outlined,
+    permission: _GuidePermission.finance,
+    steps: [
+      _GuideStep(
+        title: 'Ghi nhận thu chi đúng tài khoản',
+        description: 'Chọn loại giao dịch, tài khoản, danh mục và số tiền. Chuyển khoản chỉ di chuyển số dư và không tính vào thu chi.',
+        action: 'Mở Tài chính → Giao dịch → Thêm giao dịch.',
+        visual: _GuideVisual.profile,
+        focusLabel: 'Thêm giao dịch',
+      ),
+      _GuideStep(
+        title: 'Theo dõi ngân sách và khoản định kỳ',
+        description: 'Ngân sách cảnh báo theo mức sử dụng. Khoản định kỳ chỉ tạo giao dịch sau khi chính bạn xác nhận.',
+        action: 'Mở tab Kế hoạch để kiểm tra và xác nhận.',
+        visual: _GuideVisual.navigation,
+        focusLabel: 'Kế hoạch tài chính',
+      ),
+    ],
+  ),
+  _GuideModule(
+    id: 'assistant',
+    title: 'FitTrack PT',
+    icon: Icons.smart_toy_outlined,
+    permission: _GuidePermission.assistant,
+    steps: [
+      _GuideStep(
+        title: 'Đồng ý trước khi dùng AI',
+        description: 'Trợ lý chỉ gửi dữ liệu cần thiết cho câu hỏi hiện tại khi bạn đã đồng ý quyền riêng tư.',
+        action: 'Đọc nội dung quyền riêng tư rồi nhấn Tôi đồng ý.',
+        visual: _GuideVisual.profile,
+        focusLabel: 'Quyền riêng tư AI',
+      ),
+      _GuideStep(
+        title: 'Xác nhận mọi thao tác',
+        description: 'Đề xuất tạo buổi tập, bữa ăn hoặc đơn cơm không tự chạy. Dữ liệu chỉ thay đổi sau khi bạn xác nhận.',
+        action: 'Kiểm tra tóm tắt rồi nhấn Xác nhận thực hiện.',
+        visual: _GuideVisual.navigation,
+        focusLabel: 'Thao tác đề xuất',
       ),
     ],
   ),

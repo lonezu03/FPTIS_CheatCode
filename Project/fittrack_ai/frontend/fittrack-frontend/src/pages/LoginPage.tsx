@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Check, ChefHat, Dumbbell, Eye, EyeOff, UtensilsCrossed } from "lucide-react";
+import { ArrowRight, Check, Dumbbell, Eye, EyeOff, UtensilsCrossed } from "lucide-react";
 import { loginApi, registerApi, resendVerificationApi } from "../api/auth.api";
 import { useAuthStore } from "../store/auth.store";
 import { Button } from "@/components/ui/button";
@@ -117,9 +117,11 @@ export default function LoginPage() {
           <div className="absolute -right-2 top-44 h-44 w-44 rounded-full border border-white/10" />
 
           <div className="relative flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-2xl bg-emerald-400 text-[#0d2b24] shadow-lg shadow-emerald-950/30">
-              <ChefHat className="size-5" />
-            </div>
+            <img
+              src="/branding/fittrack-logo.png"
+              alt="Logo FitTrack"
+              className="size-12 rounded-2xl object-cover shadow-lg shadow-emerald-950/30"
+            />
             <div>
               <p className="text-xl font-bold tracking-tight">FitTrack</p>
               <p className="text-xs text-emerald-100/70">Wellness workspace</p>
@@ -154,9 +156,11 @@ export default function LoginPage() {
         <section className="flex items-center justify-center px-5 py-10 sm:px-10 lg:px-14 xl:px-20">
           <div className="w-full max-w-md">
             <div className="mb-9 flex items-center gap-3 lg:hidden">
-              <div className="grid size-10 place-items-center rounded-xl bg-[#0d2b24] text-emerald-300">
-                <ChefHat className="size-5" />
-              </div>
+              <img
+                src="/branding/fittrack-logo.png"
+                alt="Logo FitTrack"
+                className="size-11 rounded-xl object-cover"
+              />
               <div>
                 <p className="font-bold tracking-tight text-[#0d2b24]">FitTrack</p>
                 <p className="text-xs text-muted-foreground">Wellness workspace</p>

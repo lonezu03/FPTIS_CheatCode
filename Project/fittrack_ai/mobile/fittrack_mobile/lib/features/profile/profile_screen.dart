@@ -48,12 +48,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted && updated is Map) {
         setState(() => profile = Map<String, dynamic>.from(updated));
       }
-      if (mounted) showMessage(context, enabled ? 'Đã bật email notification.' : 'Đã tắt email notification.');
+      if (mounted)
+        showMessage(
+          context,
+          enabled ? 'Đã bật email notification.' : 'Đã tắt email notification.',
+        );
     } catch (e) {
       if (mounted) {
         setState(() {
           updatingEmailPreference = false;
-          profile = {...?profile, 'emailNotificationsEnabled': previous ?? false};
+          profile = {
+            ...?profile,
+            'emailNotificationsEnabled': previous ?? false,
+          };
         });
         showMessage(context, displayError(e), error: true);
       }
@@ -126,6 +133,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         avatar: Icon(Icons.favorite, size: 18),
                         label: Text('Sức khỏe'),
                       ),
+                    if (auth.todoEnabled || auth.isAdmin)
+                      const Chip(
+                        avatar: Icon(Icons.checklist, size: 18),
+                        label: Text('Việc cần làm'),
+                      ),
+                    if (auth.scheduleEnabled || auth.isAdmin)
+                      const Chip(
+                        avatar: Icon(Icons.event_note, size: 18),
+                        label: Text('Thời khóa biểu'),
+                      ),
+                    if (auth.financeEnabled || auth.isAdmin)
+                      const Chip(
+                        avatar: Icon(
+                          Icons.account_balance_wallet_outlined,
+                          size: 18,
+                        ),
+                        label: Text('Tài chính'),
+                      ),
+                    if (auth.journalEnabled || auth.isAdmin)
+                      const Chip(
+                        avatar: Icon(Icons.menu_book_outlined, size: 18),
+                        label: Text('Nhật ký'),
+                      ),
+                    if (auth.chatbotEnabled || auth.isAdmin)
+                      const Chip(
+                        avatar: Icon(Icons.smart_toy_outlined, size: 18),
+                        label: Text('FitTrack PT'),
+                      ),
                     if (auth.isAdmin)
                       const Chip(
                         avatar: Icon(Icons.admin_panel_settings, size: 18),
@@ -165,7 +200,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onChanged: updatingEmailPreference ? null : _setEmailNotifications,
             secondary: const Icon(Icons.email_outlined),
             title: const Text('Nhận email notification'),
-            subtitle: const Text('Cho phép FitTrack gửi email menu, broadcast và kịch bản nhắc nhở. OTP đặt lại mật khẩu vẫn hoạt động độc lập.'),
+            subtitle: const Text(
+              'Cho phép FitTrack gửi email menu, broadcast và kịch bản nhắc nhở. OTP đặt lại mật khẩu vẫn hoạt động độc lập.',
+            ),
           ),
         ),
         const SizedBox(height: 20),

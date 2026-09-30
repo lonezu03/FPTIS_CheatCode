@@ -238,6 +238,16 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
                       value: user['journalEnabled'] == true,
                       onChanged: (v) => _toggle(user, 'journalEnabled', v),
                     ),
+                    SwitchListTile(
+                      title: const Text('Tài chính cá nhân'),
+                      value: user['financeEnabled'] == true,
+                      onChanged: (v) => _toggle(user, 'financeEnabled', v),
+                    ),
+                    SwitchListTile(
+                      title: const Text('Trợ lý FitTrack PT'),
+                      value: user['chatbotEnabled'] == true,
+                      onChanged: (v) => _toggle(user, 'chatbotEnabled', v),
+                    ),
                     if (user['active'] != true)
                       ListTile(
                         leading: const Icon(
