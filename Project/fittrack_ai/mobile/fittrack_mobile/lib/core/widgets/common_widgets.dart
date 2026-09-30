@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../network/api_exception.dart';
+
 class PageIntro extends StatelessWidget {
   const PageIntro({super.key, required this.title, required this.subtitle});
   final String title;
@@ -117,5 +119,4 @@ void showMessage(BuildContext context, String message, {bool error = false}) {
     );
 }
 
-String displayError(Object error) =>
-    error.toString().replaceFirst('Exception: ', '');
+String displayError(Object error) => friendlyErrorMessage(error);

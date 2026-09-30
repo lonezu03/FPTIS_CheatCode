@@ -8,10 +8,25 @@ class NativeNotificationService {
       FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
 
+  static const _generalChannel = AndroidNotificationChannel(
+    'fittrack_updates_v2',
+    'Thông báo FitTrack',
+    description: 'Nhắc việc, lịch, sức khỏe, tài chính và thông báo hệ thống',
+    importance: Importance.high,
+    playSound: true,
+  );
+  static const _reminderChannel = AndroidNotificationChannel(
+    'fittrack_reminders_v1',
+    'Lời nhắc FitTrack',
+    description: 'Lời nhắc công việc, lịch trình, sức khỏe và nhật ký',
+    importance: Importance.max,
+    playSound: true,
+  );
+
   static Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
     const settings = InitializationSettings(
-      android: AndroidInitializationSettings('ic_launcher'),
+      android: AndroidInitializationSettings('ic_stat_fittrack'),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -19,6 +34,14 @@ class NativeNotificationService {
       ),
     );
     await _plugin.initialize(settings: settings);
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await android?.createNotificationChannel(_generalChannel);
+      await android?.createNotificationChannel(_reminderChannel);
+    }
     _initialized = true;
   }
 
@@ -87,6 +110,7 @@ class NativeNotificationService {
   static Future<void> show(Map<String, dynamic> notification) async {
     if (kIsWeb) return;
     await initialize();
+    if (!await notificationsEnabled()) return;
     final id = _stableId(
       notification['id']?.toString() ?? notification.toString(),
     );
@@ -99,6 +123,15 @@ class NativeNotificationService {
     );
   }
 
+  static Future<void> showPermissionConfirmation() async {
+    await show(const {
+      'id': 'fittrack-notification-permission-enabled',
+      'type': 'SYSTEM',
+      'title': 'Đã bật thông báo FitTrack',
+      'message': 'Lời nhắc mới sẽ xuất hiện trực tiếp trên thanh thông báo điện thoại.',
+    });
+  }
+
   static NotificationDetails _detailsFor(String? type) {
     return switch (type) {
       'LUNCH_MENU_AVAILABLE' => const NotificationDetails(
@@ -109,7 +142,7 @@ class NativeNotificationService {
               'Thông báo sau khi quản trị viên import và mở menu cơm',
           importance: Importance.high,
           priority: Priority.high,
-          icon: 'ic_launcher',
+          icon: 'ic_stat_fittrack',
           playSound: true,
           sound: RawResourceAndroidNotificationSound('lunch_menu_available'),
         ),
@@ -127,7 +160,7 @@ class NativeNotificationService {
           channelDescription: 'Thông báo khi menu cơm đã chốt nhận đơn',
           importance: Importance.high,
           priority: Priority.high,
-          icon: 'ic_launcher',
+          icon: 'ic_stat_fittrack',
           playSound: true,
           sound: RawResourceAndroidNotificationSound('lunch_order_closed'),
         ),
@@ -138,15 +171,38 @@ class NativeNotificationService {
           sound: 'lunch_order_closed.wav',
         ),
       ),
+      'HEALTH_REMINDER' ||
+      'TODO_REMINDER' ||
+      'SCHEDULE_REMINDER' ||
+      'JOURNAL_REMINDER' => const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'fittrack_reminders_v1',
+          'Lời nhắc FitTrack',
+          channelDescription:
+              'Lời nhắc công việc, lịch trình, sức khỏe và nhật ký',
+          importance: Importance.max,
+          priority: Priority.max,
+          icon: 'ic_stat_fittrack',
+          playSound: true,
+          category: AndroidNotificationCategory.reminder,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          interruptionLevel: InterruptionLevel.timeSensitive,
+        ),
+      ),
       _ => const NotificationDetails(
         android: AndroidNotificationDetails(
-          'fittrack_updates',
+          'fittrack_updates_v2',
           'Thông báo FitTrack',
           channelDescription:
-              'Thanh toán, sức khỏe và thông báo từ quản trị viên',
+              'Nhắc việc, lịch, sức khỏe, tài chính và thông báo hệ thống',
           importance: Importance.high,
           priority: Priority.high,
-          icon: 'ic_launcher',
+          icon: 'ic_stat_fittrack',
+          playSound: true,
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,

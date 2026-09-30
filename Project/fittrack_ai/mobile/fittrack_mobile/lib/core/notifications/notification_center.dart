@@ -50,6 +50,10 @@ class NotificationCenter extends ChangeNotifier {
   Future<bool> requestPermission() async {
     permissionGranted = await NativeNotificationService.requestPermission();
     notifyListeners();
+    if (permissionGranted == true) {
+      await NativeNotificationService.showPermissionConfirmation();
+      await refresh();
+    }
     return permissionGranted ?? false;
   }
 

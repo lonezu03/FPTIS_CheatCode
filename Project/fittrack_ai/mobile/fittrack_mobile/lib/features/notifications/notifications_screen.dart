@@ -11,6 +11,25 @@ import '../journal/journal_screen.dart';
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
+  Future<void> _requestSystemPermission(BuildContext context) async {
+    final center = context.read<NotificationCenter>();
+    try {
+      final granted = await center.requestPermission();
+      if (!granted && context.mounted) {
+        showMessage(
+          context,
+          'Quyền thông báo đang bị tắt. Hãy bật trong cài đặt ứng dụng.',
+          error: true,
+        );
+        await center.openPermissionSettings();
+      }
+    } catch (error) {
+      if (context.mounted) {
+        showMessage(context, displayError(error), error: true);
+      }
+    }
+  }
+
   Future<void> _markAll(BuildContext context) async {
     try {
       await context.read<NotificationCenter>().markAllRead();
@@ -56,16 +75,18 @@ class NotificationsScreen extends StatelessWidget {
       await context.read<ApiClient>().post(
         '/todos/${item['referenceId']}/snooze?minutes=$minutes',
       );
-      if (context.mounted)
+      if (context.mounted) {
         showMessage(
           context,
           minutes == 1440
               ? 'Sẽ nhắc lại vào ngày mai.'
               : 'Sẽ nhắc lại sau $minutes phút.',
         );
+      }
     } catch (error) {
-      if (context.mounted)
+      if (context.mounted) {
         showMessage(context, displayError(error), error: true);
+      }
     }
   }
 
@@ -105,6 +126,46 @@ class NotificationsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+          if (center.permissionGranted != true) ...[
+            Card(
+              color: const Color(0xFFFFF5E6),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.notifications_off_outlined),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Chưa bật thông báo trên điện thoại',
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Cho phép để nhận trực tiếp lời nhắc công việc, lịch trình, sức khỏe và thông báo mới.',
+                          ),
+                          const SizedBox(height: 10),
+                          FilledButton.icon(
+                            onPressed: () => _requestSystemPermission(context),
+                            icon: const Icon(
+                              Icons.notifications_active_outlined,
+                            ),
+                            label: const Text('Bật thông báo điện thoại'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (center.items.isEmpty)
             const EmptyView(
               icon: Icons.notifications_none,

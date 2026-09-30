@@ -2,6 +2,49 @@
 
 Last updated: 2026-09-30
 
+## Current task: mobile API errors and native notifications
+
+Status: implemented, tested and release APK built; requires an Android device
+smoke test for the OS permission dialog and background delivery.
+
+### Completed
+
+- Centralized mobile API error parsing so backend JSON, Dio responses,
+  validation maps and common HTTP statuses become concise Vietnamese messages
+  instead of raw response objects. Production `X-Request-Id` remains visible for
+  Render log correlation without exposing request headers or response dumps.
+- Added explicit notification-permission UI both after login and on the mobile
+  Notification screen. Granting permission immediately posts a native
+  confirmation notification so the user can verify system-tray delivery.
+- Created Android high-priority channels for reminders and general FitTrack
+  updates, added a valid monochrome notification status icon, and routed health,
+  Todo, Schedule and Journal reminder types through the reminder channel.
+- Existing foreground polling and 15-minute Workmanager background sync now
+  surface new backend notifications through Android/iOS native notifications;
+  the in-app bell remains the notification history, not the only delivery UI.
+- Raised the mobile release version to `1.2.1+7` so the APK can update the prior
+  installation cleanly. No backend, web or Lunch source was changed.
+
+### Verification
+
+- `flutter analyze`: no error/warning; 42 existing info-level notices remain.
+- `flutter test`: 7/7 passed, including API payload/status/error parsing tests.
+- Android release build passed. `aapt` confirms version code 7 and Android
+  permissions `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED` and `WAKE_LOCK`.
+- APK: `mobile/fittrack_mobile/build/app/outputs/flutter-apk/app-release.apk`
+  (61.43 MiB, SHA-256
+  `7FBD1BDEC600193D24AB2B8918FACEB4D8C4A014A3FA06118F63932BBCC0DB3A`).
+
+### Device smoke test
+
+1. Install over the previous APK, sign in and accept the FitTrack rationale and
+   Android notification permission dialog.
+2. Confirm the immediate `Đã bật thông báo FitTrack` system notification.
+3. Create a health/Todo/Schedule reminder a few minutes ahead, background the
+   app and confirm its backend notification reaches the phone. Android may defer
+   the periodic worker; exact real-time delivery while force-stopped requires a
+   future push provider such as FCM.
+
 ## Current task: shared branding and mobile Finance/Planner stabilization
 
 Status: implemented and verified locally; awaiting deployment/install smoke test.
