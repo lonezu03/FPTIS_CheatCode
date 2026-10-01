@@ -231,7 +231,7 @@ function WeeklyReportContent({
 
           <CardContent className="h-[240px] md:h-[320px]">
             {includedNutrition.length === 0 ? (
-              <EmptyState title="Chưa có dữ liệu dinh dưỡng" description="Ghi bữa ăn trong khoảng này để xem xu hướng năng lượng." />
+              <EmptyState kind="food" title="Chưa có dữ liệu dinh dưỡng" description="Ghi bữa ăn trong khoảng này để xem xu hướng năng lượng." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={includedNutrition}>
@@ -253,7 +253,7 @@ function WeeklyReportContent({
 
           <CardContent className="h-[240px] md:h-[320px]">
             {includedNutrition.length === 0 ? (
-              <EmptyState title="Chưa có dữ liệu chất đạm" description="Ghi bữa ăn trong khoảng này để xem xu hướng chất đạm." />
+              <EmptyState kind="food" title="Chưa có dữ liệu chất đạm" description="Ghi bữa ăn trong khoảng này để xem xu hướng chất đạm." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={includedNutrition}>
@@ -281,7 +281,7 @@ function WeeklyReportContent({
 
         <CardContent>
           {report.insights.length === 0 ? (
-            <EmptyState title="Chưa có nhận xét" description="Thêm dữ liệu dinh dưỡng, buổi tập và cơ thể trong khoảng này." />
+            <EmptyState kind="progress" title="Chưa có nhận xét" description="Thêm dữ liệu dinh dưỡng, buổi tập và cơ thể trong khoảng này." />
           ) : (
             <ul className="space-y-3">
               {report.insights.map((insight, index) => (
@@ -302,7 +302,7 @@ function WeeklyReportContent({
         <CardContent className="space-y-4">
           {recommendations ? (
             recommendations.recommendations.length === 0 ? (
-              <EmptyState title="Chưa có khuyến nghị" description={recommendations.summary} />
+              <EmptyState kind="progress" title="Chưa có khuyến nghị" description={recommendations.summary} />
             ) : (
               <>
                 <div className="rounded-xl bg-slate-50 p-4 text-sm text-muted-foreground">{recommendations.summary}</div>

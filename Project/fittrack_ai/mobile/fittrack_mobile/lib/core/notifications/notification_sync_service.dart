@@ -21,6 +21,9 @@ class NotificationSyncService {
   final ApiClient api;
   final FlutterSecureStorage _storage;
 
+  Future<void> clearNativeDeliveryHistory() =>
+      _storage.delete(key: knownIdsKey);
+
   Future<NotificationSnapshot> sync({bool showNative = true}) async {
     final response = await api.get('/notifications');
     final map = Map<String, dynamic>.from(response as Map);
@@ -38,7 +41,9 @@ class NotificationSyncService {
         .whereType<String>()
         .toSet();
 
-    if (stored != null && showNative) {
+    final nativeEnabled =
+        showNative && await NativeNotificationService.notificationsEnabled();
+    if (nativeEnabled) {
       final newUnread = items.where(
         (item) =>
             item['readAt'] == null &&
@@ -50,10 +55,14 @@ class NotificationSyncService {
       }
     }
 
-    await _storage.write(
-      key: knownIdsKey,
-      value: jsonEncode(currentIds.take(100).toList()),
-    );
+    // Không đánh dấu là đã giao khi người dùng chưa cấp quyền hệ thống. Sau khi
+    // bật quyền, các thông báo chưa đọc gần nhất vẫn có thể xuất hiện trên máy.
+    if (nativeEnabled) {
+      await _storage.write(
+        key: knownIdsKey,
+        value: jsonEncode(currentIds.take(100).toList()),
+      );
+    }
     return NotificationSnapshot(
       unreadCount:
           (map['unreadCount'] as num?)?.toInt() ??

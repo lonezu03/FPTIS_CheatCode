@@ -7,6 +7,7 @@ export type DemoSeedResponse = {
   mealLogsCreated: number;
   workoutSessionsCreated: number;
   bodyMeasurementsCreated: number;
+  quotesCreated: number;
 };
 
 export const seedDemoData = async (): Promise<DemoSeedResponse> => {

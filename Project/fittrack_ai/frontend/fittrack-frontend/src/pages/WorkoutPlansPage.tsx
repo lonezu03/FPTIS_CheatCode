@@ -476,7 +476,7 @@ export default function WorkoutPlansPage() {
       </Card>
 
       {plans.length === 0 ? (
-        <EmptyState title="Chưa có giáo án" description="Tạo giáo án dùng lại để bắt đầu buổi tập nhanh hơn." />
+        <EmptyState kind="workout" title="Chưa có giáo án" description="Tạo giáo án dùng lại để bắt đầu buổi tập nhanh hơn." />
       ) : (
         <div className="space-y-4">
           <div className="grid gap-4 md:gap-6 lg:grid-cols-2">

@@ -218,7 +218,7 @@ function MealSection({ mealType, logs, onAdd, onEdit, onDelete }: { mealType: st
     <Card>
       <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle>{mealLabels[mealType]}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{round(totals.calories)} kcal · P {round(totals.protein)}g · C {round(totals.carbs)}g · F {round(totals.fat)}g</p></div><Button size="sm" variant="outline" onClick={onAdd}><Plus className="size-4" /> Ghi món</Button></CardHeader>
       <CardContent className="space-y-3">
-        {logs.length === 0 ? <EmptyState title={`Chưa có ${mealLabels[mealType].toLowerCase()}`} description="Ghi một hoặc nhiều món trong cùng một lần." /> : logs.map((log) => (
+        {logs.length === 0 ? <EmptyState kind="food" title={`Chưa có ${mealLabels[mealType].toLowerCase()}`} description="Ghi một hoặc nhiều món trong cùng một lần." /> : logs.map((log) => (
           <div key={log.id} className="rounded-2xl border bg-slate-50/60 p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               {log.sourceType === "LUNCH_ORDER" ? <Badge className="bg-emerald-100 text-emerald-800"><Utensils className="size-3" /> Từ đơn cơm</Badge> : <Badge variant="outline">Nhập thủ công</Badge>}

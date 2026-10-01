@@ -8,6 +8,10 @@ import com.fittrack.nutrition.entity.MealItem;
 import com.fittrack.nutrition.entity.MealLog;
 import com.fittrack.nutrition.repository.FoodRepository;
 import com.fittrack.nutrition.repository.MealLogRepository;
+import com.fittrack.common.exception.ConflictException;
+import com.fittrack.quote.dto.QuoteDtos.QuoteRequest;
+import com.fittrack.quote.entity.QuoteSourceType;
+import com.fittrack.quote.service.QuoteService;
 import com.fittrack.user.entity.User;
 import com.fittrack.workout.entity.Exercise;
 import com.fittrack.workout.entity.WorkoutSession;
@@ -29,6 +33,7 @@ public class DemoSeedService {
     private final ExerciseRepository exerciseRepository;
     private final WorkoutSessionRepository workoutSessionRepository;
     private final BodyMeasurementRepository bodyMeasurementRepository;
+    private final QuoteService quoteService;
 
     public DemoSeedResponse seed(User user) {
         int foodsCreated = seedFoods();
@@ -40,14 +45,16 @@ public class DemoSeedService {
         int mealLogsCreated = seedMealLogs(user, foods);
         int workoutSessionsCreated = seedWorkoutSessions(user, exercises);
         int bodyMeasurementsCreated = seedBodyMeasurements(user);
+        int quotesCreated = seedFavoriteQuotes(user);
 
         return DemoSeedResponse.builder()
-                .message("Demo data seeded successfully")
+                .message("Đã bổ sung dữ liệu mẫu cho tài khoản")
                 .foodsCreated(foodsCreated)
                 .exercisesCreated(exercisesCreated)
                 .mealLogsCreated(mealLogsCreated)
                 .workoutSessionsCreated(workoutSessionsCreated)
                 .bodyMeasurementsCreated(bodyMeasurementsCreated)
+                .quotesCreated(quotesCreated)
                 .build();
     }
 
@@ -101,6 +108,18 @@ public class DemoSeedService {
         count += createExerciseIfMissing("Push Up", "Chest", "Bodyweight");
         count += createExerciseIfMissing("Ring Row", "Back", "Rings");
         count += createExerciseIfMissing("Bulgarian Split Squat", "Legs", "Dumbbell");
+        count += createExerciseIfMissing("Barbell Bench Press", "Chest", "Barbell");
+        count += createExerciseIfMissing("Incline Dumbbell Bench Press", "Chest", "Dumbbell");
+        count += createExerciseIfMissing("Shoulder Press Machine", "Shoulder", "Shoulder Press Machine");
+        count += createExerciseIfMissing("Triceps Pushdown", "Triceps", "Cable Machine");
+        count += createExerciseIfMissing("Lat Pulldown", "Back", "Lat Pulldown Machine");
+        count += createExerciseIfMissing("Seated Cable Row", "Back", "Cable Machine");
+        count += createExerciseIfMissing("Barbell Biceps Curl", "Biceps", "Barbell");
+        count += createExerciseIfMissing("Smith Machine Squat", "Legs", "Smith Machine");
+        count += createExerciseIfMissing("Leg Press Machine", "Legs", "Leg Press Machine");
+        count += createExerciseIfMissing("Seated Leg Curl Machine", "Legs", "Leg Curl Machine");
+        count += createExerciseIfMissing("Romanian Deadlift", "Legs", "Barbell");
+        count += createExerciseIfMissing("Cable Crossover", "Chest", "Cable Machine");
 
         return count;
     }
@@ -209,8 +228,33 @@ public class DemoSeedService {
         int created = 0;
         LocalDate today = LocalDate.now();
 
-        for (int i = 0; i < 7; i += 2) {
-            LocalDate date = today.minusDays(i);
+        List<WorkoutTemplate> templates = List.of(
+                new WorkoutTemplate(0, "Buổi đẩy mẫu · Ngực, vai, tay sau", 65, List.of(
+                        new ExerciseTemplate("Barbell Bench Press", 3, 8, 40.0, 2),
+                        new ExerciseTemplate("Incline Dumbbell Bench Press", 3, 10, 14.0, 2),
+                        new ExerciseTemplate("Shoulder Press Machine", 3, 10, 25.0, 2),
+                        new ExerciseTemplate("Triceps Pushdown", 3, 12, 20.0, 2)
+                )),
+                new WorkoutTemplate(2, "Buổi kéo mẫu · Lưng, tay trước", 60, List.of(
+                        new ExerciseTemplate("Lat Pulldown", 3, 10, 35.0, 2),
+                        new ExerciseTemplate("Seated Cable Row", 3, 10, 35.0, 2),
+                        new ExerciseTemplate("Barbell Biceps Curl", 3, 12, 15.0, 2)
+                )),
+                new WorkoutTemplate(4, "Buổi chân mẫu · Đùi trước, đùi sau, mông", 70, List.of(
+                        new ExerciseTemplate("Smith Machine Squat", 4, 8, 50.0, 2),
+                        new ExerciseTemplate("Leg Press Machine", 3, 12, 80.0, 2),
+                        new ExerciseTemplate("Seated Leg Curl Machine", 3, 12, 30.0, 2),
+                        new ExerciseTemplate("Romanian Deadlift", 3, 10, 40.0, 2)
+                )),
+                new WorkoutTemplate(6, "Buổi thân trên mẫu · Kỹ thuật và kiểm soát", 55, List.of(
+                        new ExerciseTemplate("Incline Dumbbell Bench Press", 3, 12, 12.0, 3),
+                        new ExerciseTemplate("Lat Pulldown", 3, 12, 30.0, 3),
+                        new ExerciseTemplate("Cable Crossover", 3, 15, 10.0, 2)
+                ))
+        );
+
+        for (WorkoutTemplate template : templates) {
+            LocalDate date = today.minusDays(template.daysAgo());
 
             if (!workoutSessionRepository.findByUserAndSessionDateOrderByCreatedAtDesc(user, date).isEmpty()) {
                 continue;
@@ -219,15 +263,25 @@ public class DemoSeedService {
             WorkoutSession session = WorkoutSession.builder()
                     .user(user)
                     .sessionDate(date)
-                    .note("Demo workout session")
-                    .durationMinutes(60)
+                    .note(template.note())
+                    .durationMinutes(template.durationMinutes())
                     .build();
 
-            Exercise first = exercises.get(0);
-            Exercise second = exercises.size() > 1 ? exercises.get(1) : exercises.get(0);
-
-            addWorkoutSets(session, first, 3, 10, 9.0, 2);
-            addWorkoutSets(session, second, 3, 12, 15.0, 2);
+            int exerciseOrder = 1;
+            for (ExerciseTemplate item : template.exercises()) {
+                Exercise exercise = findExercise(exercises, item.name());
+                if (exercise == null) continue;
+                addWorkoutSets(
+                        session,
+                        exercise,
+                        exerciseOrder++,
+                        item.sets(),
+                        item.reps(),
+                        item.weight(),
+                        item.rir()
+                );
+            }
+            if (session.getSets().isEmpty()) continue;
 
             workoutSessionRepository.save(session);
             created++;
@@ -239,6 +293,7 @@ public class DemoSeedService {
     private void addWorkoutSets(
             WorkoutSession session,
             Exercise exercise,
+            int exerciseOrder,
             int sets,
             int reps,
             double weight,
@@ -249,6 +304,7 @@ public class DemoSeedService {
                     .session(session)
                     .exercise(exercise)
                     .setNumber(i)
+                    .exerciseOrder(exerciseOrder)
                     .reps(reps)
                     .weight(weight)
                     .rir(rir)
@@ -256,6 +312,48 @@ public class DemoSeedService {
 
             session.getSets().add(set);
         }
+    }
+
+    private Exercise findExercise(List<Exercise> exercises, String name) {
+        return exercises.stream()
+                .filter(exercise -> exercise.getName().equalsIgnoreCase(name))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private int seedFavoriteQuotes(User user) {
+        List<QuoteSeed> seeds = List.of(
+                new QuoteSeed("Kỷ luật là cây cầu nối giữa mục tiêu và thành tựu.", "Jim Rohn", "Kỷ luật", List.of("kỷ-luật", "mục-tiêu")),
+                new QuoteSeed("Bạn không cần hoàn hảo để bắt đầu, nhưng cần bắt đầu để tiến bộ.", null, "FitTrack", List.of("bắt-đầu", "tiến-bộ")),
+                new QuoteSeed("Chậm vẫn là tiến lên, miễn là bạn không dừng lại.", null, "FitTrack", List.of("kiên-trì")),
+                new QuoteSeed("Mỗi buổi tập là một lá phiếu cho con người bạn muốn trở thành.", null, "FitTrack", List.of("luyện-tập", "thói-quen")),
+                new QuoteSeed("Sức khỏe tốt được xây từ những lựa chọn nhỏ lặp lại mỗi ngày.", null, "FitTrack", List.of("sức-khỏe", "hằng-ngày")),
+                new QuoteSeed("Hãy tập trung vào điều bạn có thể làm hôm nay.", null, "FitTrack", List.of("tập-trung")),
+                new QuoteSeed("Nghỉ ngơi đúng lúc cũng là một phần của tiến bộ.", null, "FitTrack", List.of("phục-hồi")),
+                new QuoteSeed("Đừng so sánh chương đầu của mình với chương hai mươi của người khác.", null, "FitTrack", List.of("tự-tin", "hành-trình"))
+        );
+        int created = 0;
+        for (QuoteSeed seed : seeds) {
+            try {
+                quoteService.create(user, new QuoteRequest(
+                        seed.content(),
+                        seed.author(),
+                        QuoteSourceType.OTHER,
+                        seed.sourceTitle(),
+                        null,
+                        null,
+                        "Dữ liệu mẫu; bạn có thể sửa hoặc xóa.",
+                        true,
+                        "vi",
+                        seed.tags(),
+                        false
+                ));
+                created++;
+            } catch (ConflictException ignored) {
+                // Dữ liệu mẫu phải idempotent khi người dùng nhấn lại.
+            }
+        }
+        return created;
     }
 
     private int seedBodyMeasurements(User user) {
@@ -294,6 +392,31 @@ public class DemoSeedService {
         created += 2;
 
         return created;
+    }
+
+    private record WorkoutTemplate(
+            int daysAgo,
+            String note,
+            int durationMinutes,
+            List<ExerciseTemplate> exercises
+    ) {
+    }
+
+    private record ExerciseTemplate(
+            String name,
+            int sets,
+            int reps,
+            double weight,
+            int rir
+    ) {
+    }
+
+    private record QuoteSeed(
+            String content,
+            String author,
+            String sourceTitle,
+            List<String> tags
+    ) {
     }
 }
 

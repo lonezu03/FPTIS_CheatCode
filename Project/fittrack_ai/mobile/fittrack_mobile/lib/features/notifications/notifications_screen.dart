@@ -30,6 +30,25 @@ class NotificationsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _testSystemNotification(BuildContext context) async {
+    try {
+      final shown = await context
+          .read<NotificationCenter>()
+          .testSystemNotification();
+      if (!shown && context.mounted) {
+        showMessage(
+          context,
+          'Không thể gửi thông báo thử. Hãy kiểm tra quyền thông báo trong cài đặt điện thoại.',
+          error: true,
+        );
+      }
+    } catch (error) {
+      if (context.mounted) {
+        showMessage(context, displayError(error), error: true);
+      }
+    }
+  }
+
   Future<void> _markAll(BuildContext context) async {
     try {
       await context.read<NotificationCenter>().markAllRead();
@@ -161,6 +180,22 @@ class NotificationsScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ] else ...[
+            Card(
+              color: const Color(0xFFEAF9F1),
+              child: ListTile(
+                leading: const Icon(Icons.notifications_active_outlined),
+                title: const Text('Thông báo điện thoại đang bật'),
+                subtitle: const Text(
+                  'Gửi thử để kiểm tra FitTrack có xuất hiện trên thanh thông báo như tin nhắn hay không.',
+                ),
+                trailing: OutlinedButton(
+                  onPressed: () => _testSystemNotification(context),
+                  child: const Text('Gửi thử'),
                 ),
               ),
             ),

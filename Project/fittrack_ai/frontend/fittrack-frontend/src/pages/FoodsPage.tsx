@@ -372,7 +372,7 @@ export default function FoodsPage() {
           {foodsQuery.isLoading ? (
             <TableLoading />
           ) : foods.length === 0 ? (
-            <EmptyState title="Không tìm thấy thực phẩm" description="Hãy thêm thực phẩm hoặc thử từ khóa khác." />
+            <EmptyState kind="food" title="Không tìm thấy thực phẩm" description="Hãy thêm thực phẩm hoặc thử từ khóa khác." />
           ) : (
             <div className="w-full overflow-x-auto">
               <Table>

@@ -190,7 +190,7 @@ export default function HealthPage() {
         <CardHeader><CardTitle>Nhắc nhở của tôi</CardTitle></CardHeader>
         <CardContent>
           {(remindersQuery.data ?? []).length === 0 ? (
-            <EmptyState title="Chưa có nhắc nhở" description="Tạo nhắc nhở phù hợp với lịch sinh hoạt của bạn." />
+            <EmptyState kind="notification" title="Chưa có nhắc nhở" description="Tạo nhắc nhở phù hợp với lịch sinh hoạt của bạn." />
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {remindersQuery.data?.map((reminder) => (

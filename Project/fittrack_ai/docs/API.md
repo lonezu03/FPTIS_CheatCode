@@ -576,6 +576,10 @@ GET /achievements/summary
 POST /demo/seed
 ```
 
+Tạo dữ liệu mẫu theo tài khoản hiện tại và có thể gọi lại an toàn: thực phẩm,
+kho bài tập, nhật ký ăn, bốn buổi gym gần đây, số đo cơ thể và tám câu nói yêu
+thích. Dữ liệu đã tồn tại hoặc ngày đã có buổi tập sẽ không bị nhân bản.
+
 
 ## Todo / Personal Task Planner
 

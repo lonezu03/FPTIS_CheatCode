@@ -1,6 +1,75 @@
 # FitTrack Current Project State
 
-Last updated: 2026-09-30
+Last updated: 2026-10-01
+
+## Current task: web visual enrichment
+
+Status: implemented and verified locally; pending Vercel deployment and browser
+smoke testing on desktop/mobile widths.
+
+### Completed
+
+- Added a responsive, code-native FitTrack wellness illustration to the
+  Dashboard hero. It combines training, health and progress motifs without any
+  external image URL or additional raster download.
+- Reworked the shared web empty state with reusable vector artwork and contextual
+  variants for workouts, food/nutrition, body progress and notifications.
+- Applied the contextual visuals to Exercise, Workout Plan, Workout, Food,
+  Nutrition, Body Tracking, Health and Weekly Report empty states.
+- Kept all visuals decorative for screen readers, responsive and compatible with
+  reduced-motion preferences. No backend, mobile, schema or Lunch flow changed.
+
+### Verification
+
+- Web ESLint passed.
+- Vitest passed 5 files / 10 tests.
+- Production Vite build passed with 2,621 modules transformed.
+
+## Current task: demo quotes/workouts and Android system notifications
+
+Status: implemented, verified and release APK built; pending backend/web deploy
+and physical-device smoke testing.
+
+### Completed
+
+- Extended the authenticated demo seed flow with eight idempotent Vietnamese
+  favorite quotes and four recent gym workout sessions (push, pull, legs and
+  upper-body technique). Existing workout dates and duplicate quote content are
+  preserved, so running the seed action again does not duplicate those samples.
+- Added `quotesCreated` to the demo seed response and showed the quote/workout
+  counts in the web Dashboard success message. No schema migration was needed.
+- Fixed mobile native-notification delivery history: notifications are no longer
+  recorded as delivered while Android/iOS notification permission is disabled.
+  Granting permission clears the old delivery cache and immediately refreshes
+  unread backend notifications.
+- The app rechecks permission after returning from system settings and the
+  Notification screen now provides a `Gửi thử` action that posts a real native
+  notification to the phone's system tray.
+- Raised the mobile release to `1.2.2+8`.
+
+### Verification
+
+- Backend clean test: 98 passed, 0 failed/errors, 2 skipped.
+- Web ESLint passed; Vitest passed 5 files / 10 tests; production build passed
+  with 2,619 modules transformed.
+- Flutter analysis has no error/warning and retains 42 existing info notices;
+  Flutter tests passed 7/7.
+- Android release build passed. `aapt` confirms version code 8/name 1.2.2 and
+  `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, and `WAKE_LOCK` permissions.
+- APK: `mobile/fittrack_mobile/build/app/outputs/flutter-apk/app-release.apk`
+  (61.45 MiB, SHA-256
+  `5470F9A80E890192B3D710F72F3A12D3FA8F8D9B227F6FCB639DC429DCD939A3`).
+
+### Remaining device/deployment checks
+
+1. Deploy the backend and web, then use the admin Dashboard demo-data action and
+   confirm the returned counts plus owner-scoped quote/workout views.
+2. Install the APK, open Notifications, grant permission and press `Gửi thử`;
+   verify the item appears in the Android notification shade.
+3. Current delivery uses foreground polling and Workmanager background polling
+   (minimum 15-minute cadence and subject to Android scheduling). Message-like
+   instant delivery while the app is force-stopped still requires a future FCM
+   integration and Firebase deployment credentials.
 
 ## Current task: mobile API errors and native notifications
 

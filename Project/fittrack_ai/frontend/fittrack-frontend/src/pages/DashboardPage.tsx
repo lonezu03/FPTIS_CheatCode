@@ -17,6 +17,7 @@ import MacroProgressCard from "../components/MacroProgressCard";
 import PageHeader from "../components/PageHeader";
 import RecommendationCard from "../components/RecommendationCard";
 import DailyQuoteCard from "../components/quotes/DailyQuoteCard";
+import WellnessHeroArt from "../components/visuals/WellnessHeroArt";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default function DashboardPage() {
   const queryClient = useQueryClient();
   const authUser = useAuthStore((state) => state.user);
-  const seedMutation = useMutation({ mutationFn: seedDemoData, onSuccess: (data) => { toast.success(data.message); queryClient.invalidateQueries(); }, onError: (error) => { const message = axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined; toast.error(message || "Không thể tạo dữ liệu mẫu"); } });
+  const seedMutation = useMutation({ mutationFn: seedDemoData, onSuccess: (data) => { toast.success(`${data.message}: ${data.quotesCreated} câu nói, ${data.workoutSessionsCreated} buổi tập mới.`); queryClient.invalidateQueries(); }, onError: (error) => { const message = axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined; toast.error(message || "Không thể tạo dữ liệu mẫu"); } });
   const accessRequestMutation = useMutation({
     mutationFn: requestFitnessModuleAccess,
     onSuccess: (data) => toast.success(data.message),
@@ -70,8 +71,11 @@ export default function DashboardPage() {
     ...(fitnessEnabled ? [{ title: "Luyện tập", value: today.workoutCount, detail: "buổi tập", icon: Dumbbell, tone: "from-blue-50 to-indigo-50/50", iconTone: "bg-blue-100 text-blue-700" }] : []),
   ];
   return <div className="space-y-6 md:space-y-8">
-    <div className="flex flex-col gap-5 rounded-3xl bg-[#0c2821] px-5 py-6 text-white shadow-xl shadow-emerald-950/10 sm:px-7 sm:py-8 lg:flex-row lg:items-end lg:justify-between">
-      <div>
+    <div className="relative overflow-hidden rounded-3xl bg-[#0c2821] px-5 py-6 text-white shadow-xl shadow-emerald-950/10 sm:px-7 sm:py-8">
+      <div className="pointer-events-none absolute -left-24 -top-24 size-64 rounded-full border border-emerald-200/10" />
+      <div className="pointer-events-none absolute -left-10 -top-10 size-36 rounded-full border border-emerald-200/10" />
+      <div className="relative grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(21rem,25rem)] lg:items-center">
+        <div>
         <p className="text-sm font-medium text-emerald-200/70">Không gian cá nhân của bạn</p>
         <h2 className="mt-2 max-w-2xl text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
           Một ngày tốt bắt đầu từ một bước nhỏ.
@@ -88,39 +92,41 @@ export default function DashboardPage() {
             ) để mở khóa module Rèn luyện nếu bạn chưa được phân quyền, hoặc gửi yêu cầu trực tiếp cho admin.
           </p>
         )}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {lunchEnabled && (
-          <Button asChild className="bg-emerald-300 text-[#0c2821] hover:bg-emerald-200">
-            <Link to="/lunch"><Soup className="size-4"/>Đặt cơm hôm nay</Link>
-          </Button>
-        )}
-        {lunchOnly && (
-          <Button
-            variant="outline"
-            className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            onClick={() => accessRequestMutation.mutate()}
-            disabled={accessRequestMutation.isPending}
-          >
-            <Dumbbell className="size-4" />
-            {accessRequestMutation.isPending ? "Đang gửi..." : "Yêu cầu mở Rèn luyện"}
-          </Button>
-        )}
-        {todoEnabled && (
-          <Button asChild variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20">
-            <Link to="/todos"><ListTodo className="size-4"/>Xem việc cần làm</Link>
-          </Button>
-        )}
-        {authUser?.role === "ADMIN" && (
-          <Button
-            variant="outline"
-            onClick={() => seedMutation.mutate()}
-            disabled={seedMutation.isPending}
-            className="border-white/20 bg-white/10 text-white hover:bg-white/20"
-          >
-            {seedMutation.isPending ? "Đang tạo..." : "Tạo dữ liệu mẫu"}
-          </Button>
-        )}
+          <div className="mt-6 flex flex-wrap gap-2">
+            {lunchEnabled && (
+              <Button asChild className="bg-emerald-300 text-[#0c2821] hover:bg-emerald-200">
+                <Link to="/lunch"><Soup className="size-4"/>Đặt cơm hôm nay</Link>
+              </Button>
+            )}
+            {lunchOnly && (
+              <Button
+                variant="outline"
+                className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                onClick={() => accessRequestMutation.mutate()}
+                disabled={accessRequestMutation.isPending}
+              >
+                <Dumbbell className="size-4" />
+                {accessRequestMutation.isPending ? "Đang gửi..." : "Yêu cầu mở Rèn luyện"}
+              </Button>
+            )}
+            {todoEnabled && (
+              <Button asChild variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20">
+                <Link to="/todos"><ListTodo className="size-4"/>Xem việc cần làm</Link>
+              </Button>
+            )}
+            {authUser?.role === "ADMIN" && (
+              <Button
+                variant="outline"
+                onClick={() => seedMutation.mutate()}
+                disabled={seedMutation.isPending}
+                className="border-white/20 bg-white/10 text-white hover:bg-white/20"
+              >
+                {seedMutation.isPending ? "Đang tạo..." : "Tạo dữ liệu mẫu"}
+              </Button>
+            )}
+          </div>
+        </div>
+        <WellnessHeroArt />
       </div>
     </div>
     {today.coachInsight && (healthEnabled || fitnessEnabled) && (

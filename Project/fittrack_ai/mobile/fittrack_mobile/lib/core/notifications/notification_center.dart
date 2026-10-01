@@ -42,7 +42,12 @@ class NotificationCenter extends ChangeNotifier {
   }
 
   Future<bool> refreshPermissionStatus() async {
+    final wasDenied = permissionGranted == false;
     permissionGranted = await NativeNotificationService.notificationsEnabled();
+    if (wasDenied && permissionGranted == true) {
+      await _syncService.clearNativeDeliveryHistory();
+      await refresh();
+    }
     notifyListeners();
     return permissionGranted ?? false;
   }
@@ -51,6 +56,7 @@ class NotificationCenter extends ChangeNotifier {
     permissionGranted = await NativeNotificationService.requestPermission();
     notifyListeners();
     if (permissionGranted == true) {
+      await _syncService.clearNativeDeliveryHistory();
       await NativeNotificationService.showPermissionConfirmation();
       await refresh();
     }
@@ -59,6 +65,14 @@ class NotificationCenter extends ChangeNotifier {
 
   Future<void> openPermissionSettings() async {
     await NativeNotificationService.openNotificationSettings();
+  }
+
+  Future<bool> testSystemNotification() async {
+    var granted = await refreshPermissionStatus();
+    if (!granted) granted = await requestPermission();
+    if (!granted) return false;
+    await NativeNotificationService.showTestNotification();
+    return true;
   }
 
   Future<void> stop({bool cancelBackground = false}) async {

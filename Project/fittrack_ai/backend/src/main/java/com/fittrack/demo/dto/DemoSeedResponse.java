@@ -12,5 +12,6 @@ public class DemoSeedResponse {
     private Integer mealLogsCreated;
     private Integer workoutSessionsCreated;
     private Integer bodyMeasurementsCreated;
+    private Integer quotesCreated;
 }
 

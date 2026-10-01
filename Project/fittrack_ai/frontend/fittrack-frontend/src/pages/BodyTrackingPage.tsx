@@ -203,7 +203,7 @@ export default function BodyTrackingPage() {
 
           <CardContent className="h-[240px] md:h-[340px]">
             {chartData.length === 0 ? (
-              <EmptyState title="Chưa có dữ liệu cơ thể" description="Thêm chỉ số đầu tiên để xem tiến độ." />
+              <EmptyState kind="progress" title="Chưa có dữ liệu cơ thể" description="Thêm chỉ số đầu tiên để xem tiến độ." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
@@ -221,7 +221,7 @@ export default function BodyTrackingPage() {
 
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Camera className="size-5 text-emerald-700" /> Ảnh tiến độ</CardTitle></CardHeader>
-        <CardContent className="space-y-4"><p className="text-sm text-muted-foreground">Chụp cùng góc, ánh sáng và thời điểm để so sánh khách quan. Ảnh chỉ chủ tài khoản mới xem được.</p><div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.target.files?.[0]; if (file) setPhotoData(await fileToDataUri(file)); }} /><select className="h-10 rounded-md border bg-background px-3 text-sm" value={photoPose} onChange={event => setPhotoPose(event.target.value)}><option value="FRONT">Chính diện</option><option value="SIDE">Nghiêng</option><option value="BACK">Phía sau</option><option value="OTHER">Góc khác</option></select><Button disabled={!photoData || photoMutation.isPending} onClick={() => photoMutation.mutate()}>{photoMutation.isPending ? "Đang tải..." : "Lưu ảnh"}</Button></div>{photosQuery.data && photosQuery.data.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{photosQuery.data.map(photo => <div key={photo.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20"><img className="aspect-[3/4] w-full object-cover" src={photo.imageUrl} alt={`Tiến độ ${photo.takenDate}`} /><div className="flex items-center justify-between p-3"><div><p className="text-sm font-semibold">{photo.takenDate}</p><p className="text-xs text-muted-foreground">{photo.weight ? `${photo.weight} kg · ` : ""}{photo.pose}</p></div><Button size="icon" variant="ghost" disabled={deletePhotoMutation.isPending} onClick={() => { if (window.confirm("Xóa ảnh tiến độ này?")) deletePhotoMutation.mutate(photo.id); }}><Trash2 className="size-4 text-red-600" /></Button></div></div>)}</div> : <EmptyState title="Chưa có ảnh tiến độ" description="Thêm ảnh đầu tiên để theo dõi thay đổi cơ thể theo thời gian." />}</CardContent>
+        <CardContent className="space-y-4"><p className="text-sm text-muted-foreground">Chụp cùng góc, ánh sáng và thời điểm để so sánh khách quan. Ảnh chỉ chủ tài khoản mới xem được.</p><div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.target.files?.[0]; if (file) setPhotoData(await fileToDataUri(file)); }} /><select className="h-10 rounded-md border bg-background px-3 text-sm" value={photoPose} onChange={event => setPhotoPose(event.target.value)}><option value="FRONT">Chính diện</option><option value="SIDE">Nghiêng</option><option value="BACK">Phía sau</option><option value="OTHER">Góc khác</option></select><Button disabled={!photoData || photoMutation.isPending} onClick={() => photoMutation.mutate()}>{photoMutation.isPending ? "Đang tải..." : "Lưu ảnh"}</Button></div>{photosQuery.data && photosQuery.data.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{photosQuery.data.map(photo => <div key={photo.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20"><img className="aspect-[3/4] w-full object-cover" src={photo.imageUrl} alt={`Tiến độ ${photo.takenDate}`} /><div className="flex items-center justify-between p-3"><div><p className="text-sm font-semibold">{photo.takenDate}</p><p className="text-xs text-muted-foreground">{photo.weight ? `${photo.weight} kg · ` : ""}{photo.pose}</p></div><Button size="icon" variant="ghost" disabled={deletePhotoMutation.isPending} onClick={() => { if (window.confirm("Xóa ảnh tiến độ này?")) deletePhotoMutation.mutate(photo.id); }}><Trash2 className="size-4 text-red-600" /></Button></div></div>)}</div> : <EmptyState kind="progress" title="Chưa có ảnh tiến độ" description="Thêm ảnh đầu tiên để theo dõi thay đổi cơ thể theo thời gian." />}</CardContent>
       </Card>
 
       <Card>
@@ -231,7 +231,7 @@ export default function BodyTrackingPage() {
 
         <CardContent>
           {items.length === 0 ? (
-            <EmptyState title="Chưa có chỉ số" description="Lưu chỉ số đầu tiên để bắt đầu theo dõi." />
+            <EmptyState kind="progress" title="Chưa có chỉ số" description="Lưu chỉ số đầu tiên để bắt đầu theo dõi." />
           ) : (
             <div className="w-full overflow-x-auto">
             <Table>

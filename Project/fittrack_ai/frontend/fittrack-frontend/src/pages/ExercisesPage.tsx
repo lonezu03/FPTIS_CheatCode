@@ -253,7 +253,7 @@ export default function ExercisesPage() {
           {exercisesQuery.isLoading ? (
             <TableLoading />
           ) : exercises.length === 0 ? (
-            <EmptyState title="Không tìm thấy bài tập" description="Hãy thêm bài tập hoặc thử từ khóa khác." />
+            <EmptyState kind="workout" title="Không tìm thấy bài tập" description="Hãy thêm bài tập hoặc thử từ khóa khác." />
           ) : (
             <div className="w-full overflow-x-auto">
               <Table>

@@ -132,6 +132,15 @@ class NativeNotificationService {
     });
   }
 
+  static Future<void> showTestNotification() async {
+    await show({
+      'id': 'fittrack-native-test-${DateTime.now().millisecondsSinceEpoch}',
+      'type': 'SYSTEM',
+      'title': 'Thông báo thử từ FitTrack',
+      'message': 'Thông báo hệ thống đang hoạt động. Bạn có thể đưa app xuống nền để tiếp tục sử dụng.',
+    });
+  }
+
   static NotificationDetails _detailsFor(String? type) {
     return switch (type) {
       'LUNCH_MENU_AVAILABLE' => const NotificationDetails(

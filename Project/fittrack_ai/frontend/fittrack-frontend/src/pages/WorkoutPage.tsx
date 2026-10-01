@@ -292,7 +292,7 @@ export default function WorkoutPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {!sessions.length ? (
-            <EmptyState title="Chưa có buổi tập" description="Bắt đầu workout đầu tiên để theo dõi tiến độ." />
+            <EmptyState kind="workout" title="Chưa có buổi tập" description="Bắt đầu workout đầu tiên để theo dõi tiến độ." />
           ) : (
             sessions.map((session) => (
               <SessionHistoryCard
