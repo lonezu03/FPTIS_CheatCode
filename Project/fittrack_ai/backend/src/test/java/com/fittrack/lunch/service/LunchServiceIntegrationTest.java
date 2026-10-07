@@ -506,6 +506,7 @@ class LunchServiceIntegrationTest {
                 .password("encoded")
                 .fullName(prefix)
                 .role("USER")
+                .lunchEnabled(true)
                 .build());
     }
 

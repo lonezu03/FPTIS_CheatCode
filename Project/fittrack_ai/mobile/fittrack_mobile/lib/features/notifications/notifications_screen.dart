@@ -112,15 +112,6 @@ class NotificationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final center = context.watch<NotificationCenter>();
-    if (center.loading && center.items.isEmpty) {
-      return const LoadingView(label: 'Đang tải thông báo...');
-    }
-    if (center.error != null && center.items.isEmpty) {
-      return ErrorView(
-        message: displayError(center.error!),
-        onRetry: center.refresh,
-      );
-    }
     return RefreshIndicator(
       onRefresh: center.refresh,
       child: ListView(
@@ -135,6 +126,11 @@ class NotificationsScreen extends StatelessWidget {
                   subtitle: 'App kiểm tra cập nhật khi đang mở và định kỳ ở chế độ nền.',
                 ),
               ),
+              IconButton(
+                tooltip: 'Tải lại thông báo',
+                onPressed: center.loading ? null : center.refresh,
+                icon: const Icon(Icons.refresh),
+              ),
               TextButton.icon(
                 onPressed: center.items.isEmpty
                     ? null
@@ -145,6 +141,29 @@ class NotificationsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+          if (center.loading && center.items.isEmpty) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 12),
+          ],
+          if (center.error != null) ...[
+            Card(
+              color: const Color(0xFFFFF1F0),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.cloud_off_outlined,
+                  color: Colors.red,
+                ),
+                title: const Text('Không tải được thông báo trong app'),
+                subtitle: Text(displayError(center.error!)),
+                trailing: IconButton(
+                  tooltip: 'Thử lại',
+                  onPressed: center.refresh,
+                  icon: const Icon(Icons.refresh),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (center.permissionGranted != true) ...[
             Card(
               color: const Color(0xFFFFF5E6),
@@ -202,10 +221,16 @@ class NotificationsScreen extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           if (center.items.isEmpty)
-            const EmptyView(
+            EmptyView(
               icon: Icons.notifications_none,
-              title: 'Không có thông báo',
-              subtitle: 'Thông báo mới sẽ xuất hiện tại đây.',
+              title: center.error == null
+                  ? 'Không có thông báo'
+                  : 'Chưa tải được danh sách thông báo',
+              subtitle: center.error == null
+                  ? center.lastSyncedAt == null
+                        ? 'Đang kết nối máy chủ...'
+                        : 'Đã đồng bộ lúc ${DateFormat('HH:mm').format(center.lastSyncedAt!)}. Thông báo mới sẽ xuất hiện tại đây.'
+                  : 'Chạm Tải lại để thử kết nối máy chủ.',
             )
           else
             ...center.items.map((item) {

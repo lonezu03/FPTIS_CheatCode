@@ -20,8 +20,12 @@ public class ScheduleController {
     private final ScheduleService scheduleService;
 
     @GetMapping
-    public List<ScheduleResponse> getMine(@AuthenticationPrincipal User user) {
-        return scheduleService.getMine(user);
+    public List<ScheduleResponse> getMine(@AuthenticationPrincipal User user,
+                                          @RequestParam(required = false) LocalDateTime from,
+                                          @RequestParam(required = false) LocalDateTime to) {
+        return from == null && to == null
+                ? scheduleService.getMine(user)
+                : scheduleService.getMine(user, from, to);
     }
 
     @GetMapping("/calendar")

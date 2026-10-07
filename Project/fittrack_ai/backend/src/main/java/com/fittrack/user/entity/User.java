@@ -50,31 +50,31 @@ public class User {
     @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean emailVerified;
 
-    @Column(nullable = false, columnDefinition = "boolean default true")
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean lunchEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean fitnessEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean healthEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean chatbotEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean todoEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean scheduleEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean quoteEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean financeEnabled;
 
-    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Column(nullable = false, columnDefinition = "boolean default true")
     private Boolean journalEnabled;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
@@ -112,37 +112,37 @@ public class User {
         }
 
         if (this.lunchEnabled == null) {
-            this.lunchEnabled = true;
+            this.lunchEnabled = false;
         }
 
         if (this.fitnessEnabled == null) {
-            this.fitnessEnabled = false;
+            this.fitnessEnabled = true;
         }
 
         if (this.healthEnabled == null) {
-            this.healthEnabled = false;
+            this.healthEnabled = true;
         }
 
         if (this.chatbotEnabled == null) {
-            this.chatbotEnabled = false;
+            this.chatbotEnabled = true;
         }
 
         if (this.todoEnabled == null) {
-            this.todoEnabled = false;
+            this.todoEnabled = true;
         }
 
         if (this.scheduleEnabled == null) {
-            this.scheduleEnabled = false;
+            this.scheduleEnabled = true;
         }
 
         if (this.quoteEnabled == null) {
-            this.quoteEnabled = false;
+            this.quoteEnabled = true;
         }
         if (this.financeEnabled == null) {
-            this.financeEnabled = false;
+            this.financeEnabled = true;
         }
         if (this.journalEnabled == null) {
-            this.journalEnabled = false;
+            this.journalEnabled = true;
         }
 
         if (this.passwordChangeRequired == null) {

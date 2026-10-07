@@ -8,21 +8,32 @@ import 'native_notification_service.dart';
 import 'notification_sync_service.dart';
 
 class NotificationCenter extends ChangeNotifier {
-  NotificationCenter(ApiClient api)
-    : _syncService = NotificationSyncService(api);
+  NotificationCenter(ApiClient api, {NotificationSyncService? syncService})
+    : _syncService = syncService ?? NotificationSyncService(api);
 
   final NotificationSyncService _syncService;
   Timer? _timer;
   bool _started = false;
+  bool _deliveringNative = false;
   bool loading = false;
   bool? permissionGranted;
   int unreadCount = 0;
   List<Map<String, dynamic>> items = const [];
   Object? error;
+  DateTime? lastSyncedAt;
 
   Future<void> start() async {
     if (_started) return;
     _started = true;
+    // The in-app inbox is useful even when notification permissions or the
+    // background scheduler are unavailable on this device.
+    await refresh();
+    if (!_started) return;
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) => refresh());
+    unawaited(_prepareSystemNotifications());
+  }
+
+  Future<void> _prepareSystemNotifications() async {
     try {
       await NativeNotificationService.initialize();
       await refreshPermissionStatus();
@@ -30,15 +41,13 @@ class NotificationCenter extends ChangeNotifier {
       permissionGranted = false;
       debugPrint('Unable to initialize local notifications: $exception');
     }
-    try {
-      await registerNotificationBackgroundTask();
-    } catch (exception) {
-      // Keep foreground notification sync available even when the operating
-      // system rejects background scheduling.
-      debugPrint('Unable to schedule background notifications: $exception');
+    if (_started) {
+      try {
+        await registerNotificationBackgroundTask();
+      } catch (exception) {
+        debugPrint('Unable to schedule background notifications: $exception');
+      }
     }
-    await refresh();
-    _timer = Timer.periodic(const Duration(minutes: 1), (_) => refresh());
   }
 
   Future<bool> refreshPermissionStatus() async {
@@ -71,8 +80,7 @@ class NotificationCenter extends ChangeNotifier {
     var granted = await refreshPermissionStatus();
     if (!granted) granted = await requestPermission();
     if (!granted) return false;
-    await NativeNotificationService.showTestNotification();
-    return true;
+    return NativeNotificationService.showTestNotification();
   }
 
   Future<void> stop({bool cancelBackground = false}) async {
@@ -82,6 +90,7 @@ class NotificationCenter extends ChangeNotifier {
     unreadCount = 0;
     items = const [];
     error = null;
+    lastSyncedAt = null;
     if (cancelBackground) await cancelNotificationBackgroundTask();
     notifyListeners();
   }
@@ -92,14 +101,30 @@ class NotificationCenter extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      final snapshot = await _syncService.sync();
+      final snapshot = await _syncService.sync(showNative: false);
+      if (!_started) return;
       unreadCount = snapshot.unreadCount;
       items = snapshot.items;
+      lastSyncedAt = DateTime.now();
+      if (!_deliveringNative) {
+        _deliveringNative = true;
+        unawaited(_deliverNative(snapshot.items));
+      }
     } catch (exception) {
       error = exception;
     } finally {
       loading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _deliverNative(List<Map<String, dynamic>> notifications) async {
+    try {
+      await _syncService.deliverNative(notifications);
+    } catch (exception) {
+      debugPrint('Unable to deliver native notifications: $exception');
+    } finally {
+      _deliveringNative = false;
     }
   }
 

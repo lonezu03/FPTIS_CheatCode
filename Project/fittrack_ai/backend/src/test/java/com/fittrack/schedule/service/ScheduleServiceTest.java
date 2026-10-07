@@ -19,6 +19,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class ScheduleServiceTest {
@@ -48,8 +49,12 @@ class ScheduleServiceTest {
                 .endAt(LocalDateTime.of(2026, 9, 1, 21, 30))
                 .repeatRule(ScheduleItem.RepeatRule.DAILY).repeatInterval(1)
                 .reminderMinutes(10).reminderEnabled(true).enabled(true).build();
-        when(todoRepository.findByUserOrderByDueAtAscCreatedAtDesc(user)).thenReturn(List.of(todo));
-        when(scheduleRepository.findByUserAndEnabledTrueOrderByStartAtAsc(user)).thenReturn(List.of(event));
+        when(todoRepository.findCalendarCandidates(eq(user), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyList(),
+                eq(Todo.TodoStatus.DONE))).thenReturn(List.of(todo));
+        when(scheduleRepository.findCalendarCandidates(eq(user), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), eq(ScheduleItem.RepeatRule.NONE))).thenReturn(List.of(event));
 
         var result = service.getCalendar(user,
                 LocalDateTime.of(2026, 9, 1, 0, 0),
@@ -72,8 +77,10 @@ class ScheduleServiceTest {
                 .recurrenceRule(Todo.RecurrenceRule.NONE).recurrenceInterval(1)
                 .startAt(originalStart).estimatedMinutes(45)
                 .reminderEnabled(false).subtasks(List.of()).build();
-        when(todoRepository.findByUserOrderByDueAtAscCreatedAtDesc(user)).thenReturn(List.of(todo));
-        when(scheduleRepository.findByUserAndEnabledTrueOrderByStartAtAsc(user)).thenReturn(List.of());
+        when(todoRepository.findCalendarCandidates(eq(user), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyList(),
+                eq(Todo.TodoStatus.DONE))).thenReturn(List.of(todo));
 
         var result = service.getCalendar(user, today.minusDays(2).atStartOfDay(), today.plusDays(1).atStartOfDay());
 
@@ -97,8 +104,10 @@ class ScheduleServiceTest {
                 .category(Todo.TodoCategory.PERSONAL).recurrenceRule(Todo.RecurrenceRule.NONE)
                 .recurrenceInterval(1).dueAt(today.minusDays(2).atTime(17, 0))
                 .completedAt(today.atTime(10, 30)).reminderEnabled(false).subtasks(List.of()).build();
-        when(todoRepository.findByUserOrderByDueAtAscCreatedAtDesc(user)).thenReturn(List.of(todo));
-        when(scheduleRepository.findByUserAndEnabledTrueOrderByStartAtAsc(user)).thenReturn(List.of());
+        when(todoRepository.findCalendarCandidates(eq(user), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyList(),
+                eq(Todo.TodoStatus.DONE))).thenReturn(List.of(todo));
 
         var result = service.getCalendar(user, today.minusDays(2).atStartOfDay(), today.plusDays(2).atStartOfDay());
 
@@ -106,5 +115,25 @@ class ScheduleServiceTest {
         assertThat(result).allSatisfy(entry -> assertThat(entry.status()).isEqualTo("DONE"));
         assertThat(result.getLast().startAt().toLocalDate()).isEqualTo(today);
         assertThat(result).noneMatch(entry -> entry.startAt().toLocalDate().isAfter(today));
+    }
+
+    @Test
+    void calendarExpandsOldDailyEventOnlyInsideRequestedWindow() {
+        User user = new User();
+        user.setTodoEnabled(false);
+        ScheduleItem event = ScheduleItem.builder().id("old-event").user(user).title("Tập gym")
+                .category(ScheduleItem.ScheduleCategory.HEALTH)
+                .startAt(LocalDateTime.of(2020, 1, 1, 7, 0))
+                .repeatRule(ScheduleItem.RepeatRule.DAILY).repeatInterval(2)
+                .enabled(true).build();
+        when(scheduleRepository.findCalendarCandidates(eq(user), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), eq(ScheduleItem.RepeatRule.NONE))).thenReturn(List.of(event));
+
+        var result = service.getCalendar(user,
+                LocalDateTime.of(2026, 10, 5, 0, 0),
+                LocalDateTime.of(2026, 10, 8, 0, 0));
+
+        assertThat(result).extracting(entry -> entry.startAt().toLocalDate())
+                .containsExactly(LocalDate.of(2026, 10, 6));
     }
 }

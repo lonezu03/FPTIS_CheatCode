@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../network/api_client.dart';
@@ -34,40 +35,50 @@ class NotificationSyncService {
               .toList()
         : <Map<String, dynamic>>[];
 
-    final stored = await _storage.read(key: knownIdsKey);
-    final known = _decodeIds(stored);
-    final currentIds = items
-        .map((item) => item['id']?.toString())
-        .whereType<String>()
-        .toSet();
-
-    final nativeEnabled =
-        showNative && await NativeNotificationService.notificationsEnabled();
-    if (nativeEnabled) {
-      final newUnread = items.where(
-        (item) =>
-            item['readAt'] == null &&
-            item['id'] != null &&
-            !known.contains(item['id'].toString()),
-      );
-      for (final notification in newUnread.take(3)) {
-        await NativeNotificationService.show(notification);
-      }
-    }
-
-    // Không đánh dấu là đã giao khi người dùng chưa cấp quyền hệ thống. Sau khi
-    // bật quyền, các thông báo chưa đọc gần nhất vẫn có thể xuất hiện trên máy.
-    if (nativeEnabled) {
-      await _storage.write(
-        key: knownIdsKey,
-        value: jsonEncode(currentIds.take(100).toList()),
-      );
-    }
-    return NotificationSnapshot(
+    final snapshot = NotificationSnapshot(
       unreadCount:
           (map['unreadCount'] as num?)?.toInt() ??
           items.where((item) => item['readAt'] == null).length,
       items: items,
+    );
+    // A failure in Android permissions, plugin initialization or local storage
+    // must never hide notifications that the backend already returned.
+    if (showNative) {
+      try {
+        await deliverNative(items);
+      } catch (error) {
+        debugPrint('Unable to deliver native notifications: $error');
+      }
+    }
+    return snapshot;
+  }
+
+  Future<void> deliverNative(List<Map<String, dynamic>> items) async {
+    if (!await NativeNotificationService.notificationsEnabled()) return;
+    final known = _decodeIds(await _storage.read(key: knownIdsKey));
+    final currentIds = items
+        .map((item) => item['id']?.toString())
+        .whereType<String>()
+        .toSet();
+    final newUnread = items.where(
+      (item) =>
+          item['readAt'] == null &&
+          item['id'] != null &&
+          !known.contains(item['id'].toString()),
+    );
+    final delivered = <String>{};
+    for (final notification in newUnread.take(3)) {
+      if (await NativeNotificationService.show(notification)) {
+        delivered.add(notification['id'].toString());
+      }
+    }
+    // Only mark items actually displayed, plus already-known IDs. Older unread
+    // items stay eligible for the next poll when more than three arrive at once.
+    await _storage.write(
+      key: knownIdsKey,
+      value: jsonEncode(
+        known.union(delivered).intersection(currentIds).take(100).toList(),
+      ),
     );
   }
 

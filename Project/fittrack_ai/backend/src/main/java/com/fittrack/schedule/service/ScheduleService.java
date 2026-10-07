@@ -49,6 +49,17 @@ public class ScheduleService {
     }
 
     @Transactional(readOnly = true)
+    public List<ScheduleResponse> getMine(User user, LocalDateTime from, LocalDateTime to) {
+        if (from == null || to == null || !from.isBefore(to)
+                || Duration.between(from, to).toDays() > 370) {
+            throw new IllegalArgumentException("Khoảng thời gian lịch không hợp lệ hoặc vượt quá 370 ngày");
+        }
+        return repository.findCalendarCandidates(user, from, to, ScheduleItem.RepeatRule.NONE).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<CalendarEntryResponse> getCalendar(User user, LocalDateTime from, LocalDateTime to) {
         if (from == null || to == null || !from.isBefore(to)) {
             throw new IllegalArgumentException("Khoảng thời gian lịch không hợp lệ");
@@ -59,11 +70,14 @@ public class ScheduleService {
         List<CalendarEntryResponse> result = new ArrayList<>();
         if (Boolean.TRUE.equals(user.getTodoEnabled()) || "ADMIN".equalsIgnoreCase(user.getRole())) {
             LocalDate today = LocalDate.now(BUSINESS_ZONE);
-            for (Todo todo : todoRepository.findByUserOrderByDueAtAscCreatedAtDesc(user)) {
+            for (Todo todo : todoRepository.findCalendarCandidates(
+                    user, from, to, from.toLocalDate().atStartOfDay(),
+                    !from.toLocalDate().isAfter(today),
+                    List.of(Todo.TodoStatus.OPEN, Todo.TodoStatus.IN_PROGRESS), Todo.TodoStatus.DONE)) {
                 addTodoOccurrences(todo, from, to, today, result);
             }
         }
-        for (ScheduleItem item : repository.findByUserAndEnabledTrueOrderByStartAtAsc(user)) {
+        for (ScheduleItem item : repository.findCalendarCandidates(user, from, to, ScheduleItem.RepeatRule.NONE)) {
             expandEvent(item, from, to, result);
         }
         return result.stream().sorted(Comparator.comparing(CalendarEntryResponse::startAt)
@@ -113,7 +127,8 @@ public class ScheduleService {
     public void dispatchDueReminders() {
         if (!internalSchedulerEnabled) return;
         LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
-        for (ScheduleItem item : repository.findAllByEnabledTrueAndReminderEnabledTrue()) {
+        for (ScheduleItem item : repository.findReminderCandidates(
+                now.minusDays(1), now.plusDays(8), ScheduleItem.RepeatRule.NONE)) {
             List<CalendarEntryResponse> occurrences = new ArrayList<>();
             expandEvent(item, now.minusDays(1), now.plusDays(8), occurrences);
             occurrences.stream()
@@ -203,7 +218,8 @@ public class ScheduleService {
         int interval = item.getRepeatInterval() == null ? 1 : item.getRepeatInterval();
         if (item.getRepeatRule() == ScheduleItem.RepeatRule.WEEKLY && !parseDays(item.getDaysOfWeek()).isEmpty()) {
             Set<DayOfWeek> days = parseDays(item.getDaysOfWeek());
-            LocalDate date = item.getStartAt().toLocalDate();
+            LocalDate date = item.getStartAt().toLocalDate().isBefore(from.toLocalDate())
+                    ? from.toLocalDate() : item.getStartAt().toLocalDate();
             LocalDate lastDate = effectiveEnd.toLocalDate();
             while (!date.isAfter(lastDate)) {
                 long weeks = ChronoUnit.WEEKS.between(item.getStartAt().toLocalDate(), date);
@@ -215,6 +231,13 @@ public class ScheduleService {
             return;
         }
         LocalDateTime occurrence = item.getStartAt();
+        if (occurrence.isBefore(from) && item.getRepeatRule() == ScheduleItem.RepeatRule.DAILY) {
+            long periods = Math.max(0, ChronoUnit.DAYS.between(occurrence, from) / interval);
+            occurrence = occurrence.plusDays(periods * interval);
+        } else if (occurrence.isBefore(from) && item.getRepeatRule() == ScheduleItem.RepeatRule.WEEKLY) {
+            long periods = Math.max(0, ChronoUnit.WEEKS.between(occurrence, from) / interval);
+            occurrence = occurrence.plusWeeks(periods * interval);
+        }
         int guard = 0;
         while (occurrence.isBefore(effectiveEnd) && guard++ < 20_000) {
             addEventOccurrence(item, occurrence, from, to, target);

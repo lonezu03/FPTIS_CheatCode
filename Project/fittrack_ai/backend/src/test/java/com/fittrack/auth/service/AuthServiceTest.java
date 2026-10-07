@@ -55,11 +55,15 @@ class AuthServiceTest {
                 .createEmailVerificationToken(any(User.class));
         verify(userRepository).save(argThat(user ->
                 Boolean.TRUE.equals(user.getEmailVerified())
-                        && Boolean.TRUE.equals(user.getLunchEnabled())
-                        && Boolean.FALSE.equals(user.getFitnessEnabled())
-                        && Boolean.FALSE.equals(user.getHealthEnabled())
-                        && Boolean.FALSE.equals(user.getChatbotEnabled())
-                        && Boolean.FALSE.equals(user.getQuoteEnabled())
+                        && Boolean.FALSE.equals(user.getLunchEnabled())
+                        && Boolean.TRUE.equals(user.getFitnessEnabled())
+                        && Boolean.TRUE.equals(user.getHealthEnabled())
+                        && Boolean.TRUE.equals(user.getChatbotEnabled())
+                        && Boolean.TRUE.equals(user.getTodoEnabled())
+                        && Boolean.TRUE.equals(user.getScheduleEnabled())
+                        && Boolean.TRUE.equals(user.getQuoteEnabled())
+                        && Boolean.TRUE.equals(user.getFinanceEnabled())
+                        && Boolean.TRUE.equals(user.getJournalEnabled())
         ));
     }
 
@@ -79,11 +83,15 @@ class AuthServiceTest {
         verify(authTokenService, never()).createEmailVerificationToken(any(User.class));
         verify(userRepository).save(argThat(
                 user -> Boolean.TRUE.equals(user.getEmailVerified())
-                        && Boolean.TRUE.equals(user.getLunchEnabled())
-                        && Boolean.FALSE.equals(user.getFitnessEnabled())
-                        && Boolean.FALSE.equals(user.getHealthEnabled())
-                        && Boolean.FALSE.equals(user.getChatbotEnabled())
-                        && Boolean.FALSE.equals(user.getQuoteEnabled())
+                        && Boolean.FALSE.equals(user.getLunchEnabled())
+                        && Boolean.TRUE.equals(user.getFitnessEnabled())
+                        && Boolean.TRUE.equals(user.getHealthEnabled())
+                        && Boolean.TRUE.equals(user.getChatbotEnabled())
+                        && Boolean.TRUE.equals(user.getTodoEnabled())
+                        && Boolean.TRUE.equals(user.getScheduleEnabled())
+                        && Boolean.TRUE.equals(user.getQuoteEnabled())
+                        && Boolean.TRUE.equals(user.getFinanceEnabled())
+                        && Boolean.TRUE.equals(user.getJournalEnabled())
         ));
     }
 

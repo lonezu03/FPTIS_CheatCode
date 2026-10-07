@@ -33,13 +33,17 @@ class FlywayPostgresMigrationTest {
 
         var result = flyway.migrate();
 
-        assertEquals(24, result.migrationsExecuted);
-        assertEquals("25", flyway.info().current().getVersion().getVersion());
+        assertEquals(29, result.migrationsExecuted);
+        assertEquals("30", flyway.info().current().getVersion().getVersion());
         try (Connection connection = DriverManager.getConnection(
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()
         )) {
             assertTrue(exists(connection,
                     "select 1 from information_schema.tables where table_name = 'lunch_payment_requests'"));
+            assertTrue(exists(connection,
+                    "select 1 from pg_indexes where indexname = 'idx_todos_calendar_owner_anchor'"));
+            assertTrue(exists(connection,
+                    "select 1 from pg_indexes where indexname = 'idx_schedule_calendar_owner_repeat'"));
             assertTrue(exists(connection,
                     "select 1 from information_schema.columns where table_name = 'users' and column_name = 'token_version'"));
             assertTrue(exists(connection,

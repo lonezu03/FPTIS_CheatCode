@@ -1,0 +1,448 @@
+# FitTrack - Fullstack Fitness and Nutrition Platform
+
+FitTrack is a company lunch-ordering, fitness, nutrition, health and personal-planning platform. A React web client and Flutter mobile client share one Spring Boot API backed by PostgreSQL and versioned Flyway migrations.
+
+The application helps users track workouts, nutrition, body measurements, weekly progress, achievements, and smart recommendations based on their personal goals.
+
+## Features
+
+### Authentication
+- User registration and login
+- Access/refresh authentication using secure HttpOnly cookies
+- Protected frontend routes
+- Axios token interceptor
+- Admin-only account management with role assignment, account lock/unlock, and password reset
+
+### User Profile and Goal Engine
+- Profile management
+- Height, weight, age, gender, goal, and activity level
+- BMR and TDEE calculation
+- Target calories and macro targets
+
+### Workout Tracking
+- Create workout sessions
+- Log exercise sets with weight, reps, and RIR
+- Custom workout date
+- Edit and delete workout sessions
+- Workout history
+- Progressive-overload suggestions based on the latest completed working sets
+- Personal records and estimated 1RM (Epley)
+- Weekly working-set volume by muscle group
+- Favorite, deprioritize, exclude, and replace equivalent exercises
+
+### Workout Plans
+- Create reusable workout plans
+- Multiple training days per plan
+- Multiple exercises per day
+- Target sets, reps, weight, and RIR
+- Generate workout sessions from a plan
+
+### Exercise Library
+- Create custom exercises
+- Edit exercises
+- Archive and restore exercises
+- Search exercises
+- Soft delete to preserve workout history
+
+### Nutrition Tracking
+- Log meals by date
+- Add multiple food items per meal
+- Track calories, protein, carbs, and fat
+- Edit and delete meal logs
+- Compare daily intake against personal targets
+
+### Lunch Ordering and Team Fund
+- Admin imports the vendor's daily menu from plain text using `+` as the regular/special dish separator
+- Users choose either two regular dishes or one special dish, for themselves or a colleague
+- Configurable cutoff, default 35,000 VND price, wallet debit, unpaid fallback, and external-payment confirmation
+- Admin fund top-up, payment reconciliation, order summary, dish counts, and copy-ready vendor text
+- Full Vietnamese workflow: [docs/LUNCH_ORDERING.md](docs/LUNCH_ORDERING.md)
+
+### Food Library
+- Create custom foods
+- Edit foods
+- Archive and restore foods
+- Search foods
+- Soft delete to preserve historical meal data
+
+### Body Tracking
+- Log body weight, waist, chest, arm, and thigh
+- Custom measurement date
+- Edit and delete measurements
+- Progress charts
+
+### Dashboard
+- Daily calories and macros
+- Daily macro goal progress
+- Workout count and meal count
+- Latest workout
+- Progress charts
+- Smart suggestions
+- Achievement summary
+
+### Weekly Report
+- Weekly average calories, protein, carbs, and fat
+- Workout frequency
+- Body weight and waist changes
+- Nutrition compliance
+- Weekly insights
+
+### Smart Recommendation Engine
+- Calories suggestions
+- Protein suggestions
+- Workout frequency suggestions
+- Body progress suggestions
+- Weekly action items
+
+### FitTrack PT Assistant
+- Uses Gemini Chat Completions compatibility from the backend only
+- Understands the current user profile, food catalog, exercise catalog, recent logs, and today's lunch menu
+- Can propose workout sessions, meal logs, and lunch orders
+- Requires explicit user confirmation before any proposed action is saved
+- Keeps the Gemini API key out of the browser and source control
+- Requires explicit consent and only sends context relevant to the current question
+
+### Achievements
+- Meal logging streak
+- Workout streak
+- Protein target hit days
+- Body tracking consistency
+- Weekly workout milestones
+
+### Demo Data
+- One-click demo data seed
+- Creates sample foods, exercises, meals, workouts, and body measurements
+- Useful for portfolio demos
+
+## Tech Stack
+
+### Backend
+- Java 21
+- Spring Boot
+- Spring Security
+- JWT Authentication
+- Spring Data JPA
+- Hibernate
+- H2 for isolated unit tests
+- PostgreSQL with versioned Flyway migrations
+- Swagger / OpenAPI
+- Maven
+
+### Frontend
+- React
+- TypeScript
+- Vite
+- React Router DOM
+- React Query
+- Zustand
+- TailwindCSS
+- shadcn/ui
+- Recharts
+- Sonner Toast
+- Lucide React Icons
+
+## Project Structure
+
+```txt
+fittrack_ai/
+├── backend/
+│   ├── src/main/java/com/fittrack/
+│   ├── src/main/resources/db/migration/
+│   ├── src/test/
+│   ├── Dockerfile
+│   └── pom.xml
+├── frontend/
+│   ├── build-vercel.mjs
+│   ├── vercel.json
+│   └── fittrack-frontend/
+├── mobile/fittrack_mobile/
+└── docs/
+```
+
+`backend/demo/` là bản legacy không thuộc active build và không được sử dụng.
+
+## Backend Architecture
+
+The backend follows a modular monolith structure. Each feature module owns its controller, service, repository, entity, DTO, and mapper classes.
+
+```txt
+controller -> service -> repository -> database
+                |
+              mapper
+                |
+               dto
+```
+
+| Module | Responsibility |
+| --- | --- |
+| Auth/User | Session, OTP, account, permissions, profile and goals |
+| Lunch | Menus, orders, fund/debt, payments, reviews and notifications |
+| Workout/Plan | Exercise catalog, live sessions and reusable plans |
+| Nutrition/Health | Diary quality, foods, water, body tracking and reports |
+| Todo/Schedule | Recurring tasks, events and unified calendar |
+| Quote | Personal quote library and daily rotation |
+| Notification | In-app delivery, email opt-in and admin playbooks |
+| Assistant | Server-side Gemini context and confirmed actions |
+| Common/Audit | Security, media, request correlation and audit trail |
+
+## Database Overview
+
+Main tables:
+
+- `users`
+- `exercises`
+- `workout_sessions`
+- `workout_sets`
+- `workout_plans`
+- `workout_plan_days`
+- `workout_plan_exercises`
+- `foods`
+- `meal_logs`
+- `meal_items`
+- `body_measurements`
+
+Important relationships:
+
+- User 1 - N WorkoutSession
+- WorkoutSession 1 - N WorkoutSet
+- Exercise 1 - N WorkoutSet
+- User 1 - N WorkoutPlan
+- WorkoutPlan 1 - N WorkoutPlanDay
+- WorkoutPlanDay 1 - N WorkoutPlanExercise
+- Exercise 1 - N WorkoutPlanExercise
+- User 1 - N MealLog
+- MealLog 1 - N MealItem
+- Food 1 - N MealItem
+- User 1 - N BodyMeasurement
+
+## API Overview
+
+Base URL:
+
+```txt
+http://localhost:8081/api
+```
+
+Key endpoints:
+
+```txt
+POST   /auth/register
+POST   /auth/login
+GET    /users/me
+PUT    /users/me
+GET    /admin/users
+PATCH  /admin/users/{id}
+POST   /admin/users/{id}/reset-password
+GET    /health
+GET    /dashboard/today
+GET    /dashboard/progress
+GET    /workouts/sessions
+POST   /workouts/sessions
+PUT    /workouts/sessions/{id}
+DELETE /workouts/sessions/{id}
+GET    /exercises
+POST   /exercises
+PUT    /exercises/{id}
+DELETE /exercises/{id}
+PATCH  /exercises/{id}/restore
+GET    /foods
+POST   /foods
+PUT    /foods/{id}
+DELETE /foods/{id}
+PATCH  /foods/{id}/restore
+GET    /nutrition/meal-logs
+POST   /nutrition/meal-logs
+PUT    /nutrition/meal-logs/{id}
+DELETE /nutrition/meal-logs/{id}
+GET    /body-measurements
+POST   /body-measurements
+PUT    /body-measurements/{id}
+DELETE /body-measurements/{id}
+GET    /workout-plans
+POST   /workout-plans
+POST   /workout-plans/{id}/generate-session
+GET    /reports/weekly
+GET    /recommendations/weekly
+GET    /achievements/summary
+POST   /demo/seed
+GET    /lunch/today
+GET    /lunch/people
+GET    /lunch/orders/history
+GET    /lunch/wallet/transactions
+POST   /lunch/orders
+PUT    /lunch/orders/{id}
+DELETE /lunch/orders/{id}
+GET    /lunch/admin/menus
+POST   /lunch/admin/menus/import
+GET    /lunch/admin/menus/{id}/orders
+POST   /lunch/admin/menus/{id}/close
+POST   /lunch/admin/menus/{id}/reopen
+POST   /lunch/admin/menus/{id}/summarize
+GET    /lunch/admin/members
+POST   /lunch/admin/funds/top-up
+POST   /lunch/admin/orders/{id}/confirm-external
+POST   /assistant/chat
+POST   /assistant/actions/execute
+```
+
+Full API documentation is available in [docs/API.md](docs/API.md).
+
+The lunch ordering workflow and reconciliation rules are documented in [docs/LUNCH_ORDERING.md](docs/LUNCH_ORDERING.md).
+
+Deployment instructions are available in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Setup Guide
+
+### Prerequisites
+
+- Java 21
+- Node.js 20+
+- Maven
+- Docker
+- PostgreSQL, optional for production-like local runs
+
+### Backend Setup
+
+```bash
+cd backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+The `local` profile uses an embedded H2 database stored under `backend/data/`, so PostgreSQL is not required for local development. On Windows, use `mvnw.cmd` instead of `./mvnw`.
+
+Backend URL:
+
+```txt
+http://localhost:8081
+```
+
+Swagger URL:
+
+```txt
+http://localhost:8081/swagger-ui/index.html
+```
+
+### Docker Compose
+
+```bash
+docker compose up -d --build
+```
+
+Open the frontend at `http://localhost:3000`. The Docker frontend calls the
+Docker backend at `http://localhost:8082/api`. Port `8082` avoids a conflict
+with the local IntelliJ backend running on `8081`. To use another host port,
+set `BACKEND_HOST_PORT` before starting Compose.
+
+```powershell
+$env:BACKEND_HOST_PORT = "8090"
+docker compose up -d --build
+```
+
+Lunch admin access is controlled by the `ADMIN_EMAILS` environment variable. Use a comma-separated list and restart the backend after changing it:
+
+```bash
+export ADMIN_EMAILS="admin@company.com,backup-admin@company.com"
+```
+
+On PowerShell:
+
+```powershell
+$env:ADMIN_EMAILS = "admin@company.com,backup-admin@company.com"
+```
+
+Configure the AI assistant only on the backend. Never add the key to a
+`VITE_` variable because Vite exposes those values to browsers:
+
+```bash
+export GEMINI_API_KEY="replace-with-a-new-key"
+export GEMINI_MODEL="gemini-3.6-flash"
+export ASSISTANT_REQUESTS_PER_MINUTE="6"
+```
+
+The public `GET /api/health` endpoint verifies the database and returns the
+deployed version/commit. Render should use `/actuator/health/readiness`; use an
+external cron/uptime monitor because a sleeping Render process cannot wake
+itself:
+
+```bash
+export KEEP_ALIVE_ENABLED="false"
+export INTERNAL_SCHEDULER_ENABLED="false"
+export JOB_SECRET="replace-with-random-secret"
+```
+
+See [docs/OPERATIONS.md](docs/OPERATIONS.md) for backup, Flyway, Cloudinary,
+external scheduler, secret rotation and incident procedures.
+
+### Frontend Setup
+
+```bash
+cd frontend/fittrack-frontend
+npm install
+npm run dev
+```
+
+Frontend URL:
+
+```txt
+http://localhost:5173
+```
+
+### Demo Account
+
+You can register a new user from the frontend.
+
+Example:
+
+```txt
+email: test@gmail.com
+password: use-at-least-8-characters
+```
+
+After login, call the demo seed endpoint to generate sample data:
+
+```txt
+POST /api/demo/seed
+```
+
+## Screenshots
+
+Add screenshots here after UI is ready:
+
+```txt
+docs/screenshots/dashboard.png
+docs/screenshots/nutrition.png
+docs/screenshots/workout-plans.png
+docs/screenshots/weekly-report.png
+docs/screenshots/achievements.png
+```
+
+## Key Learning Points
+
+This project demonstrates:
+
+- Fullstack architecture
+- JWT authentication
+- Modular backend design
+- DTO-based API responses
+- Entity relationship modeling
+- Soft delete strategy
+- React Query data fetching
+- Protected routes
+- Responsive dashboard UI
+- Business logic implementation
+- Smart recommendations
+- Weekly analytics
+- Gamification
+
+## Future Improvements
+
+- Backend idempotency for every financial Lunch operation
+- Cross-user BOLA regression matrix
+- Business metrics, dashboard and production alerts
+- OpenAPI compatibility checks for web/mobile
+- Evidence-based database index tuning
+- Notification category preferences and remote push
+
+## Author
+
+Built by Phan Thanh Vu as a fullstack portfolio project.

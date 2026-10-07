@@ -74,7 +74,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 const PageIntro(
                   title: 'Bắt đầu cùng FitTrack',
-                  subtitle: 'Tài khoản mới mặc định chỉ được dùng module đặt cơm. Admin có thể cấp thêm quyền sau.',
+                  subtitle: 'Tài khoản mới được dùng các module cá nhân; Đặt cơm cần admin cấp quyền riêng.',
                 ),
                 const SizedBox(height: 24),
                 TextFormField(

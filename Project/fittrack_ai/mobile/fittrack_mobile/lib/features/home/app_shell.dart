@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -53,6 +55,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     await showUserGuideSheet(context, session.user!);
   }
 
+  void _openNotifications() {
+    unawaited(context.read<NotificationCenter>().refresh());
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            const Scaffold(body: SafeArea(child: NotificationsScreen())),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -69,8 +81,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      context.read<NotificationCenter>().refreshPermissionStatus();
+      unawaited(_refreshNotificationsOnResume());
     }
+  }
+
+  Future<void> _refreshNotificationsOnResume() async {
+    final notifications = context.read<NotificationCenter>();
+    try {
+      await notifications.refreshPermissionStatus();
+    } catch (_) {
+      // The inbox should still refresh when the native permission API fails.
+    }
+    if (mounted) await notifications.refresh();
   }
 
   List<_Destination> _destinations(AuthUser user) => [
@@ -292,6 +314,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Thông báo',
+            onPressed: _openNotifications,
+            icon: unreadCount > 0
+                ? Badge(
+                    label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
+                    child: const Icon(Icons.notifications_outlined),
+                  )
+                : const Icon(Icons.notifications_outlined),
+          ),
           IconButton(
             tooltip: 'Hướng dẫn sử dụng',
             onPressed: _openUserGuide,

@@ -22,6 +22,8 @@ class _PlannerScreenState extends State<PlannerScreen>
   List<Map<String, dynamic>> schedules = [];
   bool loading = true;
   bool busy = false;
+  bool calendarLoadingMore = false;
+  int calendarForwardDays = 60;
   Object? todoError;
   Object? scheduleError;
   String todoView = 'TODAY';
@@ -53,28 +55,34 @@ class _PlannerScreenState extends State<PlannerScreen>
       });
     }
     final api = context.read<ApiClient>();
-    if (canTodo) {
+    Future<void> loadTodos() async {
       try {
         todos = _list(await api.get('/todos'));
       } catch (e) {
         todoError = e;
       }
     }
-    if (canSchedule) {
+
+    Future<void> loadSchedule() async {
       try {
         schedules = await _loadCalendar(api);
       } catch (e) {
         scheduleError = e;
       }
     }
+
+    await Future.wait([
+      if (canTodo) loadTodos(),
+      if (canSchedule) loadSchedule(),
+    ]);
     if (mounted) setState(() => loading = false);
   }
 
   Future<List<Map<String, dynamic>>> _loadCalendar(ApiClient api) async {
     final from = DateTime.now().subtract(const Duration(days: 30));
-    // Backend limits a calendar request to 370 days. Keep the whole window
-    // below that limit instead of silently falling back to the legacy endpoint.
-    final to = DateTime.now().add(const Duration(days: 330));
+    // Keep the initial mobile list bounded; expanding a year of recurring
+    // events made the payload large enough to exceed the receive timeout.
+    final to = DateTime.now().add(Duration(days: calendarForwardDays));
     try {
       return _list(
         await api.get(
@@ -83,7 +91,9 @@ class _PlannerScreenState extends State<PlannerScreen>
         ),
       );
     } on ApiException catch (calendarError) {
-      if (calendarError.statusCode == 401 || calendarError.statusCode == 403) {
+      // Only an older backend without the calendar route needs the legacy
+      // endpoint. Retrying a timeout/500 with an unbounded list makes it worse.
+      if (calendarError.statusCode != 404 && calendarError.statusCode != 405) {
         rethrow;
       }
       try {
@@ -93,6 +103,25 @@ class _PlannerScreenState extends State<PlannerScreen>
         throw calendarError;
       }
     }
+  }
+
+  Future<void> _loadMoreCalendar() async {
+    if (loading ||
+        calendarLoadingMore ||
+        !canSchedule ||
+        calendarForwardDays >= 330)
+      return;
+    setState(() {
+      calendarLoadingMore = true;
+      calendarForwardDays = (calendarForwardDays + 60).clamp(60, 330);
+    });
+    try {
+      schedules = await _loadCalendar(context.read<ApiClient>());
+      scheduleError = null;
+    } catch (error) {
+      scheduleError = error;
+    }
+    if (mounted) setState(() => calendarLoadingMore = false);
   }
 
   static Map<String, dynamic> _legacyScheduleEntry(Map<String, dynamic> item) =>
@@ -381,7 +410,12 @@ class _PlannerScreenState extends State<PlannerScreen>
                             items: schedules,
                             onAdd: _createSchedule,
                             busy: busy,
+                            loadingMore: calendarLoadingMore,
                             onReload: _load,
+                            moreDays: (330 - calendarForwardDays).clamp(0, 60),
+                            onLoadMore: calendarForwardDays < 330
+                                ? _loadMoreCalendar
+                                : null,
                           )
                         : ErrorView(
                             message: displayError(scheduleError!),
@@ -1325,18 +1359,24 @@ class _ScheduleList extends StatelessWidget {
     required this.items,
     required this.onAdd,
     required this.busy,
+    required this.loadingMore,
     required this.onReload,
+    required this.onLoadMore,
+    required this.moreDays,
   });
   final List<Map<String, dynamic>> items;
   final VoidCallback onAdd;
   final bool busy;
+  final bool loadingMore;
   final Future<void> Function() onReload;
+  final Future<void> Function()? onLoadMore;
+  final int moreDays;
   @override
   Widget build(BuildContext context) => RefreshIndicator(
     onRefresh: onReload,
     child: ListView.builder(
       padding: const EdgeInsets.all(18),
-      itemCount: items.isEmpty ? 2 : items.length + 1,
+      itemCount: items.isEmpty ? 3 : items.length + 2,
       itemBuilder: (context, index) {
         if (index == 0)
           return Padding(
@@ -1347,6 +1387,22 @@ class _ScheduleList extends StatelessWidget {
               label: const Text('Thêm lịch nhắc'),
             ),
           );
+        if ((items.isNotEmpty && index == items.length + 1) ||
+            (items.isEmpty && index == 2)) {
+          return onLoadMore == null
+              ? const SizedBox.shrink()
+              : Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 24),
+                  child: OutlinedButton(
+                    onPressed: busy || loadingMore ? null : onLoadMore,
+                    child: Text(
+                      loadingMore
+                          ? 'Đang tải lịch...'
+                          : 'Xem thêm $moreDays ngày tiếp theo',
+                    ),
+                  ),
+                );
+        }
         if (items.isEmpty)
           return const EmptyView(
             icon: Icons.event_note_outlined,

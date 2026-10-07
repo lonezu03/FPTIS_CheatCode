@@ -717,7 +717,7 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Cấp đúng quyền cho tài khoản',
-        description: 'Tài khoản mới chỉ có Đặt cơm. Admin bật từng module theo nhu cầu, kiểm tra trạng thái và vai trò trước khi lưu.',
+        description: 'Tài khoản mới có các module cá nhân, riêng Đặt cơm mặc định tắt. Admin có thể thay đổi quyền từng module, trạng thái và vai trò.',
         action: 'Tìm đúng người dùng rồi bật các quyền được phê duyệt.',
         visual: _GuideVisual.admin,
         focusLabel: 'Công tắc quyền',

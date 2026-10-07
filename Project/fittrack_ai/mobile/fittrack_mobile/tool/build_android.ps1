@@ -52,6 +52,22 @@ $apkName = if ($Mode -eq "release") { "app-release.apk" } else { "app-debug.apk"
 $apkPath = Join-Path $projectRoot "build\app\outputs\flutter-apk\$apkName"
 if (-not (Test-Path -LiteralPath $apkPath)) { throw "Build completed but APK was not found at $apkPath" }
 
+# Dart resolves this drawable by name at runtime, so Android's release resource
+# shrinker cannot discover it from native references. Fail the build if it is
+# missing from the packaged APK (the user would otherwise see invalid_icon).
+$sdkRoot = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { $env:ANDROID_SDK_ROOT }
+$aapt = if ($sdkRoot) {
+    Get-ChildItem -LiteralPath (Join-Path $sdkRoot "build-tools") -Filter aapt.exe -Recurse -File -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending |
+        Select-Object -First 1
+}
+if (-not $aapt) { throw "Android aapt.exe not found; cannot verify packaged notification icon." }
+$iconPackaged = & $aapt.FullName dump resources $apkPath |
+    Select-String -SimpleMatch ":drawable/ic_stat_fittrack:" -Quiet
+if ($LASTEXITCODE -ne 0 -or -not $iconPackaged) {
+    throw "Android notification icon ic_stat_fittrack is missing from the APK. Check res/raw/keep.xml."
+}
+
 Write-Host ""
 Write-Host "APK is ready:" -ForegroundColor Green
 Write-Host $apkPath -ForegroundColor Cyan

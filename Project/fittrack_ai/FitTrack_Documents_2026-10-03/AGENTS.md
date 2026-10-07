@@ -70,9 +70,9 @@ Deployment:
 
 ## Stable business rules
 
-- A newly registered account starts active with all regular modules enabled
-  except Lunch. The user role remains USER; admin-only operations still require
-  ADMIN. Existing account permissions are never changed by this default.
+- A newly registered account starts active for the lunch module only. Fitness,
+  health, chatbot, Todo, Schedule, and Quote permissions remain disabled until
+  an admin grants them.
 - Admin-only account management controls role, active state, module permissions, password reset behavior, and deletion of locked accounts. Deleting a locked account anonymizes its identity while retaining operational history and auditability.
 - Registration does not require email verification or OTP; a newly created account can log in immediately. Forgot-password OTPs remain enabled and must be sent only to the email stored on the account; never accept an arbitrary destination email from the client.
 - A regular lunch portion selects exactly two dish slots above the `+` separator; both slots may reference the same regular dish. A special/single order selects exactly one dish below it.

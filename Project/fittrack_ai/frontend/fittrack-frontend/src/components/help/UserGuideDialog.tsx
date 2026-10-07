@@ -449,7 +449,7 @@ const guideModules: GuideModule[] = [
       {
         title: "Cấp quyền theo đúng nhu cầu",
         description:
-          "Tài khoản mới chỉ có Đặt cơm. Admin có thể bật từng module độc lập, khóa tài khoản hoặc đổi vai trò; mọi API vẫn kiểm tra quyền ở backend.",
+          "Tài khoản mới có các module cá nhân, riêng Đặt cơm mặc định tắt. Admin có thể chỉnh từng quyền, khóa tài khoản hoặc đổi vai trò; mọi API vẫn kiểm tra quyền ở backend.",
         action: "Tìm đúng người dùng, kiểm tra trạng thái rồi lưu các quyền cần cấp.",
         visual: "admin",
         focusLabel: "Công tắc phân quyền",

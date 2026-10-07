@@ -15,6 +15,25 @@ import java.util.Optional;
 public interface TodoRepository extends JpaRepository<Todo, String> {
     List<Todo> findByUserAndStatusNotOrderByDueAtAscCreatedAtDesc(User user, Todo.TodoStatus status);
     List<Todo> findByUserOrderByDueAtAscCreatedAtDesc(User user);
+    @Query("""
+            select t from Todo t
+            where t.user = :user
+              and coalesce(t.startAt, t.dueAt) is not null
+              and coalesce(t.startAt, t.dueAt) < :to
+              and (
+                coalesce(t.startAt, t.dueAt) >= :from
+                or (t.status in :carryStatuses and :includeCarryOver = true)
+                or (t.status = :doneStatus and t.completedAt >= :fromDay)
+              )
+            """)
+    List<Todo> findCalendarCandidates(
+            @Param("user") User user,
+            @Param("from") java.time.LocalDateTime from,
+            @Param("to") java.time.LocalDateTime to,
+            @Param("fromDay") java.time.LocalDateTime fromDay,
+            @Param("includeCarryOver") boolean includeCarryOver,
+            @Param("carryStatuses") List<Todo.TodoStatus> carryStatuses,
+            @Param("doneStatus") Todo.TodoStatus doneStatus);
     Optional<Todo> findByIdAndUser(String id, User user);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

@@ -107,10 +107,10 @@ class NativeNotificationService {
     }
   }
 
-  static Future<void> show(Map<String, dynamic> notification) async {
-    if (kIsWeb) return;
+  static Future<bool> show(Map<String, dynamic> notification) async {
+    if (kIsWeb) return false;
     await initialize();
-    if (!await notificationsEnabled()) return;
+    if (!await notificationsEnabled()) return false;
     final id = _stableId(
       notification['id']?.toString() ?? notification.toString(),
     );
@@ -121,6 +121,7 @@ class NativeNotificationService {
       payload: notification['id']?.toString(),
       notificationDetails: _detailsFor(notification['type']?.toString()),
     );
+    return true;
   }
 
   static Future<void> showPermissionConfirmation() async {
@@ -132,8 +133,8 @@ class NativeNotificationService {
     });
   }
 
-  static Future<void> showTestNotification() async {
-    await show({
+  static Future<bool> showTestNotification() async {
+    return show({
       'id': 'fittrack-native-test-${DateTime.now().millisecondsSinceEpoch}',
       'type': 'SYSTEM',
       'title': 'Thông báo thử từ FitTrack',

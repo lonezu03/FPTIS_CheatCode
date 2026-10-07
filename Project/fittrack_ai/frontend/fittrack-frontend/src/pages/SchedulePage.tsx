@@ -54,7 +54,7 @@ export default function SchedulePage() {
   const [draft, setDraft] = useState<EventDraft>(emptyDraft);
   const range = useMemo(() => calendarRange(view, focusDate), [view, focusDate]);
   const calendarQuery = useQuery({ queryKey: ['calendar', range.from, range.to], queryFn: () => getCalendar(range.from, range.to) });
-  const schedulesQuery = useQuery({ queryKey: ['schedule'], queryFn: getSchedule });
+  const schedulesQuery = useQuery({ queryKey: ['schedule', range.from, range.to], queryFn: () => getSchedule(range.from, range.to) });
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ['calendar'] });
     void client.invalidateQueries({ queryKey: ['schedule'] });
