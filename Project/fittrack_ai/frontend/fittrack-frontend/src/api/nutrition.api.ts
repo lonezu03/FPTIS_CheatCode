@@ -21,10 +21,10 @@ export type Food = {
 export type FoodShortcut = { food: Food; favorite: boolean; useCount: number; lastUsedAt: string | null };
 export type NutritionCollection = {
   id: string; name: string; description: string | null; type: "SAVED_MEAL" | "RECIPE";
-  servings: number; totalCalories: number; totalProtein: number; totalCarbs: number; totalFat: number;
-  items: { food: Food; amount: number; unit: ServingUnit; orderIndex: number }[];
+  servings: number; caloriesPerServing: number; proteinPerServing: number; carbsPerServing: number; fatPerServing: number;
+  items: { foodId: string; foodName: string; servingAmount: number; servingUnit: ServingUnit; calories: number; protein: number; carbs: number; fat: number }[];
 };
-export type NutritionConvenience = { recent: FoodShortcut[]; favorites: FoodShortcut[]; collections: NutritionCollection[] };
+export type NutritionConvenience = { recentFoods: FoodShortcut[]; favoriteFoods: FoodShortcut[]; savedMeals: NutritionCollection[]; recipes: NutritionCollection[] };
 
 export type ServingUnit = "SERVING" | "GRAM" | "ML";
 export type NutritionDayStatus = "COMPLETE" | "PARTIAL" | "UNLOGGED" | "FASTING";
@@ -164,7 +164,7 @@ export const setFoodFavorite = async (foodId: string, favorite: boolean): Promis
 
 export const saveNutritionCollection = async (payload: {
   name: string; description?: string; type: "SAVED_MEAL" | "RECIPE"; servings: number;
-  items: { foodId: string; amount: number; unit: ServingUnit }[];
+  items: { foodId: string; servingAmount: number; servingUnit: ServingUnit }[];
 }): Promise<NutritionCollection> => (await api.post("/nutrition/collections", payload)).data;
 
 export const logNutritionCollection = async (id: string, payload: { mealType: string; logDate: string; servings: number }): Promise<MealLog> =>

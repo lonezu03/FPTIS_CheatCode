@@ -2,6 +2,19 @@
 
 Last updated: 2026-10-07
 
+## Latest handoff: Nutrition web render crash (2026-10-07)
+
+The Nutrition page crashed after successful HTTP 200 responses because the web
+expected `recent`/`collections`, but `/api/nutrition/convenience` returns
+`recentFoods`/`savedMeals`. Web types and rendering now match the backend DTO;
+saved-meal display uses per-serving totals. The save-collection request now
+sends `servingAmount`/`servingUnit`, and successful saves refresh quick meals.
+Changed only `frontend/fittrack-frontend/src/api/nutrition.api.ts`,
+`src/pages/NutritionPage.tsx`, and added `src/pages/NutritionPage.test.tsx`.
+Verification: web lint, all 11 Vitest tests, and production build passed.
+Deploy web only, then smoke-test `/nutrition` with an empty and a populated
+quick-meal list plus the save/reuse flow. No backend or mobile deployment needed.
+
 ## Current task: new-account permissions and planner performance (2026-10-07)
 
 Status: implemented locally; deploy backend before web/mobile clients. Existing
