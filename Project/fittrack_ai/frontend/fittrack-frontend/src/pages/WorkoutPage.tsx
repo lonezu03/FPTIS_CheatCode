@@ -539,10 +539,11 @@ function LiveWorkoutDialog({
     <Dialog open onOpenChange={(open) => {
       if (!open && window.confirm("Hủy buổi tập đang thực hiện? Dữ liệu chưa hoàn thành sẽ mất.")) onClose();
     }}>
-      <DialogContent className="max-h-[96vh] overflow-y-auto sm:max-w-6xl">
+      <DialogContent className="flex max-h-[96dvh] w-[calc(100vw-1rem)] max-w-6xl flex-col gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)]">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pt-5 pb-4 sm:px-6 sm:pt-6">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center justify-between gap-3 pr-8">
-            <span>Workout mode</span>
+            <span>Buổi tập tự do</span>
             <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800">
               <Timer className="mr-1 inline h-4 w-4" /> {formatClock(elapsed)}
             </span>
@@ -560,10 +561,13 @@ function LiveWorkoutDialog({
           </div>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-sm font-medium">Tên buổi tập<Input className="mt-1" value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-          <label className="text-sm font-medium">Ghi chú<Input className="mt-1" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Cảm nhận, mục tiêu hôm nay..." /></label>
-        </div>
+        <details className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <summary className="cursor-pointer text-sm font-semibold">Tên buổi tập và ghi chú</summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-medium">Tên buổi tập<Input className="mt-1" value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+            <label className="text-sm font-medium">Ghi chú<Input className="mt-1" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Cảm nhận, mục tiêu hôm nay..." /></label>
+          </div>
+        </details>
 
         <div className="space-y-4">
           {groups.map((group, groupIndex) => {
@@ -610,7 +614,9 @@ function LiveWorkoutDialog({
                       giây
                     </label>
                   </div>
-                  <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+                  <details className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-3">
+                    <summary className="cursor-pointer text-sm font-semibold text-emerald-900">Gợi ý mức tạ, mức ưu tiên và bài thay thế</summary>
+                  <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_auto]">
                     <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3">
                       {insight === undefined ? (
                         <p className="text-sm text-muted-foreground">Đang phân tích lần tập trước...</p>
@@ -699,22 +705,23 @@ function LiveWorkoutDialog({
                       )}
                     </div>
                   )}
+                  </details>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-[38px_1.2fr_0.8fr_0.8fr_0.7fr_42px] gap-2 px-1 pb-2 text-center text-xs font-semibold text-muted-foreground">
+                  <div className="hidden grid-cols-[38px_1.2fr_0.8fr_0.8fr_0.7fr_42px] gap-2 px-1 pb-2 text-center text-xs font-semibold text-muted-foreground sm:grid">
                     <span>Set</span><span>Loại</span><span>Kg</span><span>Reps</span><span>RIR</span><span>Xong</span>
                   </div>
                   <div className="space-y-2">
                     {group.sets.map((set, setIndex) => (
-                      <div key={set.key} className={`grid grid-cols-[38px_1.2fr_0.8fr_0.8fr_0.7fr_42px] gap-2 rounded-xl p-1 ${set.completed ? "bg-emerald-50" : "bg-slate-50"}`}>
-                        <div className="flex items-center justify-center font-bold">{setIndex + 1}</div>
-                        <select className="h-10 min-w-0 rounded-lg border bg-white px-2 text-sm" value={set.setType} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, sets: item.sets.map((value) => value.key === set.key ? { ...value, setType: event.target.value as WorkoutSetType } : value) }))}>
+                      <div key={set.key} className={`grid grid-cols-3 gap-2 rounded-xl border p-3 sm:grid-cols-[38px_1.2fr_0.8fr_0.8fr_0.7fr_42px] sm:border-0 sm:p-1 ${set.completed ? "border-emerald-300 bg-emerald-50" : "bg-slate-50"}`}>
+                        <div className="flex items-center font-bold sm:justify-center"><span className="sm:hidden">Hiệp&nbsp;</span>{setIndex + 1}</div>
+                        <select aria-label={`Hiệp ${setIndex + 1} loại hiệp`} className="col-span-2 h-10 min-w-0 rounded-lg border bg-white px-2 text-sm sm:col-span-1" value={set.setType} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, sets: item.sets.map((value) => value.key === set.key ? { ...value, setType: event.target.value as WorkoutSetType } : value) }))}>
                           {Object.entries(setTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                         </select>
-                        <Input type="number" min={0} step={0.5} value={set.weight} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, sets: item.sets.map((value) => value.key === set.key ? { ...value, weight: Number(event.target.value) } : value) }))} />
-                        <Input type="number" min={1} max={500} value={set.reps} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, sets: item.sets.map((value) => value.key === set.key ? { ...value, reps: Number(event.target.value) } : value) }))} />
-                        <Input type="number" min={0} max={10} value={set.rir} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, sets: item.sets.map((value) => value.key === set.key ? { ...value, rir: Number(event.target.value) } : value) }))} />
-                        <Button type="button" size="icon" variant={set.completed ? "default" : "outline"} onClick={() => toggleSet(group.key, set.key)} aria-label="Hoàn thành set"><CheckCircle2 /></Button>
+                        <label className="text-xs font-medium sm:contents"><span className="mb-1 block sm:hidden">Kg</span><Input aria-label={`Hiệp ${setIndex + 1} mức tạ kg`} type="number" min={0} step={0.5} value={set.weight} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, sets: item.sets.map((value) => value.key === set.key ? { ...value, weight: Number(event.target.value) } : value) }))} /></label>
+                        <label className="text-xs font-medium sm:contents"><span className="mb-1 block sm:hidden">Lần</span><Input aria-label={`Hiệp ${setIndex + 1} số lần`} type="number" min={1} max={500} value={set.reps} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, sets: item.sets.map((value) => value.key === set.key ? { ...value, reps: Number(event.target.value) } : value) }))} /></label>
+                        <label className="text-xs font-medium sm:contents"><span className="mb-1 block sm:hidden">RIR</span><Input aria-label={`Hiệp ${setIndex + 1} RIR`} type="number" min={0} max={10} value={set.rir} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, sets: item.sets.map((value) => value.key === set.key ? { ...value, rir: Number(event.target.value) } : value) }))} /></label>
+                        <Button type="button" className="col-span-3 w-full sm:col-span-1 sm:w-auto" variant={set.completed ? "default" : "outline"} onClick={() => toggleSet(group.key, set.key)} aria-label={`Hiệp ${setIndex + 1} ${set.completed ? "đã xong" : "đánh dấu xong"}`}><CheckCircle2 /><span className="sm:hidden">{set.completed ? "Đã xong" : "Xong hiệp"}</span></Button>
                       </div>
                     ))}
                   </div>
@@ -731,7 +738,8 @@ function LiveWorkoutDialog({
         <Button variant="outline" onClick={() => setGroups((current) => [...current, makeExercise(exercises[0]?.id ?? "")])} disabled={!exercises.length}>
           <Plus /> Thêm bài tập
         </Button>
-        <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
+        </div>
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-white p-4 sm:flex-row sm:justify-end sm:px-6">
           <Button variant="destructive" onClick={() => { if (window.confirm("Hủy buổi tập? Dữ liệu chưa lưu sẽ mất.")) onClose(); }}><X />Hủy buổi tập</Button>
           <Button onClick={finish} disabled={saving}><CheckCircle2 />{saving ? "Đang lưu..." : "Hoàn thành buổi tập"}</Button>
         </div>

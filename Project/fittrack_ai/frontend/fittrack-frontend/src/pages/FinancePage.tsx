@@ -1,4 +1,4 @@
-import { useState, type ElementType, type ReactNode } from "react";
+import { useRef, useState, type ElementType, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownRight,
@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 
 import {
+  analyzeFinanceReceipt,
   archiveFinanceAccount,
   archiveFinanceCategory,
   archiveFinanceRecurring,
@@ -848,6 +849,40 @@ function TransactionDialog({
     merchant: initial?.merchant ?? "",
     note: initial?.note ?? "",
   });
+  const [receiptWarning, setReceiptWarning] = useState<string | null>(null);
+  const formRevision = useRef(0);
+  const analysisRevision = useRef(0);
+  const receiptMutation = useMutation({
+    mutationFn: analyzeFinanceReceipt,
+    onSuccess: (draft) => {
+      if (formRevision.current !== analysisRevision.current) {
+        toast.info("Bạn đã sửa biểu mẫu trong lúc đọc ảnh; kết quả ảnh không được áp dụng.");
+        return;
+      }
+      setForm((current) => ({
+        ...current,
+        type: "EXPENSE",
+        amount: draft.amount ? String(draft.amount) : current.amount,
+        occurredAt: draft.occurredAt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(draft.occurredAt) ? draft.occurredAt : current.occurredAt,
+        merchant: draft.merchant ?? current.merchant,
+        note: draft.note ?? current.note,
+        categoryId: "",
+        accountId: "",
+      }));
+      setReceiptWarning(draft.warning ?? "Kiểm tra số tiền, ngày, danh mục và chọn tài khoản trước khi lưu. Ảnh không được lưu lại.");
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, "Không thể đọc ảnh hóa đơn.")),
+  });
+  const onReceiptSelected = (file?: File) => {
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/webp", "image/avif", "image/gif"].includes(file.type)) { toast.error("Chỉ hỗ trợ ảnh PNG, JPEG, WebP, AVIF hoặc GIF."); return; }
+    if (file.size > 1_500_000) { toast.error("Ảnh phải nhỏ hơn 1,5 MB."); return; }
+    analysisRevision.current = formRevision.current;
+    const reader = new FileReader();
+    reader.onload = () => { if (typeof reader.result === "string") receiptMutation.mutate(reader.result); };
+    reader.onerror = () => toast.error("Không thể đọc file ảnh.");
+    reader.readAsDataURL(file);
+  };
   const mutation = useMutation({
     mutationFn: () => {
       const payload: FinanceTransactionInput = {
@@ -886,7 +921,12 @@ function TransactionDialog({
           <DialogTitle>{initial ? "Sửa giao dịch" : "Ghi giao dịch nhanh"}</DialogTitle>
           <DialogDescription>Số tiền luôn là số dương; chọn đúng loại để báo cáo không bị sai.</DialogDescription>
         </DialogHeader>
-        <form id="finance-transaction" className="grid gap-4 sm:grid-cols-2" onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }}>
+        <form id="finance-transaction" className="grid gap-4 sm:grid-cols-2" onChange={() => { formRevision.current += 1; }} onSubmit={(event) => { event.preventDefault(); if (!receiptMutation.isPending && !mutation.isPending && valid) mutation.mutate(); }}>
+          {!initial && <div className="sm:col-span-2 rounded-xl border p-3 space-y-2">
+            <label className="text-sm font-medium" htmlFor="finance-receipt">Chụp hoặc tải ảnh hóa đơn để điền nhanh</label>
+            <input id="finance-receipt" className="block w-full text-sm" type="file" accept="image/png,image/jpeg,image/webp,image/avif,image/gif" capture="environment" disabled={receiptMutation.isPending} onChange={(event) => { onReceiptSelected(event.target.files?.[0]); event.target.value = ""; }} />
+            <p className="text-xs text-muted-foreground">{receiptMutation.isPending ? "Đang đọc hóa đơn..." : receiptWarning ?? "Chỉ tạo bản nháp; bạn kiểm tra rồi mới bấm Lưu giao dịch. Không lưu ảnh."}</p>
+          </div>}
           <Field label="Số tiền (VND)" required className="sm:col-span-2">
             <Input autoFocus inputMode="numeric" min="1" type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
           </Field>
@@ -957,7 +997,7 @@ function TransactionDialog({
         </form>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>
-          <Button form="finance-transaction" type="submit" disabled={mutation.isPending || !valid}>
+          <Button form="finance-transaction" type="submit" disabled={mutation.isPending || receiptMutation.isPending || !valid}>
             {mutation.isPending ? "Đang lưu..." : initial ? "Cập nhật" : "Lưu giao dịch"}
           </Button>
         </DialogFooter>

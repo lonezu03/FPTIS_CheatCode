@@ -69,6 +69,9 @@ export type FinanceTransactionInput = {
   note: string;
 };
 
+export type ReceiptDraft = { amount: number | null; occurredAt: string | null; merchant: string | null; note: string | null; warning: string | null };
+export const analyzeFinanceReceipt = async (imageData: string) => (await api.post<ReceiptDraft>("/finance/receipt/analyze", { imageData })).data;
+
 export type FinanceRecurringInput = {
   name: string;
   transactionType: "EXPENSE" | "INCOME" | "TRANSFER";

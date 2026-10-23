@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -40,6 +40,8 @@ type MealDraftItem = {
   amount: number;
   unit: ServingUnit;
 };
+type PhotoMatch = { name: string; estimatedGrams: number | null; calories: number | null; foodId: string };
+function normalizeFoodName(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/đ/g, "d").replace(/[^a-z0-9]+/g, " ").trim(); }
 
 const mealTypes = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const;
 const mealLabels: Record<string, string> = {
@@ -238,6 +240,8 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
   const [collectionName, setCollectionName] = useState("");
   const [barcode, setBarcode] = useState("");
   const [photoAnalysis, setPhotoAnalysis] = useState<{ items: { name: string; estimatedGrams: number | null; calories: number | null }[]; note: string } | null>(null);
+  const [photoMatches, setPhotoMatches] = useState<PhotoMatch[]>([]);
+  const photoReading = useRef(false);
   const [items, setItems] = useState<MealDraftItem[]>(() => log
     ? log.items.map((item) => ({
       foodId: item.foodId,
@@ -258,7 +262,37 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
   });
   const collectionMutation = useMutation({ mutationFn: () => saveNutritionCollection({ name: collectionName.trim(), type: "SAVED_MEAL", servings: 1, items: items.map(item => ({ foodId: item.foodId, servingAmount: item.amount, servingUnit: item.unit })) }), onSuccess: async () => { toast.success("Đã lưu bữa để dùng nhanh"); setCollectionName(""); await queryClient.invalidateQueries({ queryKey: ["nutrition-convenience"] }); }, onError: showMutationError("Không thể lưu bộ bữa") });
   const barcodeMutation = useMutation({ mutationFn: () => getFoodByBarcode(barcode), onSuccess: food => { setItems(current => current.some(item => item.foodId === food.id) ? current : [...current, { foodId: food.id, amount: 1, unit: "SERVING" }]); toast.success(`Đã tìm thấy ${food.name}`); }, onError: showMutationError("Chưa tìm thấy thực phẩm theo mã vạch") });
-  const photoMutation = useMutation({ mutationFn: analyzeFoodPhoto, onSuccess: data => setPhotoAnalysis(data), onError: showMutationError("Không thể phân tích ảnh món ăn") });
+  const photoMutation = useMutation({ mutationFn: analyzeFoodPhoto, onSuccess: data => {
+    setPhotoAnalysis(data);
+    setPhotoMatches(data.items.map(item => ({ ...item, foodId: foods.filter(food => normalizeFoodName(food.name) === normalizeFoodName(item.name)).length === 1 ? foods.find(food => normalizeFoodName(food.name) === normalizeFoodName(item.name))!.id : "" })));
+  }, onError: showMutationError("Không thể phân tích ảnh món ăn") });
+  const handlePhoto = async (file?: File) => {
+    if (!file || photoReading.current || photoMutation.isPending) return;
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif", "image/avif"].includes(file.type)) { toast.error("Chỉ hỗ trợ ảnh PNG, JPEG, WebP, GIF hoặc AVIF."); return; }
+    if (file.size === 0 || file.size > 1_500_000) { toast.error("Ảnh phải có dung lượng tối đa 1,5 MB."); return; }
+    photoReading.current = true;
+    try {
+      const dataUri = await fileToDataUri(file);
+      setPhotoAnalysis(null);
+      setPhotoMatches([]);
+      photoMutation.mutate(dataUri);
+    } catch { toast.error("Không thể đọc ảnh. Vui lòng chọn ảnh khác."); }
+    finally { photoReading.current = false; }
+  };
+  const applyPhotoMatches = () => {
+    const matched = photoMatches.filter(item => item.foodId);
+    if (!matched.length) { toast.error("Hãy chọn ít nhất một món trong kho thực phẩm."); return; }
+    setItems(current => {
+      const next = [...current];
+      for (const item of matched) {
+        const food = foods.find(candidate => candidate.id === item.foodId);
+        if (!food || next.some(selected => selected.foodId === food.id)) continue;
+        next.push({ foodId: food.id, amount: item.estimatedGrams && item.estimatedGrams > 0 && food.servingSizeGrams ? item.estimatedGrams : 1, unit: item.estimatedGrams && item.estimatedGrams > 0 && food.servingSizeGrams ? "GRAM" : "SERVING" });
+      }
+      return next;
+    });
+    toast.success("Đã thêm vào bản nháp. Kiểm tra khẩu phần trước khi lưu.");
+  };
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!value) onClose(); }}>
       <DialogContent className="flex max-h-[min(90dvh,760px)] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:w-full sm:max-w-3xl sm:p-0">
@@ -268,9 +302,9 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
         </DialogHeader>
 
         <div className="shrink-0 border-y bg-muted/25 px-5 py-4 sm:px-6">
-          <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><Input placeholder="Nhập hoặc quét mã vạch" value={barcode} onChange={event => setBarcode(event.target.value)} /><Button variant="outline" disabled={!barcode.trim() || barcodeMutation.isPending} onClick={() => barcodeMutation.mutate()}><ScanLine className="size-4" /> Tra mã</Button><label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border bg-background px-4 text-sm font-medium hover:bg-muted"><Camera className="size-4" /> Phân tích ảnh<input className="hidden" type="file" accept="image/*" capture="environment" onChange={async event => { const file = event.target.files?.[0]; if (file) photoMutation.mutate(await fileToDataUri(file)); }} /></label></div>
+          <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><Input placeholder="Nhập hoặc quét mã vạch" value={barcode} onChange={event => setBarcode(event.target.value)} /><Button variant="outline" disabled={!barcode.trim() || barcodeMutation.isPending} onClick={() => barcodeMutation.mutate()}><ScanLine className="size-4" /> Tra mã</Button><label className={`inline-flex h-10 items-center justify-center gap-2 rounded-md border bg-background px-4 text-sm font-medium ${photoMutation.isPending ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted"}`}><Camera className="size-4" /> Phân tích ảnh<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" capture="environment" disabled={photoMutation.isPending} onChange={event => { void handlePhoto(event.target.files?.[0]); event.target.value = ""; }} /></label></div>
           {photoMutation.isPending && <p className="mb-3 text-xs text-emerald-700">Gemini đang phân tích ảnh…</p>}
-          {photoAnalysis && <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs"><p className="font-semibold">Ước tính từ ảnh — cần kiểm tra trước khi lưu</p><ul className="mt-1 list-disc pl-4">{photoAnalysis.items.map((item, index) => <li key={`${item.name}-${index}`}>{item.name}: khoảng {item.estimatedGrams ?? "?"}g, {item.calories ?? "?"} kcal</li>)}</ul><p className="mt-1 text-muted-foreground">{photoAnalysis.note}</p></div>}
+          {photoAnalysis && <div className="mb-3 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs"><p className="font-semibold">Ước tính từ ảnh — chọn món tương ứng trước khi thêm vào bản nháp</p>{photoMatches.map((item, index) => <div key={`${item.name}-${index}`} className="grid gap-1 sm:grid-cols-2"><span>{item.name}: khoảng {item.estimatedGrams ?? "?"}g, {item.calories ?? "?"} kcal</span><select aria-label={`Món trong kho cho ${item.name}`} className="h-9 min-w-0 rounded-md border bg-background px-2" value={item.foodId} onChange={event => setPhotoMatches(current => current.map((value, position) => position === index ? { ...value, foodId: event.target.value } : value))}><option value="">Chọn món trong kho (hoặc bỏ qua)</option>{foods.map(food => <option key={food.id} value={food.id}>{food.name}</option>)}</select></div>)}<p className="text-muted-foreground">{photoAnalysis.note}</p><Button type="button" size="sm" disabled={!photoMatches.some(item => item.foodId)} onClick={applyPhotoMatches}>Thêm món đã chọn vào bản nháp</Button><p className="text-muted-foreground">Chưa lưu nhật ký; món không nhận diện được cần tìm hoặc tạo trong kho thực phẩm.</p></div>}
           <Input
             autoFocus
             placeholder="Tìm món ăn..."
