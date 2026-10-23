@@ -3,6 +3,8 @@ package com.fittrack.finance.controller;
 import com.fittrack.common.dto.PageResponse;
 import com.fittrack.finance.dto.FinanceDtos.*;
 import com.fittrack.finance.service.FinanceService;
+import com.fittrack.finance.service.ReceiptAnalysisService;
+import com.fittrack.finance.dto.ReceiptAnalysisDtos;
 import com.fittrack.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,8 @@ import java.util.List;
 @RestController @RequestMapping("/api/finance") @RequiredArgsConstructor
 public class FinanceController {
     private final FinanceService service;
+    private final ReceiptAnalysisService receiptAnalysisService;
+    @PostMapping("/receipt/analyze") public ReceiptAnalysisDtos.Response analyzeReceipt(@AuthenticationPrincipal User user,@Valid @RequestBody ReceiptAnalysisDtos.Request request){return receiptAnalysisService.analyze(user,request);}
     @GetMapping("/accounts") public List<AccountResponse> accounts(@AuthenticationPrincipal User user){return service.accounts(user);}
     @PostMapping("/accounts") public AccountResponse createAccount(@AuthenticationPrincipal User user,@Valid @RequestBody AccountRequest request){return service.createAccount(user,request);}
     @PutMapping("/accounts/{id}") public AccountResponse updateAccount(@AuthenticationPrincipal User user,@PathVariable String id,@Valid @RequestBody AccountRequest request){return service.updateAccount(user,id,request);}
