@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -128,6 +132,16 @@ class _FinanceScreenState extends State<FinanceScreen>
     final note = TextEditingController(
       text: current?['note']?.toString() ?? '',
     );
+    final savedDate = current?['occurredAt']?.toString().replaceFirst('T', ' ');
+    final occurredAt = TextEditingController(
+      text: savedDate != null && savedDate.length >= 16
+          ? savedDate.substring(0, 16)
+          : DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now()),
+    );
+    var analyzingReceipt = false;
+    var receiptDraft = false;
+    String? receiptWarning;
+    var dialogOpen = true;
     final accepted = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -137,7 +151,172 @@ class _FinanceScreenState extends State<FinanceScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (current == null) ...[
+                  OutlinedButton.icon(
+                    onPressed: analyzingReceipt
+                        ? null
+                        : () async {
+                            setLocal(() => analyzingReceipt = true);
+                            try {
+                              final useCamera =
+                                  await showModalBottomSheet<bool>(
+                                    context: dialogContext,
+                                    builder: (sheetContext) => SafeArea(
+                                      child: Wrap(
+                                        children: [
+                                          ListTile(
+                                            leading: const Icon(
+                                              Icons.camera_alt_outlined,
+                                            ),
+                                            title: const Text(
+                                              'Chụp ảnh hóa đơn',
+                                            ),
+                                            onTap: () => Navigator.pop(
+                                              sheetContext,
+                                              true,
+                                            ),
+                                          ),
+                                          ListTile(
+                                            leading: const Icon(
+                                              Icons.photo_library_outlined,
+                                            ),
+                                            title: const Text(
+                                              'Chọn ảnh có sẵn',
+                                            ),
+                                            onTap: () => Navigator.pop(
+                                              sheetContext,
+                                              false,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                              if (useCamera == null ||
+                                  !dialogOpen ||
+                                  !dialogContext.mounted) {
+                                return;
+                              }
+                              final cameraFile = useCamera
+                                  ? await ImagePicker().pickImage(
+                                      source: ImageSource.camera,
+                                    )
+                                  : null;
+                              final file = useCamera
+                                  ? null
+                                  : await FilePicker.pickFile(
+                                      type: FileType.image,
+                                    );
+                              if ((cameraFile == null && file == null) ||
+                                  !dialogOpen ||
+                                  !dialogContext.mounted) {
+                                return;
+                              }
+                              final extension =
+                                  (cameraFile?.name.split('.').last ??
+                                          file?.extension ??
+                                          '')
+                                      .toLowerCase();
+                              final mime = switch (extension) {
+                                'jpg' || 'jpeg' => 'image/jpeg',
+                                'png' => 'image/png',
+                                'webp' => 'image/webp',
+                                _ => null,
+                              };
+                              if (mime == null) {
+                                showMessage(
+                                  dialogContext,
+                                  'Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.',
+                                  error: true,
+                                );
+                                return;
+                              }
+                              final bytes = cameraFile != null
+                                  ? await cameraFile.readAsBytes()
+                                  : await file!.readAsBytes();
+                              if (!dialogOpen || !dialogContext.mounted) return;
+                              if (bytes.isEmpty || bytes.length > 1500000) {
+                                showMessage(
+                                  dialogContext,
+                                  'Ảnh phải nhỏ hơn 1,5 MB.',
+                                  error: true,
+                                );
+                                return;
+                              }
+                              final oldAmount = amount.text;
+                              final oldDate = occurredAt.text;
+                              final oldMerchant = merchant.text;
+                              final oldNote = note.text;
+                              final raw = await dialogContext
+                                  .read<ApiClient>()
+                                  .post(
+                                    '/finance/receipt/analyze',
+                                    data: {
+                                      'imageData':
+                                          'data:$mime;base64,${base64Encode(bytes)}',
+                                    },
+                                  );
+                              if (!dialogOpen || !dialogContext.mounted) return;
+                              final result = Map<String, dynamic>.from(
+                                raw as Map,
+                              );
+                              setLocal(() {
+                                receiptDraft = true;
+                                // Never overwrite fields edited while the request was pending.
+                                if (amount.text == oldAmount &&
+                                    result['amount'] != null) {
+                                  amount.text = result['amount'].toString();
+                                }
+                                final date = result['occurredAt']?.toString();
+                                if (occurredAt.text == oldDate &&
+                                    date != null &&
+                                    DateTime.tryParse(date) != null) {
+                                  occurredAt.text = DateFormat(
+                                    'yyyy-MM-dd HH:mm',
+                                  ).format(DateTime.parse(date));
+                                }
+                                if (merchant.text == oldMerchant &&
+                                    result['merchant'] != null) {
+                                  merchant.text = result['merchant'].toString();
+                                }
+                                if (note.text == oldNote &&
+                                    result['note'] != null) {
+                                  note.text = result['note'].toString();
+                                }
+                                type = 'EXPENSE';
+                                accountId = null;
+                                categoryId = null;
+                                receiptWarning = result['warning']?.toString();
+                              });
+                            } catch (error) {
+                              if (dialogOpen && dialogContext.mounted) {
+                                showMessage(
+                                  dialogContext,
+                                  displayError(error),
+                                  error: true,
+                                );
+                              }
+                            } finally {
+                              if (dialogOpen && dialogContext.mounted) {
+                                setLocal(() => analyzingReceipt = false);
+                              }
+                            }
+                          },
+                    icon: const Icon(Icons.document_scanner_outlined),
+                    label: Text(
+                      analyzingReceipt
+                          ? 'Đang đọc hóa đơn…'
+                          : 'Chụp hoặc chọn ảnh hóa đơn',
+                    ),
+                  ),
+                  const Text(
+                    'Ảnh chỉ dùng để gợi ý bản nháp. Kiểm tra lại số tiền, ngày và chọn tài khoản, danh mục trước khi lưu.',
+                  ),
+                  if (receiptWarning?.isNotEmpty == true) Text(receiptWarning!),
+                  const SizedBox(height: 10),
+                ],
                 DropdownButtonFormField<String>(
+                  key: ValueKey('transaction-type-$receiptDraft'),
                   initialValue: type,
                   decoration: const InputDecoration(
                     labelText: 'Loại giao dịch',
@@ -150,14 +329,19 @@ class _FinanceScreenState extends State<FinanceScreen>
                       child: Text('Chuyển khoản'),
                     ),
                   ],
-                  onChanged: (v) => setLocal(() => type = v!),
+                  onChanged: receiptDraft
+                      ? null
+                      : (v) => setLocal(() => type = v!),
                 ),
                 const SizedBox(height: 10),
-                _mapDropdown(
-                  'Tài khoản',
-                  accounts,
-                  accountId,
-                  (v) => setLocal(() => accountId = v),
+                KeyedSubtree(
+                  key: ValueKey('account-$receiptDraft'),
+                  child: _mapDropdown(
+                    'Tài khoản',
+                    accounts,
+                    accountId,
+                    (v) => setLocal(() => accountId = v),
+                  ),
                 ),
                 if (type == 'TRANSFER') ...[
                   const SizedBox(height: 10),
@@ -170,14 +354,17 @@ class _FinanceScreenState extends State<FinanceScreen>
                 ],
                 if (type != 'TRANSFER') ...[
                   const SizedBox(height: 10),
-                  _mapDropdown(
-                    'Danh mục',
-                    categories
-                        .where((c) => c['transactionKind'] == type)
-                        .toList(),
-                    categoryId,
-                    (v) => setLocal(() => categoryId = v),
-                    optional: true,
+                  KeyedSubtree(
+                    key: ValueKey('category-$type-$receiptDraft'),
+                    child: _mapDropdown(
+                      'Danh mục',
+                      categories
+                          .where((c) => c['transactionKind'] == type)
+                          .toList(),
+                      categoryId,
+                      (v) => setLocal(() => categoryId = v),
+                      optional: !receiptDraft,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 10),
@@ -185,6 +372,13 @@ class _FinanceScreenState extends State<FinanceScreen>
                   controller: amount,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: 'Số tiền (đ)'),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: occurredAt,
+                  decoration: const InputDecoration(
+                    labelText: 'Ngày giờ (yyyy-MM-dd HH:mm)',
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -207,17 +401,77 @@ class _FinanceScreenState extends State<FinanceScreen>
               child: const Text('Hủy'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
+              onPressed: analyzingReceipt
+                  ? null
+                  : () {
+                      if (accountId == null ||
+                          (receiptDraft && categoryId == null)) {
+                        showMessage(
+                          dialogContext,
+                          'Hãy chọn tài khoản và danh mục trước khi lưu.',
+                          error: true,
+                        );
+                        return;
+                      }
+                      if ((double.tryParse(
+                                amount.text.replaceAll(',', '').trim(),
+                              ) ??
+                              0) <=
+                          0) {
+                        showMessage(
+                          dialogContext,
+                          'Số tiền phải lớn hơn 0.',
+                          error: true,
+                        );
+                        return;
+                      }
+                      if (DateTime.tryParse(
+                            occurredAt.text.trim().replaceFirst(' ', 'T'),
+                          ) ==
+                          null) {
+                        showMessage(
+                          dialogContext,
+                          'Ngày giờ không hợp lệ.',
+                          error: true,
+                        );
+                        return;
+                      }
+                      Navigator.pop(dialogContext, true);
+                    },
               child: const Text('Lưu'),
             ),
           ],
         ),
       ),
     );
-    if (accepted != true || accountId == null) return;
+    dialogOpen = false;
+    if (accepted != true) return;
+    if (accountId == null || (receiptDraft && categoryId == null)) {
+      if (mounted) {
+        showMessage(
+          context,
+          'Hãy chọn tài khoản và danh mục trước khi lưu.',
+          error: true,
+        );
+      }
+      return;
+    }
     final value = double.tryParse(amount.text.replaceAll(',', '').trim());
     if (value == null || value <= 0) {
       if (mounted) showMessage(context, 'Số tiền phải lớn hơn 0.', error: true);
+      return;
+    }
+    final parsedDate = DateTime.tryParse(
+      occurredAt.text.trim().replaceFirst(' ', 'T'),
+    );
+    if (parsedDate == null) {
+      if (mounted) {
+        showMessage(
+          context,
+          'Ngày giờ không hợp lệ. Dùng định dạng yyyy-MM-dd HH:mm.',
+          error: true,
+        );
+      }
       return;
     }
     final payload = {
@@ -227,7 +481,7 @@ class _FinanceScreenState extends State<FinanceScreen>
       'destinationAccountId': type == 'TRANSFER' ? destinationId : null,
       'categoryId': type == 'TRANSFER' ? null : categoryId,
       'expenseNature': current?['expenseNature'],
-      'occurredAt': current?['occurredAt'] ?? DateTime.now().toIso8601String(),
+      'occurredAt': parsedDate.toIso8601String(),
       'merchant': merchant.text.trim(),
       'note': note.text.trim(),
     };

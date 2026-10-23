@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'dart:convert';
 
@@ -737,39 +738,200 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
   }
 
   Future<void> _analyzePhoto() async {
-    final file = await FilePicker.pickFile(type: FileType.image);
-    if (file == null || !mounted) return;
-    final bytes = await file.readAsBytes();
-    if (!mounted) return;
+    if (busy) return;
     setState(() => busy = true);
     try {
-      final extension = (file.extension ?? 'jpeg').toLowerCase();
-      final mime = extension == 'png'
-          ? 'image/png'
-          : extension == 'webp'
-          ? 'image/webp'
-          : 'image/jpeg';
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        builder: (sheetContext) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Chụp ảnh món ăn'),
+                onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Chọn ảnh có sẵn'),
+                onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (source == null || !mounted) return;
+      String extension;
+      List<int> bytes;
+      if (source == ImageSource.camera) {
+        final photo = await ImagePicker().pickImage(
+          source: ImageSource.camera,
+          imageQuality: 85,
+        );
+        if (photo == null || !mounted) return;
+        extension = photo.name.split('.').last.toLowerCase();
+        bytes = await photo.readAsBytes();
+      } else {
+        final file = await FilePicker.pickFile(type: FileType.image);
+        if (file == null || !mounted) return;
+        extension = (file.extension ?? '').toLowerCase();
+        bytes = await file.readAsBytes();
+      }
+      if (!mounted) return;
+      final mime = switch (extension) {
+        'jpg' || 'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'gif' => 'image/gif',
+        'avif' => 'image/avif',
+        _ => null,
+      };
+      if (mime == null || bytes.isEmpty || bytes.length > 1500000) {
+        showMessage(
+          context,
+          'Chỉ hỗ trợ ảnh JPG, PNG, WebP, GIF, AVIF tối đa 1,5 MB.',
+          error: true,
+        );
+        return;
+      }
       final raw = await context.read<ApiClient>().post(
         '/nutrition/photo-analysis',
         data: {'imageData': 'data:$mime;base64,${base64Encode(bytes)}'},
       );
       if (!mounted) return;
       final result = Map<String, dynamic>.from(raw as Map);
-      final items = _list(result['items']);
-      await showDialog<void>(
+      final available = widget.foods
+          .where(
+            (food) =>
+                food['active'] != false &&
+                (food['approvalStatus'] == null ||
+                    food['approvalStatus'] == 'APPROVED'),
+          )
+          .toList();
+      final matches = _list(result['items']).map((item) {
+        final name = item['name']?.toString() ?? '';
+        final exact = available
+            .where(
+              (food) =>
+                  _normalizedFoodName(food['name']?.toString() ?? '') ==
+                  _normalizedFoodName(name),
+            )
+            .toList();
+        return _PhotoMatch(
+          name,
+          (item['estimatedGrams'] as num?)?.toDouble(),
+          (item['calories'] as num?)?.toDouble(),
+          exact.length == 1 ? exact.first['id'].toString() : null,
+        );
+      }).toList();
+      if (matches.isEmpty) {
+        showMessage(
+          context,
+          'Ảnh chưa nhận diện được món. Hãy tìm món trong kho thực phẩm.',
+          error: true,
+        );
+        return;
+      }
+      final confirmed = await showDialog<List<_PhotoMatch>>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Ước tính từ ảnh'),
-          content: Text(
-            '${items.map((item) => '${item['name']}: ~${item['estimatedGrams'] ?? '?'}g, ${item['calories'] ?? '?'} kcal').join('\n')}\n\n${result['note'] ?? ''}\n\nHãy kiểm tra và chọn món tương ứng trước khi lưu.',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Đã hiểu'),
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, update) => AlertDialog(
+            title: const Text('Kiểm tra món từ ảnh'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Chọn món tương ứng trong kho. Có thể bỏ qua món không chắc chắn.',
+                    ),
+                    const SizedBox(height: 10),
+                    for (final match in matches) ...[
+                      Text(
+                        '${match.name}: khoảng ${match.grams?.round() ?? '?'} g, ${match.calories?.round() ?? '?'} kcal',
+                      ),
+                      DropdownButtonFormField<String>(
+                        initialValue: match.foodId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Món trong kho',
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: '',
+                            child: Text('Bỏ qua / chưa xác định'),
+                          ),
+                          for (final food in available)
+                            DropdownMenuItem(
+                              value: food['id'].toString(),
+                              child: Text(
+                                food['name'].toString(),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                        onChanged: (id) => update(() => match.foodId = id),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    if ((result['note']?.toString() ?? '').isNotEmpty)
+                      Text(
+                        result['note'].toString(),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    const Text(
+                      'Ước tính chỉ để tham khảo; chưa lưu vào nhật ký.',
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Hủy'),
+              ),
+              FilledButton(
+                onPressed:
+                    matches.any(
+                      (match) =>
+                          match.foodId != null && match.foodId!.isNotEmpty,
+                    )
+                    ? () => Navigator.pop(dialogContext, matches)
+                    : null,
+                child: const Text('Thêm vào bản nháp'),
+              ),
+            ],
+          ),
         ),
+      );
+      if (confirmed == null || !mounted) return;
+      setState(() {
+        for (final match in confirmed) {
+          final id = match.foodId;
+          if (id == null || id.isEmpty || selected.containsKey(id)) continue;
+          final food = available
+              .where((item) => item['id'].toString() == id)
+              .firstOrNull;
+          if (food == null) continue;
+          final hasGrams =
+              ((food['servingSizeGrams'] as num?)?.toDouble() ?? 0) > 0;
+          selected[id] = _FoodAmount()
+            ..unit = hasGrams && (match.grams ?? 0) > 0 ? 'GRAM' : 'SERVING'
+            ..amount = hasGrams && (match.grams ?? 0) > 0 ? match.grams! : 1;
+        }
+        search = '';
+      });
+      showMessage(
+        context,
+        'Đã thêm vào bản nháp. Kiểm tra khẩu phần trước khi lưu.',
       );
     } catch (error) {
       if (mounted) showMessage(context, displayError(error), error: true);
@@ -816,14 +978,19 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final visible = widget.foods
+    final matching = widget.foods
         .where(
           (food) => food['name'].toString().toLowerCase().contains(
             search.toLowerCase(),
           ),
         )
-        .take(30)
         .toList();
+    final visible = [
+      ...matching.where((food) => selected.containsKey(food['id'].toString())),
+      ...matching
+          .where((food) => !selected.containsKey(food['id'].toString()))
+          .take(30),
+    ];
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: .88,
@@ -965,6 +1132,17 @@ class _FoodAmount {
   double amount = 1;
   String unit = 'SERVING';
 }
+
+class _PhotoMatch {
+  _PhotoMatch(this.name, this.grams, this.calories, this.foodId);
+  final String name;
+  final double? grams;
+  final double? calories;
+  String? foodId;
+}
+
+String _normalizedFoodName(String name) =>
+    name.toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
 
 Map<String, dynamic> _map(dynamic value) =>
     value is Map ? Map<String, dynamic>.from(value) : {};
