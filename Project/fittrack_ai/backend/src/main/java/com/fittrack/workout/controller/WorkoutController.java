@@ -65,6 +65,21 @@ public class WorkoutController {
         );
     }
 
+    @GetMapping("/sessions/history")
+    public PageResponse<WorkoutSessionResponse> searchSessions(Authentication authentication,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String exerciseId) {
+        return workoutService.searchSessions((User) authentication.getPrincipal(), page, size, from, to, exerciseId);
+    }
+
+    @PutMapping("/sessions/{id}/details")
+    public WorkoutSessionResponse replaceSession(Authentication authentication, @PathVariable String id,
+            @Valid @RequestBody CreateWorkoutSessionRequest request) {
+        return workoutService.replaceSession((User) authentication.getPrincipal(), id, request);
+    }
+
     @GetMapping("/previous-performance")
     public ResponseEntity<PreviousWorkoutPerformanceResponse> getPreviousPerformance(
             Authentication authentication,

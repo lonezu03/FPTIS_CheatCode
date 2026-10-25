@@ -58,6 +58,11 @@ public class FoodController {
         return foodService.getMySubmissions(user);
     }
 
+    @GetMapping("/{id}")
+    public FoodResponse getActiveFood(@PathVariable String id) {
+        return foodService.getActiveFood(id);
+    }
+
     @GetMapping("/barcode/{barcode}")
     public FoodResponse getByBarcode(@PathVariable String barcode) {
         return foodService.findByBarcode(barcode);

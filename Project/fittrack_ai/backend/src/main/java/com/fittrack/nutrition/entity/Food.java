@@ -22,6 +22,17 @@ public class Food {
     @Column(nullable = false)
     private String name;
 
+    @Column(unique = true)
+    private String seedKey;
+
+    @Column(columnDefinition = "TEXT")
+    private String searchText;
+
+    @PreUpdate
+    public void refreshSearchText() {
+        searchText = com.fittrack.common.catalog.CatalogText.normalize(name + " " + unit);
+    }
+
     private Double calories;
 
     private Double protein;
@@ -90,6 +101,7 @@ public class Food {
 
     @PrePersist
     public void onCreate() {
+        refreshSearchText();
         this.createdAt = LocalDateTime.now();
 
         if (this.custom == null) {

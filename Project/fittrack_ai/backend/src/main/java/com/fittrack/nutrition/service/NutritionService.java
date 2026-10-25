@@ -85,6 +85,7 @@ public class NutritionService {
                         .vitaminC(scaleNullable(food.getVitaminC(), quantity))
                         .water(scaleNullable(food.getWater(), quantity))
                         .build();
+                item.snapshotFood();
 
                 mealLog.getItems().add(item);
 
@@ -193,6 +194,7 @@ public class NutritionService {
                         .vitaminC(scaleNullable(food.getVitaminC(), quantity))
                         .water(scaleNullable(food.getWater(), quantity))
                         .build();
+                item.snapshotFood();
 
                 mealLog.getItems().add(item);
 
@@ -220,7 +222,7 @@ public class NutritionService {
         Food food = foodRepository.findById(foodId)
                 .orElseThrow(() -> new IllegalArgumentException("Food not found"));
 
-        if (Boolean.FALSE.equals(food.getActive())) {
+        if (!Boolean.TRUE.equals(food.getActive()) || !"APPROVED".equals(food.getApprovalStatus())) {
             throw new IllegalArgumentException("Food is inactive");
         }
 
@@ -253,11 +255,15 @@ public class NutritionService {
         if (!java.util.Set.of("SERVING", "GRAM", "ML").contains(unit)) {
             throw new IllegalArgumentException("Đơn vị thực phẩm không hợp lệ");
         }
+        boolean volumePortion = food.getUnit() != null && food.getUnit().toLowerCase(java.util.Locale.ROOT).matches(".*(?:ml|lít|litre|liter).*" );
         if ("SERVING".equals(unit)) {
-            Double grams = food.getServingSizeGrams() == null
+            Double grams = volumePortion || food.getServingSizeGrams() == null
                     ? null
                     : amount * food.getServingSizeGrams();
             return new ItemAmount(amount, unit, amount, grams);
+        }
+        if (("ML".equals(unit) && !volumePortion) || ("GRAM".equals(unit) && volumePortion)) {
+            throw new IllegalArgumentException("Chưa có dữ liệu khối lượng riêng để quy đổi gram và ml; hãy dùng đúng đơn vị khẩu phần");
         }
         if (food.getServingSizeGrams() == null || food.getServingSizeGrams() <= 0) {
             throw new IllegalArgumentException(
@@ -268,7 +274,7 @@ public class NutritionService {
                 amount / food.getServingSizeGrams(),
                 unit,
                 amount,
-                amount
+                "ML".equals(unit) ? null : amount
         );
     }
 

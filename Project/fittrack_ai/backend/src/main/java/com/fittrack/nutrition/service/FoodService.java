@@ -48,7 +48,8 @@ public class FoodService {
             }
         }
 
-        return nutritionMapper.toFoodResponseList(foods);
+        return nutritionMapper.toFoodResponseList(foods.stream()
+                .filter(value -> showInactive || "APPROVED".equals(value.getApprovalStatus())).toList());
     }
 
     public FoodResponse create(CreateFoodRequest request) {
@@ -91,10 +92,9 @@ public class FoodService {
             int page,
             int size
     ) {
-        var result = foodRepository.searchPage(
-                keyword == null ? "" : keyword.trim(),
-                includeInactive,
-                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
+        var result = foodRepository.findAll(
+                com.fittrack.common.catalog.CatalogText.<Food>search(keyword, includeInactive),
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), org.springframework.data.domain.Sort.by("name").and(org.springframework.data.domain.Sort.by("id")))
         ).map(nutritionMapper::toFoodResponse);
         return PageResponse.from(result);
     }
@@ -243,6 +243,7 @@ public class FoodService {
         Food food = foodRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Food not found"));
 
+        if (!"APPROVED".equals(food.getApprovalStatus())) throw new IllegalArgumentException("Chỉ khôi phục thực phẩm đã được duyệt");
         food.setActive(true);
 
         Food saved = foodRepository.save(food);
@@ -252,6 +253,11 @@ public class FoodService {
 
     private double defaultZero(Double value) {
         return value == null ? 0.0 : value;
+    }
+
+    public FoodResponse getActiveFood(String id) {
+        return foodRepository.findById(id).filter(value -> Boolean.TRUE.equals(value.getActive()) && "APPROVED".equals(value.getApprovalStatus()))
+                .map(nutritionMapper::toFoodResponse).orElseThrow(() -> new com.fittrack.common.exception.ResourceNotFoundException("Thực phẩm không còn khả dụng"));
     }
 
     private String sourceType(String value) {

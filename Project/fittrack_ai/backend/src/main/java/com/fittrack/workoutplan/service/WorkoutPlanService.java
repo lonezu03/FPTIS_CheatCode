@@ -52,11 +52,15 @@ public class WorkoutPlanService {
         validatePlanRequest(request);
         WorkoutPlan plan = workoutPlanRepository.findByIdAndUser(planId, user)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy giáo án"));
+        if (request.getVersion() != null && !request.getVersion().equals(plan.getVersion())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Giáo án đã thay đổi, hãy tải lại trước khi lưu");
+        }
         plan.setName(request.getName().trim());
+        plan.setUpdatedAt(java.time.LocalDateTime.now());
         plan.setDescription(trim(request.getDescription()));
         plan.getDays().clear();
         replaceDays(plan, request.getDays());
-        return workoutPlanMapper.toResponse(workoutPlanRepository.save(plan));
+        return workoutPlanMapper.toResponse(workoutPlanRepository.saveAndFlush(plan));
     }
 
     @Transactional(readOnly = true)
@@ -112,7 +116,7 @@ public class WorkoutPlanService {
                 .user(user)
                 .sessionDate(request.getSessionDate() == null ? LocalDate.now() : request.getSessionDate())
                 .note(request.getNote() == null ? plan.getName() + " - " + selectedDay.getName() : request.getNote())
-                .durationMinutes(60)
+                .durationMinutes(0)
                 .build();
 
         for (WorkoutPlanExercise planExercise : selectedDay.getExercises()) {
@@ -128,17 +132,17 @@ public class WorkoutPlanService {
                         .weight(planExercise.getTargetWeight())
                         .reps(planExercise.getTargetReps())
                         .rir(planExercise.getTargetRir())
-                        .restSeconds(90)
-                        .completed(true)
+                        .restSeconds(planExercise.getRestSeconds() == null ? 90 : planExercise.getRestSeconds())
+                        .completed(false)
                         .build();
 
                 session.getSets().add(set);
             }
         }
 
-        WorkoutSession saved = workoutSessionRepository.save(session);
-
-        return workoutMapper.toWorkoutSessionResponse(saved);
+        // A prescription is an unsaved draft, never a completed workout/history entry.
+        // Keep the legacy response shape for older clients; only explicit session completion persists history.
+        return workoutMapper.toWorkoutSessionResponse(session);
     }
 
     private void replaceDays(WorkoutPlan plan, List<CreateWorkoutPlanDayRequest> dayRequests) {
@@ -161,6 +165,10 @@ public class WorkoutPlanService {
                         .targetReps(exerciseRequest.getTargetReps())
                         .targetWeight(exerciseRequest.getTargetWeight())
                         .targetRir(exerciseRequest.getTargetRir())
+                        .restSeconds(exerciseRequest.getRestSeconds())
+                        .minReps(exerciseRequest.getMinReps())
+                        .maxReps(exerciseRequest.getMaxReps())
+                        .coachingNote(trim(exerciseRequest.getCoachingNote()))
                         .build());
             }
             plan.getDays().add(day);
@@ -171,11 +179,17 @@ public class WorkoutPlanService {
         if (request == null || request.getName() == null || request.getName().isBlank()) {
             throw new IllegalArgumentException("Tên giáo án không được để trống");
         }
-        if (request.getDays() == null || request.getDays().isEmpty()) {
+        if (request.getName().length() > 255 || request.getDescription() != null && request.getDescription().length() > 255) {
+            throw new IllegalArgumentException("Tên và mô tả tối đa 255 ký tự");
+        }
+        if (request.getDays() == null || request.getDays().isEmpty() || request.getDays().size() > 31) {
             throw new IllegalArgumentException("Giáo án phải có ít nhất một ngày tập");
         }
         for (CreateWorkoutPlanDayRequest day : request.getDays()) {
-            if (day.getName() == null || day.getName().isBlank()) {
+            if (day == null || day.getExercises() == null || day.getExercises().size() > 50) {
+                throw new IllegalArgumentException("Giáo án tối đa 31 ngày, mỗi ngày tối đa 50 bài tập");
+            }
+            if (day.getName() == null || day.getName().isBlank() || day.getName().length() > 255) {
                 throw new IllegalArgumentException("Tên ngày tập không được để trống");
             }
             if (day.getDayOrder() == null || day.getDayOrder() < 1) {
@@ -185,6 +199,19 @@ public class WorkoutPlanService {
                 throw new IllegalArgumentException("Mỗi ngày phải có ít nhất một bài tập");
             }
             for (CreateWorkoutPlanExerciseRequest exercise : day.getExercises()) {
+                if (exercise == null) throw new IllegalArgumentException("Bài tập không hợp lệ");
+                if (exercise.getTargetSets() != null && exercise.getTargetSets() > 20
+                        || exercise.getTargetReps() != null && exercise.getTargetReps() > 100
+                        || exercise.getTargetWeight() != null && (!Double.isFinite(exercise.getTargetWeight()) || exercise.getTargetWeight() < 0 || exercise.getTargetWeight() > 2000)
+                        || exercise.getTargetRir() != null && (exercise.getTargetRir() < 0 || exercise.getTargetRir() > 10)
+                        || exercise.getRestSeconds() != null && (exercise.getRestSeconds() < 0 || exercise.getRestSeconds() > 1800)
+                        || exercise.getMinReps() != null && (exercise.getMinReps() < 1 || exercise.getMinReps() > 100)
+                        || exercise.getMaxReps() != null && (exercise.getMaxReps() < 1 || exercise.getMaxReps() > 100)
+                        || exercise.getMinReps() != null && exercise.getMaxReps() != null && exercise.getMinReps() > exercise.getMaxReps()
+                        || exercise.getCoachingNote() != null && exercise.getCoachingNote().length() > 1000
+                        || exercise.getExerciseOrder() != null && (exercise.getExerciseOrder() < 1 || exercise.getExerciseOrder() > 50)) {
+                    throw new IllegalArgumentException("Thông số bài tập ngoài giới hạn cho phép");
+                }
                 if (exercise.getExerciseId() == null || exercise.getExerciseId().isBlank()) {
                     throw new IllegalArgumentException("Vui lòng chọn bài tập");
                 }

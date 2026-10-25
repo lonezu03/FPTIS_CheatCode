@@ -21,6 +21,9 @@ public class ExerciseController {
 
     private final ExerciseService exerciseService;
 
+    @GetMapping("/facets")
+    public java.util.Map<String, List<String>> facets() { return exerciseService.facets(); }
+
     @GetMapping
     public List<ExerciseResponse> getExercises(
             @AuthenticationPrincipal User user,
@@ -40,6 +43,8 @@ public class ExerciseController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean includeInactive,
             @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) String muscleGroup,
+            @RequestParam(required = false) String equipment,
             @RequestParam(defaultValue = "20") int size
     ) {
         boolean admin = "ADMIN".equalsIgnoreCase(user.getRole());
@@ -47,7 +52,7 @@ public class ExerciseController {
                 keyword,
                 admin && Boolean.TRUE.equals(includeInactive),
                 page,
-                size
+                size, muscleGroup, equipment
         );
     }
 

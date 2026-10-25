@@ -25,6 +25,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   createWorkoutSession,
+  replaceWorkoutSession,
   deleteWorkoutSession,
   getAlternativeExercises,
   getExercisePreferences,
@@ -65,16 +66,19 @@ type DraftSet = {
   reps: number;
   rir: number;
   completed: boolean;
+  restSeconds?: number;
 };
 
 type DraftExercise = {
   key: string;
   exerciseId: string;
+  historicalExerciseName?: string;
   restSeconds: number;
   targetSets: number;
   minReps: number;
   maxReps: number;
   targetRir: number;
+  coachingNote?: string;
   sets: DraftSet[];
 };
 
@@ -83,6 +87,9 @@ type WorkoutSeed = {
   exercises: DraftExercise[];
   note?: string;
   elapsedSeconds?: number;
+  sessionId?: string;
+  sessionDate?: string;
+  durationMinutes?: number;
 };
 
 const setTypeLabels: Record<WorkoutSetType, string> = {
@@ -101,8 +108,10 @@ function readWorkoutDraft(owner: string): WorkoutSeed | null {
     && (draft.elapsedSeconds == null || (Number.isFinite(draft.elapsedSeconds) && draft.elapsedSeconds >= 0 && draft.elapsedSeconds <= maximumWorkoutSeconds))
     && Array.isArray(draft.exercises) && draft.exercises.length > 0 && draft.exercises.every(group =>
       typeof group.key === "string" && typeof group.exerciseId === "string" && Number.isFinite(group.restSeconds)
+      && (group.historicalExerciseName == null || typeof group.historicalExerciseName === "string")
       && Array.isArray(group.sets) && group.sets.every(set => typeof set.key === "string" && typeof set.completed === "boolean"
-        && Object.hasOwn(setTypeLabels, set.setType) && [set.weight, set.reps, set.rir].every(Number.isFinite)));
+        && Object.hasOwn(setTypeLabels, set.setType) && [set.weight, set.reps, set.rir].every(Number.isFinite)
+        && (set.restSeconds == null || (Number.isFinite(set.restSeconds) && set.restSeconds >= 0 && set.restSeconds <= 1800))));
   if (!valid) { clearSessionDraft(owner, "workout"); return null; }
   return draft;
 }
@@ -143,13 +152,15 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
   const queryClient = useQueryClient();
   const workoutPager = useServerPagination(12);
   const [liveSeed, setLiveSeed] = useState<WorkoutSeed | null>(() => searchParams.get("action") === "new" && !recoverable ? { title: "Buổi tập tự do", exercises: [] } : null);
-  const [selectedPlanDay, setSelectedPlanDay] = useState("");
+  const [selectedPlanDay, setSelectedPlanDay] = useState(searchParams.get("planDay") ?? "");
+  const [autoStarted, setAutoStarted] = useState(false);
+  const [historyFilters, setHistoryFilters] = useState({ from: "", to: "", exerciseId: "" });
 
   const exercisesQuery = useQuery({ queryKey: ["exercises"], queryFn: getExercises });
   const plansQuery = useQuery({ queryKey: ["workout-plans"], queryFn: getWorkoutPlans });
   const sessionsQuery = useQuery({
-    queryKey: ["workout-sessions", workoutPager.page, workoutPager.pageSize],
-    queryFn: () => getWorkoutSessionsPage(workoutPager.page - 1, workoutPager.pageSize),
+    queryKey: ["workout-sessions", workoutPager.page, workoutPager.pageSize, historyFilters],
+    queryFn: () => getWorkoutSessionsPage(workoutPager.page - 1, workoutPager.pageSize, { from: historyFilters.from || undefined, to: historyFilters.to || undefined, exerciseId: historyFilters.exerciseId || undefined }),
     placeholderData: (previous) => previous,
   });
   const weeklyVolumeQuery = useQuery({
@@ -166,10 +177,10 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
     [plansQuery.data],
   );
 
-  const totalSets = sessions.reduce((total, session) => total + session.sets.length, 0);
+  const totalSets = sessions.reduce((total, session) => total + session.sets.filter(set => set.completed && set.setType !== 'WARMUP').length, 0);
   const totalVolume = sessions.reduce(
     (total, session) =>
-      total + session.sets.reduce((subtotal, set) => subtotal + set.weight * set.reps, 0),
+      total + session.sets.filter(set => set.completed && set.setType !== 'WARMUP').reduce((subtotal, set) => subtotal + set.weight * set.reps, 0),
     0,
   );
   const totalMinutes = sessions.reduce(
@@ -207,6 +218,7 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
       toast.error(message || "Không thể lưu buổi tập");
     },
   });
+  const editMutation = useMutation({ mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof createWorkoutSession>[0] }) => replaceWorkoutSession(id, payload), onSuccess: () => { toast.success('Đã cập nhật toàn bộ buổi tập'); refreshWorkoutData(); }, onError: () => toast.error('Không thể cập nhật buổi tập') });
 
   const deleteMutation = useMutation({
     mutationFn: deleteWorkoutSession,
@@ -238,8 +250,10 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
       exercises: selected.day.exercises.map((item) =>
         makeExercise(item.exerciseId, {
           targetSets: Math.max(1, item.targetSets || 1),
-          minReps: Math.max(1, (item.targetReps ?? 10) - 2),
-          maxReps: item.targetReps ?? 10,
+          minReps: item.minReps ?? Math.max(1, (item.targetReps ?? 10) - 2),
+          maxReps: item.maxReps ?? item.targetReps ?? 10,
+          restSeconds: item.restSeconds ?? 90,
+          coachingNote: item.coachingNote ?? '',
           targetRir: item.targetRir ?? 2,
           sets: Array.from({ length: Math.max(1, item.targetSets || 1) }, () =>
             makeSet({
@@ -252,6 +266,15 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
       ),
     });
   };
+
+  useEffect(() => {
+    if (searchParams.get('planDay') && plansQuery.isSuccess && exercisesQuery.isSuccess && !autoStarted) {
+      const timer = window.setTimeout(() => { setAutoStarted(true); if (!recoverable) startPlanWorkout(); }, 0);
+      return () => window.clearTimeout(timer);
+    }
+    // The explicit navigation intent is consumed once; subsequent form edits must not restart it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plansQuery.isSuccess, exercisesQuery.isSuccess, autoStarted, recoverable, searchParams]);
 
   if (exercisesQuery.isLoading || sessionsQuery.isLoading || plansQuery.isLoading) {
     return <TableLoading />;
@@ -268,6 +291,7 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
       />
       {recoverable && !liveSeed && <Card><CardContent className="space-y-3 p-4"><p className="font-semibold">Bạn có buổi tập chưa lưu</p><p className="text-sm text-muted-foreground">{recoverable.title}. Bản nháp giữ trên thiết bị này tối đa 7 ngày và chưa được ghi vào lịch sử.</p><div className="flex flex-wrap gap-2"><Button onClick={() => setLiveSeed(recoverable)}>Tiếp tục buổi tập</Button><Button variant="outline" onClick={() => { clearSessionDraft(owner, "workout"); setRecoverable(null); }}>Bỏ bản nháp</Button></div></CardContent></Card>}
 
+      <p className="text-sm text-muted-foreground">Thống kê của trang lịch sử đang xem; khối lượng chỉ tính hiệp chính đã hoàn thành, không gồm khởi động.</p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={Activity} label="Buổi gần đây" value={sessions.length.toString()} tone="emerald" />
         <StatCard icon={Dumbbell} label="Tổng set" value={totalSets.toString()} />
@@ -326,6 +350,7 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
           <p className="text-sm text-muted-foreground">Mỗi thẻ là một buổi tập hoàn chỉnh, bên trong được nhóm theo từng bài.</p>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-3"><label className="text-sm">Từ ngày<Input type="date" value={historyFilters.from} onChange={event => { workoutPager.setPage(1); setHistoryFilters(prev => ({ ...prev, from: event.target.value })); }} /></label><label className="text-sm">Đến ngày<Input type="date" value={historyFilters.to} onChange={event => { workoutPager.setPage(1); setHistoryFilters(prev => ({ ...prev, to: event.target.value })); }} /></label><label className="text-sm">Bài tập<select className="h-11 w-full rounded-xl border px-3" value={historyFilters.exerciseId} onChange={event => { workoutPager.setPage(1); setHistoryFilters(prev => ({ ...prev, exerciseId: event.target.value })); }}><option value="">Tất cả bài tập</option>{exercises.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label></div>
           {!sessions.length ? (
             <EmptyState kind="workout" title="Chưa có buổi tập" description="Bắt đầu workout đầu tiên để theo dõi tiến độ." />
           ) : (
@@ -333,6 +358,11 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
               <SessionHistoryCard
                 key={session.id}
                 session={session}
+                onEdit={() => {
+                  if (recoverable && !window.confirm('Mở chỉnh sửa sẽ thay thế nháp buổi tập hiện tại. Tiếp tục?')) return;
+                  const orders = [...new Set(session.sets.map(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}`))];
+                  setLiveSeed({ title: session.note ?? '', sessionId: session.id, sessionDate: session.sessionDate, durationMinutes: session.durationMinutes, exercises: orders.map(order => { const sets = session.sets.filter(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}` === order); return makeExercise(sets[0].exerciseId, { historicalExerciseName: sets[0].exerciseName, restSeconds: sets[0].restSeconds ?? 90, sets: sets.map(set => makeSet(set)) }); }) });
+                }}
                 onDelete={() => {
                   if (window.confirm("Bạn có chắc muốn xóa toàn bộ buổi tập này?")) {
                     deleteMutation.mutate(session.id);
@@ -358,10 +388,11 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
           owner={owner}
           seed={liveSeed}
           exercises={exercises}
-          saving={createMutation.isPending}
+          saving={createMutation.isPending || editMutation.isPending}
           onClose={() => { clearSessionDraft(owner, "workout"); setRecoverable(null); setLiveSeed(null); }}
           onFinish={async (payload) => {
-            await createMutation.mutateAsync(payload);
+            if (liveSeed.sessionId) await editMutation.mutateAsync({ id: liveSeed.sessionId, payload });
+            else await createMutation.mutateAsync(payload);
             clearSessionDraft(owner, "workout");
             setRecoverable(null);
             setLiveSeed(null);
@@ -389,6 +420,8 @@ function LiveWorkoutDialog({
 }) {
   const [title, setTitle] = useState(seed.title);
   const [note, setNote] = useState(seed.note ?? "");
+  const [sessionDate, setSessionDate] = useState(seed.sessionDate ?? toLocalDateInput());
+  const [durationMinutes, setDurationMinutes] = useState(seed.durationMinutes ?? 1);
   const [groups, setGroups] = useState(seed.exercises.length ? seed.exercises : [makeExercise(exercises[0]?.id ?? "")]);
   const [startedAt] = useState(() => Date.now());
   const [elapsed, setElapsed] = useState(seed.elapsedSeconds ?? 0);
@@ -400,11 +433,11 @@ function LiveWorkoutDialog({
   const [announcedRecords] = useState(() => new Set<string>());
 
   useEffect(() => {
-    const persist = () => writeSessionDraft(owner, "workout", { title, note, exercises: groups, elapsedSeconds: workoutElapsedSeconds(seed.elapsedSeconds ?? 0, startedAt, Date.now()) });
+    const persist = () => writeSessionDraft(owner, "workout", { title, note, exercises: groups, sessionId: seed.sessionId, sessionDate, durationMinutes, elapsedSeconds: workoutElapsedSeconds(seed.elapsedSeconds ?? 0, startedAt, Date.now()) });
     persist();
     window.addEventListener("pagehide", persist);
     return () => window.removeEventListener("pagehide", persist);
-  }, [owner, title, note, groups, startedAt, seed.elapsedSeconds, elapsed]);
+  }, [owner, title, note, groups, startedAt, seed.elapsedSeconds, seed.sessionId, elapsed, sessionDate, durationMinutes]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setElapsed(workoutElapsedSeconds(seed.elapsedSeconds ?? 0, startedAt, Date.now())), 1000);
@@ -567,7 +600,7 @@ function LiveWorkoutDialog({
           weight: Number(set.weight),
           reps: Number(set.reps),
           rir: Number(set.rir),
-          restSeconds: group.restSeconds,
+          restSeconds: set.restSeconds ?? group.restSeconds,
           completed: true,
         })),
     );
@@ -576,9 +609,9 @@ function LiveWorkoutDialog({
       return;
     }
     await onFinish({
-      sessionDate: toLocalDateInput(),
+      sessionDate,
       note: [title.trim(), note.trim()].filter(Boolean).join(" · "),
-      durationMinutes: Math.max(1, Math.ceil(elapsed / 60)),
+      durationMinutes: seed.sessionId ? durationMinutes : Math.max(1, Math.ceil(elapsed / 60)),
       sets: completedSets,
     });
   };
@@ -591,12 +624,13 @@ function LiveWorkoutDialog({
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pt-5 pb-4 sm:px-6 sm:pt-6">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center justify-between gap-3 pr-8">
-            <span>Buổi tập tự do</span>
+            <span>{seed.sessionId ? 'Chỉnh sửa buổi tập' : 'Buổi tập trực tiếp'}</span>
             <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800">
               <Timer className="mr-1 inline h-4 w-4" /> {formatClock(elapsed)}
             </span>
           </DialogTitle>
         </DialogHeader>
+        {seed.sessionId && <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Ngày tập<Input type="date" value={sessionDate} onChange={event => setSessionDate(event.target.value)} /></label><label className="text-sm">Thời lượng (phút)<Input type="number" min={1} max={600} value={durationMinutes} onChange={event => setDurationMinutes(Number(event.target.value))} /></label></div>}
         <p className="text-xs text-muted-foreground">Tự giữ bản nháp trên thiết bị này khi đóng hoặc tải lại trang (tối đa 7 ngày; xóa khi đăng xuất). Chỉ lưu lịch sử khi bạn hoàn thành buổi tập; hủy buổi sẽ xóa nháp.</p>
 
         {restRunning && (
@@ -630,7 +664,9 @@ function LiveWorkoutDialog({
                 <CardHeader className="gap-3 pb-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <CardTitle>{groupIndex + 1}. {exercise?.name ?? "Bài tập"}</CardTitle>
+                      <CardTitle>{groupIndex + 1}. {exercise?.name ?? group.historicalExerciseName ?? "Bài tập"}</CardTitle>
+                      {!exercise && group.historicalExerciseName && <p className="text-xs text-amber-700">Bài lịch sử đã lưu trữ; giữ nguyên hoặc chọn bài khác.</p>}
+                      {group.coachingNote && <p className="text-sm text-emerald-700">{group.coachingNote}</p>}
                       <p className="mt-1 text-xs text-muted-foreground">
                         {last
                           ? `Lần gần nhất ${last.sessionDate}: ${last.sets.map((set) => `${set.weight}kg × ${set.reps}`).join(" · ")}`
@@ -648,8 +684,9 @@ function LiveWorkoutDialog({
                       id={`live-exercise-${group.key}`}
                       exercises={exercises}
                       value={group.exerciseId}
+                      missingValueLabel={group.historicalExerciseName}
                       onChange={(exerciseId) => {
-                        updateGroup(group.key, (item) => ({ ...item, exerciseId }));
+                        updateGroup(group.key, (item) => ({ ...item, exerciseId, historicalExerciseName: undefined }));
                         setAlternatives((current) => {
                           const next = { ...current };
                           delete next[group.key];
@@ -659,10 +696,11 @@ function LiveWorkoutDialog({
                     />
                     <label className="flex items-center gap-2 text-xs text-muted-foreground">
                       Nghỉ
-                      <Input type="number" min={0} max={1800} value={group.restSeconds} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, restSeconds: Number(event.target.value) }))} />
+                      <Input type="number" min={0} max={1800} value={group.restSeconds} onChange={(event) => updateGroup(group.key, (item) => ({ ...item, restSeconds: Number(event.target.value), sets: item.sets.map(set => ({ ...set, restSeconds: Number(event.target.value) })) }))} />
                       giây
                     </label>
                   </div>
+                  {seed.sessionId && new Set(group.sets.map(set => set.restSeconds ?? group.restSeconds)).size > 1 && <p className="text-xs text-muted-foreground">Các hiệp có thời gian nghỉ khác nhau, giữ nguyên khi lưu. Đổi ô Nghỉ sẽ áp dụng cho tất cả hiệp của bài này.</p>}
                   <details className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-3">
                     <summary className="cursor-pointer text-sm font-semibold text-emerald-900">Gợi ý mức tạ, mức ưu tiên và bài thay thế</summary>
                   <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_auto]">
@@ -790,14 +828,14 @@ function LiveWorkoutDialog({
         </div>
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-white p-4 sm:flex-row sm:justify-end sm:px-6">
           <Button variant="destructive" onClick={() => { if (window.confirm("Hủy buổi tập? Dữ liệu chưa lưu sẽ mất.")) onClose(); }}><X />Hủy buổi tập</Button>
-          <Button onClick={finish} disabled={saving}><CheckCircle2 />{saving ? "Đang lưu..." : "Hoàn thành buổi tập"}</Button>
+          <Button onClick={finish} disabled={saving}><CheckCircle2 />{saving ? "Đang lưu..." : seed.sessionId ? "Lưu thay đổi" : "Hoàn thành buổi tập"}</Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-function SessionHistoryCard({ session, onDelete }: { session: WorkoutSession; onDelete: () => void }) {
+function SessionHistoryCard({ session, onDelete, onEdit }: { session: WorkoutSession; onDelete: () => void; onEdit: () => void }) {
   const exerciseGroups = useMemo(() => {
     const groups = new Map<string, typeof session.sets>();
     for (const set of session.sets) {
@@ -806,7 +844,7 @@ function SessionHistoryCard({ session, onDelete }: { session: WorkoutSession; on
     }
     return [...groups.values()];
   }, [session]);
-  const volume = session.sets.reduce((total, set) => total + set.weight * set.reps, 0);
+  const volume = session.sets.filter(set => set.completed && set.setType !== 'WARMUP').reduce((total, set) => total + set.weight * set.reps, 0);
 
   return (
     <details className="rounded-2xl border bg-white p-4 open:shadow-sm">
@@ -815,8 +853,9 @@ function SessionHistoryCard({ session, onDelete }: { session: WorkoutSession; on
           <p className="font-bold">{session.note || "Buổi tập"}</p>
           <p className="text-xs text-muted-foreground">{session.sessionDate} · {exerciseGroups.length} bài · {session.sets.length} set · {session.durationMinutes} phút</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{Math.round(volume).toLocaleString("vi-VN")} kg</span>
+          <Button variant="outline" size="sm" onClick={event => { event.preventDefault(); onEdit(); }}>Chỉnh sửa</Button>
           <Button variant="destructive" size="sm" onClick={(event) => { event.preventDefault(); onDelete(); }}><Trash2 />Xóa</Button>
         </div>
       </summary>

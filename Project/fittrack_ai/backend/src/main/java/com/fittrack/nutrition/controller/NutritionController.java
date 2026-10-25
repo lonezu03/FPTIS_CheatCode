@@ -37,6 +37,17 @@ public class NutritionController {
     private final NutritionConvenienceService convenienceService;
     private final FoodPhotoAnalysisService foodPhotoAnalysisService;
 
+    @GetMapping("/foods/page")
+    public PageResponse<FoodResponse> searchFoods(@RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+        return foodService.getFoodsPage(keyword, false, page, size);
+    }
+
+    @GetMapping("/foods/{id}")
+    public FoodResponse getFood(@PathVariable String id) {
+        return foodService.getActiveFood(id);
+    }
+
     @PostMapping("/photo-analysis")
     public FoodPhotoAnalysisResponse analyzePhoto(Authentication authentication,
                                                    @Valid @RequestBody FoodPhotoAnalysisRequest request) {

@@ -2,6 +2,53 @@
 
 Last updated: 2026-10-25
 
+## Latest handoff: training, nutrition and catalog bulk import (2026-10-25)
+
+Implemented the approved web/backend proposals with three workers plus independent
+code/QA review. No mobile, Lunch, production data, push or deployment changes.
+
+- Plans: rest/rep-range/coaching prescriptions, duplicate plan/day, reorder,
+  multiple-exercise selection, owner-scoped drafts and optimistic plan version.
+  Starting a plan opens a live unsaved workout; only completion writes history.
+  Legacy generate returns an unsaved DTO (null ID, incomplete sets), not a saved
+  completed workout. No mobile caller found; preserve this distinction in clients.
+- Workouts: paged date/exercise-filtered history and full session edit through
+  PUT /api/workouts/sessions/{id}/details. Preserve per-set rest and archived
+  historical exercise references; new exercises must be active and approved.
+  Volume counts completed non-WARMUP sets, with current-page totals labeled.
+- Catalog: normalized accent-insensitive search, muscle/equipment filters,
+  details/images, editable food micronutrients, source/coverage and portion views.
+  Seeders insert missing seedKey records instead of overwriting edits/archive.
+  Renames made before seedKey rollout cannot be reliably matched automatically.
+- Nutrition: paged/debounced server food search, ID hydration for selected/copied
+  foods and historical label/portion/source snapshots alongside nutrient snapshots.
+  Old labels backfill current data; original past labels cannot be reconstructed.
+  Editing an old meal warns about recalculation. No implicit gram/ml conversion;
+  gram-estimated liquid photo results fall back to a warned editable serving.
+- ADMIN-only catalog import: CSV/XLSX or pasted TSV, templates/export, header
+  mapping/explicit ignore, normalized before/after preview, errors/duplicates,
+  explicit create/update/skip and optional clears. Blank update fields preserve
+  existing data. Actor-scoped batch history/source SHA-256, 24-hour expiry,
+  transaction, same-batch idempotent retries and stale-update conflict checking.
+  Security matcher protects template/export as well as writes. Bounds: 500 rows,
+  2 MB upload, 5 MB expanded XLSX; rejects formulas/macros/external links/XXE.
+  Export omits images; blank image reimport preserves existing images. No batch
+  undo or global duplicate lock across different simultaneously committed batches.
+
+New migrations: V32 training prescriptions/version, V33 catalog seed/search and
+meal snapshots, V34 import batches. Deploy backend first, then web. New import
+package and shared CatalogText helper; modified workout/workoutplan/nutrition
+services, DTOs/repositories and five web pages. Usage: docs/CATALOG_IMPORT.md.
+
+Verification: final full JDK21 backend suite 139 tests, zero failures/errors,
+2 skipped. Web lint/build and 40 tests passed. Five production-build Playwright
+tests passed (mocked API, not production writes): mobile planner widths,
+explicit import confirmation and plan start without history writes.
+Docker engine unavailable: real PostgreSQL/Flyway/Testcontainers migration
+validation remains required before release. Next: start Docker, validate V32–V34
+on a PostgreSQL staging copy, deploy backend/web, manually smoke admin import,
+USER denial, plan start/cancel/finish/edit, meal snapshot and seed restart safety.
+
 ## Latest handoff: personal wallet balance reconciliation (2026-10-25)
 
 User reported stale personal finance data and asked for DB clearing or a way to

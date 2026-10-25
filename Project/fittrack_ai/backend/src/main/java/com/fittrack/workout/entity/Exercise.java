@@ -26,7 +26,19 @@ public class Exercise {
 
     private String equipment;
 
+    @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(unique = true)
+    private String seedKey;
+
+    @Column(columnDefinition = "TEXT")
+    private String searchText;
+
+    @PreUpdate
+    public void refreshSearchText() {
+        searchText = com.fittrack.common.catalog.CatalogText.normalize(name + " " + muscleGroup + " " + equipment + " " + description);
+    }
 
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
@@ -53,6 +65,7 @@ public class Exercise {
 
     @PrePersist
     public void onCreate() {
+        refreshSearchText();
         this.createdAt = LocalDateTime.now();
 
         if (this.custom == null) {

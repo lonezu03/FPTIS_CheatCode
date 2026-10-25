@@ -32,5 +32,10 @@ public class WorkoutPlanExercise {
     private Double targetWeight;
 
     private Integer targetRir;
+    private Integer restSeconds;
+    private Integer minReps;
+    private Integer maxReps;
+    @Column(length = 1000)
+    private String coachingNote;
 }
 

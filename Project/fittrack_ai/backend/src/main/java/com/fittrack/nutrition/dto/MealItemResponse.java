@@ -9,6 +9,11 @@ public class MealItemResponse {
     private String id;
     private String foodId;
     private String foodName;
+    private String foodUnit;
+    private String foodSourceName;
+    private String foodSourceType;
+    private Boolean foodVerified;
+    private Double servingSizeGramsSnapshot;
     private Double quantity;
     private Double servingAmount;
     private String servingUnit;

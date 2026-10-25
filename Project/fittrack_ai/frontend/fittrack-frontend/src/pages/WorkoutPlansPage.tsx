@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/store/auth.store";
+import { clearSessionDraft, readSessionDraft, writeSessionDraft } from "@/lib/sessionDraft";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { toLocalDateInput } from "../lib/format";
 
 import { getExercises, type Exercise } from "../api/workout.api";
 import {
   createWorkoutPlan,
   deleteWorkoutPlan,
-  generateSessionFromPlan,
   getWorkoutPlansPage,
+  getWorkoutPlanDetail,
   updateWorkoutPlan,
   type WorkoutPlan,
   type WorkoutPlanPayload,
@@ -36,6 +38,10 @@ type PlanExerciseDraft = {
   targetReps: number;
   targetWeight: number;
   targetRir: number;
+  restSeconds?: number;
+  minReps?: number;
+  maxReps?: number;
+  coachingNote?: string;
 };
 
 type PlanDayDraft = {
@@ -45,9 +51,14 @@ type PlanDayDraft = {
 };
 
 export default function WorkoutPlansPage() {
+  const owner = useAuthStore(state => state.user?.userId ?? "");
+  return <WorkoutPlanWorkspace key={owner} owner={owner} />;
+}
+
+function WorkoutPlanWorkspace({ owner }: { owner: string }) {
   const queryClient = useQueryClient();
 
-  const today = toLocalDateInput();
+  const navigate = useNavigate();
 
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [name, setName] = useState("Giáo án tăng cơ tại phòng gym");
@@ -118,29 +129,30 @@ export default function WorkoutPlansPage() {
     },
   });
 
-  const generateMutation = useMutation({
-    mutationFn: (payload: { planId: string; dayId: string; note: string }) =>
-      generateSessionFromPlan(payload.planId, {
-        dayId: payload.dayId,
-        sessionDate: today,
-        note: payload.note,
-      }),
-    onSuccess: () => {
-      toast.success("Đã tạo buổi tập từ giáo án");
-      queryClient.invalidateQueries({ queryKey: ["workout-sessions"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-today"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-progress"] });
-      queryClient.invalidateQueries({ queryKey: ["weekly-report"] });
-      queryClient.invalidateQueries({ queryKey: ["weekly-recommendations"] });
-      queryClient.invalidateQueries({ queryKey: ["achievements"] });
-    },
-    onError: (error) => {
-      const message = axios.isAxiosError(error) ? error.response?.data?.message : undefined;
-      toast.error(message || "Không thể tạo buổi tập");
-    },
-  });
+  const [bulkDay, setBulkDay] = useState<number | null>(null);
+  const [bulkSelected, setBulkSelected] = useState<string[]>([]);
+  const [bulkSearch, setBulkSearch] = useState("");
+  type EditorDraft = { editingPlanId: string | null; fingerprint: string | null; name: string; description: string; draftDays: PlanDayDraft[] };
+  const [recoverable, setRecoverable] = useState(() => readSessionDraft<EditorDraft>(owner, "workout-plan"));
+  const [fingerprint, setFingerprint] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (dirty && !recoverable) writeSessionDraft(owner, "workout-plan", { editingPlanId, fingerprint, name, description, draftDays });
+  }, [owner, dirty, recoverable, editingPlanId, fingerprint, name, description, draftDays]);
+  const reorder = (dayIndex: number, exerciseIndex: number | null, delta: number) => {
+    setDirty(true);
+    setDraftDays(current => {
+      const next = structuredClone(current);
+      const list = exerciseIndex == null ? next : next[dayIndex].exercises;
+      const index = exerciseIndex ?? dayIndex;
+      if (index + delta < 0 || index + delta >= list.length) return current;
+      [list[index], list[index + delta]] = [list[index + delta], list[index]];
+      return next.map((day, i) => ({ ...day, dayOrder: i + 1, exercises: day.exercises.map((exercise, j) => ({ ...exercise, exerciseOrder: j + 1 })) }));
+    });
+  };
 
   const addDay = () => {
+    setDirty(true);
     setDraftDays((prev) => [
       ...prev,
       {
@@ -161,6 +173,7 @@ export default function WorkoutPlansPage() {
   };
 
   const updateDay = (index: number, field: "name" | "dayOrder", value: string | number) => {
+    setDirty(true);
     setDraftDays((prev) =>
       prev.map((day, dayIndex) =>
         dayIndex === index
@@ -174,10 +187,12 @@ export default function WorkoutPlansPage() {
   };
 
   const removeDay = (index: number) => {
+    setDirty(true);
     setDraftDays((prev) => prev.filter((_, dayIndex) => dayIndex !== index));
   };
 
   const addExerciseToDay = (dayIndex: number) => {
+    setDirty(true);
     setDraftDays((prev) =>
       prev.map((day, index) => {
         if (index !== dayIndex) {
@@ -203,6 +218,7 @@ export default function WorkoutPlansPage() {
   };
 
   const removeExerciseFromDay = (dayIndex: number, exerciseIndex: number) => {
+    setDirty(true);
     setDraftDays((prev) =>
       prev.map((day, index) => {
         if (index !== dayIndex) {
@@ -223,6 +239,7 @@ export default function WorkoutPlansPage() {
     field: keyof PlanExerciseDraft,
     value: string | number
   ) => {
+    setDirty(true);
     setDraftDays((prev) =>
       prev.map((day, index) => {
         if (index !== dayIndex) {
@@ -245,6 +262,7 @@ export default function WorkoutPlansPage() {
   };
 
   const planPayload = (): WorkoutPlanPayload => ({
+      version: fingerprint ? (JSON.parse(fingerprint) as WorkoutPlan).version : undefined,
       name,
       description,
       days: draftDays.map((day) => ({
@@ -257,6 +275,10 @@ export default function WorkoutPlansPage() {
           targetReps: exercise.targetReps,
           targetWeight: exercise.targetWeight,
           targetRir: exercise.targetRir,
+          restSeconds: exercise.restSeconds ?? 90,
+          minReps: exercise.minReps ?? exercise.targetReps,
+          maxReps: exercise.maxReps ?? exercise.targetReps,
+          coachingNote: exercise.coachingNote ?? "",
         })),
       })),
   });
@@ -266,6 +288,7 @@ export default function WorkoutPlansPage() {
   };
 
   const resetEditor = () => {
+    clearSessionDraft(owner, "workout-plan"); setDirty(false); setRecoverable(null); setFingerprint(null);
     setEditingPlanId(null);
     setName("Giáo án tăng cơ tại phòng gym");
     setDescription("Giáo án với máy tập, Smith machine, tạ đòn và tạ đơn");
@@ -273,6 +296,8 @@ export default function WorkoutPlansPage() {
   };
 
   const startEditing = (plan: WorkoutPlan) => {
+    if (dirty && !window.confirm("Bỏ thay đổi đang nhập để mở giáo án này?")) return false;
+    setFingerprint(JSON.stringify(plan)); setDirty(false);
     setEditingPlanId(plan.id);
     setName(plan.name);
     setDescription(plan.description ?? "");
@@ -286,9 +311,14 @@ export default function WorkoutPlansPage() {
         targetReps: exercise.targetReps,
         targetWeight: exercise.targetWeight ?? 0,
         targetRir: exercise.targetRir ?? 2,
+        restSeconds: exercise.restSeconds ?? 90,
+        minReps: exercise.minReps ?? exercise.targetReps,
+        maxReps: exercise.maxReps ?? exercise.targetReps,
+        coachingNote: exercise.coachingNote ?? "",
       })),
     })));
     window.setTimeout(() => document.getElementById("workout-plan-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+    return true;
   };
 
   if (exercisesQuery.isLoading || plansQuery.isLoading) {
@@ -306,7 +336,18 @@ export default function WorkoutPlansPage() {
         description="Tạo giáo án dùng lại và khởi tạo nhanh các buổi tập."
       />
 
-      <Card id="workout-plan-editor">
+      {recoverable && <Card><CardContent className="space-y-3 p-4"><p>Có bản nháp giáo án chưa lưu trong tab này.</p><div className="flex flex-wrap gap-2"><Button onClick={async () => {
+        try {
+          if (typeof recoverable.name !== 'string' || typeof recoverable.description !== 'string' || !Array.isArray(recoverable.draftDays) || !recoverable.draftDays.length || recoverable.draftDays.length > 31
+            || !recoverable.draftDays.every(day => typeof day?.name === 'string' && Array.isArray(day.exercises) && day.exercises.length > 0 && day.exercises.length <= 50 && day.exercises.every(item => typeof item?.exerciseId === 'string' && exercises.some(ex => ex.id === item.exerciseId) && [item.targetSets, item.targetReps, item.targetWeight, item.targetRir].every(Number.isFinite)))) throw new Error();
+          if (recoverable.editingPlanId) {
+            const current = await getWorkoutPlanDetail(recoverable.editingPlanId);
+            if (JSON.stringify(current) !== recoverable.fingerprint) { toast.error("Giáo án đã thay đổi. Hãy bỏ nháp và mở lại bản mới để tránh ghi đè."); return; }
+          }
+          setEditingPlanId(recoverable.editingPlanId); setFingerprint(recoverable.fingerprint); setName(recoverable.name); setDescription(recoverable.description); setDraftDays(recoverable.draftDays); setRecoverable(null); setDirty(true);
+        } catch { toast.error("Không thể khôi phục bản nháp. Hãy mở lại giáo án."); }
+      }}>Khôi phục nháp</Button><Button variant="outline" onClick={() => { clearSessionDraft(owner, "workout-plan"); setRecoverable(null); }}>Bỏ nháp</Button></div></CardContent></Card>}
+      <Card id="workout-plan-editor" onChange={() => setDirty(true)}>
         <CardHeader>
             <CardTitle>{editingPlanId ? "Chỉnh sửa giáo án" : "Tạo giáo án"}</CardTitle>
         </CardHeader>
@@ -324,8 +365,9 @@ export default function WorkoutPlansPage() {
           <div className="space-y-4">
             {draftDays.map((day, dayIndex) => (
               <div key={dayIndex} className="space-y-4 rounded-2xl border bg-slate-50 p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-semibold">Ngày {dayIndex + 1}</h3>
+                  <div className="flex flex-wrap gap-1"><Button variant="outline" size="sm" onClick={() => reorder(dayIndex, null, -1)} disabled={dayIndex === 0}>↑</Button><Button variant="outline" size="sm" onClick={() => reorder(dayIndex, null, 1)} disabled={dayIndex === draftDays.length - 1}>↓</Button><Button variant="outline" size="sm" onClick={() => { setDirty(true); setDraftDays(prev => [...prev, { ...structuredClone(day), name: `${day.name} (bản sao)`, dayOrder: prev.length + 1 }]); }}>Nhân bản ngày</Button></div>
 
                   <Button
                     variant="destructive"
@@ -358,7 +400,7 @@ export default function WorkoutPlansPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-semibold">Danh sách bài tập</p>
                       <p className="text-xs text-muted-foreground">Thiết lập khối lượng mục tiêu cho từng bài.</p>
@@ -367,6 +409,7 @@ export default function WorkoutPlansPage() {
                     <Button variant="outline" size="sm" onClick={() => addExerciseToDay(dayIndex)}>
                     Thêm bài tập
                     </Button>
+                    <Button variant="outline" size="sm" onClick={() => { setBulkDay(dayIndex); setBulkSelected([]); }}>Chọn nhiều bài</Button>
                   </div>
 
                   {day.exercises.map((exercise, exerciseIndex) => (
@@ -393,6 +436,9 @@ export default function WorkoutPlansPage() {
                           (item) => item.id === (exercise.exerciseId || defaultExerciseId)
                         )}
                       />
+                      <div className="flex gap-2 md:col-span-12"><Button variant="outline" size="sm" disabled={exerciseIndex === 0} onClick={() => reorder(dayIndex, exerciseIndex, -1)}>↑ Lên</Button><Button variant="outline" size="sm" disabled={exerciseIndex === day.exercises.length - 1} onClick={() => reorder(dayIndex, exerciseIndex, 1)}>↓ Xuống</Button></div>
+                      {([['minReps', 'Số lần tối thiểu'], ['maxReps', 'Số lần tối đa'], ['restSeconds', 'Nghỉ giữa hiệp (giây)']] as const).map(([field, label]) => <FormField key={field} label={label} className="md:col-span-4"><Input type="number" min={field === 'restSeconds' ? 0 : 1} max={field === 'restSeconds' ? 1800 : 100} value={exercise[field] ?? (field === 'restSeconds' ? 90 : exercise.targetReps)} onChange={event => updateDayExercise(dayIndex, exerciseIndex, field, Number(event.target.value))} /></FormField>)}
+                      <FormField label="Ghi chú riêng cho bài trong giáo án" className="md:col-span-12"><Input maxLength={1000} value={exercise.coachingNote ?? ''} onChange={event => updateDayExercise(dayIndex, exerciseIndex, 'coachingNote', event.target.value)} /></FormField>
 
                       <FormField label="Số hiệp" htmlFor={`plan-sets-${dayIndex}-${exerciseIndex}`} hint="Số lượt thực hiện." className="md:col-span-2" required>
                         <Input
@@ -462,7 +508,7 @@ export default function WorkoutPlansPage() {
             ))}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={addDay}>
               Thêm ngày
             </Button>
@@ -475,6 +521,7 @@ export default function WorkoutPlansPage() {
         </CardContent>
       </Card>
 
+      {bulkDay !== null && <Card><CardContent className="space-y-3 p-4"><p className="font-semibold">Chọn nhiều bài cho ngày {bulkDay + 1}</p><Input placeholder="Tìm tên, nhóm cơ, dụng cụ" value={bulkSearch} onChange={event => setBulkSearch(event.target.value)} /><div className="max-h-72 space-y-2 overflow-y-auto">{exercises.filter(item => `${item.name} ${item.muscleGroup} ${item.equipment}`.toLocaleLowerCase().includes(bulkSearch.toLocaleLowerCase())).map(item => <label className="flex items-center gap-2" key={item.id}><input type="checkbox" checked={bulkSelected.includes(item.id)} onChange={event => setBulkSelected(prev => event.target.checked ? [...prev, item.id] : prev.filter(id => id !== item.id))} />{item.name} · {item.muscleGroup}</label>)}</div><Button disabled={!bulkSelected.length} onClick={() => { setDirty(true); setDraftDays(prev => prev.map((day, index) => index !== bulkDay ? day : { ...day, exercises: [...day.exercises, ...bulkSelected.map(id => ({ exerciseId: id, exerciseOrder: 1, targetSets: 3, targetReps: 10, targetWeight: 0, targetRir: 2 }))] })); setBulkDay(null); }}>Thêm {bulkSelected.length} bài</Button><Button variant="outline" onClick={() => setBulkDay(null)}>Hủy</Button></CardContent></Card>}
       {plans.length === 0 ? (
         <EmptyState kind="workout" title="Chưa có giáo án" description="Tạo giáo án dùng lại để bắt đầu buổi tập nhanh hơn." />
       ) : (
@@ -485,8 +532,9 @@ export default function WorkoutPlansPage() {
                 key={plan.id}
                 plan={plan}
                 isDeleting={deleteMutation.isPending}
-                isGenerating={generateMutation.isPending}
+                isGenerating={false}
                 onEdit={() => startEditing(plan)}
+                onDuplicate={() => { if (!startEditing(plan)) return; setEditingPlanId(null); setFingerprint(null); setName(`${plan.name} (bản sao)`); setDirty(true); }}
                 onDelete={() => {
                   if (!window.confirm("Bạn có chắc muốn xóa giáo án này?")) {
                     return;
@@ -494,13 +542,7 @@ export default function WorkoutPlansPage() {
 
                   deleteMutation.mutate(plan.id);
                 }}
-                onGenerate={(dayId, dayName) =>
-                  generateMutation.mutate({
-                    planId: plan.id,
-                    dayId,
-                    note: `${plan.name} - ${dayName}`,
-                  })
-                }
+                onGenerate={(dayId) => navigate(`/workouts?planDay=${encodeURIComponent(`${plan.id}:${dayId}`)}`)}
               />
             ))}
           </div>
@@ -523,6 +565,7 @@ function PlanCard({
   isDeleting,
   isGenerating,
   onEdit,
+  onDuplicate,
   onDelete,
   onGenerate,
 }: {
@@ -530,19 +573,21 @@ function PlanCard({
   isDeleting: boolean;
   isGenerating: boolean;
   onEdit: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
   onGenerate: (dayId: string, dayName: string) => void;
 }) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle>{plan.name}</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={onDuplicate}>Nhân bản</Button>
             <Button variant="outline" size="sm" onClick={onEdit}>Chỉnh sửa</Button>
             <Button variant="destructive" size="sm" onClick={onDelete} disabled={isDeleting}>Xóa</Button>
           </div>
@@ -558,7 +603,7 @@ function PlanCard({
               </h3>
 
               <Button size="sm" onClick={() => onGenerate(day.id, day.name)} disabled={isGenerating}>
-                Tạo buổi tập
+                Bắt đầu tập
               </Button>
             </div>
 

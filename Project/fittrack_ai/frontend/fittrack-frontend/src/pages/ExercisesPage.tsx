@@ -3,6 +3,8 @@ import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { resolveApiAssetUrl } from "@/api/axios";
+import { CatalogImportDialog } from "@/components/catalog/CatalogImportDialog";
+import { getExerciseCatalogFacets } from "@/api/exercise.api";
 
 import PageHeader from "../components/PageHeader";
 import EmptyState from "../components/common/EmptyState";
@@ -64,6 +66,10 @@ function ExercisesWorkspace() {
   const [keyword, setKeyword] = useState(preferences.keyword);
   const [searchKeyword, setSearchKeyword] = useState(preferences.keyword);
   const [includeInactive, setIncludeInactive] = useState(preferences.includeInactive);
+  const [importOpen, setImportOpen] = useState(false);
+  const [muscleFilter, setMuscleFilter] = useState("");
+  const [equipmentFilter, setEquipmentFilter] = useState("");
+  const facets = useQuery({ queryKey: ['exercise-catalog-facets'], queryFn: getExerciseCatalogFacets });
   useEffect(() => { if (ownerId) { try { localStorage.setItem(storageKey, JSON.stringify({ keyword: searchKeyword, includeInactive })); } catch { /* Optional browser preference. */ } } }, [ownerId, storageKey, searchKeyword, includeInactive]);
 
   const [draft, setDraft] = useState<ExerciseDraft>({
@@ -75,16 +81,18 @@ function ExercisesWorkspace() {
   });
 
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [detailExercise, setDetailExercise] = useState<Exercise | null>(null);
   const exercisePager = useServerPagination(20);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   const exercisesQuery = useQuery({
-    queryKey: ["exercises-management", searchKeyword, isAdmin && includeInactive, exercisePager.page, exercisePager.pageSize],
+    queryKey: ["exercises-management", searchKeyword, isAdmin && includeInactive, exercisePager.page, exercisePager.pageSize, muscleFilter, equipmentFilter],
     queryFn: () => getExercisesPageApi(
       searchKeyword,
       isAdmin && includeInactive,
       exercisePager.page - 1,
       exercisePager.pageSize,
+      muscleFilter, equipmentFilter,
     ),
     placeholderData: (previous) => previous,
   });
@@ -199,6 +207,9 @@ function ExercisesWorkspace() {
   return (
     <div className="space-y-4 md:space-y-6">
       <PageHeader title="Kho bài tập" description="Tạo và quản lý bài tập dùng trong buổi tập và giáo án." />
+      {isAdmin && <><Button variant="outline" onClick={() => setImportOpen(true)}>Nhập hàng loạt</Button><CatalogImportDialog kind="EXERCISE" open={importOpen} onOpenChange={setImportOpen} onImported={() => { setImportOpen(false); void queryClient.invalidateQueries({ queryKey: ['exercises-management'] }); void queryClient.invalidateQueries({ queryKey: ['exercises'] }); void queryClient.invalidateQueries({ queryKey: ['exercise-catalog-facets'] }); }} /></>}
+      <datalist id="catalog-muscles">{(facets.data?.muscleGroups ?? []).map(value => <option key={value} value={value} />)}</datalist>
+      <datalist id="catalog-equipment">{(facets.data?.equipment ?? []).map(value => <option key={value} value={value} />)}</datalist>
 
       {(
         <Card>
@@ -211,13 +222,13 @@ function ExercisesWorkspace() {
               <Input id="exercise-name" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="Ví dụ: Đẩy vai với tạ đơn" />
             </FormField>
             <FormField label="Nhóm cơ chính" htmlFor="exercise-muscle" hint="Nhóm cơ chịu tải chính của động tác." required>
-              <Input id="exercise-muscle" value={draft.muscleGroup} onChange={(event) => setDraft({ ...draft, muscleGroup: event.target.value })} placeholder="Ví dụ: Vai" />
+              <Input id="exercise-muscle" list="catalog-muscles" value={draft.muscleGroup} onChange={(event) => setDraft({ ...draft, muscleGroup: event.target.value })} placeholder="Chọn nhóm cơ có sẵn hoặc nhập nhóm mới" />
             </FormField>
             <FormField label="Dụng cụ" htmlFor="exercise-equipment" hint="Nhập 'Không' nếu là bài tập trọng lượng cơ thể.">
-              <Input id="exercise-equipment" value={draft.equipment} onChange={(event) => setDraft({ ...draft, equipment: event.target.value })} placeholder="Ví dụ: Tạ đơn" />
+              <Input id="exercise-equipment" list="catalog-equipment" value={draft.equipment} onChange={(event) => setDraft({ ...draft, equipment: event.target.value })} placeholder="Chọn dụng cụ có sẵn hoặc nhập dụng cụ mới" />
             </FormField>
             <FormField label="Hướng dẫn thực hiện" htmlFor="exercise-description" hint="Mô tả tư thế và chuyển động chính để tập an toàn.">
-              <Input id="exercise-description" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder="Ví dụ: Giữ lưng thẳng, đẩy tạ qua đầu..." />
+              <textarea id="exercise-description" maxLength={2000} rows={4} className="w-full rounded-xl border bg-background p-3 text-sm" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder="Tư thế bắt đầu, chuyển động, lưu ý an toàn…" />
             </FormField>
 
             <div className="md:col-span-2">
@@ -241,6 +252,7 @@ function ExercisesWorkspace() {
         </CardHeader>
 
         <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2"><FormField label="Lọc nhóm cơ"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={muscleFilter} onChange={event => { setMuscleFilter(event.target.value); exercisePager.resetPage(); }}><option value="">Tất cả nhóm cơ</option>{(facets.data?.muscleGroups ?? []).map(value => <option key={value} value={value}>{value}</option>)}</select></FormField><FormField label="Lọc dụng cụ"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={equipmentFilter} onChange={event => { setEquipmentFilter(event.target.value); exercisePager.resetPage(); }}><option value="">Tất cả dụng cụ</option>{(facets.data?.equipment ?? []).map(value => <option key={value} value={value}>{value}</option>)}</select></FormField></div>
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="flex min-w-0 flex-1 gap-2">
               <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm bài tập..." />
@@ -258,7 +270,7 @@ function ExercisesWorkspace() {
                 Hiện mục đã lưu trữ
               </label>
             )}
-            {(keyword || searchKeyword || (isAdmin && includeInactive)) && <Button variant="ghost" onClick={() => { setKeyword(''); setSearchKeyword(''); setIncludeInactive(false); exercisePager.resetPage(); }}>Xóa bộ lọc</Button>}
+            {(keyword || searchKeyword || muscleFilter || equipmentFilter || (isAdmin && includeInactive)) && <Button variant="ghost" onClick={() => { setKeyword(''); setSearchKeyword(''); setMuscleFilter(''); setEquipmentFilter(''); setIncludeInactive(false); exercisePager.resetPage(); }}>Xóa bộ lọc</Button>}
           </div>
 
           {exercisesQuery.isLoading ? (
@@ -289,7 +301,7 @@ function ExercisesWorkspace() {
                             type="button"
                             className="block overflow-hidden rounded-lg border bg-slate-50 transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             onClick={() => setPreviewImage({ url: exercise.imageUrl!, title: exercise.name })}
-                            aria-label={`View image for ${exercise.name}`}
+                            aria-label={`Xem ảnh ${exercise.name}`}
                           >
                             <img
                               src={resolveApiAssetUrl(exercise.imageUrl)}
@@ -302,7 +314,7 @@ function ExercisesWorkspace() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium">{exercise.name}</TableCell>
+                      <TableCell className="font-medium"><button type="button" className="text-left underline-offset-4 hover:underline" onClick={() => setDetailExercise(exercise)}>{exercise.name}<span className="mt-1 block text-xs font-normal text-muted-foreground">Xem hướng dẫn</span></button></TableCell>
                       <TableCell>{exercise.muscleGroup}</TableCell>
                       <TableCell>{exercise.equipment}</TableCell>
                       <TableCell>{exercise.custom ? "Có" : "Không"}</TableCell>
@@ -405,7 +417,7 @@ function ExercisesWorkspace() {
                 placeholder="Dụng cụ"
               />
 
-              <Input
+              <textarea rows={4} maxLength={2000} className="w-full rounded-xl border bg-background p-3 text-sm"
                 value={editingExercise.description}
                 onChange={(event) => setEditingExercise({ ...editingExercise, description: event.target.value })}
                 placeholder="Mô tả"
@@ -428,6 +440,7 @@ function ExercisesWorkspace() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!detailExercise} onOpenChange={open => !open && setDetailExercise(null)}><DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{detailExercise?.name}</DialogTitle></DialogHeader>{detailExercise && <div className="space-y-4">{detailExercise.imageUrl && <img src={resolveApiAssetUrl(detailExercise.imageUrl)} alt={detailExercise.name} className="max-h-72 w-full rounded-xl object-contain" />}<div className="flex flex-wrap gap-2 text-sm"><span className="rounded-full bg-emerald-50 px-3 py-1">Nhóm cơ: {detailExercise.muscleGroup || 'Chưa có'}</span><span className="rounded-full bg-slate-100 px-3 py-1">Dụng cụ: {detailExercise.equipment || 'Chưa có'}</span></div><p className="whitespace-pre-wrap text-sm leading-relaxed">{detailExercise.description || 'Chưa có hướng dẫn. Bạn có thể đề nghị admin bổ sung.'}</p><p className="text-xs text-muted-foreground">Chọn mức tạ phù hợp và dừng nếu đau bất thường.</p></div>}</DialogContent></Dialog>
       <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>

@@ -41,7 +41,8 @@ public class WorkoutService {
         if (request.getSets() != null) {
             for (CreateWorkoutSetRequest setRequest : request.getSets()) {
                 Exercise exercise = exerciseRepository.findById(setRequest.getExerciseId())
-                        .orElseThrow(() -> new IllegalArgumentException("Exercise not found"));
+                        .filter(value -> Boolean.TRUE.equals(value.getActive()) && "APPROVED".equals(value.getApprovalStatus()))
+                        .orElseThrow(() -> new IllegalArgumentException("Bài tập phải đang hoạt động và đã được duyệt"));
 
                 WorkoutSet set = WorkoutSet.builder()
                         .session(session)
@@ -77,6 +78,49 @@ public class WorkoutService {
         List<WorkoutSession> sessions = workoutSessionRepository.findByUserOrderBySessionDateDesc(user);
 
         return workoutMapper.toWorkoutSessionResponseList(sessions);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<WorkoutSessionResponse> searchSessions(User user, int page, int size,
+            java.time.LocalDate from, java.time.LocalDate to, String exerciseId) {
+        var start = from == null ? java.time.LocalDate.of(1900, 1, 1) : from;
+        var end = to == null ? java.time.LocalDate.of(9999, 12, 31) : to;
+        if (start.isAfter(end)) throw new IllegalArgumentException("Ngày bắt đầu phải trước ngày kết thúc");
+        return PageResponse.from(workoutSessionRepository.searchHistory(user, start, end,
+                exerciseId == null ? "" : exerciseId,
+                PageRequest.of(Math.max(0, page), Math.min(100, Math.max(1, size))))
+                .map(workoutMapper::toWorkoutSessionResponse));
+    }
+
+    @Transactional
+    public WorkoutSessionResponse replaceSession(User user, String sessionId, CreateWorkoutSessionRequest request) {
+        WorkoutSession session = workoutSessionRepository.findByIdAndUser(sessionId, user)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy buổi tập"));
+        // Resolve every exercise before changing the aggregate; an invalid ID cannot partially update history.
+        var historicalIds = session.getSets().stream().map(set -> set.getExercise().getId())
+                .collect(java.util.stream.Collectors.toSet());
+        var resolved = request.getSets().stream().map(set -> {
+            var exercise = exerciseRepository.findById(set.getExerciseId())
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập"));
+            if (!historicalIds.contains(exercise.getId())
+                    && (!Boolean.TRUE.equals(exercise.getActive()) || !"APPROVED".equals(exercise.getApprovalStatus()))) {
+                throw new IllegalArgumentException("Bài tập mới phải đang hoạt động và đã được duyệt");
+            }
+            return exercise;
+        }).toList();
+        session.setSessionDate(request.getSessionDate());
+        session.setNote(request.getNote());
+        session.setDurationMinutes(request.getDurationMinutes());
+        session.getSets().clear();
+        for (int i = 0; i < request.getSets().size(); i++) {
+            var value = request.getSets().get(i);
+            session.getSets().add(WorkoutSet.builder().session(session).exercise(resolved.get(i))
+                    .setNumber(value.getSetNumber()).exerciseOrder(value.getExerciseOrder() == null ? 1 : value.getExerciseOrder())
+                    .setType(value.getSetType() == null ? com.fittrack.workout.entity.WorkoutSetType.NORMAL : value.getSetType())
+                    .weight(value.getWeight()).reps(value.getReps()).rir(value.getRir())
+                    .restSeconds(value.getRestSeconds() == null ? 90 : value.getRestSeconds()).completed(true).build());
+        }
+        return workoutMapper.toWorkoutSessionResponse(workoutSessionRepository.save(session));
     }
 
     @Transactional(readOnly = true)

@@ -27,8 +27,11 @@ public class WorkoutPlan {
     private String name;
 
     private String description;
+    @Version
+    private Long version;
 
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

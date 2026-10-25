@@ -27,6 +27,7 @@ public class CreateWorkoutSessionRequest {
     private Integer durationMinutes;
 
     @NotEmpty
+    @Size(max = 500)
     @Valid
     private List<CreateWorkoutSetRequest> sets;
 }

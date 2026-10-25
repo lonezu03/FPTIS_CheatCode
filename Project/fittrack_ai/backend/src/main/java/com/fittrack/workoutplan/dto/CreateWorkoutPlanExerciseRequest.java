@@ -12,5 +12,9 @@ public class CreateWorkoutPlanExerciseRequest {
     private Integer targetReps;
     private Double targetWeight;
     private Integer targetRir;
+    private Integer restSeconds;
+    private Integer minReps;
+    private Integer maxReps;
+    private String coachingNote;
 }
 

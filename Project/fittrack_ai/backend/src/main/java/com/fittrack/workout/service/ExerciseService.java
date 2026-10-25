@@ -29,6 +29,10 @@ public class ExerciseService {
     private final LunchNotificationService notificationService;
     private final MediaStorageService mediaStorageService;
 
+    public java.util.Map<String, List<String>> facets() {
+        return java.util.Map.of("muscleGroups", exerciseRepository.muscleGroups(), "equipment", exerciseRepository.equipment());
+    }
+
     public List<ExerciseResponse> getExercises(String keyword, Boolean includeInactive) {
         boolean showInactive = Boolean.TRUE.equals(includeInactive);
 
@@ -48,14 +52,15 @@ public class ExerciseService {
             }
         }
 
-        return workoutMapper.toExerciseResponseList(exercises);
+        return workoutMapper.toExerciseResponseList(exercises.stream()
+                .filter(value -> showInactive || "APPROVED".equals(value.getApprovalStatus())).toList());
     }
 
     public ExerciseResponse create(CreateExerciseRequest request) {
         Exercise exercise = Exercise.builder()
                 .name(request.getName())
-                .muscleGroup(request.getMuscleGroup())
-                .equipment(request.getEquipment())
+                .muscleGroup(com.fittrack.common.catalog.CatalogText.muscle(request.getMuscleGroup()))
+                .equipment(com.fittrack.common.catalog.CatalogText.equipment(request.getEquipment()))
                 .description(request.getDescription())
                 .imageUrl(mediaStorageService.storeNew(
                         request.getImageUrl(), "exercises", UUID.randomUUID().toString()
@@ -76,11 +81,17 @@ public class ExerciseService {
             int page,
             int size
     ) {
-        var result = exerciseRepository.searchPage(
-                keyword == null ? "" : keyword.trim(),
-                includeInactive,
-                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100))
-        ).map(workoutMapper::toExerciseResponse);
+        return getExercisesPage(keyword, includeInactive, page, size, null, null);
+    }
+
+    public PageResponse<ExerciseResponse> getExercisesPage(String keyword, boolean includeInactive,
+            int page, int size, String muscleGroup, String equipment) {
+        org.springframework.data.jpa.domain.Specification<Exercise> spec = com.fittrack.common.catalog.CatalogText.search(keyword, includeInactive);
+        if (muscleGroup != null && !muscleGroup.isBlank()) spec = spec.and((root, query, cb) -> cb.equal(root.get("muscleGroup"), muscleGroup));
+        if (equipment != null && !equipment.isBlank()) spec = spec.and((root, query, cb) -> cb.equal(root.get("equipment"), equipment));
+        var result = exerciseRepository.findAll(spec,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), org.springframework.data.domain.Sort.by("name").and(org.springframework.data.domain.Sort.by("id"))))
+                .map(workoutMapper::toExerciseResponse);
         return PageResponse.from(result);
     }
 
@@ -90,8 +101,8 @@ public class ExerciseService {
     ) {
         Exercise exercise = Exercise.builder()
                 .name(request.getName().trim())
-                .muscleGroup(request.getMuscleGroup())
-                .equipment(request.getEquipment())
+                .muscleGroup(com.fittrack.common.catalog.CatalogText.muscle(request.getMuscleGroup()))
+                .equipment(com.fittrack.common.catalog.CatalogText.equipment(request.getEquipment()))
                 .description(request.getDescription())
                 .imageUrl(mediaStorageService.storeNew(
                         request.getImageUrl(), "exercises", UUID.randomUUID().toString()
@@ -159,8 +170,8 @@ public class ExerciseService {
                 .orElseThrow(() -> new IllegalArgumentException("Exercise not found"));
 
         exercise.setName(request.getName());
-        exercise.setMuscleGroup(request.getMuscleGroup());
-        exercise.setEquipment(request.getEquipment());
+        exercise.setMuscleGroup(com.fittrack.common.catalog.CatalogText.muscle(request.getMuscleGroup()));
+        exercise.setEquipment(com.fittrack.common.catalog.CatalogText.equipment(request.getEquipment()));
         exercise.setDescription(request.getDescription());
         exercise.setImageUrl(mediaStorageService.store(
                 exercise.getImageUrl(),
@@ -188,6 +199,7 @@ public class ExerciseService {
         Exercise exercise = exerciseRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Exercise not found"));
 
+        if (!"APPROVED".equals(exercise.getApprovalStatus())) throw new IllegalArgumentException("Chỉ khôi phục bài tập đã được duyệt");
         exercise.setActive(true);
 
         Exercise saved = exerciseRepository.save(exercise);

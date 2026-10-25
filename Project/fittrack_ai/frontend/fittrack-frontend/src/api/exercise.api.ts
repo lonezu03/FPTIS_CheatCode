@@ -46,9 +46,11 @@ export const getExercisesPageApi = async (
   includeInactive = false,
   page = 0,
   size = 20,
+  muscleGroup = "",
+  equipment = "",
 ): Promise<PageResponse<Exercise>> => {
   const response = await api.get<PageResponse<Exercise>>("/exercises/page", {
-    params: { keyword, includeInactive, page, size },
+    params: { keyword, includeInactive, page, size, muscleGroup, equipment },
   });
   return response.data;
 };
@@ -57,6 +59,9 @@ export const suggestExerciseApi = async (payload: ExercisePayload): Promise<Exer
   const response = await api.post("/exercises/suggestions", payload);
   return response.data;
 };
+
+export const getExerciseCatalogFacets = async (): Promise<{ muscleGroups: string[]; equipment: string[] }> =>
+  (await api.get('/exercises/facets')).data;
 
 export const reviewExerciseApi = async (
   id: string,

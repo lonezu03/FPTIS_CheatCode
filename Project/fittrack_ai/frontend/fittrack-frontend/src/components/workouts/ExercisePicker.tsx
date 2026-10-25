@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { filterExercises, getExerciseFacets } from "./exercise-search";
 
-type ExercisePickerProps = { id: string; exercises: Exercise[]; value: string; onChange: (exerciseId: string) => void };
+type ExercisePickerProps = { id: string; exercises: Exercise[]; value: string; missingValueLabel?: string; onChange: (exerciseId: string) => void };
 
 export default function ExercisePicker(props: ExercisePickerProps) {
   const ownerId = useAuthStore(state => state.user?.userId);
@@ -25,11 +25,13 @@ function ExercisePickerContent({
   id,
   exercises,
   value,
+  missingValueLabel,
   onChange,
 }: {
   id: string;
   exercises: Exercise[];
   value: string;
+  missingValueLabel?: string;
   onChange: (exerciseId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -91,7 +93,7 @@ function ExercisePickerContent({
         <ExerciseThumb exercise={selected} compact />
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">
-            {selected?.name ?? "Chọn bài tập"}
+            {selected?.name ?? missingValueLabel ?? "Chọn bài tập"}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
             {selected

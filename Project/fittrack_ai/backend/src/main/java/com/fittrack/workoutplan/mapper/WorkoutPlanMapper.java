@@ -21,6 +21,7 @@ public class WorkoutPlanMapper {
                 .id(plan.getId())
                 .name(plan.getName())
                 .description(plan.getDescription())
+                .version(plan.getVersion())
                 .createdAt(plan.getCreatedAt())
                 .days(plan.getDays().stream()
                         .sorted(Comparator.comparing(
@@ -72,6 +73,10 @@ public class WorkoutPlanMapper {
                 .targetReps(planExercise.getTargetReps())
                 .targetWeight(planExercise.getTargetWeight())
                 .targetRir(planExercise.getTargetRir())
+                .restSeconds(planExercise.getRestSeconds())
+                .minReps(planExercise.getMinReps())
+                .maxReps(planExercise.getMaxReps())
+                .coachingNote(planExercise.getCoachingNote())
                 .build();
     }
 }

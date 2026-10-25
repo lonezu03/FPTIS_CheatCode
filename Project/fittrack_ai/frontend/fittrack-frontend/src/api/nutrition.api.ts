@@ -9,6 +9,7 @@ export type Food = {
   carbs: number;
   fat: number;
   unit: string;
+  imageUrl?: string | null;
   barcode?: string | null;
   custom: boolean;
   active: boolean;
@@ -45,6 +46,11 @@ export type MealLog = {
     id: string;
     foodId: string;
     foodName: string;
+    foodUnit?: string;
+    foodSourceName?: string | null;
+    foodSourceType?: string | null;
+    foodVerified?: boolean | null;
+    servingSizeGramsSnapshot?: number | null;
     quantity: number;
     servingAmount?: number | null;
     servingUnit?: ServingUnit | null;
@@ -63,6 +69,11 @@ export const getFoods = async (keyword?: string): Promise<Food[]> => {
 
   return response.data;
 };
+
+export const searchNutritionFoods = async (keyword = '', page = 0): Promise<PageResponse<Food>> =>
+  (await api.get('/nutrition/foods/page', { params: { keyword, page, size: 20 } })).data;
+export const getNutritionFood = async (id: string): Promise<Food> =>
+  (await api.get(`/nutrition/foods/${id}`)).data;
 
 export const getMealLogs = async (date?: string): Promise<MealLog[]> => {
   const response = await api.get("/nutrition/meal-logs", {

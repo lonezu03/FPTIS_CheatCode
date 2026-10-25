@@ -20,7 +20,14 @@ public class ExerciseSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        Map<String, Exercise> systemExercises = exerciseRepository.findAll().stream()
+        List<Exercise> all = exerciseRepository.findAll();
+        all.stream().filter(value -> value.getSearchText() == null).forEach(value -> {
+            value.refreshSearchText();
+            exerciseRepository.save(value);
+        });
+        Map<String, Exercise> bySeed = all.stream().filter(value -> value.getSeedKey() != null)
+                .collect(Collectors.toMap(Exercise::getSeedKey, Function.identity(), (a, b) -> a));
+        Map<String, Exercise> systemExercises = all.stream()
                 .filter(exercise -> exercise.getSubmittedBy() == null)
                 .filter(exercise -> !Boolean.TRUE.equals(exercise.getCustom()))
                 .collect(Collectors.toMap(
@@ -30,11 +37,19 @@ public class ExerciseSeeder implements CommandLineRunner {
                 ));
 
         List<Exercise> values = EXERCISES.stream().map(seed -> {
+            String seedKey = "exercise:" + java.util.UUID.nameUUIDFromBytes(normalize(seed.name()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            if (bySeed.containsKey(seedKey)) return null;
+            Exercise legacy = systemExercises.get(normalize(seed.name()));
+            if (legacy != null) {
+                legacy.setSeedKey(seedKey);
+                return legacy;
+            }
             Exercise exercise = systemExercises.getOrDefault(
                     normalize(seed.name()),
                     Exercise.builder().name(seed.name()).build()
             );
             exercise.setName(seed.name());
+            exercise.setSeedKey(seedKey);
             exercise.setMuscleGroup(seed.muscleGroup());
             exercise.setEquipment(seed.equipment());
             exercise.setDescription(seed.description());
@@ -43,7 +58,7 @@ public class ExerciseSeeder implements CommandLineRunner {
             exercise.setApprovalStatus("APPROVED");
             // Deliberately preserve imageUrl so admins can curate images manually.
             return exercise;
-        }).toList();
+        }).filter(java.util.Objects::nonNull).toList();
 
         exerciseRepository.saveAll(values);
     }

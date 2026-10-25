@@ -10,7 +10,11 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
-public interface ExerciseRepository extends JpaRepository<Exercise, String> {
+public interface ExerciseRepository extends JpaRepository<Exercise, String>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Exercise> {
+    @Query("select distinct e.muscleGroup from Exercise e where e.active = true and e.approvalStatus = 'APPROVED' and e.muscleGroup is not null order by e.muscleGroup")
+    List<String> muscleGroups();
+    @Query("select distinct e.equipment from Exercise e where e.active = true and e.approvalStatus = 'APPROVED' and e.equipment is not null order by e.equipment")
+    List<String> equipment();
     List<Exercise> findByActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(String keyword);
 
     List<Exercise> findByActiveTrueOrderByNameAsc();

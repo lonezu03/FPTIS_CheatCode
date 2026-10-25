@@ -19,7 +19,14 @@ public class FoodSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        Map<String, Food> existingFoods = foodRepository.findAll().stream()
+        List<Food> all = foodRepository.findAll();
+        all.stream().filter(value -> value.getSearchText() == null).forEach(value -> {
+            value.refreshSearchText();
+            foodRepository.save(value);
+        });
+        Map<String, Food> bySeed = all.stream().filter(value -> value.getSeedKey() != null)
+                .collect(Collectors.toMap(Food::getSeedKey, Function.identity(), (a, b) -> a));
+        Map<String, Food> existingFoods = all.stream()
                 .filter(food -> food.getSubmittedBy() == null)
                 .filter(food -> !Boolean.TRUE.equals(food.getCustom()))
                 .collect(Collectors.toMap(
@@ -30,8 +37,15 @@ public class FoodSeeder implements CommandLineRunner {
 
         List<Food> foods = FOODS.stream()
                 .map(seed -> {
+                    String seedKey = "food:" + java.util.UUID.nameUUIDFromBytes(normalizeName(seed.name()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    if (bySeed.containsKey(seedKey)) return null;
+                    Food legacy = existingFoods.get(normalizeName(seed.name()));
+                    if (legacy != null) {
+                        legacy.setSeedKey(seedKey);
+                        return legacy;
+                    }
                     Food food = existingFoods.getOrDefault(normalizeName(seed.name()), Food.builder().name(seed.name()).build());
-
+                    food.setSeedKey(seedKey);
                     food.setCalories(seed.calories());
                     food.setProtein(seed.protein());
                     food.setCarbs(seed.carbs());
@@ -43,13 +57,13 @@ public class FoodSeeder implements CommandLineRunner {
 
                     return food;
                 })
-                .toList();
+                .filter(java.util.Objects::nonNull).toList();
 
         foodRepository.saveAll(foods);
     }
 
     private String normalizeName(String name) {
-        return name == null ? "" : name.trim().toLowerCase();
+        return name == null ? "" : name.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private void applyNutritionDetails(Food food, NutritionDetails details) {

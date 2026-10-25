@@ -11,6 +11,7 @@ import TableLoading from "../components/common/TableLoading";
 import DataPagination from "../components/common/DataPagination";
 import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
+import { CatalogImportDialog } from "@/components/catalog/CatalogImportDialog";
 
 import {
   archiveFoodApi,
@@ -116,6 +117,9 @@ export default function FoodsPage() {
   });
 
   const [editingFood, setEditingFood] = useState<Food | null>(null);
+  const [detailFood, setDetailFood] = useState<Food | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [per100, setPer100] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
   const foodPager = useServerPagination(20);
 
@@ -347,6 +351,8 @@ export default function FoodsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Danh sách thực phẩm</CardTitle>
+          {isAdmin && <><Button variant="outline" onClick={() => setImportOpen(true)}>Nhập hàng loạt</Button><CatalogImportDialog kind="FOOD" open={importOpen} onOpenChange={setImportOpen} onImported={() => { setImportOpen(false); void queryClient.invalidateQueries({ queryKey: ['foods-management'] }); void queryClient.invalidateQueries({ queryKey: ['foods'] }); }} /></>}
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={per100} onChange={event => setPer100(event.target.checked)} /> Xem dinh dưỡng theo 100g/100ml khi có quy đổi</label>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -413,16 +419,17 @@ export default function FoodsPage() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium">{food.name}</TableCell>
-                      <TableCell>{food.unit}</TableCell>
-                      <TableCell>{food.calories}</TableCell>
-                      <TableCell>{food.protein}g</TableCell>
-                      <TableCell>{food.carbs}g</TableCell>
-                      <TableCell>{food.fat}g</TableCell>
+                      <TableCell className="font-medium"><button type="button" className="text-left underline-offset-4 hover:underline" onClick={() => setDetailFood(food)}>{food.name}<span className="mt-1 block text-xs font-normal text-muted-foreground">Xem dinh dưỡng</span></button></TableCell>
+                      <TableCell>{per100 && food.servingSizeGrams ? (/ml|lít|liter|litre/i.test(food.unit) ? '100ml' : '100g') : food.unit}{per100 && !food.servingSizeGrams && <p className="text-xs text-amber-700">Chưa có quy đổi</p>}</TableCell>
+                      <TableCell>{displayNutrition(food.calories, food, per100)}</TableCell>
+                      <TableCell>{displayNutrition(food.protein, food, per100)}g</TableCell>
+                      <TableCell>{displayNutrition(food.carbs, food, per100)}g</TableCell>
+                      <TableCell>{displayNutrition(food.fat, food, per100)}g</TableCell>
                       <TableCell>
                         <div className="min-w-36 text-xs">
                           <p className="font-medium">{sourceLabels[food.dataSourceType ?? "ESTIMATED"]}</p>
                           <p className="text-muted-foreground">{food.verified ? "✓ Đã xác minh" : food.dataSourceName || "Chưa xác minh"}</p>
+                          {[food.fiber, food.sugar, food.sodium, food.potassium, food.calcium, food.iron, food.vitaminC, food.water].some(value => value == null) && <p className="mt-1 text-amber-700">Thiếu một số vi chất</p>}
                         </div>
                       </TableCell>
 
@@ -517,6 +524,7 @@ export default function FoodsPage() {
                   <FormField label="Tên nguồn" hint="Nhãn sản phẩm, cơ sở dữ liệu hoặc công thức."><Input value={editingFood.dataSourceName ?? ""} onChange={(event) => setEditingFood({ ...editingFood, dataSourceName: event.target.value })} /></FormField>
                   <label className="flex items-center gap-3 rounded-xl border p-3 text-sm"><input type="checkbox" checked={Boolean(editingFood.verified)} onChange={(event) => setEditingFood({ ...editingFood, verified: event.target.checked })} /><span><strong>Đã xác minh</strong><br /><span className="text-xs text-muted-foreground">Đã đối chiếu với nguồn đáng tin cậy.</span></span></label>
                   {(["calories", "protein", "carbs", "fat"] as const).map((key) => <FormField key={key} label={{ calories: "Năng lượng", protein: "Chất đạm", carbs: "Tinh bột", fat: "Chất béo" }[key]} unit={key === "calories" ? "kcal" : "g"}><Input type="number" min={0} step="any" value={editingFood[key]} onChange={(event) => setEditingFood({ ...editingFood, [key]: Number(event.target.value) })} /></FormField>)}
+                  {([['fiber', 'Chất xơ', 'g'], ['sugar', 'Đường', 'g'], ['sodium', 'Natri', 'mg'], ['potassium', 'Kali', 'mg'], ['calcium', 'Canxi', 'mg'], ['iron', 'Sắt', 'mg'], ['vitaminC', 'Vitamin C', 'mg'], ['water', 'Nước', 'ml']] as const).map(([key, label, unit]) => <FormField key={key} label={label} unit={unit} hint="Để trống nếu chưa biết; chỉ nhập 0 khi nguồn xác nhận bằng 0."><Input type="number" min={0} step="any" value={editingFood[key] ?? ''} onChange={event => setEditingFood({ ...editingFood, [key]: event.target.value === '' ? null : Number(event.target.value) })} /></FormField>)}
                 </div>
 
                 <FoodImageField
@@ -537,6 +545,7 @@ export default function FoodsPage() {
         </Dialog>
       )}
 
+      <Dialog open={!!detailFood} onOpenChange={open => !open && setDetailFood(null)}><DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl"><DialogHeader><DialogTitle>{detailFood?.name}</DialogTitle></DialogHeader>{detailFood && <div className="space-y-4">{detailFood.imageUrl && <img src={resolveApiAssetUrl(detailFood.imageUrl)} alt={detailFood.name} className="max-h-52 w-full rounded-xl object-contain" />}<p className="text-sm">Khẩu phần: {detailFood.unit}. {detailFood.verified ? '✓ Đã xác minh' : 'Dữ liệu tham khảo'}.</p><p className="text-xs text-muted-foreground">{sourceLabels[detailFood.dataSourceType ?? 'ESTIMATED']} · {detailFood.dataSourceName || 'Chưa ghi nguồn'}</p><dl className="grid grid-cols-2 gap-3 text-sm">{([['calories', 'Năng lượng', 'kcal'], ['protein', 'Chất đạm', 'g'], ['carbs', 'Tinh bột', 'g'], ['fat', 'Chất béo', 'g'], ['fiber', 'Chất xơ', 'g'], ['sugar', 'Đường', 'g'], ['sodium', 'Natri', 'mg'], ['potassium', 'Kali', 'mg'], ['calcium', 'Canxi', 'mg'], ['iron', 'Sắt', 'mg'], ['vitaminC', 'Vitamin C', 'mg'], ['water', 'Nước', 'ml']] as const).map(([key, label, unit]) => <div key={key} className="rounded-xl border p-3"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 font-medium">{detailFood[key] == null ? 'Chưa có dữ liệu' : `${displayNutrition(detailFood[key]!, detailFood, per100)} ${unit}`}</dd></div>)}</dl><p className="text-xs text-muted-foreground">Giá trị tính theo {per100 && detailFood.servingSizeGrams ? (/ml|lít|liter|litre/i.test(detailFood.unit) ? '100ml' : '100g') : detailFood.unit}; dữ liệu để trống không có nghĩa là bằng 0.</p></div>}</DialogContent></Dialog>
       <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
@@ -563,6 +572,11 @@ type FoodImageFieldProps = {
   onChange: (value: string) => void;
   onPreview: () => void;
 };
+
+function displayNutrition(value: number, food: Food, per100: boolean) {
+  const factor = per100 && (food.servingSizeGrams ?? 0) > 0 ? 100 / food.servingSizeGrams! : 1;
+  return Number((value * factor).toFixed(1));
+}
 
 function FoodImageField({ value, onChange, onPreview }: FoodImageFieldProps) {
   const isUploadedFile = value.startsWith("data:image/");

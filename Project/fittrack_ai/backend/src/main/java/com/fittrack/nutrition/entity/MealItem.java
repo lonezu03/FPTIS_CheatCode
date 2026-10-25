@@ -22,6 +22,25 @@ public class MealItem {
     @ManyToOne(fetch = FetchType.LAZY)
     private Food food;
 
+    private String foodNameSnapshot;
+    private String foodUnitSnapshot;
+    private String foodSourceSnapshot;
+    private String foodSourceTypeSnapshot;
+    private Boolean foodVerifiedSnapshot;
+    private Double servingSizeSnapshot;
+
+    @PrePersist
+    public void snapshotFood() {
+        if (food != null && foodNameSnapshot == null) {
+            foodNameSnapshot = food.getName();
+            foodUnitSnapshot = food.getUnit();
+            foodSourceSnapshot = food.getDataSourceName();
+            foodSourceTypeSnapshot = food.getDataSourceType();
+            foodVerifiedSnapshot = food.getVerified();
+            servingSizeSnapshot = food.getServingSizeGrams();
+        }
+    }
+
     private Double quantity;
 
     private Double servingAmount;

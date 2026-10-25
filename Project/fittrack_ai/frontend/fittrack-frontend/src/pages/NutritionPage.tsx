@@ -3,13 +3,15 @@ import { useSearchParams } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { readConvenience, writeConvenience } from "@/lib/convenience-storage";
 import axios from "axios";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { resolveApiAssetUrl } from '@/api/axios';
+import { useMutation, useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   addWaterLog,
   createMealLog,
   deleteMealLog,
-  getFoods,
+  searchNutritionFoods,
+  getNutritionFood,
   getNutritionDiary,
   getNutritionConvenience,
   logNutritionCollection,
@@ -75,7 +77,7 @@ export default function NutritionPage() {
     queryKey: ["nutrition-diary", date],
     queryFn: () => getNutritionDiary(date),
   });
-  const foodsQuery = useQuery({ queryKey: ["foods", "diary"], queryFn: () => getFoods() });
+  const foodsQuery = useQuery({ queryKey: ["foods", "diary"], queryFn: async () => (await searchNutritionFoods()).content });
   const convenienceQuery = useQuery({ queryKey: ["nutrition-convenience"], queryFn: getNutritionConvenience });
   const previousDate = shiftDate(date, -1);
   const previousDiary = useQuery({ queryKey: ["nutrition-diary", previousDate], queryFn: () => getNutritionDiary(previousDate) });
@@ -187,13 +189,7 @@ export default function NutritionPage() {
           <p className="text-sm text-muted-foreground">Chọn một bữa ngày {previousDate}. Bạn có thể sửa món và khẩu phần trước khi lưu vào ngày {date}.</p>
           {previousDiary.isLoading ? <p className="text-sm">Đang tải bữa trước…</p> : previousDiary.isError ? <Button variant="outline" onClick={() => void previousDiary.refetch()}>Thử tải lại bữa trước</Button> : previousDiary.data?.meals.length ? (
             <div className="flex flex-wrap gap-2">{previousDiary.data.meals.map((meal, index) => <Button key={meal.id} variant="outline" onClick={() => {
-              const draftItems: MealDraftItem[] = meal.items.flatMap(item => {
-                const food = foodsQuery.data?.find(food => food.id === item.foodId);
-                if (!food) return [];
-                const useRecordedUnit = item.servingUnit === "SERVING" || food.servingSizeGrams;
-                return [{ foodId: item.foodId, amount: useRecordedUnit ? item.servingAmount ?? item.quantity : item.quantity, unit: useRecordedUnit ? item.servingUnit ?? "SERVING" : "SERVING" }];
-              });
-              if (draftItems.length < meal.items.length) toast.info("Một số món không còn trong kho nên chưa được sao chép. Hãy kiểm tra và chọn món thay thế.");
+              const draftItems: MealDraftItem[] = meal.items.map(item => ({ foodId: item.foodId, amount: item.servingAmount ?? item.quantity, unit: item.servingUnit ?? "SERVING" }));
               setEditor({ mealType: meal.mealType, draftItems });
             }}>{mealLabels[meal.mealType]} · {index + 1} · {meal.items.length} món</Button>)}</div>
           ) : <p className="text-sm text-muted-foreground">Ngày trước chưa ghi bữa ăn.</p>}
@@ -264,7 +260,7 @@ function MealSection({ mealType, logs, onAdd, onEdit, onDelete }: { mealType: st
   );
 }
 
-function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onSaved }: { open: boolean; mealType: string; date: string; log?: MealLog; draftItems?: MealDraftItem[]; foods: Food[]; onClose: () => void; onSaved: () => Promise<void> }) {
+function MealEditor({ open, mealType, date, log, draftItems, foods: initialFoods, onClose, onSaved }: { open: boolean; mealType: string; date: string; log?: MealLog; draftItems?: MealDraftItem[]; foods: Food[]; onClose: () => void; onSaved: () => Promise<void> }) {
   const queryClient = useQueryClient();
   const userId = useAuthStore(state => state.user?.userId);
   const [draftOwner] = useState(userId);
@@ -287,11 +283,20 @@ function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onS
   useEffect(() => {
     if (!recovery && !saved.current) writeConvenience(draftKey, items.length ? items : null);
   }, [draftKey, items, recovery]);
-  const filteredFoods = useMemo(() => foods.filter((food) => food.name.toLowerCase().includes(search.toLowerCase())).slice(0, 20), [foods, search]);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searchPage, setSearchPage] = useState(0);
+  useEffect(() => { const timer = window.setTimeout(() => { setDebouncedSearch(search); setSearchPage(0); }, 300); return () => window.clearTimeout(timer); }, [search]);
+  const foodSearch = useQuery({ queryKey: ['foods', 'search', debouncedSearch, searchPage], queryFn: () => searchNutritionFoods(debouncedSearch, searchPage), enabled: open });
+  const hydrateIds = [...new Set([...items, ...(recovery ?? [])].map(item => item.foodId))];
+  const hydrated = useQueries({ queries: hydrateIds.map(id => ({ queryKey: ['foods', 'detail', id], queryFn: () => getNutritionFood(id), retry: false, enabled: open, staleTime: 60_000 })) });
+  const photoSuggestions = useQueries({ queries: photoMatches.map(item => ({ queryKey: ['foods', 'photo-match', item.name], queryFn: () => searchNutritionFoods(item.name), enabled: open, staleTime: 60_000 })) });
+  const foods = [...new Map([...initialFoods, ...(foodSearch.data?.content ?? []), ...hydrated.flatMap(result => result.data ? [result.data] : []), ...photoSuggestions.flatMap(result => result.data?.content ?? [])].map(food => [food.id, food])).values()];
+  const filteredFoods = foodSearch.data?.content ?? [];
+  const unavailable = items.some(item => !foods.some(food => food.id === item.foodId));
   const selectedFoodIds = useMemo(() => new Set(items.map((item) => item.foodId)), [items]);
   const mutation = useMutation({
     mutationFn: async () => {
-      if (recovery || !isMealDraft(items) || items.length === 0) throw new Error("Hãy kiểm tra bản nháp và số lượng món trước khi lưu.");
+      if (recovery || unavailable || hydrated.some(result => result.isFetching) || !isMealDraft(items) || items.length === 0) throw new Error("Hãy kiểm tra bản nháp, thực phẩm và số lượng món trước khi lưu.");
       const payload = { mealType, logDate: date, items: items.map((item) => ({ foodId: item.foodId, quantity: factor(item, foods), servingAmount: item.amount, servingUnit: item.unit })) };
       return log ? updateMealLog(log.id, payload) : createMealLog(payload);
     },
@@ -299,7 +304,7 @@ function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onS
     onError: showMutationError("Không thể lưu bữa ăn"),
   });
   const collectionMutation = useMutation({ mutationFn: () => saveNutritionCollection({ name: collectionName.trim(), type: "SAVED_MEAL", servings: 1, items: items.map(item => ({ foodId: item.foodId, servingAmount: item.amount, servingUnit: item.unit })) }), onSuccess: async () => { toast.success("Đã lưu bữa để dùng nhanh"); setCollectionName(""); await queryClient.invalidateQueries({ queryKey: ["nutrition-convenience"] }); }, onError: showMutationError("Không thể lưu bộ bữa") });
-  const barcodeMutation = useMutation({ mutationFn: () => getFoodByBarcode(barcode), onSuccess: food => { setItems(current => current.some(item => item.foodId === food.id) ? current : [...current, { foodId: food.id, amount: 1, unit: "SERVING" }]); toast.success(`Đã tìm thấy ${food.name}`); }, onError: showMutationError("Chưa tìm thấy thực phẩm theo mã vạch") });
+  const barcodeMutation = useMutation({ mutationFn: () => getFoodByBarcode(barcode), onSuccess: food => { queryClient.setQueryData(['foods', 'detail', food.id], food); setItems(current => current.some(item => item.foodId === food.id) ? current : [...current, { foodId: food.id, amount: 1, unit: "SERVING" }]); toast.success(`Đã tìm thấy ${food.name}`); }, onError: showMutationError("Chưa tìm thấy thực phẩm theo mã vạch") });
   const photoMutation = useMutation({ mutationFn: analyzeFoodPhoto, onSuccess: data => {
     setPhotoAnalysis(data);
     setPhotoMatches(data.items.map(item => ({ ...item, foodId: foods.filter(food => normalizeFoodName(food.name) === normalizeFoodName(item.name)).length === 1 ? foods.find(food => normalizeFoodName(food.name) === normalizeFoodName(item.name))!.id : "" })));
@@ -325,7 +330,8 @@ function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onS
       for (const item of matched) {
         const food = foods.find(candidate => candidate.id === item.foodId);
         if (!food || next.some(selected => selected.foodId === food.id)) continue;
-        next.push({ foodId: food.id, amount: item.estimatedGrams && item.estimatedGrams > 0 && food.servingSizeGrams ? item.estimatedGrams : 1, unit: item.estimatedGrams && item.estimatedGrams > 0 && food.servingSizeGrams ? "GRAM" : "SERVING" });
+        const useGrams = Boolean(item.estimatedGrams && item.estimatedGrams > 0 && food.servingSizeGrams && !/ml|lít|liter|litre/i.test(food.unit));
+        next.push({ foodId: food.id, amount: useGrams ? item.estimatedGrams! : 1, unit: useGrams ? "GRAM" : "SERVING" });
       }
       return next;
     });
@@ -337,6 +343,7 @@ function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onS
         <DialogHeader className="shrink-0 px-5 pt-5 pr-14 pb-4 sm:px-6 sm:pt-6 sm:pr-14">
           <DialogTitle>{log ? "Chỉnh sửa" : "Ghi món vào"} {mealLabels[mealType]?.toLowerCase()}</DialogTitle>
           <DialogDescription>Tìm món, chọn nhiều món rồi điều chỉnh số lượng ở bên dưới.</DialogDescription>
+          {log && <p className="text-xs text-amber-700">Tên và dinh dưỡng cũ được giữ trong lịch sử. Khi lưu sửa, bữa ăn sẽ tính lại theo thông tin thực phẩm hiện tại.</p>}
           {!log && <p className="text-xs text-muted-foreground">Bản nháp lưu trên thiết bị tối đa 7 ngày; chưa gửi nhật ký cho đến khi bạn bấm Lưu. Đăng xuất sẽ xóa bản nháp.</p>}
         </DialogHeader>
 
@@ -345,10 +352,11 @@ function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onS
             const available = recovery.filter(item => foods.some(food => food.id === item.foodId && (item.unit === "SERVING" || (food.servingSizeGrams ?? 0) > 0)));
             if (available.length !== recovery.length) toast.info("Một số món không còn dùng được với khẩu phần đã lưu. Hãy chọn lại món và số lượng.");
             setItems(available); setRecovery(null);
-          }}>Khôi phục bản nháp</Button><Button size="sm" variant="outline" onClick={() => { writeConvenience(draftKey, null); setRecovery(null); }}>Bỏ bản nháp cũ</Button></div></div>}
+          }} disabled={hydrated.some(result => result.isFetching)}>Khôi phục bản nháp</Button><Button size="sm" variant="outline" onClick={() => { writeConvenience(draftKey, null); setRecovery(null); }}>Bỏ bản nháp cũ</Button></div></div>}
           <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><Input placeholder="Nhập hoặc quét mã vạch" value={barcode} onChange={event => setBarcode(event.target.value)} /><Button variant="outline" disabled={!barcode.trim() || barcodeMutation.isPending} onClick={() => barcodeMutation.mutate()}><ScanLine className="size-4" /> Tra mã</Button><label className={`inline-flex h-10 items-center justify-center gap-2 rounded-md border bg-background px-4 text-sm font-medium ${photoMutation.isPending ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted"}`}><Camera className="size-4" /> Phân tích ảnh<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" capture="environment" disabled={photoMutation.isPending} onChange={event => { void handlePhoto(event.target.files?.[0]); event.target.value = ""; }} /></label></div>
           {photoMutation.isPending && <p className="mb-3 text-xs text-emerald-700">Gemini đang phân tích ảnh…</p>}
           {photoAnalysis && <div className="mb-3 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs"><p className="font-semibold">Ước tính từ ảnh — chọn món tương ứng trước khi thêm vào bản nháp</p>{photoMatches.map((item, index) => <div key={`${item.name}-${index}`} className="grid gap-1 sm:grid-cols-2"><span>{item.name}: khoảng {item.estimatedGrams ?? "?"}g, {item.calories ?? "?"} kcal</span><select aria-label={`Món trong kho cho ${item.name}`} className="h-9 min-w-0 rounded-md border bg-background px-2" value={item.foodId} onChange={event => setPhotoMatches(current => current.map((value, position) => position === index ? { ...value, foodId: event.target.value } : value))}><option value="">Chọn món trong kho (hoặc bỏ qua)</option>{foods.map(food => <option key={food.id} value={food.id}>{food.name}</option>)}</select></div>)}<p className="text-muted-foreground">{photoAnalysis.note}</p><Button type="button" size="sm" disabled={!photoMatches.some(item => item.foodId)} onClick={applyPhotoMatches}>Thêm món đã chọn vào bản nháp</Button><p className="text-muted-foreground">Chưa lưu nhật ký; món không nhận diện được cần tìm hoặc tạo trong kho thực phẩm.</p></div>}
+          {photoAnalysis && <p className="mb-3 text-xs text-amber-800">Ảnh chỉ ước tính gram, không quy đổi thành ml. Món có khẩu phần theo ml sẽ dùng 1 khẩu phần; hãy chỉnh lại số lượng thực tế trước khi lưu.</p>}
           <Input
             autoFocus
             placeholder="Tìm món ăn..."
@@ -373,11 +381,15 @@ function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onS
                   onClick={() => setItems((current) => [...current, { foodId: food.id, amount: 1, unit: "SERVING" }])}
                 >
                   {selected ? <Check className="size-4 shrink-0" /> : <Plus className="size-4 shrink-0" />}
+                  {food.imageUrl && <img src={resolveApiAssetUrl(food.imageUrl)} alt="" loading="lazy" className="size-9 shrink-0 rounded-lg object-cover" />}
                   <span className="min-w-0 truncate">{food.name} · {food.unit}</span>
                 </Button>
               );
             })}
           </div>
+          {foodSearch.isFetching && <p className="mt-2 text-xs text-muted-foreground">Đang tìm thực phẩm…</p>}
+          {foodSearch.isError && <div className="mt-2 text-sm text-red-700">Không thể tải thực phẩm. <Button size="sm" variant="outline" onClick={() => void foodSearch.refetch()}>Thử lại</Button></div>}
+          <div className="mt-2 flex items-center justify-between gap-2"><Button size="sm" variant="outline" disabled={searchPage === 0 || foodSearch.isFetching} onClick={() => setSearchPage(value => value - 1)}>Trước</Button><span className="text-xs">Trang {searchPage + 1} · {foodSearch.data?.totalElements ?? 0} món</span><Button size="sm" variant="outline" disabled={foodSearch.isFetching || searchPage + 1 >= (foodSearch.data?.totalPages ?? 1)} onClick={() => setSearchPage(value => value + 1)}>Tiếp</Button></div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
@@ -392,7 +404,8 @@ function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onS
               return (
                 <div key={`${item.foodId}-${index}`} className="min-w-0 rounded-2xl border p-4">
                   <div className="min-w-0">
-                    <p className="truncate font-semibold" title={food?.name}>{food?.name}</p>
+                    <p className="truncate font-semibold" title={food?.name}>{food?.name ?? log?.items.find(old => old.foodId === item.foodId)?.foodName ?? 'Thực phẩm chưa tải hoặc không còn khả dụng'}</p>
+                    {!food && <p className="text-xs text-amber-700">Chờ tải thực phẩm; nếu đã lưu trữ, hãy bỏ và chọn món khác trước khi lưu.</p>}
                     <p className="text-xs text-muted-foreground">{food?.verified ? "✓ Dữ liệu đã xác minh" : "~ Dữ liệu tham khảo"}</p>
                   </div>
                   <div className="mt-3 grid min-w-0 grid-cols-2 items-end gap-2 sm:grid-cols-[minmax(72px,0.8fr)_minmax(110px,1.2fr)_auto] sm:gap-3">
@@ -402,7 +415,7 @@ function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onS
                     <FormField label="Đơn vị">
                       <select className="h-10 min-w-0 w-full rounded-md border bg-background px-3 text-sm" value={item.unit} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, unit: event.target.value as ServingUnit } : value))}>
                         <option value="SERVING">Khẩu phần</option>
-                        {food?.servingSizeGrams ? <><option value="GRAM">Gram</option><option value="ML">ml</option></> : null}
+                        {food?.servingSizeGrams ? (/ml|lít|liter|litre/i.test(food.unit) ? <option value="ML">ml</option> : <option value="GRAM">Gram</option>) : null}
                       </select>
                     </FormField>
                     <Button className="col-span-2 justify-self-end sm:col-span-1" type="button" size="icon" variant="ghost" aria-label={`Xóa ${food?.name ?? "món"}`} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>
@@ -419,7 +432,7 @@ function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onS
           <div className="mb-3 flex flex-col gap-2 sm:flex-row"><Input placeholder="Tên bữa muốn lưu, ví dụ: Bữa sáng thường ngày" value={collectionName} onChange={event => setCollectionName(event.target.value)} /><Button variant="outline" disabled={Boolean(recovery) || !isMealDraft(items) || !collectionName.trim() || items.length === 0 || collectionMutation.isPending} onClick={() => collectionMutation.mutate()}><BookmarkPlus className="size-4" /> Lưu dùng nhanh</Button></div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button className="w-full sm:w-auto" variant="outline" onClick={onClose}>Hủy</Button>
-          <Button className="w-full sm:w-auto" disabled={mutation.isPending || Boolean(recovery) || items.length === 0 || !isMealDraft(items)} onClick={() => mutation.mutate()}>
+          <Button className="w-full sm:w-auto" disabled={mutation.isPending || Boolean(recovery) || unavailable || hydrated.some(result => result.isFetching) || items.length === 0 || !isMealDraft(items)} onClick={() => mutation.mutate()}>
             {mutation.isPending ? "Đang lưu..." : `Lưu ${items.length} món`}
           </Button>
           </div>

@@ -58,6 +58,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/media/payment-qr").authenticated()
                         .requestMatchers("/api/media/**").permitAll()
+                        .requestMatchers("/api/catalog-imports/**").hasRole("ADMIN")
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/exercises/suggestions",

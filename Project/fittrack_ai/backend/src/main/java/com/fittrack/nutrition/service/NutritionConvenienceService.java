@@ -126,6 +126,10 @@ public class NutritionConvenienceService {
             if (!UNITS.contains(unit)) {
                 throw new IllegalArgumentException("Đơn vị thực phẩm không hợp lệ");
             }
+            boolean volumePortion = food.getUnit() != null && food.getUnit().toLowerCase(java.util.Locale.ROOT).matches(".*(?:ml|lít|litre|liter).*" );
+            if (("ML".equals(unit) && !volumePortion) || ("GRAM".equals(unit) && volumePortion)) {
+                throw new IllegalArgumentException("Không tự quy đổi gram thành ml; hãy dùng đúng đơn vị khẩu phần");
+            }
             if (!"SERVING".equals(unit)
                     && (food.getServingSizeGrams() == null || food.getServingSizeGrams() <= 0)) {
                 throw new IllegalArgumentException(

@@ -11,7 +11,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 
-public interface FoodRepository extends JpaRepository<Food, String> {
+public interface FoodRepository extends JpaRepository<Food, String>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Food> {
     Optional<Food> findFirstByBarcodeAndActiveTrueAndApprovalStatus(String barcode, String approvalStatus);
     List<Food> findByActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(String keyword);
 

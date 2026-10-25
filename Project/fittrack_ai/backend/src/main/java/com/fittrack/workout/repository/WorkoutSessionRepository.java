@@ -13,6 +13,15 @@ import java.util.List;
 import java.util.Optional;
 
 public interface WorkoutSessionRepository extends JpaRepository<WorkoutSession, String> {
+    @Query("""
+            select s from WorkoutSession s where s.user = :user
+            and s.sessionDate >= :fromDate and s.sessionDate <= :toDate
+            and (:exerciseId = '' or exists (select w.id from WorkoutSet w where w.session = s and w.exercise.id = :exerciseId))
+            order by s.sessionDate desc, s.createdAt desc
+            """)
+    Page<WorkoutSession> searchHistory(@Param("user") User user,
+            @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate,
+            @Param("exerciseId") String exerciseId, Pageable pageable);
     List<WorkoutSession> findByUserOrderBySessionDateDesc(User user);
 
     Page<WorkoutSession> findByUserOrderBySessionDateDescCreatedAtDesc(

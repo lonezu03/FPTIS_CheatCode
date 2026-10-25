@@ -134,9 +134,10 @@ export const getWorkoutSessions = async (): Promise<WorkoutSession[]> => {
 export const getWorkoutSessionsPage = async (
   page = 0,
   size = 20,
+  filters: { from?: string; to?: string; exerciseId?: string } = {},
 ): Promise<PageResponse<WorkoutSession>> => {
-  const response = await api.get<PageResponse<WorkoutSession>>("/workouts/sessions/page", {
-    params: { page, size },
+  const response = await api.get<PageResponse<WorkoutSession>>("/workouts/sessions/history", {
+    params: { page, size, ...filters },
   });
   return response.data;
 };
@@ -214,6 +215,11 @@ export const getAlternativeExercises = async (
 
 export const deleteWorkoutSession = async (id: string): Promise<void> => {
   await api.delete(`/workouts/sessions/${id}`);
+};
+
+export const replaceWorkoutSession = async (id: string, payload: Parameters<typeof createWorkoutSession>[0]): Promise<WorkoutSession> => {
+  const response = await api.put(`/workouts/sessions/${id}/details`, payload);
+  return response.data;
 };
 
 export const updateWorkoutSession = async (

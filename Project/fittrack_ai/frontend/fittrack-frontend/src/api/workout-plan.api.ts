@@ -15,6 +15,10 @@ export type WorkoutPlanExercise = {
   targetReps: number;
   targetWeight: number;
   targetRir: number;
+  restSeconds?: number | null;
+  minReps?: number | null;
+  maxReps?: number | null;
+  coachingNote?: string | null;
 };
 
 export type WorkoutPlanDay = {
@@ -25,6 +29,7 @@ export type WorkoutPlanDay = {
 };
 
 export type WorkoutPlan = {
+  version?: number;
   id: string;
   name: string;
   description: string;
@@ -37,6 +42,7 @@ export const getWorkoutPlans = async (): Promise<WorkoutPlan[]> => {
 
   return response.data;
 };
+export const getWorkoutPlanDetail = async (id: string): Promise<WorkoutPlan> => (await api.get(`/workout-plans/${id}`)).data;
 
 export const getWorkoutPlansPage = async (
   page = 0,
@@ -49,6 +55,7 @@ export const getWorkoutPlansPage = async (
 };
 
 export type WorkoutPlanPayload = {
+  version?: number;
   name: string;
   description: string;
   days: {
@@ -61,6 +68,10 @@ export type WorkoutPlanPayload = {
       targetReps: number;
       targetWeight: number;
       targetRir: number;
+      restSeconds?: number;
+      minReps?: number;
+      maxReps?: number;
+      coachingNote?: string;
     }[];
   }[];
 };

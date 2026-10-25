@@ -22,16 +22,19 @@ public class CreateWorkoutSetRequest {
     private Integer setNumber;
 
     @Min(1)
+    @Max(50)
     private Integer exerciseOrder;
 
     private WorkoutSetType setType;
 
     @NotNull
     @PositiveOrZero
+    @Max(2000)
     private Double weight;
 
     @NotNull
     @Positive
+    @Max(100)
     private Integer reps;
 
     @NotNull
