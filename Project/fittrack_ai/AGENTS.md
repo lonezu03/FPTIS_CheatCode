@@ -21,6 +21,15 @@ No assistant should infer production credentials from these links or commit
 secrets. Before editing, check the current task and known issues in
 `docs/CODEX_CONTEXT.md`, then update that file when handing work off.
 
+## Optional multi-agent workflow
+
+Project-scoped Codex roles live in `.codex/agents/`; invoke the
+`$feature-pipeline` skill in `.agents/skills/feature-pipeline/` when a
+substantial feature benefits from staged analysis and independent review.
+The skill requests a plan review before implementation. Read-only role
+instructions do not change the parent session's filesystem permissions.
+See `docs/CODEX_MULTI_AGENT.md` for a safe first run.
+
 ## Project
 
 FitTrack is a company lunch-ordering, fitness, nutrition, and health-management

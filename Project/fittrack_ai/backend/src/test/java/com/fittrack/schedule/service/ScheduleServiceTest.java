@@ -35,6 +35,14 @@ class ScheduleServiceTest {
     private ScheduleService service;
 
     @Test
+    void deepLinkReadRejectsUnknownOrOtherOwnersEvent() {
+        User owner = new User();
+        when(scheduleRepository.findByIdAndUser("other-event", owner)).thenReturn(java.util.Optional.empty());
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.getOne(owner, "other-event"))
+                .isInstanceOf(com.fittrack.common.exception.ResourceNotFoundException.class);
+    }
+
+    @Test
     void calendarCombinesTimedTodosAndExpandedEventsWithoutDuplicatingTodoAsSchedule() {
         User user = new User();
         user.setTodoEnabled(true);

@@ -1,4 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useAuthStore } from "@/store/auth.store";
+import { readConvenience, writeConvenience } from "@/lib/convenience-storage";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -31,7 +34,7 @@ import FormField from "../components/common/FormField";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { BookmarkPlus, Camera, Check, ChevronLeft, ChevronRight, Droplets, Heart, LockKeyhole, Plus, ScanLine, Trash2, Utensils } from "lucide-react";
 
@@ -41,6 +44,9 @@ type MealDraftItem = {
   unit: ServingUnit;
 };
 type PhotoMatch = { name: string; estimatedGrams: number | null; calories: number | null; foodId: string };
+function isMealDraft(value: unknown): value is MealDraftItem[] {
+  return Array.isArray(value) && value.length <= 200 && value.every(item => item && typeof item.foodId === "string" && Number.isFinite(item.amount) && item.amount > 0 && ["SERVING", "GRAM", "ML"].includes(item.unit));
+}
 function normalizeFoodName(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/đ/g, "d").replace(/[^a-z0-9]+/g, " ").trim(); }
 
 const mealTypes = ["BREAKFAST", "LUNCH", "DINNER", "SNACK"] as const;
@@ -59,8 +65,9 @@ const statusMeta: Record<NutritionDayStatus, { label: string; className: string;
 
 export default function NutritionPage() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [date, setDate] = useState(toLocalDateInput());
-  const [editor, setEditor] = useState<{ mealType: string; log?: MealLog } | null>(null);
+  const [editor, setEditor] = useState<{ mealType: string; log?: MealLog; draftItems?: MealDraftItem[] } | null>(() => searchParams.get("action") === "new" ? { mealType: "BREAKFAST" } : null);
   const [waterAmount, setWaterAmount] = useState(350);
   const [quickMealType, setQuickMealType] = useState<string>("BREAKFAST");
 
@@ -70,6 +77,8 @@ export default function NutritionPage() {
   });
   const foodsQuery = useQuery({ queryKey: ["foods", "diary"], queryFn: () => getFoods() });
   const convenienceQuery = useQuery({ queryKey: ["nutrition-convenience"], queryFn: getNutritionConvenience });
+  const previousDate = shiftDate(date, -1);
+  const previousDiary = useQuery({ queryKey: ["nutrition-diary", previousDate], queryFn: () => getNutritionDiary(previousDate) });
 
   const refresh = async () => {
     await Promise.all([
@@ -173,9 +182,29 @@ export default function NutritionPage() {
       </div>
 
       <Card>
+        <CardHeader><CardTitle>Sao chép bữa từ ngày trước</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">Chọn một bữa ngày {previousDate}. Bạn có thể sửa món và khẩu phần trước khi lưu vào ngày {date}.</p>
+          {previousDiary.isLoading ? <p className="text-sm">Đang tải bữa trước…</p> : previousDiary.isError ? <Button variant="outline" onClick={() => void previousDiary.refetch()}>Thử tải lại bữa trước</Button> : previousDiary.data?.meals.length ? (
+            <div className="flex flex-wrap gap-2">{previousDiary.data.meals.map((meal, index) => <Button key={meal.id} variant="outline" onClick={() => {
+              const draftItems: MealDraftItem[] = meal.items.flatMap(item => {
+                const food = foodsQuery.data?.find(food => food.id === item.foodId);
+                if (!food) return [];
+                const useRecordedUnit = item.servingUnit === "SERVING" || food.servingSizeGrams;
+                return [{ foodId: item.foodId, amount: useRecordedUnit ? item.servingAmount ?? item.quantity : item.quantity, unit: useRecordedUnit ? item.servingUnit ?? "SERVING" : "SERVING" }];
+              });
+              if (draftItems.length < meal.items.length) toast.info("Một số món không còn trong kho nên chưa được sao chép. Hãy kiểm tra và chọn món thay thế.");
+              setEditor({ mealType: meal.mealType, draftItems });
+            }}>{mealLabels[meal.mealType]} · {index + 1} · {meal.items.length} món</Button>)}</div>
+          ) : <p className="text-sm text-muted-foreground">Ngày trước chưa ghi bữa ăn.</p>}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader><CardTitle>Xác nhận chất lượng dữ liệu ngày</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">Chỉ chọn “Đã ghi đầy đủ” sau khi bạn đã ghi toàn bộ đồ ăn, thức uống có năng lượng trong ngày.</p>
+          {(diary.status === "PARTIAL" || diary.status === "UNLOGGED") && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Ngày chưa được xác nhận sẽ không dùng để tính trung bình dinh dưỡng hoặc đánh giá thiếu năng lượng. Khi đã ghi đủ, hãy xác nhận bên dưới.</p>}
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => statusMutation.mutate("COMPLETE")} disabled={diary.meals.length === 0 || statusMutation.isPending}>Đã ghi đầy đủ</Button>
             <Button variant="outline" onClick={() => statusMutation.mutate("PARTIAL")} disabled={statusMutation.isPending}>Ghi chưa đầy đủ</Button>
@@ -191,6 +220,7 @@ export default function NutritionPage() {
           mealType={editor.mealType}
           date={date}
           log={editor.log}
+          draftItems={editor.draftItems}
           foods={foodsQuery.data ?? []}
           onClose={() => setEditor(null)}
           onSaved={async () => { setEditor(null); await refresh(); }}
@@ -234,8 +264,13 @@ function MealSection({ mealType, logs, onAdd, onEdit, onDelete }: { mealType: st
   );
 }
 
-function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { open: boolean; mealType: string; date: string; log?: MealLog; foods: Food[]; onClose: () => void; onSaved: () => Promise<void> }) {
+function MealEditor({ open, mealType, date, log, draftItems, foods, onClose, onSaved }: { open: boolean; mealType: string; date: string; log?: MealLog; draftItems?: MealDraftItem[]; foods: Food[]; onClose: () => void; onSaved: () => Promise<void> }) {
   const queryClient = useQueryClient();
+  const userId = useAuthStore(state => state.user?.userId);
+  const [draftOwner] = useState(userId);
+  const draftKey = userId && draftOwner === userId && !log ? `fittrack:meal-draft:${userId}:${date}:${mealType}` : null;
+  const [recovery, setRecovery] = useState(() => readConvenience(draftKey, isMealDraft));
+  const saved = useRef(false);
   const [search, setSearch] = useState("");
   const [collectionName, setCollectionName] = useState("");
   const [barcode, setBarcode] = useState("");
@@ -248,16 +283,19 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
       amount: item.servingAmount ?? item.quantity,
       unit: item.servingUnit ?? "SERVING",
     }))
-    : []);
+    : draftItems ?? []);
+  useEffect(() => {
+    if (!recovery && !saved.current) writeConvenience(draftKey, items.length ? items : null);
+  }, [draftKey, items, recovery]);
   const filteredFoods = useMemo(() => foods.filter((food) => food.name.toLowerCase().includes(search.toLowerCase())).slice(0, 20), [foods, search]);
   const selectedFoodIds = useMemo(() => new Set(items.map((item) => item.foodId)), [items]);
   const mutation = useMutation({
     mutationFn: async () => {
-      if (items.length === 0) throw new Error("EMPTY");
+      if (recovery || !isMealDraft(items) || items.length === 0) throw new Error("Hãy kiểm tra bản nháp và số lượng món trước khi lưu.");
       const payload = { mealType, logDate: date, items: items.map((item) => ({ foodId: item.foodId, quantity: factor(item, foods), servingAmount: item.amount, servingUnit: item.unit })) };
       return log ? updateMealLog(log.id, payload) : createMealLog(payload);
     },
-    onSuccess: async () => { toast.success(log ? "Đã cập nhật bữa ăn" : "Đã lưu bữa ăn"); await onSaved(); },
+    onSuccess: async () => { saved.current = true; writeConvenience(draftKey, null); toast.success(log ? "Đã cập nhật bữa ăn" : "Đã lưu bữa ăn"); await onSaved(); },
     onError: showMutationError("Không thể lưu bữa ăn"),
   });
   const collectionMutation = useMutation({ mutationFn: () => saveNutritionCollection({ name: collectionName.trim(), type: "SAVED_MEAL", servings: 1, items: items.map(item => ({ foodId: item.foodId, servingAmount: item.amount, servingUnit: item.unit })) }), onSuccess: async () => { toast.success("Đã lưu bữa để dùng nhanh"); setCollectionName(""); await queryClient.invalidateQueries({ queryKey: ["nutrition-convenience"] }); }, onError: showMutationError("Không thể lưu bộ bữa") });
@@ -298,10 +336,16 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
       <DialogContent className="flex max-h-[min(90dvh,760px)] w-[calc(100vw-1rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:w-full sm:max-w-3xl sm:p-0">
         <DialogHeader className="shrink-0 px-5 pt-5 pr-14 pb-4 sm:px-6 sm:pt-6 sm:pr-14">
           <DialogTitle>{log ? "Chỉnh sửa" : "Ghi món vào"} {mealLabels[mealType]?.toLowerCase()}</DialogTitle>
-          <p className="text-xs text-muted-foreground">Tìm món, chọn nhiều món rồi điều chỉnh số lượng ở bên dưới.</p>
+          <DialogDescription>Tìm món, chọn nhiều món rồi điều chỉnh số lượng ở bên dưới.</DialogDescription>
+          {!log && <p className="text-xs text-muted-foreground">Bản nháp lưu trên thiết bị tối đa 7 ngày; chưa gửi nhật ký cho đến khi bạn bấm Lưu. Đăng xuất sẽ xóa bản nháp.</p>}
         </DialogHeader>
 
         <div className="shrink-0 border-y bg-muted/25 px-5 py-4 sm:px-6">
+          {recovery && <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><p>Có bản nháp chưa lưu cho bữa này trên thiết bị. Chọn khôi phục hoặc bỏ bản nháp trước khi tiếp tục.</p><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" onClick={() => {
+            const available = recovery.filter(item => foods.some(food => food.id === item.foodId && (item.unit === "SERVING" || (food.servingSizeGrams ?? 0) > 0)));
+            if (available.length !== recovery.length) toast.info("Một số món không còn dùng được với khẩu phần đã lưu. Hãy chọn lại món và số lượng.");
+            setItems(available); setRecovery(null);
+          }}>Khôi phục bản nháp</Button><Button size="sm" variant="outline" onClick={() => { writeConvenience(draftKey, null); setRecovery(null); }}>Bỏ bản nháp cũ</Button></div></div>}
           <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><Input placeholder="Nhập hoặc quét mã vạch" value={barcode} onChange={event => setBarcode(event.target.value)} /><Button variant="outline" disabled={!barcode.trim() || barcodeMutation.isPending} onClick={() => barcodeMutation.mutate()}><ScanLine className="size-4" /> Tra mã</Button><label className={`inline-flex h-10 items-center justify-center gap-2 rounded-md border bg-background px-4 text-sm font-medium ${photoMutation.isPending ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted"}`}><Camera className="size-4" /> Phân tích ảnh<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" capture="environment" disabled={photoMutation.isPending} onChange={event => { void handlePhoto(event.target.files?.[0]); event.target.value = ""; }} /></label></div>
           {photoMutation.isPending && <p className="mb-3 text-xs text-emerald-700">Gemini đang phân tích ảnh…</p>}
           {photoAnalysis && <div className="mb-3 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs"><p className="font-semibold">Ước tính từ ảnh — chọn món tương ứng trước khi thêm vào bản nháp</p>{photoMatches.map((item, index) => <div key={`${item.name}-${index}`} className="grid gap-1 sm:grid-cols-2"><span>{item.name}: khoảng {item.estimatedGrams ?? "?"}g, {item.calories ?? "?"} kcal</span><select aria-label={`Món trong kho cho ${item.name}`} className="h-9 min-w-0 rounded-md border bg-background px-2" value={item.foodId} onChange={event => setPhotoMatches(current => current.map((value, position) => position === index ? { ...value, foodId: event.target.value } : value))}><option value="">Chọn món trong kho (hoặc bỏ qua)</option>{foods.map(food => <option key={food.id} value={food.id}>{food.name}</option>)}</select></div>)}<p className="text-muted-foreground">{photoAnalysis.note}</p><Button type="button" size="sm" disabled={!photoMatches.some(item => item.foodId)} onClick={applyPhotoMatches}>Thêm món đã chọn vào bản nháp</Button><p className="text-muted-foreground">Chưa lưu nhật ký; món không nhận diện được cần tìm hoặc tạo trong kho thực phẩm.</p></div>}
@@ -351,9 +395,9 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
                     <p className="truncate font-semibold" title={food?.name}>{food?.name}</p>
                     <p className="text-xs text-muted-foreground">{food?.verified ? "✓ Dữ liệu đã xác minh" : "~ Dữ liệu tham khảo"}</p>
                   </div>
-                  <div className="mt-3 grid min-w-0 grid-cols-[minmax(72px,0.8fr)_minmax(110px,1.2fr)_auto] items-end gap-2 sm:gap-3">
+                  <div className="mt-3 grid min-w-0 grid-cols-2 items-end gap-2 sm:grid-cols-[minmax(72px,0.8fr)_minmax(110px,1.2fr)_auto] sm:gap-3">
                     <FormField label="Số lượng">
-                      <Input type="number" min={0.01} step={0.1} value={item.amount} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, amount: Number(event.target.value) } : value))} />
+                      <Input type="number" inputMode="decimal" min={0.01} step={0.1} value={item.amount} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, amount: Number(event.target.value) } : value))} />
                     </FormField>
                     <FormField label="Đơn vị">
                       <select className="h-10 min-w-0 w-full rounded-md border bg-background px-3 text-sm" value={item.unit} onChange={(event) => setItems((current) => current.map((value, position) => position === index ? { ...value, unit: event.target.value as ServingUnit } : value))}>
@@ -361,7 +405,7 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
                         {food?.servingSizeGrams ? <><option value="GRAM">Gram</option><option value="ML">ml</option></> : null}
                       </select>
                     </FormField>
-                    <Button className="shrink-0" type="button" size="icon" variant="ghost" aria-label={`Xóa ${food?.name ?? "món"}`} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>
+                    <Button className="col-span-2 justify-self-end sm:col-span-1" type="button" size="icon" variant="ghost" aria-label={`Xóa ${food?.name ?? "món"}`} onClick={() => setItems((current) => current.filter((_, position) => position !== index))}>
                       <Trash2 className="size-4 text-red-600" />
                     </Button>
                   </div>
@@ -372,10 +416,10 @@ function MealEditor({ open, mealType, date, log, foods, onClose, onSaved }: { op
         </div>
 
         <div className="shrink-0 border-t bg-background px-5 py-4 sm:px-6">
-          <div className="mb-3 flex flex-col gap-2 sm:flex-row"><Input placeholder="Tên bữa muốn lưu, ví dụ: Bữa sáng thường ngày" value={collectionName} onChange={event => setCollectionName(event.target.value)} /><Button variant="outline" disabled={!collectionName.trim() || items.length === 0 || collectionMutation.isPending} onClick={() => collectionMutation.mutate()}><BookmarkPlus className="size-4" /> Lưu dùng nhanh</Button></div>
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row"><Input placeholder="Tên bữa muốn lưu, ví dụ: Bữa sáng thường ngày" value={collectionName} onChange={event => setCollectionName(event.target.value)} /><Button variant="outline" disabled={Boolean(recovery) || !isMealDraft(items) || !collectionName.trim() || items.length === 0 || collectionMutation.isPending} onClick={() => collectionMutation.mutate()}><BookmarkPlus className="size-4" /> Lưu dùng nhanh</Button></div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button className="w-full sm:w-auto" variant="outline" onClick={onClose}>Hủy</Button>
-          <Button className="w-full sm:w-auto" disabled={mutation.isPending || items.length === 0} onClick={() => mutation.mutate()}>
+          <Button className="w-full sm:w-auto" disabled={mutation.isPending || Boolean(recovery) || items.length === 0 || !isMealDraft(items)} onClick={() => mutation.mutate()}>
             {mutation.isPending ? "Đang lưu..." : `Lưu ${items.length} món`}
           </Button>
           </div>

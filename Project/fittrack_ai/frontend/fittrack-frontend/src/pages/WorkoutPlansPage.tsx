@@ -552,8 +552,8 @@ function PlanCard({
       <CardContent className="space-y-4">
         {plan.days.map((day) => (
           <div key={day.id} className="rounded-xl border p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="font-semibold">
+            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="min-w-0 break-words font-semibold">
                 Ngày {day.dayOrder}: {day.name}
               </h3>
 
@@ -562,7 +562,27 @@ function PlanCard({
               </Button>
             </div>
 
-            <div className="w-full overflow-x-auto">
+            <div className="space-y-3 sm:hidden">
+              {day.exercises.map((exercise) => (
+                <article key={exercise.id} className="min-w-0 space-y-2 rounded-xl border p-3">
+                  <div className="flex items-start gap-3">
+                    {exercise.imageUrl && <img src={exercise.imageUrl} alt={exercise.exerciseName} className="size-12 shrink-0 rounded-lg border object-cover" loading="lazy" />}
+                    <div className="min-w-0">
+                      <p className="break-words font-semibold">{exercise.exerciseName}</p>
+                      <p className="break-words text-xs text-muted-foreground">{exercise.muscleGroup} · {exercise.equipment || "Không dụng cụ"}</p>
+                    </div>
+                  </div>
+                  {exercise.description && <p className="break-words text-xs leading-5 text-muted-foreground">{exercise.description}</p>}
+                  <dl className="grid grid-cols-2 gap-2 text-sm">
+                    <div><dt className="text-xs text-muted-foreground">Số hiệp</dt><dd>{exercise.targetSets}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Lần lặp/hiệp</dt><dd>{exercise.targetReps}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Mức tạ</dt><dd>{exercise.targetWeight} kg</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Số lần còn có thể lặp</dt><dd>{exercise.targetRir} RIR</dd></div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+            <div className="hidden w-full overflow-x-auto sm:block">
               <Table>
                 <TableBody>
                   {day.exercises.map((exercise) => (

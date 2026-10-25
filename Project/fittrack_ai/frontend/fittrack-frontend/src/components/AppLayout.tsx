@@ -1,6 +1,7 @@
 import { useMemo, useState, type ElementType } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import AppErrorBoundary from "./common/AppErrorBoundary";
 import { getProfile } from "../api/user.api";
 import { useAuthStore } from "../store/auth.store";
 import { Button } from "@/components/ui/button";
@@ -249,7 +250,7 @@ export default function AppLayout() {
 
       <div className="lg:pl-[17.5rem]">
         <header className="sticky top-0 z-40 border-b border-border/70 bg-background/88 backdrop-blur-xl">
-          <div className="mx-auto flex h-[4.25rem] max-w-[1600px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto flex h-[4.25rem] max-w-[1600px] items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
@@ -257,7 +258,7 @@ export default function AppLayout() {
                     <Menu className="size-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[19rem] border-none bg-[#0c2821] p-0 text-white">
+                <SheetContent side="left" className="w-[19rem] max-w-[calc(100vw-2rem)] border-none bg-[#0c2821] p-0 text-white">
                   <SheetHeader className="border-b border-white/8 px-5 py-5 text-left">
                     <SheetTitle>
                       <Brand />
@@ -314,7 +315,7 @@ export default function AppLayout() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -325,7 +326,7 @@ export default function AppLayout() {
               >
                 <CircleHelp className="size-4" />
               </Button>
-              <NotificationBell isAdmin={isAdmin} />
+              <NotificationBell />
               {location.pathname !== "/lunch" && canUseFeature(authUser, "lunchEnabled") && (
                 <Button asChild variant="outline" className="hidden border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:inline-flex">
                   <Link to="/lunch">
@@ -351,7 +352,7 @@ export default function AppLayout() {
         </header>
 
         <main className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
-          <Outlet />
+          <AppErrorBoundary key={location.pathname} contained><Outlet /></AppErrorBoundary>
         </main>
       </div>
       {canUseFeature(authUser, "chatbotEnabled") && <AssistantChat />}

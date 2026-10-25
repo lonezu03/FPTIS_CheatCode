@@ -42,6 +42,12 @@ public class ScheduleService {
     private boolean internalSchedulerEnabled;
 
     @Transactional(readOnly = true)
+    public ScheduleResponse getOne(User user, String id) {
+        return toResponse(repository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lịch")));
+    }
+
+    @Transactional(readOnly = true)
     public List<ScheduleResponse> getMine(User user) {
         return repository.findByUserOrderByStartAtAsc(user).stream()
                 .map(this::toResponse)
@@ -110,7 +116,8 @@ public class ScheduleService {
                 target.add(new CalendarEntryResponse(
                         "TODO:" + todo.getId() + ":" + cursor, "TODO", todo.getId(), todo.getTitle(),
                         todo.getDescription(), todo.getCategory().name(), occurrenceStart, occurrenceEnd,
-                        todo.getStatus().name(), todo.getRecurrenceRule() != Todo.RecurrenceRule.NONE
+                        todo.getStatus().name(), todo.getRecurrenceRule() != Todo.RecurrenceRule.NONE,
+                        anchor, cursor.isAfter(firstDate)
                 ));
             }
             cursor = cursor.plusDays(1);

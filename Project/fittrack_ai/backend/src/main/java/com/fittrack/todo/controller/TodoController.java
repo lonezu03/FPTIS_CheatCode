@@ -18,6 +18,19 @@ import java.util.List;
 public class TodoController {
     private final TodoService todoService;
 
+    @GetMapping("/{id}")
+    public TodoResponse getOne(@AuthenticationPrincipal User user, @PathVariable String id) {
+        return todoService.getOne(user, id);
+    }
+
+    @GetMapping("/page")
+    public TodoService.PlannerPage getPage(@AuthenticationPrincipal User user,
+            @RequestParam(required = false) String view, @RequestParam(required = false) String category,
+            @RequestParam(required = false) com.fittrack.todo.entity.Todo.TodoStatus status,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "15") int size) {
+        return todoService.getPage(user, view, category, status, page, size);
+    }
+
     @GetMapping
     public List<TodoResponse> getMine(
             @AuthenticationPrincipal User user,

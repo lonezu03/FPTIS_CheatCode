@@ -38,13 +38,14 @@ export default function DashboardPage() {
   });
   const todayQuery = useQuery({ queryKey: ["dashboard-today"], queryFn: getTodayDashboard });
   const today = todayQuery.data;
-  const fitnessEnabled = today?.fitnessEnabled ?? authUser?.fitnessEnabled ?? false;
-  const healthEnabled = today?.healthEnabled ?? authUser?.healthEnabled ?? false;
-  const lunchEnabled = today?.lunchEnabled ?? authUser?.lunchEnabled ?? false;
-  const todoEnabled = today?.todoEnabled ?? authUser?.todoEnabled ?? false;
-  const scheduleEnabled = today?.scheduleEnabled ?? authUser?.scheduleEnabled ?? false;
-  const quoteEnabled = today?.quoteEnabled ?? authUser?.quoteEnabled ?? false;
-  const financeEnabled = today?.financeEnabled ?? authUser?.financeEnabled ?? false;
+  const isAdmin = authUser?.role === 'ADMIN';
+  const fitnessEnabled = isAdmin || (today?.fitnessEnabled ?? authUser?.fitnessEnabled ?? false);
+  const healthEnabled = isAdmin || (today?.healthEnabled ?? authUser?.healthEnabled ?? false);
+  const lunchEnabled = isAdmin || (today?.lunchEnabled ?? authUser?.lunchEnabled ?? false);
+  const todoEnabled = isAdmin || (today?.todoEnabled ?? authUser?.todoEnabled ?? false);
+  const scheduleEnabled = isAdmin || (today?.scheduleEnabled ?? authUser?.scheduleEnabled ?? false);
+  const quoteEnabled = isAdmin || (today?.quoteEnabled ?? authUser?.quoteEnabled ?? false);
+  const financeEnabled = isAdmin || (today?.financeEnabled ?? authUser?.financeEnabled ?? false);
   const lunchOnly = Boolean(
     authUser?.role !== "ADMIN"
       && lunchEnabled
@@ -77,7 +78,7 @@ export default function DashboardPage() {
       <div className="relative grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(21rem,25rem)] lg:items-center">
         <div>
         <p className="text-sm font-medium text-emerald-200/70">Không gian cá nhân của bạn</p>
-        <h2 className="mt-2 max-w-2xl text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">
+        <h2 className="mt-2 max-w-2xl break-words text-2xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl">
           Một ngày tốt bắt đầu từ một bước nhỏ.
         </h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-emerald-50/65">
@@ -129,6 +130,16 @@ export default function DashboardPage() {
         <WellnessHeroArt />
       </div>
     </div>
+    {(todoEnabled || scheduleEnabled || healthEnabled || fitnessEnabled || financeEnabled) && <Card>
+      <CardHeader><CardTitle>Ghi nhanh</CardTitle><p className="text-sm text-muted-foreground">Mở ngay biểu mẫu cần dùng. Kiểm tra và lưu khi bạn đã sẵn sàng.</p></CardHeader>
+      <CardContent className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+        {todoEnabled && <Button asChild variant="outline"><Link to="/todos?action=new"><ListTodo className="size-4" />Thêm việc</Link></Button>}
+        {scheduleEnabled && <Button asChild variant="outline"><Link to="/schedule?action=new"><CalendarClock className="size-4" />Thêm lịch</Link></Button>}
+        {healthEnabled && <Button asChild variant="outline"><Link to="/nutrition?action=new"><Soup className="size-4" />Ghi bữa ăn</Link></Button>}
+        {financeEnabled && <Button asChild variant="outline"><Link to="/finance?action=new"><WalletCards className="size-4" />Ghi chi tiêu</Link></Button>}
+        {fitnessEnabled && <Button asChild variant="outline"><Link to="/workouts?action=new"><Dumbbell className="size-4" />Bắt đầu tập</Link></Button>}
+      </CardContent>
+    </Card>}
     {today.coachInsight && (healthEnabled || fitnessEnabled) && (
       <Card className="border-emerald-200 bg-emerald-50/60">
         <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -157,7 +168,7 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     )}
-    <PageHeader title="Tổng quan hôm nay" description={healthEnabled || fitnessEnabled ? "Nắm nhanh tiến độ dinh dưỡng, luyện tập và các việc cần ưu tiên." : "Các thông tin liên quan đến quyền Đặt cơm và hồ sơ cá nhân của bạn."} />
+    <PageHeader title="Tổng quan hôm nay" description={healthEnabled || fitnessEnabled ? "Nắm nhanh tiến độ dinh dưỡng, luyện tập và các việc cần ưu tiên." : "Các thông tin và công việc liên quan đến những module bạn được sử dụng."} />
     <div className={`grid gap-4 sm:grid-cols-2 ${cards.length >= 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>{cards.map((card) => { const Icon = card.icon; return <Card key={card.title} className={`border-0 bg-gradient-to-br ${card.tone}`}><CardHeader className="flex flex-row items-center justify-between pb-0"><CardTitle className="text-sm text-muted-foreground">{card.title}</CardTitle><span className={`grid size-9 place-items-center rounded-xl ${card.iconTone}`}><Icon className="size-4"/></span></CardHeader><CardContent><p className="text-3xl font-semibold tracking-[-0.04em]">{card.value}</p><p className="mt-1 text-xs text-muted-foreground">{card.detail}</p></CardContent></Card>; })}</div>
     {todoEnabled || scheduleEnabled ? <div className="grid gap-4 md:grid-cols-2">{todoEnabled&&<QuickLinkCard icon={ListTodo} title="Việc cần làm" description="Giữ các việc quan trọng trong tầm mắt và đánh dấu khi hoàn tất." to="/todos" action="Mở danh sách việc"/>}{scheduleEnabled&&<QuickLinkCard icon={CheckCircle2} title="Thời khóa biểu" description="Xếp mốc thời gian và nhận thông báo trước khi hoạt động bắt đầu." to="/schedule" action="Mở thời khóa biểu"/>}</div>:null}
     {healthEnabled&&<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><MacroProgressCard title="Mục tiêu năng lượng" current={today.totalCalories} target={today.targetCalories} unit="kcal" percent={today.caloriesProgressPercent}/><MacroProgressCard title="Mục tiêu chất đạm" current={today.totalProtein} target={today.targetProtein} unit="g" percent={today.proteinProgressPercent}/><MacroProgressCard title="Mục tiêu tinh bột" current={today.totalCarbs} target={today.targetCarbs} unit="g" percent={today.carbsProgressPercent}/><MacroProgressCard title="Mục tiêu chất béo" current={today.totalFat} target={today.targetFat} unit="g" percent={today.fatProgressPercent}/></div>}

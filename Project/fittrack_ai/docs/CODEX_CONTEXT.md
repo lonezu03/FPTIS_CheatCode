@@ -1,6 +1,163 @@
 # FitTrack Current Project State
 
-Last updated: 2026-10-07
+Last updated: 2026-10-25
+
+## Latest handoff: web convenience and recoverable drafts (2026-10-25)
+
+Implemented requested improvements with three workers and independent QA/code
+review. Dashboard has permission-aware quick-entry links that open forms; ADMIN
+bypass matches route permissions. Notification inbox opens exact Todo/event
+details through new owner-scoped GET /api/todos/{id} and /api/schedule/{id}; Todo
+notifications expose completion and 10-minute snooze with API error handling.
+
+Workout, Todo, Schedule, Nutrition and Finance have account-scoped recoverable
+local drafts (7-day expiry, explicit restore/discard, no image data). Logout
+cleans current-owner drafts. Journal plaintext drafts are explicit opt-in,
+session-only for 12 hours and unavailable with PIN enabled; editors wait for
+privacy settings and validate restored values. Failed saves preserve content.
+Workout recovery counts accumulated active duration, excluding browser-closed
+time; reuse recent workout resets set completion. Long forms collapse optional
+fields. Nutrition copies a prior meal to editable draft; Finance reuses posted
+transactions as new unsaved templates with active account/category validation.
+
+Todo supports inline checklist, start, date shifting that preserves independent
+time offsets, and undo for nonrecurring completion. Quotes offer archive undo.
+Todo/calendar/finance and exercise-picker preferences are owner-scoped. Schedule
+creates events from a selected day and warns of overlaps in the inspected time
+window. Calendar API adds originalStartAt/carryOver for truthful carry-over
+badges, without changing stored dates. Recurrence behavior is retained.
+
+Reminder rows now retain identity/sentAt during full-form edits, disabled
+reminders are excluded from delivery, and explicit snooze enables reminders.
+Todo updates flush before response and use microsecond timestamps so undo's
+staleness check matches a subsequent read. This is a stale-change check, not
+an atomic cross-client version lock; simultaneous writes remain a limitation.
+
+Verification: full JDK21 suite 109 tests, zero failures/errors, 2 skipped;
+after the timestamp fix, 12 Todo unit/integration tests passed. Web 32 tests
+passed; final lint/build passed including exercise preferences/archive undo.
+Three production-preview Playwright tests passed
+at 320/375/390px, using mocked account/API responses: month calendar/drawer fit,
+new Todo focuses editor, draft survives reload and no data is auto-posted.
+Run npm run test:e2e:convenience to build then repeat these checks. Actual
+phone keyboard, real image/API and full multi-module device tests remain manual.
+No schema migration, mobile source/build, production writes, commit or deploy.
+Deploy backend first, then web for the new detail endpoints/calendar fields.
+
+## Latest handoff: responsive web and Todo planner (2026-10-25)
+
+Implemented approved review improvements using three implementation agents and
+independent QA/code review. Default/unknown routes now lead to Dashboard.
+Page-level render errors preserve the navigation shell and allow retry or
+navigation to another page. Mobile header/drawer, shared dialogs and assistant
+use bounded widths/dynamic viewport space. Schedule month opens a selected-day
+agenda; event actions are visible on touch, with larger completion/edit targets.
+Finance, Nutrition, Dashboard, Workout Plans and Weekly Report received narrow
+screen layouts, wrapping and compact chart dates.
+
+Todo web uses new owner-scoped GET /api/todos/page with SQL filtering, counts,
+bounded pagination and stable sorting. Legacy GET /api/todos remains available
+for mobile. TODAY includes unfinished carry-over; overdue/upcoming only include
+active tasks. Completing/deleting the final row clamps pagination. New/edit
+focuses the form; checklist typing retains focus. No migration required.
+
+Verification: full JDK21 backend suite 105 tests, no failures/errors, 2 skipped;
+web lint, 11 unit tests and production build passed. Four existing SPA route
+browser checks passed. Attempted authenticated mobile browser checks could not
+restore the mocked session; the experimental harness was removed, so visual
+320/375/390px validation remains outstanding. No commit/push/deploy or mobile
+source changes. Deploy backend before web because Todo uses the new endpoint.
+Next: validate signed-in planner/finance/nutrition on a phone, test last-page
+completion and carry-over, then deploy backend followed by web when requested.
+
+## Latest handoff: production web/backend and Android photo draft release (2026-10-24)
+
+Found JDK 21 at `C:\Users\anime\.jdks\jdk-21` and used it only in the test/build
+process environment. Backend suite passed: 103 tests, 0 failures/errors, 2
+skipped. Pushed backend receipt endpoint commit `b42cb4a7` to `main` first;
+Render `/api/health` confirmed `UP` and exactly that source commit. Pushed web
+commit `c47ab8b1` next; Vercel `ancai` production deployment was Ready and
+`https://ancai.vercel.app/api/health` reached the updated Render backend. The
+`HOME` branch was read for comparison only; all pushes used `main`.
+
+Mobile now has editable, unsaved photo drafts for Nutrition and Finance,
+including a camera/gallery choice. Receipt analysis still requires explicit
+account/category selection and save confirmation. Added the official
+`image_picker` dependency, iOS camera/photo usage descriptions, and bumped app
+version to `1.2.5+11`. Pushed mobile source commit `779a534c` to `main`.
+Flutter analyze passed with `--no-fatal-infos` (43 existing info-level lints;
+no errors/warnings), all 10 Flutter tests passed, and the Android release build
+completed. APK:
+`mobile/fittrack_mobile/build/app/outputs/flutter-apk/app-release.apk`;
+versionCode 11, versionName 1.2.5, 64,584,788 bytes, SHA-256
+`5A086A2E28F0EFB86E7433D235435FCA2AD7CBDDBE064BD5C41B371C8A4D3BED`.
+The build script verified the notification drawable in the APK. No device
+installation/camera smoke test or iOS build was possible here. Next: install
+the APK on a device, test camera/gallery, >1.5 MB rejection, uncertain food
+match, manual draft edits, account/category selection and cancel flows.
+
+## Latest handoff: web quick-entry and free-workout UX (2026-10-24)
+
+Implemented three parallel web improvements without changing Lunch or mobile.
+Nutrition photo analysis now maps recognized food names conservatively to the
+approved food catalog, lets the user correct/skip each match, then adds selected
+foods to an editable unsaved meal draft. Gram quantities are used only when the
+catalog food has serving-size conversion data. The photo picker validates type
+and size and prevents repeated analysis while pending. Finance can capture or
+upload a receipt and call authenticated `POST /api/finance/receipt/analyze` for
+an ephemeral Gemini estimate of amount, time, merchant and note. The user must
+still choose account/category and confirm the transaction; no image or
+transaction is saved by analysis. Finance guards against stale AI responses,
+rate-limits and validates images server-side, and bounds/redacts AI text. The
+free-workout dialog has responsive set controls, a fixed action footer, and
+collapsible optional fields and advanced suggestions; workout API/save logic is
+unchanged.
+
+Changed web NutritionPage, FinancePage/finance.api, WorkoutPage; backend finance
+controller, ReceiptAnalysisService and DTO, plus focused service tests. Web
+lint, 11 Vitest tests and production build passed; `git diff --check` passed.
+An independent read-only review identified three issues (stale finance response,
+nutrition image validation/loading, AI text sanitization); all were addressed.
+Backend compilation/tests were not run because this workstation has only JDK 17
+and the project requires JDK 21. Next: run `backend\\mvnw.cmd test` with JDK 21;
+smoke-test receipt/photo drafting with real authorized accounts, including bad
+images, uncertain matches and manual edits while analysis is pending. Deploy
+backend before web for the new finance endpoint. No production deploy or mobile
+work was done in this task.
+
+## Latest handoff: free-workout web UX (2026-10-23)
+
+User narrowed Workout to UX only (no photo import). Updated only
+`frontend/fittrack-frontend/src/pages/WorkoutPage.tsx`: responsive mobile set
+cards with Kg/Reps/RIR labels and a full-width completion control; scrollable
+dialog with a fixed footer; optional advanced suggestions collapsed by default;
+Vietnamese free-workout title. API/save logic unchanged. Independent read-only
+QA/reviewer passes found no logic blocker; their mobile grid observation was
+addressed with explicit row spans. Web lint, 11 Vitest tests, and production
+build passed. Existing logged-in Brave tab was not accessible to automation
+(no remote-debugging port); visual review at 375px remains needed. Do not
+confuse this UX work with the separate, unfinished photo-to-draft plans for
+Nutrition and Finance.
+
+## Latest handoff: project-scoped Codex multi-agent starter (2026-10-23)
+
+Adapted the user's `E:\Dowload\codex-multi-agent-starter` into FitTrack without
+overwriting existing project instructions or touching application code. Added
+`.codex/config.toml`, four read-only-by-instruction custom agent definitions
+(`ba_analyst`, `db_analyst`, `qa_analyst`, `code_reviewer`), the repo skill
+`.agents/skills/feature-pipeline/SKILL.md`, and `docs/CODEX_MULTI_AGENT.md`.
+`AGENTS.md` links to the optional workflow. Removed the starter's ineffective
+`sandbox_mode` fields: subagents inherit parent permissions. The skill keeps
+plan approval before substantive implementation and does not authorize deploy
+or production writes. No agents were launched for this configuration task.
+
+Verification: Codex CLI 0.162.0-alpha.17.2 starts from the project root without
+a config parse error and reports multi-agent enabled; all five TOML files parsed, required agent fields
+and skill frontmatter were checked, and `git diff --check` passed. Skill-creator's
+quick validator could not run because this workstation's Python lacks PyYAML;
+equivalent local structure checks passed. Next:
+open the FitTrack root in VS Code, start a fresh Codex conversation, and run
+the read-only discovery prompt in `docs/CODEX_MULTI_AGENT.md`.
 
 ## Latest handoff: Nutrition web render crash (2026-10-07)
 

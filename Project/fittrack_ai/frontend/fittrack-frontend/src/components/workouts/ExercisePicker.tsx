@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Check, ChevronDown, Dumbbell, ImageOff, Search, SlidersHorizontal, X } from "lucide-react";
 
 import type { Exercise } from "@/api/workout.api";
+import { useAuthStore } from "@/store/auth.store";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +14,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { filterExercises, getExerciseFacets } from "./exercise-search";
 
-export default function ExercisePicker({
+type ExercisePickerProps = { id: string; exercises: Exercise[]; value: string; onChange: (exerciseId: string) => void };
+
+export default function ExercisePicker(props: ExercisePickerProps) {
+  const ownerId = useAuthStore(state => state.user?.userId);
+  return <ExercisePickerContent key={ownerId ?? 'anonymous'} {...props} />;
+}
+
+function ExercisePickerContent({
   id,
   exercises,
   value,
@@ -26,13 +34,19 @@ export default function ExercisePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [muscleGroup, setMuscleGroup] = useState("");
-  const [equipment, setEquipment] = useState("");
+  const ownerId = useAuthStore(state => state.user?.userId);
+  const storageKey = `fittrack:exercise-picker:${ownerId ?? 'anonymous'}:filters`;
+  const [savedFilters] = useState(() => readFilters(storageKey));
+  const [muscleGroup, setMuscleGroup] = useState(savedFilters.muscleGroup);
+  const [equipment, setEquipment] = useState(savedFilters.equipment);
   const selected = exercises.find((exercise) => exercise.id === value);
   const facets = useMemo(() => getExerciseFacets(exercises), [exercises]);
+  // A remembered facet can disappear when the approved exercise catalog changes.
+  const activeMuscleGroup = facets.muscleGroups.includes(muscleGroup) ? muscleGroup : '';
+  const activeEquipment = facets.equipment.includes(equipment) ? equipment : '';
   const results = useMemo(
-    () => filterExercises(exercises, { query, muscleGroup, equipment }),
-    [equipment, exercises, muscleGroup, query],
+    () => filterExercises(exercises, { query, muscleGroup: activeMuscleGroup, equipment: activeEquipment }),
+    [activeEquipment, exercises, activeMuscleGroup, query],
   );
   const groupedResults = useMemo(() => {
     const groups = new Map<string, Exercise[]>();
@@ -43,11 +57,21 @@ export default function ExercisePicker({
     return [...groups.entries()];
   }, [results]);
   const hasFilters = !!query || !!muscleGroup || !!equipment;
+  const rememberFilters = (nextMuscle: string, nextEquipment: string) => {
+    if (!ownerId) return;
+    try { localStorage.setItem(storageKey, JSON.stringify({ muscleGroup: nextMuscle, equipment: nextEquipment })); } catch { /* Optional browser preference. */ }
+  };
+  const changeOpen = (next: boolean) => {
+    if (next) { const saved = readFilters(storageKey); setMuscleGroup(saved.muscleGroup); setEquipment(saved.equipment); }
+    setQuery('');
+    setOpen(next);
+  };
 
   const clearFilters = () => {
     setQuery("");
     setMuscleGroup("");
     setEquipment("");
+    rememberFilters('', '');
   };
 
   const choose = (exerciseId: string) => {
@@ -60,7 +84,7 @@ export default function ExercisePicker({
       <button
         id={id}
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => changeOpen(true)}
         className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-input bg-background px-3 py-2 text-left text-sm transition hover:border-emerald-400 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-emerald-500/20"
         aria-haspopup="dialog"
       >
@@ -78,7 +102,7 @@ export default function ExercisePicker({
         <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={changeOpen}>
         <DialogContent className="h-[min(92vh,820px)] grid-rows-[auto_auto_minmax(0,1fr)] gap-0 overflow-hidden p-0 sm:max-w-3xl sm:p-0">
           <DialogHeader className="border-b bg-slate-50 px-5 py-5 pr-14 sm:px-6">
             <DialogTitle className="flex items-center gap-2 text-lg font-bold">
@@ -117,8 +141,8 @@ export default function ExercisePicker({
               <label className="space-y-1.5 text-xs font-semibold">
                 <span>Nhóm cơ chính</span>
                 <select
-                  value={muscleGroup}
-                  onChange={(event) => setMuscleGroup(event.target.value)}
+                  value={activeMuscleGroup}
+                  onChange={(event) => { setMuscleGroup(event.target.value); rememberFilters(event.target.value, activeEquipment); }}
                   className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm font-normal"
                 >
                   <option value="">Tất cả nhóm cơ</option>
@@ -130,8 +154,8 @@ export default function ExercisePicker({
               <label className="space-y-1.5 text-xs font-semibold">
                 <span>Dụng cụ</span>
                 <select
-                  value={equipment}
-                  onChange={(event) => setEquipment(event.target.value)}
+                  value={activeEquipment}
+                  onChange={(event) => { setEquipment(event.target.value); rememberFilters(activeMuscleGroup, event.target.value); }}
                   className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm font-normal"
                 >
                   <option value="">Tất cả dụng cụ</option>
@@ -153,6 +177,7 @@ export default function ExercisePicker({
                 </Button>
               )}
             </div>
+            <p className="text-xs text-muted-foreground">Nhóm cơ và dụng cụ được ghi nhớ theo tài khoản trên trình duyệt này; từ khóa được xóa khi mở lại.</p>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
@@ -216,6 +241,10 @@ export default function ExercisePicker({
       </Dialog>
     </>
   );
+}
+
+function readFilters(key: string): { muscleGroup: string; equipment: string } {
+  try { const raw = localStorage.getItem(key); const parsed = raw ? JSON.parse(raw) : null; return { muscleGroup: typeof parsed?.muscleGroup === 'string' ? parsed.muscleGroup : '', equipment: typeof parsed?.equipment === 'string' ? parsed.equipment : '' }; } catch { return { muscleGroup: '', equipment: '' }; }
 }
 
 function ExerciseThumb({ exercise, compact = false }: { exercise?: Exercise; compact?: boolean }) {

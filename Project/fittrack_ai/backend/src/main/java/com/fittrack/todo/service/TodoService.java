@@ -45,6 +45,34 @@ public class TodoService {
     private boolean internalSchedulerEnabled;
 
     @Transactional(readOnly = true)
+    public TodoResponse getOne(User user, String id) {
+        return toResponse(repository.findByIdAndUser(id, user)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy công việc")));
+    }
+
+    public record PlannerCounts(long today, long overdue, long upcoming, long done, long all) {}
+    public record PlannerPage(List<TodoResponse> content, long totalElements, int totalPages,
+                              int number, int size, PlannerCounts counts) {}
+
+    @Transactional(readOnly = true)
+    public PlannerPage getPage(User user, String view, String category, Todo.TodoStatus status, int page, int size) {
+        LocalDateTime now = LocalDateTime.now(BUSINESS_ZONE);
+        var result = repository.findAll(TodoFilters.matching(user, view, category, status, now),
+                PageRequest.of(Math.max(0, page), Math.max(1, Math.min(100, size)),
+                        org.springframework.data.domain.Sort.by("dueAt").ascending().and(
+                                org.springframework.data.domain.Sort.by("createdAt").descending()).and(
+                                org.springframework.data.domain.Sort.by("id").ascending())));
+        var counts = new PlannerCounts(
+                repository.count(TodoFilters.matching(user, "TODAY", category, status, now)),
+                repository.count(TodoFilters.matching(user, "OVERDUE", category, status, now)),
+                repository.count(TodoFilters.matching(user, "UPCOMING", category, status, now)),
+                repository.count(TodoFilters.matching(user, "ALL", category, Todo.TodoStatus.DONE, now)),
+                repository.count(TodoFilters.matching(user, "ALL", category, status, now)));
+        return new PlannerPage(result.getContent().stream().map(this::toResponse).toList(),
+                result.getTotalElements(), result.getTotalPages(), result.getNumber(), result.getSize(), counts);
+    }
+
+    @Transactional(readOnly = true)
     public List<TodoResponse> getMine(User user, String view, String category, Todo.TodoStatus status) {
         LocalDate today = LocalDate.now(BUSINESS_ZONE);
         return repository.findByUserOrderByDueAtAscCreatedAtDesc(user).stream()
@@ -85,6 +113,7 @@ public class TodoService {
                 && saved.getRecurrenceRule() != Todo.RecurrenceRule.NONE) {
             createNextOccurrence(saved);
         }
+        repository.flush();
         return toResponse(saved);
     }
 
@@ -160,6 +189,7 @@ public class TodoService {
             throw new IllegalArgumentException("Công việc đã kết thúc nên không thể báo lại");
         }
         LocalDateTime scheduled = LocalDateTime.now(BUSINESS_ZONE).plusMinutes(minutes).withSecond(0).withNano(0);
+        todo.setReminderEnabled(true);
         boolean exists = todo.getReminders().stream().anyMatch(item -> item.getScheduledAt().equals(scheduled));
         if (!exists) todo.getReminders().add(TodoReminderEntry.builder().todo(todo).scheduledAt(scheduled).build());
         return toResponse(repository.save(todo));
@@ -210,22 +240,31 @@ public class TodoService {
             java.util.ArrayList<LocalDateTime> times = new java.util.ArrayList<>(request.reminderTimes());
             if (request.reminderAt() != null) times.add(request.reminderAt());
             replaceReminders(todo, times);
+            if (request.reminderEnabled() != null) todo.setReminderEnabled(request.reminderEnabled());
         }
     }
 
     private void replaceReminders(Todo todo, List<LocalDateTime> requestedTimes) {
         if (todo.getReminders() == null) todo.setReminders(new java.util.ArrayList<>());
-        else todo.getReminders().clear();
         long distinctCount = requestedTimes.stream().filter(Objects::nonNull).distinct().count();
         if (distinctCount > 5) {
             throw new IllegalArgumentException("Tối đa 5 mốc nhắc cho một công việc");
         }
-        requestedTimes.stream().filter(Objects::nonNull).distinct().sorted().limit(5).forEach(time -> {
+        List<LocalDateTime> times = requestedTimes.stream().filter(Objects::nonNull).distinct().sorted().toList();
+        for (LocalDateTime time : times) {
             if (todo.getDueAt() != null && time.isAfter(todo.getDueAt())) {
                 throw new IllegalArgumentException("Mốc nhắc phải trước hạn hoàn thành");
             }
-            todo.getReminders().add(TodoReminderEntry.builder().todo(todo).scheduledAt(time).build());
-        });
+        }
+        // Keep unchanged rows (and sentAt) when checklist/status edits resend the full form.
+        // Replacing them would both resend old reminders and collide with the unique time key.
+        todo.getReminders().removeIf(reminder -> !times.contains(reminder.getScheduledAt()));
+        for (LocalDateTime time : times) {
+            if (todo.getReminders().stream().noneMatch(reminder -> reminder.getScheduledAt().equals(time))) {
+                todo.getReminders().add(TodoReminderEntry.builder().todo(todo).scheduledAt(time).build());
+            }
+        }
+        todo.getReminders().sort(Comparator.comparing(TodoReminderEntry::getScheduledAt));
         if (!todo.getReminders().isEmpty()) {
             todo.setReminderEnabled(true);
             todo.setReminderAt(todo.getReminders().getFirst().getScheduledAt());
@@ -335,15 +374,16 @@ public class TodoService {
 
     private boolean matchesView(Todo todo, String view, LocalDate today) {
         if (view == null || view.isBlank() || "ALL".equalsIgnoreCase(view)) return true;
-        if (todo.getStatus() == Todo.TodoStatus.DONE || todo.getStatus() == Todo.TodoStatus.ARCHIVED) {
-            return "TODAY".equalsIgnoreCase(view) && hasDate(todo, today);
-        }
-        LocalDate taskDate = todo.getDueAt() != null ? todo.getDueAt().toLocalDate()
-                : todo.getStartAt() != null ? todo.getStartAt().toLocalDate() : null;
+        boolean active = todo.getStatus() == Todo.TodoStatus.OPEN || todo.getStatus() == Todo.TodoStatus.IN_PROGRESS;
+        LocalDate taskDate = todo.getStartAt() != null ? todo.getStartAt().toLocalDate()
+                : todo.getDueAt() != null ? todo.getDueAt().toLocalDate() : null;
         return switch (view.toUpperCase(Locale.ROOT)) {
-            case "TODAY" -> hasDate(todo, today);
-            case "OVERDUE" -> todo.getDueAt() != null && todo.getDueAt().toLocalDate().isBefore(today);
-            case "UPCOMING" -> taskDate != null && taskDate.isAfter(today);
+            case "TODAY" -> (taskDate != null && taskDate.equals(today))
+                    || (active && taskDate != null && taskDate.isBefore(today))
+                    || (todo.getStatus() == Todo.TodoStatus.DONE && todo.getCompletedAt() != null
+                            && todo.getCompletedAt().toLocalDate().equals(today));
+            case "OVERDUE" -> active && todo.getDueAt() != null && todo.getDueAt().isBefore(LocalDateTime.now(BUSINESS_ZONE));
+            case "UPCOMING" -> active && taskDate != null && taskDate.isAfter(today);
             default -> true;
         };
     }
@@ -412,6 +452,7 @@ public class TodoService {
                 && saved.getRecurrenceRule() != Todo.RecurrenceRule.NONE) {
             createNextOccurrence(saved);
         }
+        repository.flush();
         return toResponse(saved);
     }
 

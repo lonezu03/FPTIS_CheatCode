@@ -1,4 +1,7 @@
-import { useRef, useState, type ElementType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ElementType, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useAuthStore } from "@/store/auth.store";
+import { readConvenience, writeConvenience } from "@/lib/convenience-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownRight,
@@ -112,16 +115,35 @@ const natureLabels: Record<string, string> = Object.fromEntries([
 
 const monthNow = localDate().slice(0, 7);
 const monthDate = (value: string) => `${value}-01`;
+type FinanceView = { month: string; search: string; type: string; account: string; category: string; tab: string };
+function isFinanceView(value: unknown): value is FinanceView {
+  if (!value || typeof value !== "object") return false;
+  const view = value as FinanceView;
+  return typeof view.month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(view.month) && typeof view.search === "string" && ["", "EXPENSE", "INCOME", "TRANSFER"].includes(view.type) && typeof view.account === "string" && typeof view.category === "string" && ["overview", "transactions", "budgets", "recurring", "settings"].includes(view.tab);
+}
+type TransactionForm = { type: FinanceTransactionInput["type"]; amount: string; accountId: string; destinationAccountId: string; categoryId: string; expenseNature: ExpenseNature; occurredAt: string; merchant: string; note: string };
+function isTransactionDraft(value: unknown): value is TransactionForm {
+  if (!value || typeof value !== "object") return false;
+  const draft = value as TransactionForm;
+  return ["EXPENSE", "INCOME", "TRANSFER"].includes(draft.type) && ["amount", "accountId", "destinationAccountId", "categoryId", "occurredAt", "merchant", "note"].every(key => typeof draft[key as keyof TransactionForm] === "string") && expenseNatures.some(nature => nature.value === draft.expenseNature) && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(draft.occurredAt);
+}
 
 export default function FinancePage() {
   const queryClient = useQueryClient();
-  const [month, setMonth] = useState(monthNow);
+  const userId = useAuthStore(state => state.user?.userId);
+  const [searchParams] = useSearchParams();
+  const [preferenceOwner] = useState(userId);
+  const preferenceKey = userId && preferenceOwner === userId ? `fittrack:finance-view:${userId}` : null;
+  const [preferences] = useState(() => readConvenience(preferenceKey, isFinanceView));
+  const [month, setMonth] = useState(preferences?.month ?? monthNow);
   const [page, setPage] = useState(0);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [accountFilter, setAccountFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [transactionDialog, setTransactionDialog] = useState<FinanceTransaction | "new" | null>(null);
+  const [search, setSearch] = useState(preferences?.search ?? "");
+  const [typeFilter, setTypeFilter] = useState(preferences?.type ?? "");
+  const [accountFilter, setAccountFilter] = useState(preferences?.account ?? "");
+  const [categoryFilter, setCategoryFilter] = useState(preferences?.category ?? "");
+  const [tab, setTab] = useState(preferences?.tab ?? "overview");
+  const [transactionDialog, setTransactionDialog] = useState<FinanceTransaction | "new" | null>(() => searchParams.get("action") === "new" ? "new" : null);
+  useEffect(() => { writeConvenience(preferenceKey, { month, search, type: typeFilter, account: accountFilter, category: categoryFilter, tab }); }, [preferenceKey, month, search, typeFilter, accountFilter, categoryFilter, tab]);
   const [accountDialog, setAccountDialog] = useState<FinanceAccount | "new" | null>(null);
   const [categoryDialog, setCategoryDialog] = useState<FinanceCategory | "new" | null>(null);
   const [budgetDialog, setBudgetDialog] = useState<FinanceBudget | "new" | null>(null);
@@ -293,8 +315,8 @@ export default function FinancePage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="overview" className="gap-4">
-        <TabsList className="max-w-full justify-start overflow-x-auto">
+      <Tabs value={tab} onValueChange={setTab} className="gap-4">
+        <TabsList className="flex w-full max-w-full justify-start overflow-x-auto [&>button]:shrink-0">
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="transactions">Giao dịch</TabsTrigger>
           <TabsTrigger value="budgets">Ngân sách</TabsTrigger>
@@ -310,12 +332,12 @@ export default function FinancePage() {
                 <Empty text="Tạo tài khoản tiền đầu tiên để bắt đầu." />
               ) : (
                 activeAccounts.map((account) => (
-                  <div key={account.id} className="flex items-center justify-between rounded-xl border p-3">
-                    <div>
+                  <div key={account.id} className="flex min-w-0 flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 break-words">
                       <p className="font-semibold">{account.name}</p>
                       <p className="text-xs text-muted-foreground">{accountTypeLabel(account.accountType)}</p>
                     </div>
-                    <p className="font-bold">{money.format(account.currentBalance)}</p>
+                    <p className="break-words font-bold">{money.format(account.currentBalance)}</p>
                   </div>
                 ))
               )}
@@ -659,8 +681,8 @@ export default function FinancePage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {accountList.length === 0 ? <Empty text="Chưa có tài khoản tiền." /> : accountList.map((account) => (
-                <div key={account.id} className={`flex items-center justify-between rounded-xl border p-3 ${account.active ? "" : "opacity-60"}`}>
-                  <div>
+                <div key={account.id} className={`flex min-w-0 items-start justify-between gap-2 rounded-xl border p-3 ${account.active ? "" : "opacity-60"}`}>
+                  <div className="min-w-0 flex-1 break-words">
                     <strong>{account.name}</strong>
                     <p className="text-xs text-muted-foreground">
                       {accountTypeLabel(account.accountType)} · số dư đầu {money.format(account.openingBalance)}
@@ -668,7 +690,7 @@ export default function FinancePage() {
                     </p>
                   </div>
                   {account.active && (
-                    <div className="flex gap-1">
+                    <div className="flex shrink-0 gap-1">
                       <Button size="icon-sm" variant="ghost" aria-label="Sửa tài khoản" onClick={() => setAccountDialog(account)}>
                         <Pencil className="size-4" />
                       </Button>
@@ -696,15 +718,15 @@ export default function FinancePage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {categoryList.filter((item) => item.active).map((category) => (
-                <div key={category.id} className="flex items-center justify-between rounded-xl border p-3">
-                  <div>
+                <div key={category.id} className="flex min-w-0 items-start justify-between gap-2 rounded-xl border p-3">
+                  <div className="min-w-0 flex-1 break-words">
                     <strong>{category.name}</strong>
                     <p className="text-xs text-muted-foreground">
                       {category.transactionKind === "INCOME" ? "Thu nhập" : natureLabels[category.expenseNature || "UNCLASSIFIED"]}
                       {category.parentId ? ` · danh mục con của ${categoryList.find((item) => item.id === category.parentId)?.name ?? "khác"}` : ""}
                     </p>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex shrink-0 gap-1">
                     <Button size="icon-sm" variant="ghost" aria-label="Sửa danh mục" onClick={() => setCategoryDialog(category)}>
                       <Pencil className="size-4" />
                     </Button>
@@ -732,6 +754,7 @@ export default function FinancePage() {
           accounts={accountList}
           categories={categoryList}
           recentCategoryIds={recentCategoryIds}
+          templates={(transactions.data?.content ?? []).filter(transaction => transaction.status === "POSTED").slice(0, 5)}
           onOpenChange={(open) => !open && setTransactionDialog(null)}
           onSaved={refresh}
         />
@@ -828,6 +851,7 @@ function TransactionDialog({
   accounts,
   categories,
   recentCategoryIds,
+  templates,
   onOpenChange,
   onSaved,
 }: {
@@ -835,10 +859,16 @@ function TransactionDialog({
   accounts: FinanceAccount[];
   categories: FinanceCategory[];
   recentCategoryIds: string[];
+  templates: FinanceTransaction[];
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState({
+  const userId = useAuthStore(state => state.user?.userId);
+  const [draftOwner] = useState(userId);
+  const draftKey = userId && draftOwner === userId && !initial ? `fittrack:finance-draft:${userId}` : null;
+  const [recovery, setRecovery] = useState(() => readConvenience(draftKey, isTransactionDraft));
+  const saved = useRef(false);
+  const [form, setForm] = useState<TransactionForm>({
     type: initial?.type ?? "EXPENSE",
     amount: initial ? String(initial.amount) : "",
     accountId: initial?.accountId ?? "",
@@ -849,6 +879,7 @@ function TransactionDialog({
     merchant: initial?.merchant ?? "",
     note: initial?.note ?? "",
   });
+  useEffect(() => { if (!recovery && !saved.current) writeConvenience(draftKey, form.amount || form.merchant || form.note ? form : null); }, [draftKey, form, recovery]);
   const [receiptWarning, setReceiptWarning] = useState<string | null>(null);
   const formRevision = useRef(0);
   const analysisRevision = useRef(0);
@@ -901,6 +932,8 @@ function TransactionDialog({
         : createFinanceTransaction(payload);
     },
     onSuccess: () => {
+      saved.current = true;
+      writeConvenience(draftKey, null);
       toast.success(initial ? "Đã cập nhật giao dịch" : "Đã ghi giao dịch");
       onSaved();
       onOpenChange(false);
@@ -908,11 +941,17 @@ function TransactionDialog({
     onError: (error) => toast.error(getApiErrorMessage(error, "Không thể lưu giao dịch.")),
   });
   const choices = categories.filter((category) => category.active && category.transactionKind === form.type);
+  const recentAccountIds = [...new Set(templates.map(template => template.accountId))];
+  const accountChoices = accounts.filter(account => account.active).sort((left, right) => {
+    const leftIndex = recentAccountIds.indexOf(left.id);
+    const rightIndex = recentAccountIds.indexOf(right.id);
+    return (leftIndex < 0 ? Infinity : leftIndex) - (rightIndex < 0 ? Infinity : rightIndex);
+  });
   const recentChoices = recentCategoryIds
     .map((id) => choices.find((category) => category.id === id))
     .filter((category): category is FinanceCategory => Boolean(category));
-  const valid = Number(form.amount) > 0 && Boolean(form.accountId) && Boolean(form.occurredAt)
-    && (form.type === "TRANSFER" ? Boolean(form.destinationAccountId) : Boolean(form.categoryId));
+  const valid = Number.isFinite(Number(form.amount)) && Number(form.amount) > 0 && accounts.some(account => account.active && account.id === form.accountId) && Boolean(form.occurredAt)
+    && (form.type === "TRANSFER" ? form.destinationAccountId !== form.accountId && accounts.some(account => account.active && account.id === form.destinationAccountId) : choices.some(category => category.id === form.categoryId)) && !recovery;
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
@@ -920,7 +959,10 @@ function TransactionDialog({
         <DialogHeader>
           <DialogTitle>{initial ? "Sửa giao dịch" : "Ghi giao dịch nhanh"}</DialogTitle>
           <DialogDescription>Số tiền luôn là số dương; chọn đúng loại để báo cáo không bị sai.</DialogDescription>
+          {!initial && <p className="text-xs text-muted-foreground">Bản nháp lưu trên thiết bị tối đa 7 ngày và bị xóa khi đăng xuất. Chỉ bấm Lưu giao dịch mới ghi nhận vào tài khoản.</p>}
         </DialogHeader>
+        {recovery && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><p>Có giao dịch đang nhập trên thiết bị. Chưa có khoản nào được ghi nhận.</p><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" onClick={() => { formRevision.current += 1; setForm(recovery); setRecovery(null); }}>Khôi phục bản nháp</Button><Button size="sm" variant="outline" onClick={() => { writeConvenience(draftKey, null); setRecovery(null); }}>Bỏ bản nháp cũ</Button></div></div>}
+        {!initial && templates.length > 0 && <details className="rounded-xl border p-3"><summary className="cursor-pointer text-sm font-medium">Dùng lại giao dịch gần đây</summary><p className="my-2 text-xs text-muted-foreground">Sao chép vào biểu mẫu với thời điểm hiện tại. Kiểm tra rồi bấm lưu để ghi giao dịch mới.</p><div className="flex flex-wrap gap-2">{templates.map(template => <Button key={template.id} type="button" size="sm" variant="outline" disabled={Boolean(recovery) || receiptMutation.isPending} onClick={() => { formRevision.current += 1; setForm({ type: template.type, amount: String(template.amount), accountId: accounts.some(account => account.active && account.id === template.accountId) ? template.accountId : "", destinationAccountId: template.destinationAccountId ?? "", categoryId: template.categoryId ?? "", expenseNature: template.expenseNature ?? "ESSENTIAL_VARIABLE", occurredAt: localDateTime(), merchant: template.merchant ?? "", note: template.note ?? "" }); }}>{template.categoryName ?? transactionTypeLabel(template.type)} · {money.format(template.amount)}</Button>)}</div></details>}
         <form id="finance-transaction" className="grid gap-4 sm:grid-cols-2" onChange={() => { formRevision.current += 1; }} onSubmit={(event) => { event.preventDefault(); if (!receiptMutation.isPending && !mutation.isPending && valid) mutation.mutate(); }}>
           {!initial && <div className="sm:col-span-2 rounded-xl border p-3 space-y-2">
             <label className="text-sm font-medium" htmlFor="finance-receipt">Chụp hoặc tải ảnh hóa đơn để điền nhanh</label>
@@ -928,7 +970,7 @@ function TransactionDialog({
             <p className="text-xs text-muted-foreground">{receiptMutation.isPending ? "Đang đọc hóa đơn..." : receiptWarning ?? "Chỉ tạo bản nháp; bạn kiểm tra rồi mới bấm Lưu giao dịch. Không lưu ảnh."}</p>
           </div>}
           <Field label="Số tiền (VND)" required className="sm:col-span-2">
-            <Input autoFocus inputMode="numeric" min="1" type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
+            <Input autoFocus inputMode="decimal" min="0.01" step="0.01" type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
           </Field>
           <Field label="Loại giao dịch" required>
             <select className="field" value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as FinanceTransactionInput["type"], categoryId: "", destinationAccountId: "" })}>
@@ -940,7 +982,7 @@ function TransactionDialog({
           <Field label="Tài khoản nguồn / nhận thu nhập" required>
             <select className="field" value={form.accountId} onChange={(event) => setForm({ ...form, accountId: event.target.value, destinationAccountId: event.target.value === form.destinationAccountId ? "" : form.destinationAccountId })}>
               <option value="">Chọn tài khoản</option>
-              {accounts.filter((account) => account.active).map((account) => <option key={account.id} value={account.id}>{account.name} · {money.format(account.currentBalance)}</option>)}
+              {accountChoices.map((account) => <option key={account.id} value={account.id}>{account.name} · {money.format(account.currentBalance)}{recentAccountIds.includes(account.id) ? " · Đã dùng gần đây" : ""}</option>)}
             </select>
           </Field>
           {form.type === "TRANSFER" ? (
@@ -982,17 +1024,18 @@ function TransactionDialog({
               </div>
             </Field>
           )}
-          {form.type === "EXPENSE" && (
+          <details className="sm:col-span-2 rounded-xl border p-3"><summary className="cursor-pointer text-sm font-medium">Thông tin bổ sung: tính chất chi, nơi mua, ghi chú</summary><div className="mt-3 grid gap-4 sm:grid-cols-2">{form.type === "EXPENSE" && (
             <NatureField value={form.expenseNature} onChange={(expenseNature) => setForm({ ...form, expenseNature })} />
           )}
-          <Field label="Thời điểm" required>
-            <Input type="datetime-local" value={form.occurredAt} onChange={(event) => setForm({ ...form, occurredAt: event.target.value })} />
-          </Field>
           <Field label="Nơi chi / nguồn thu">
             <Input placeholder="Ví dụ: siêu thị, công ty..." value={form.merchant} onChange={(event) => setForm({ ...form, merchant: event.target.value })} />
           </Field>
           <Field label="Ghi chú">
             <Input placeholder="Thông tin giúp bạn nhớ giao dịch" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} />
+          </Field>
+          </div></details>
+          <Field label="Thời điểm" required>
+            <Input type="datetime-local" value={form.occurredAt} onChange={(event) => setForm({ ...form, occurredAt: event.target.value })} />
           </Field>
         </form>
         <DialogFooter>
@@ -1319,7 +1362,7 @@ function Metric({ title, value, detail, icon: Icon, tone }: {
     <Card className="border-0 shadow-sm">
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <div><p className="text-sm text-muted-foreground">{title}</p><p className="mt-2 text-2xl font-bold tracking-tight">{money.format(value)}</p>{detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}</div>
+          <div className="min-w-0 break-words"><p className="text-sm text-muted-foreground">{title}</p><p className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">{money.format(value)}</p>{detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}</div>
           <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${tone}`}><Icon className="size-5" /></span>
         </div>
       </CardContent>
@@ -1328,7 +1371,7 @@ function Metric({ title, value, detail, icon: Icon, tone }: {
 }
 
 function ReportLine({ label, value, signed = false }: { label: string; value: number; signed?: boolean }) {
-  return <div className="flex justify-between rounded-xl bg-muted/35 p-3"><span>{label}</span><strong>{signed && value > 0 ? "+" : ""}{money.format(value)}</strong></div>;
+  return <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 rounded-xl bg-muted/35 p-3"><span>{label}</span><strong className="break-words">{signed && value > 0 ? "+" : ""}{money.format(value)}</strong></div>;
 }
 
 function InlineError({ error, fallback }: { error: unknown; fallback: string }) {

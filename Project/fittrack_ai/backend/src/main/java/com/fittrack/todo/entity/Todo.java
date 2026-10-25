@@ -98,7 +98,7 @@ public class Todo {
 
     @PrePersist
     void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         createdAt = now;
         updatedAt = now;
         if (status == null) status = TodoStatus.OPEN;
@@ -113,7 +113,7 @@ public class Todo {
 
     @PreUpdate
     void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
     }
 
     public enum TodoStatus { OPEN, IN_PROGRESS, DONE, SKIPPED, CANCELLED, ARCHIVED }

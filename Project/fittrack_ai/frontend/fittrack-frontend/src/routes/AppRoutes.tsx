@@ -45,7 +45,7 @@ export default function AppRoutes() {
           <Route element={<ProtectedRoute />}>
             <Route path="/change-password" element={<ChangePasswordPage />} />
             <Route element={<AppLayout />}>
-              <Route index element={<Navigate to="/lunch" replace />} />
+              <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route element={<FeatureRoute feature="lunchEnabled" />}>
                 <Route path="/lunch" element={<LunchPage />} />
@@ -86,7 +86,7 @@ export default function AppRoutes() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to="/lunch" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

@@ -12,7 +12,7 @@ import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 
-public interface TodoRepository extends JpaRepository<Todo, String> {
+public interface TodoRepository extends JpaRepository<Todo, String>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<Todo> {
     List<Todo> findByUserAndStatusNotOrderByDueAtAscCreatedAtDesc(User user, Todo.TodoStatus status);
     List<Todo> findByUserOrderByDueAtAscCreatedAtDesc(User user);
     @Query("""

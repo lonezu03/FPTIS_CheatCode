@@ -235,7 +235,7 @@ function WeeklyReportContent({
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={includedNutrition}>
-                  <XAxis dataKey="date" />
+                  <XAxis dataKey="date" tickFormatter={(date: string) => date.slice(5).split("-").reverse().join("/")} minTickGap={24} tick={{ fontSize: 11 }} />
                   <YAxis />
                   <Tooltip />
                   <Bar dataKey="calories" name="Năng lượng thực tế" />
@@ -257,7 +257,7 @@ function WeeklyReportContent({
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={includedNutrition}>
-                  <XAxis dataKey="date" />
+                  <XAxis dataKey="date" tickFormatter={(date: string) => date.slice(5).split("-").reverse().join("/")} minTickGap={24} tick={{ fontSize: 11 }} />
                   <YAxis />
                   <Tooltip />
                   <Line type="monotone" dataKey="protein" name="Protein thực tế" strokeWidth={2} />

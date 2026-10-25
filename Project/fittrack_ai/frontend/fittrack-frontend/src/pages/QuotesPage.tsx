@@ -121,7 +121,12 @@ export default function QuotesPage() {
     mutationFn: ({ id, action }: { id: string; action: "archive" | "restore" }) =>
       action === "archive" ? archiveQuote(id) : restoreQuote(id),
     onSuccess: async (_, variables) => {
-      toast.success(variables.action === "archive" ? "Đã lưu trữ câu nói" : "Đã khôi phục câu nói");
+      toast.success(variables.action === "archive" ? "Đã lưu trữ câu nói" : "Đã khôi phục câu nói", variables.action === 'archive' ? { action: { label: 'Hoàn tác', onClick: () => {
+        void getQuote(variables.id).then(current => {
+          if (current.quote.status !== 'ARCHIVED') { toast.info('Câu nói đã thay đổi; hãy kiểm tra lại trước khi khôi phục.'); return; }
+          stateMutation.mutate({ id: variables.id, action: 'restore' });
+        }).catch(error => toast.error(errorMessage(error, 'Không thể hoàn tác')));
+      } } } : undefined);
       await invalidate();
     },
     onError: (error) => toast.error(errorMessage(error, "Không thể thay đổi trạng thái")),

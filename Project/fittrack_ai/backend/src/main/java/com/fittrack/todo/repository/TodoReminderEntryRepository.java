@@ -18,6 +18,7 @@ public interface TodoReminderEntryRepository extends JpaRepository<TodoReminderE
             join fetch reminder.todo todo
             join fetch todo.user
             where reminder.sentAt is null and reminder.scheduledAt <= :now
+              and todo.reminderEnabled = true
             order by reminder.scheduledAt asc
             """)
     List<TodoReminderEntry> findDueForUpdate(@Param("now") LocalDateTime now, Pageable pageable);

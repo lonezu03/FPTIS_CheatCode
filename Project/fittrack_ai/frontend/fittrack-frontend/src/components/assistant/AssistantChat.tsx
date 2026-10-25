@@ -198,7 +198,7 @@ export default function AssistantChat() {
       {open && (
         <section
           aria-label="FitTrack PT"
-          className="fixed bottom-24 right-4 z-50 flex h-[min(680px,calc(100vh-8rem))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-emerald-900/10 bg-background shadow-2xl shadow-emerald-950/20"
+          className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-[min(680px,calc(100dvh-8rem-env(safe-area-inset-bottom)))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-emerald-900/10 bg-background shadow-2xl shadow-emerald-950/20"
         >
           <header className="flex items-center gap-3 bg-[#0c2821] px-4 py-3.5 text-white">
             <span className="grid size-10 place-items-center rounded-2xl bg-emerald-400 text-[#0c2821]">
@@ -365,7 +365,7 @@ export default function AssistantChat() {
         type="button"
         size="lg"
         onClick={() => setOpen((value) => !value)}
-        className="fixed bottom-5 right-4 z-50 h-14 rounded-2xl bg-[#0c2821] px-4 text-white shadow-xl shadow-emerald-950/25 hover:bg-[#123a30]"
+        className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4 z-50 h-14 rounded-2xl bg-[#0c2821] px-4 text-white shadow-xl shadow-emerald-950/25 hover:bg-[#123a30]"
         aria-expanded={open}
         aria-label={open ? "Đóng FitTrack PT" : "Mở FitTrack PT"}
       >

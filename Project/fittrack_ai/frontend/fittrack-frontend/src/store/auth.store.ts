@@ -65,6 +65,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
+    const owner = useAuthStore.getState().user?.userId;
+    if (owner) {
+      try {
+        const prefixes = [`fittrack:meal-draft:${owner}:`, `fittrack-session-draft:${owner}:`];
+        const exactKeys = [`fittrack:todo:${owner}:draft`, `fittrack:schedule:${owner}:draft`, `fittrack:finance-draft:${owner}`];
+        for (const storage of [localStorage, sessionStorage]) {
+          for (let index = storage.length - 1; index >= 0; index--) {
+            const key = storage.key(index);
+            if (key && (exactKeys.includes(key) || prefixes.some(prefix => key === prefix || key.startsWith(prefix)))) storage.removeItem(key);
+          }
+        }
+      } catch { /* Browser storage may be unavailable. */ }
+    }
     localStorage.removeItem("fittrack-user");
     set({ token: null, user: null });
   },

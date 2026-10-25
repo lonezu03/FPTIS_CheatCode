@@ -61,6 +61,15 @@ public final class ScheduleDtos {
             LocalDateTime startAt,
             LocalDateTime endAt,
             String status,
-            boolean recurring
-    ) {}
+            boolean recurring,
+            LocalDateTime originalStartAt,
+            boolean carryOver
+    ) {
+        public CalendarEntryResponse(String occurrenceId, String sourceType, String sourceId, String title,
+                                     String description, String category, LocalDateTime startAt,
+                                     LocalDateTime endAt, String status, boolean recurring) {
+            this(occurrenceId, sourceType, sourceId, title, description, category, startAt, endAt,
+                    status, recurring, startAt, false);
+        }
+    }
 }

@@ -70,6 +70,13 @@ export type TodoQuery = {
 
 export const getTodos = async (query: TodoQuery = {}) =>
   (await api.get<Todo[]>('/todos', { params: query })).data;
+export const getTodo = async (id: string) => (await api.get<Todo>(`/todos/${encodeURIComponent(id)}`)).data;
+export type TodoPage = {
+  content: Todo[]; totalElements: number; totalPages: number; number: number; size: number;
+  counts: { today: number; overdue: number; upcoming: number; done: number; all: number };
+};
+export const getTodoPage = async (query: TodoQuery & { page: number; size: number }) =>
+  (await api.get<TodoPage>('/todos/page', { params: query })).data;
 export const createTodo = async (payload: TodoPayload) => (await api.post<Todo>('/todos', payload)).data;
 export const updateTodo = async (id: string, payload: TodoPayload) => (await api.patch<Todo>(`/todos/${id}`, payload)).data;
 export const completeTodo = async (id: string) => (await api.post<Todo>(`/todos/${id}/complete`)).data;

@@ -2,6 +2,11 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { completeTodo, snoozeTodo } from "@/api/todo.api";
+import { useAuthStore } from "@/store/auth.store";
+import { canUseFeature } from "@/lib/feature-access";
+import { notificationTarget } from "./notification-target";
 
 import {
   getLunchNotifications,
@@ -12,12 +17,14 @@ import {
 } from "@/api/lunch.api";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, getApiErrorMessage } from "@/lib/format";
 
-export default function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
+export default function NotificationBell() {
+  const user = useAuthStore(state => state.user);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [completedIds, setCompletedIds] = useState<Set<string>>(() => new Set());
   const query = useQuery({
     queryKey: lunchKeys.notifications(),
     queryFn: getLunchNotifications,
@@ -27,10 +34,22 @@ export default function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
   const readMutation = useMutation({
     mutationFn: markLunchNotificationRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: lunchKeys.notifications() }),
+    onError: error => toast.error(getApiErrorMessage(error, 'Không thể đánh dấu đã đọc')),
   });
   const readAllMutation = useMutation({
     mutationFn: markAllLunchNotificationsRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: lunchKeys.notifications() }),
+    onError: error => toast.error(getApiErrorMessage(error, 'Không thể đánh dấu đã đọc')),
+  });
+  const actionMutation = useMutation({
+    mutationFn: async ({ id, snooze }: { id: string; snooze: boolean; notificationId: string }) => snooze ? snoozeTodo(id, 10) : completeTodo(id),
+    onSuccess: (_data, variables) => {
+      toast.success(variables.snooze ? 'Sẽ nhắc lại sau 10 phút' : 'Đã hoàn thành công việc');
+      if (!variables.snooze) setCompletedIds(previous => new Set([...previous, variables.id]));
+      readMutation.mutate(variables.notificationId);
+      for (const key of ['todos', 'calendar', 'dashboard-today']) void queryClient.invalidateQueries({ queryKey: [key] });
+    },
+    onError: error => toast.error(getApiErrorMessage(error, 'Không thể xử lý công việc')),
   });
 
   const openNotification = (notification: LunchNotification) => {
@@ -39,19 +58,7 @@ export default function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
     void queryClient.invalidateQueries({ queryKey: lunchKeys.transactions() });
     void queryClient.invalidateQueries({ queryKey: lunchKeys.paymentRequests() });
     setOpen(false);
-    if (notification.referenceType === "JOURNAL" || notification.type === "JOURNAL_REMINDER") {
-      navigate("/journal");
-      return;
-    }
-    navigate(
-      isAdmin && notification.type === "MODULE_ACCESS_REQUEST"
-        ? "/admin/users"
-        : isAdmin && notification.type === "PAYMENT_REQUEST"
-        ? "/admin/lunch?tab=payments"
-        : notification.type.startsWith("PAYMENT_")
-          ? "/lunch?tab=payment"
-          : "/lunch",
-    );
+    navigate(notificationTarget(notification, user));
   };
 
   return (
@@ -82,12 +89,13 @@ export default function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
           </div>
         </SheetHeader>
         <div className="space-y-2 px-4 pb-6">
-          {(query.data?.notifications ?? []).length === 0 ? (
+          {query.isLoading ? <p className="p-6 text-sm text-muted-foreground">Đang tải thông báo...</p> : query.isError ? <div className="rounded-xl border p-4"><p className="text-sm">Không thể tải thông báo.</p><Button variant="outline" className="mt-2" onClick={() => void query.refetch()}>Thử lại</Button></div> : (query.data?.notifications ?? []).length === 0 ? (
             <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
               Chưa có thông báo.
             </p>
           ) : (
             query.data?.notifications.map((notification) => (
+              <article key={notification.id} className="rounded-xl border overflow-hidden">
               <button
                 key={notification.id}
                 type="button"
@@ -110,6 +118,11 @@ export default function NotificationBell({ isAdmin }: { isAdmin: boolean }) {
                   </span>
                 </div>
               </button>
+              {notification.referenceType === 'TODO' && notification.referenceId && !completedIds.has(notification.referenceId) && canUseFeature(user, 'todoEnabled') && <div className="flex flex-wrap gap-2 border-t p-2">
+                <Button size="sm" variant="outline" disabled={actionMutation.isPending} onClick={() => actionMutation.mutate({ id: notification.referenceId!, snooze: false, notificationId: notification.id })}>Hoàn thành</Button>
+                <Button size="sm" variant="outline" disabled={actionMutation.isPending} onClick={() => actionMutation.mutate({ id: notification.referenceId!, snooze: true, notificationId: notification.id })}>Nhắc lại 10 phút</Button>
+              </div>}
+              </article>
             ))
           )}
         </div>

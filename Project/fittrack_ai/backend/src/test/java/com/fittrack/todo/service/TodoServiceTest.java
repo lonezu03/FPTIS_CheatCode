@@ -41,6 +41,53 @@ class TodoServiceTest {
     private TodoService service;
 
     @Test
+    void explicitSnoozeEnablesPreviouslyDisabledReminders() {
+        User user = new User();
+        Todo todo = Todo.builder().id("task").user(user).title("Việc")
+                .status(Todo.TodoStatus.OPEN).priority(Todo.TodoPriority.MEDIUM)
+                .category(Todo.TodoCategory.PERSONAL).recurrenceRule(Todo.RecurrenceRule.NONE)
+                .recurrenceInterval(1).reminderEnabled(false).build();
+        when(repository.findByIdAndUser("task", user)).thenReturn(Optional.of(todo));
+        when(repository.save(any(Todo.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        service.snooze(user, "task", 10);
+        assertThat(todo.getReminderEnabled()).isTrue();
+        assertThat(todo.getReminders()).hasSize(1);
+    }
+
+    @Test
+    void checklistEditKeepsSentReminderIdentityAndHonorsDisabledFlag() {
+        User user = new User();
+        LocalDateTime time = LocalDateTime.of(2026, 10, 25, 9, 0);
+        Todo todo = Todo.builder().id("task").user(user).title("Việc")
+                .status(Todo.TodoStatus.OPEN).priority(Todo.TodoPriority.MEDIUM)
+                .category(Todo.TodoCategory.PERSONAL).recurrenceRule(Todo.RecurrenceRule.NONE)
+                .recurrenceInterval(1).reminderAt(time).reminderEnabled(true)
+                .subtasks(new java.util.ArrayList<>()).reminders(new java.util.ArrayList<>()).build();
+        var reminder = com.fittrack.todo.entity.TodoReminderEntry.builder().id("existing")
+                .todo(todo).scheduledAt(time).sentAt(time.plusMinutes(1)).build();
+        todo.getReminders().add(reminder);
+        when(repository.findByIdAndUser("task", user)).thenReturn(Optional.of(todo));
+        when(repository.save(any(Todo.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        TodoRequest request = new TodoRequest("Việc", null, Todo.TodoStatus.IN_PROGRESS,
+                Todo.TodoPriority.MEDIUM, null, null, null, Todo.TodoCategory.PERSONAL,
+                Todo.RecurrenceRule.NONE, 1, null, null, null, null, time, false,
+                List.of(new SubtaskRequest(null, "Bước", true, 0)), List.of(time));
+        service.update(user, "task", request);
+        assertThat(todo.getReminders()).containsExactly(reminder);
+        assertThat(reminder.getSentAt()).isEqualTo(time.plusMinutes(1));
+        assertThat(todo.getReminderEnabled()).isFalse();
+    }
+
+    @Test
+    void deepLinkReadRejectsUnknownOrOtherOwnersTodo() {
+        User owner = new User();
+        when(repository.findByIdAndUser("other-task", owner)).thenReturn(Optional.empty());
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.getOne(owner, "other-task"))
+                .isInstanceOf(com.fittrack.common.exception.ResourceNotFoundException.class);
+        verify(repository).findByIdAndUser("other-task", owner);
+    }
+
+    @Test
     void createStoresPlannerFieldsAndChecklist() {
         User user = new User();
         TodoRequest request = new TodoRequest(

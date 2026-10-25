@@ -19,6 +19,11 @@ import java.time.LocalDateTime;
 public class ScheduleController {
     private final ScheduleService scheduleService;
 
+    @GetMapping("/{id}")
+    public ScheduleResponse getOne(@AuthenticationPrincipal User user, @PathVariable String id) {
+        return scheduleService.getOne(user, id);
+    }
+
     @GetMapping
     public List<ScheduleResponse> getMine(@AuthenticationPrincipal User user,
                                           @RequestParam(required = false) LocalDateTime from,

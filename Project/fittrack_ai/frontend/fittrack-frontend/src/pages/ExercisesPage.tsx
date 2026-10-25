@@ -1,4 +1,4 @@
-import { type ChangeEvent, useState } from "react";
+import { type ChangeEvent, useEffect, useState } from "react";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -49,12 +49,22 @@ const emptyDraft: ExerciseDraft = {
 const MAX_IMAGE_FILE_SIZE = 1024 * 1024;
 
 export default function ExercisesPage() {
+  const ownerId = useAuthStore(state => state.user?.userId);
+  return <ExercisesWorkspace key={ownerId ?? 'anonymous'} />;
+}
+
+function ExercisesWorkspace() {
   const queryClient = useQueryClient();
   const isAdmin = useAuthStore((state) => state.user?.role === "ADMIN");
-
-  const [keyword, setKeyword] = useState("");
-  const [searchKeyword, setSearchKeyword] = useState("");
-  const [includeInactive, setIncludeInactive] = useState(isAdmin);
+  const ownerId = useAuthStore(state => state.user?.userId);
+  const storageKey = `fittrack:exercises:${ownerId ?? 'anonymous'}:filters`;
+  const [preferences] = useState(() => {
+    try { const raw = localStorage.getItem(storageKey); const parsed = raw ? JSON.parse(raw) : null; return { keyword: typeof parsed?.keyword === 'string' ? parsed.keyword : '', includeInactive: typeof parsed?.includeInactive === 'boolean' ? parsed.includeInactive : isAdmin }; } catch { return { keyword: '', includeInactive: isAdmin }; }
+  });
+  const [keyword, setKeyword] = useState(preferences.keyword);
+  const [searchKeyword, setSearchKeyword] = useState(preferences.keyword);
+  const [includeInactive, setIncludeInactive] = useState(preferences.includeInactive);
+  useEffect(() => { if (ownerId) { try { localStorage.setItem(storageKey, JSON.stringify({ keyword: searchKeyword, includeInactive })); } catch { /* Optional browser preference. */ } } }, [ownerId, storageKey, searchKeyword, includeInactive]);
 
   const [draft, setDraft] = useState<ExerciseDraft>({
     name: "Đẩy ngực với tạ đơn",
@@ -232,7 +242,7 @@ export default function ExercisesPage() {
 
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <div className="flex flex-1 gap-2">
+            <div className="flex min-w-0 flex-1 gap-2">
               <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm bài tập..." />
 
               <Button onClick={() => { exercisePager.resetPage(); setSearchKeyword(keyword); }}>Tìm kiếm</Button>
@@ -248,6 +258,7 @@ export default function ExercisesPage() {
                 Hiện mục đã lưu trữ
               </label>
             )}
+            {(keyword || searchKeyword || (isAdmin && includeInactive)) && <Button variant="ghost" onClick={() => { setKeyword(''); setSearchKeyword(''); setIncludeInactive(false); exercisePager.resetPage(); }}>Xóa bộ lọc</Button>}
           </div>
 
           {exercisesQuery.isLoading ? (
