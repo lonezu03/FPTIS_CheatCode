@@ -17,6 +17,9 @@ import java.util.List;
 public class FinanceController {
     private final FinanceService service;
     private final ReceiptAnalysisService receiptAnalysisService;
+    private final com.fittrack.finance.service.FinanceReconciliationService reconciliation;
+    @PostMapping("/accounts/{id}/reconcile") public ReconciliationResponse reconcile(@AuthenticationPrincipal User user,@PathVariable String id,@Valid @RequestBody ReconcileRequest request){return reconciliation.reconcile(user,id,request);}
+    @GetMapping("/accounts/{id}/reconciliations") public PageResponse<ReconciliationResponse> reconciliations(@AuthenticationPrincipal User user,@PathVariable String id,@RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="10") int size){return reconciliation.history(user,id,page,size);}
     @PostMapping("/receipt/analyze") public ReceiptAnalysisDtos.Response analyzeReceipt(@AuthenticationPrincipal User user,@Valid @RequestBody ReceiptAnalysisDtos.Request request){return receiptAnalysisService.analyze(user,request);}
     @GetMapping("/accounts") public List<AccountResponse> accounts(@AuthenticationPrincipal User user){return service.accounts(user);}
     @PostMapping("/accounts") public AccountResponse createAccount(@AuthenticationPrincipal User user,@Valid @RequestBody AccountRequest request){return service.createAccount(user,request);}

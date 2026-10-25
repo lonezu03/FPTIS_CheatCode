@@ -14,6 +14,12 @@ public final class FinanceDtos {
     public record AccountResponse(String id,String name,String accountType,String currencyCode,
         BigDecimal openingBalance,BigDecimal currentBalance,boolean active) {}
 
+    public record ReconcileRequest(@NotNull @Digits(integer=16, fraction=2) BigDecimal actualBalance,
+        @NotNull @Digits(integer=18, fraction=2) BigDecimal expectedBalance,
+        @NotBlank @Size(max=500) String note) {}
+    public record ReconciliationResponse(String id,String accountId,BigDecimal balanceBefore,
+        BigDecimal balanceAfter,BigDecimal difference,String note,LocalDateTime createdAt) {}
+
     public record CategoryRequest(@NotBlank @Size(max=120) String name,
         @NotBlank @Pattern(regexp="EXPENSE|INCOME") String transactionKind,
         @Pattern(regexp="FIXED_MANDATORY|ESSENTIAL_VARIABLE|TRUE_EXPENSE|SAVING|DISCRETIONARY") String expenseNature,

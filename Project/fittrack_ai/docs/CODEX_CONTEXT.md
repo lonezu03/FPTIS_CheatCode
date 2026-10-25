@@ -2,6 +2,33 @@
 
 Last updated: 2026-10-25
 
+## Latest handoff: personal wallet balance reconciliation (2026-10-25)
+
+User reported stale personal finance data and asked for DB clearing or a way to
+correct wallet balances. Implemented owner-scoped wallet reconciliation instead
+of deleting production history; no external DB connection or production writes.
+Web Finance overview/settings expose “Đối soát”: enter actual balance (including
+zero/negative), required reason, preview difference and explicit confirmation.
+Latest balance is loaded on open; a stale expected balance returns 409 and
+requires review/confirmation again. Paginated adjustment history remains visible.
+
+New POST /api/finance/accounts/{id}/reconcile and GET
+/api/finance/accounts/{id}/reconciliations. Reconciliation adjusts openingBalance
+by the difference, preserving existing balance API/mobile compatibility and all
+transactions/reports. It writes before/after balance and baseline plus reason to
+finance_balance_reconciliations (new Flyway V31). Finance balance writes lock
+owner accounts in stable ID order to serialize transfers/edits/reconciliations.
+Archived wallets are history-only; admins cannot access other owners' wallets.
+Company Lunch funds and Todo data are untouched.
+
+Verification: 14 Finance backend unit/integration tests passed (4 new tests for
+balance math/transfer/VOID, reports unchanged, zero/negative, stale/owner/archive
+and input validation). Web lint, all 34 tests and build passed; two new UI tests
+cover explicit confirmation/fresh snapshot/zero and recovery after conflict.
+No live PostgreSQL migration validation, push, deploy or mobile build performed.
+Next: deploy backend first (Flyway V31), then web; open Finance → Đối soát số dư
+ví, reconcile each wallet to real cash/bank balance and verify audit history.
+
 ## Latest handoff: web convenience and recoverable drafts (2026-10-25)
 
 Implemented requested improvements with three workers and independent QA/code

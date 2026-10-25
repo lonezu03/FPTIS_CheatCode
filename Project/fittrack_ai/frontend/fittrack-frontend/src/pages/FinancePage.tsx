@@ -69,6 +69,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getApiErrorMessage } from "@/lib/format";
+import BalanceReconciliationDialog from '@/components/finance/BalanceReconciliationDialog';
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -145,6 +146,7 @@ export default function FinancePage() {
   const [transactionDialog, setTransactionDialog] = useState<FinanceTransaction | "new" | null>(() => searchParams.get("action") === "new" ? "new" : null);
   useEffect(() => { writeConvenience(preferenceKey, { month, search, type: typeFilter, account: accountFilter, category: categoryFilter, tab }); }, [preferenceKey, month, search, typeFilter, accountFilter, categoryFilter, tab]);
   const [accountDialog, setAccountDialog] = useState<FinanceAccount | "new" | null>(null);
+  const [reconcileAccount, setReconcileAccount] = useState<FinanceAccount | null>(null);
   const [categoryDialog, setCategoryDialog] = useState<FinanceCategory | "new" | null>(null);
   const [budgetDialog, setBudgetDialog] = useState<FinanceBudget | "new" | null>(null);
   const [recurringDialog, setRecurringDialog] = useState<FinanceRecurring | "new" | null>(null);
@@ -238,6 +240,7 @@ export default function FinancePage() {
           description="Theo dõi tiền, chuẩn bị nghĩa vụ và biết phần còn có thể sử dụng. FitTrack không giữ hoặc chuyển tiền thật."
         />
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setTab('settings')}>Đối soát số dư ví</Button>
           <Input
             aria-label="Tháng tài chính"
             className="w-40"
@@ -338,6 +341,7 @@ export default function FinancePage() {
                       <p className="text-xs text-muted-foreground">{accountTypeLabel(account.accountType)}</p>
                     </div>
                     <p className="break-words font-bold">{money.format(account.currentBalance)}</p>
+                    <Button variant="outline" size="sm" onClick={() => setReconcileAccount(account)}>Đối soát</Button>
                   </div>
                 ))
               )}
@@ -678,6 +682,7 @@ export default function FinancePage() {
                 <CardTitle>Tài khoản tiền</CardTitle>
                 <Button size="sm" onClick={() => setAccountDialog("new")}><Plus className="size-4" /> Thêm</Button>
               </div>
+              <p className="text-sm text-muted-foreground">Số dư bị lệch sau thời gian không ghi chép? Chọn “Đối soát” để nhập số tiền thực tế, kể cả 0. Lịch sử thu chi vẫn được giữ.</p>
             </CardHeader>
             <CardContent className="space-y-2">
               {accountList.length === 0 ? <Empty text="Chưa có tài khoản tiền." /> : accountList.map((account) => (
@@ -688,6 +693,8 @@ export default function FinancePage() {
                       {accountTypeLabel(account.accountType)} · số dư đầu {money.format(account.openingBalance)}
                       {!account.active ? " · Đã lưu trữ" : ""}
                     </p>
+                    <p className="mt-1 text-sm font-semibold">Hiện có: {money.format(account.currentBalance)}</p>
+                    <Button className="mt-2" size="sm" variant="outline" onClick={() => setReconcileAccount(account)}>{account.active ? 'Đối soát số dư' : 'Lịch sử đối soát'}</Button>
                   </div>
                   {account.active && (
                     <div className="flex shrink-0 gap-1">
@@ -766,6 +773,7 @@ export default function FinancePage() {
           onSaved={refresh}
         />
       )}
+      {reconcileAccount && <BalanceReconciliationDialog key={reconcileAccount.id} account={reconcileAccount} onClose={() => setReconcileAccount(null)} />}
       {categoryDialog && (
         <CategoryDialog
           initial={categoryDialog === "new" ? null : categoryDialog}
@@ -1087,7 +1095,7 @@ function AccountDialog({ initial, onOpenChange, onSaved }: {
         </select>
       </Field>
       <Field label="Số dư ban đầu (VND)" required><Input type="number" value={balance} onChange={(event) => setBalance(event.target.value)} /></Field>
-      {initial && <Hint>Cập nhật số dư đầu sẽ tính lại số dư hiện tại dựa trên toàn bộ lịch sử giao dịch.</Hint>}
+      {initial && <Hint>Đây là số tiền tại thời điểm bắt đầu theo dõi, không phải số tiền hiện có. Muốn sửa số dư hiện tại theo tiền thực tế, hãy dùng “Đối soát” tại danh sách ví.</Hint>}
     </SimpleDialog>
   );
 }

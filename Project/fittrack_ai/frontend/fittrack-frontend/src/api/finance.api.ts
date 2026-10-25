@@ -88,6 +88,11 @@ export type FinanceRecurringInput = {
 export const getFinanceDashboard = async (month: string) => (await api.get<FinanceDashboard>("/finance/dashboard", { params: { month } })).data;
 export const getFinanceReport = async (month: string) => (await api.get<FinanceReport>("/finance/reports/monthly", { params: { month } })).data;
 export const getFinanceAccounts = async () => (await api.get<FinanceAccount[]>("/finance/accounts")).data;
+export type BalanceReconciliation = { id: string; accountId: string; balanceBefore: number; balanceAfter: number; difference: number; note: string; createdAt: string };
+export const reconcileFinanceAccount = async (id: string, payload: { actualBalance: number; expectedBalance: number; note: string }) =>
+  (await api.post<BalanceReconciliation>(`/finance/accounts/${encodeURIComponent(id)}/reconcile`, payload)).data;
+export const getFinanceReconciliations = async (id: string, page = 0) =>
+  (await api.get<PageResponse<BalanceReconciliation>>(`/finance/accounts/${encodeURIComponent(id)}/reconciliations`, { params: { page, size: 10 } })).data;
 export const createFinanceAccount = async (payload: FinanceAccountInput) => (await api.post<FinanceAccount>("/finance/accounts", payload)).data;
 export const updateFinanceAccount = async (id: string, payload: FinanceAccountInput) => (await api.put<FinanceAccount>(`/finance/accounts/${id}`, payload)).data;
 export const archiveFinanceAccount = async (id: string) => { await api.delete(`/finance/accounts/${id}`); };

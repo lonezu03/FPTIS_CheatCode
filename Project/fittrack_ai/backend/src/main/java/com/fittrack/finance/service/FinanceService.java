@@ -46,12 +46,12 @@ public class FinanceService {
         return accountResponse(accounts.save(a),List.of());
     }
     @Transactional public AccountResponse updateAccount(User user,String id,AccountRequest r){
-        validateAccount(r); var a=account(user,id); a.setName(r.name().trim());a.setAccountType(upper(r.accountType()));
+        accounts.lockByOwner(user);validateAccount(r); var a=account(user,id); a.setName(r.name().trim());a.setAccountType(upper(r.accountType()));
         a.setCurrencyCode(r.currencyCode()==null?"VND":upper(r.currencyCode()));a.setOpeningBalance(r.openingBalance());
         return accountResponse(accounts.save(a),transactions.findByUserAndStatus(user,"POSTED"));
     }
     @Transactional public void archiveAccount(User user,String id){
-        var a=account(user,id);a.setActive(false);accounts.save(a);
+        accounts.lockByOwner(user);var a=account(user,id);a.setActive(false);accounts.save(a);
         recurring.findByUserOrderByActiveDescNextDueDateAsc(user).stream()
             .filter(rule->Boolean.TRUE.equals(rule.getActive())&&(rule.getAccount().getId().equals(id)
                 ||(rule.getDestinationAccount()!=null&&rule.getDestinationAccount().getId().equals(id))))
@@ -79,9 +79,9 @@ public class FinanceService {
             PageRequest.of(Math.max(0,page),safeSize,Sort.by(Sort.Order.desc("occurredAt"),Sort.Order.desc("createdAt"))));
         return PageResponse.from(result.map(this::transactionResponse));
     }
-    @Transactional public TransactionResponse createTransaction(User user,TransactionRequest r){var tx=new FinanceTransaction();tx.setUser(user);applyTransaction(user,tx,r);var saved=transactions.save(tx);checkBudgetAlerts(user,saved.getOccurredAt().toLocalDate());return transactionResponse(saved);}
-    @Transactional public TransactionResponse updateTransaction(User user,String id,TransactionRequest r){var tx=transaction(user,id);if(tx.getSourceType()!=null)throw new IllegalArgumentException("Giao dịch đồng bộ không thể sửa thủ công");if("VOID".equals(tx.getStatus()))throw new IllegalArgumentException("Giao dịch đã hủy không thể sửa");applyTransaction(user,tx,r);var saved=transactions.save(tx);checkBudgetAlerts(user,saved.getOccurredAt().toLocalDate());return transactionResponse(saved);}
-    @Transactional public void voidTransaction(User user,String id){var tx=transaction(user,id);if(tx.getSourceType()!=null)throw new IllegalArgumentException("Giao dịch đồng bộ không thể xóa thủ công");if("VOID".equals(tx.getStatus()))return;tx.setStatus("VOID");tx.setDeletedAt(LocalDateTime.now(ZONE));transactions.save(tx);}
+    @Transactional public TransactionResponse createTransaction(User user,TransactionRequest r){accounts.lockByOwner(user);var tx=new FinanceTransaction();tx.setUser(user);applyTransaction(user,tx,r);var saved=transactions.save(tx);checkBudgetAlerts(user,saved.getOccurredAt().toLocalDate());return transactionResponse(saved);}
+    @Transactional public TransactionResponse updateTransaction(User user,String id,TransactionRequest r){accounts.lockByOwner(user);var tx=transaction(user,id);if(tx.getSourceType()!=null)throw new IllegalArgumentException("Giao dịch đồng bộ không thể sửa thủ công");if("VOID".equals(tx.getStatus()))throw new IllegalArgumentException("Giao dịch đã hủy không thể sửa");applyTransaction(user,tx,r);var saved=transactions.save(tx);checkBudgetAlerts(user,saved.getOccurredAt().toLocalDate());return transactionResponse(saved);}
+    @Transactional public void voidTransaction(User user,String id){accounts.lockByOwner(user);var tx=transaction(user,id);if(tx.getSourceType()!=null)throw new IllegalArgumentException("Giao dịch đồng bộ không thể xóa thủ công");if("VOID".equals(tx.getStatus()))return;tx.setStatus("VOID");tx.setDeletedAt(LocalDateTime.now(ZONE));transactions.save(tx);}
 
     @Transactional(readOnly=true) public List<BudgetResponse> budgets(User user,LocalDate month){LocalDate start=monthStart(month);return budgetResponses(user,start);}
     @Transactional public BudgetResponse saveBudget(User user,String id,BudgetRequest r){
