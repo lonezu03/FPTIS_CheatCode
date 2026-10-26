@@ -6,26 +6,41 @@ import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
 import 'live_workout_sheet.dart';
 import 'nutrition_diary_tab.dart';
+import '../catalog/catalog_exercise_picker.dart';
+import 'training_data.dart';
 
 class FitnessScreen extends StatefulWidget {
-  const FitnessScreen({super.key});
+  const FitnessScreen({super.key, this.showNutrition = true});
+  final bool showNutrition;
   @override
   State<FitnessScreen> createState() => _FitnessScreenState();
 }
 
 class _FitnessScreenState extends State<FitnessScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController tabs;
+    with TickerProviderStateMixin {
+  late TabController tabs;
   List<Map<String, dynamic>> workouts = [];
   Map<String, dynamic>? weeklyVolume;
   Object? error;
   bool loading = true;
+  int page = 0, totalPages = 0, totalElements = 0;
+  String? exerciseId, exerciseName;
+  DateTime? from, to;
 
   @override
   void initState() {
     super.initState();
-    tabs = TabController(length: 2, vsync: this);
+    tabs = TabController(length: widget.showNutrition ? 2 : 1, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void didUpdateWidget(covariant FitnessScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.showNutrition != widget.showNutrition) {
+      tabs.dispose();
+      tabs = TabController(length: widget.showNutrition ? 2 : 1, vsync: this);
+    }
   }
 
   @override
@@ -41,7 +56,16 @@ class _FitnessScreenState extends State<FitnessScreen>
     });
     try {
       final api = context.read<ApiClient>();
-      final workoutRaw = await api.get('/workouts/sessions');
+      final workoutRaw = await api.get(
+        '/workouts/sessions/history',
+        queryParameters: {
+          'page': page,
+          'size': 12,
+          if (from != null) 'from': DateFormat('yyyy-MM-dd').format(from!),
+          if (to != null) 'to': DateFormat('yyyy-MM-dd').format(to!),
+          if (exerciseId != null) 'exerciseId': exerciseId,
+        },
+      );
       Map<String, dynamic>? volume;
       try {
         final volumeRaw = await api.get('/workouts/weekly-volume');
@@ -52,6 +76,12 @@ class _FitnessScreenState extends State<FitnessScreen>
       if (!mounted) return;
       setState(() {
         workouts = _list(workoutRaw);
+        totalPages = workoutRaw is Map
+            ? (workoutRaw['totalPages'] as num?)?.toInt() ?? 0
+            : 0;
+        totalElements = workoutRaw is Map
+            ? (workoutRaw['totalElements'] as num?)?.toInt() ?? workouts.length
+            : workouts.length;
         weeklyVolume = volume;
       });
     } catch (e) {
@@ -88,13 +118,14 @@ class _FitnessScreenState extends State<FitnessScreen>
                 subtitle: 'Ghi lại buổi tập và bữa ăn bằng dữ liệu rõ ràng, có đơn vị.',
               ),
               const SizedBox(height: 14),
-              TabBar(
-                controller: tabs,
-                tabs: const [
-                  Tab(text: 'Buổi tập', icon: Icon(Icons.fitness_center)),
-                  Tab(text: 'Nhật ký ăn', icon: Icon(Icons.restaurant_menu)),
-                ],
-              ),
+              if (widget.showNutrition)
+                TabBar(
+                  controller: tabs,
+                  tabs: const [
+                    Tab(text: 'Buổi tập', icon: Icon(Icons.fitness_center)),
+                    Tab(text: 'Nhật ký ăn', icon: Icon(Icons.restaurant_menu)),
+                  ],
+                ),
             ],
           ),
         ),
@@ -102,12 +133,124 @@ class _FitnessScreenState extends State<FitnessScreen>
           child: TabBarView(
             controller: tabs,
             children: [
-              _WorkoutList(
-                items: workouts,
-                weeklyVolume: weeklyVolume,
-                onReload: _load,
+              Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        TextButton(
+                          onPressed: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate:
+                                  from ??
+                                  DateTime.now().subtract(
+                                    const Duration(days: 30),
+                                  ),
+                              firstDate: DateTime(2000),
+                              lastDate: to ?? DateTime(2100),
+                            );
+                            if (date != null) {
+                              from = date;
+                              page = 0;
+                              _load();
+                            }
+                          },
+                          child: Text(
+                            from == null
+                                ? 'Từ ngày'
+                                : DateFormat('dd/MM/yyyy').format(from!),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            final date = await showDatePicker(
+                              context: context,
+                              initialDate: to ?? DateTime.now(),
+                              firstDate: from ?? DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (date != null) {
+                              to = date;
+                              page = 0;
+                              _load();
+                            }
+                          },
+                          child: Text(
+                            to == null
+                                ? 'Đến ngày'
+                                : DateFormat('dd/MM/yyyy').format(to!),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            final chosen = await showCatalogExercisePicker(
+                              context,
+                            );
+                            if (chosen?.isNotEmpty == true) {
+                              exerciseId = chosen!.first['id'].toString();
+                              exerciseName = chosen.first['name'].toString();
+                              page = 0;
+                              _load();
+                            }
+                          },
+                          child: Text(
+                            exerciseName ?? 'Lọc bài tập',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Xóa bộ lọc',
+                          onPressed: () {
+                            from = to = null;
+                            exerciseId = exerciseName = null;
+                            page = 0;
+                            _load();
+                          },
+                          icon: const Icon(Icons.filter_alt_off_outlined),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: _WorkoutList(
+                      items: workouts,
+                      weeklyVolume: weeklyVolume,
+                      onReload: _load,
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: page > 0
+                            ? () {
+                                page--;
+                                _load();
+                              }
+                            : null,
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      Text(
+                        '${page + 1}/${totalPages == 0 ? 1 : totalPages} · $totalElements buổi',
+                      ),
+                      IconButton(
+                        onPressed: page + 1 < totalPages
+                            ? () {
+                                page++;
+                                _load();
+                              }
+                            : null,
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const NutritionDiaryTab(),
+              if (widget.showNutrition) const NutritionDiaryTab(),
             ],
           ),
         ),
@@ -137,16 +280,7 @@ class _WorkoutList extends StatelessWidget {
       0,
       (total, item) => total + ((item['durationMinutes'] as num?) ?? 0),
     );
-    final totalVolume = items.fold<num>(0, (total, item) {
-      final sets = item['sets'] is List ? item['sets'] as List : const [];
-      return total +
-          sets.whereType<Map>().fold<num>(
-            0,
-            (setTotal, set) =>
-                setTotal +
-                (((set['weight'] as num?) ?? 0) * ((set['reps'] as num?) ?? 0)),
-          );
-    });
+    final totalVolume = trainingVolume(items);
     final groupedByDay = <String, List<Map<String, dynamic>>>{};
     for (final item in items) {
       final day = item['sessionDate']?.toString() ?? '-';
@@ -158,6 +292,9 @@ class _WorkoutList extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
+          const Text(
+            'Thống kê trang hiện tại · volume chỉ gồm hiệp chính đã hoàn thành',
+          ),
           Card(
             color: const Color(0xFFE9F8F0),
             child: Padding(
@@ -244,6 +381,19 @@ class _WorkoutList extends StatelessWidget {
                           item['note']?.toString().isNotEmpty == true
                               ? item['note'].toString()
                               : 'Buổi tập',
+                        ),
+                        trailing: IconButton(
+                          tooltip: 'Chỉnh sửa buổi tập',
+                          icon: const Icon(Icons.edit_outlined),
+                          onPressed: () async {
+                            final changed = await showModalBottomSheet<bool>(
+                              context: context,
+                              isScrollControlled: true,
+                              builder: (_) =>
+                                  LiveWorkoutSheet(initialSession: item),
+                            );
+                            if (changed == true) onReload();
+                          },
                         ),
                         subtitle: Text(
                           '${item['durationMinutes'] ?? 0} phút • ${sets.length} hiệp',

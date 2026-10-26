@@ -7,6 +7,10 @@ import '../../core/notifications/notification_center.dart';
 import '../admin/admin_screen.dart';
 import '../auth/auth_session.dart';
 import '../fitness/fitness_screen.dart';
+import '../fitness/workout_plans_screen.dart';
+import '../fitness/nutrition_diary_tab.dart';
+import '../catalog/catalog_screen.dart';
+import 'mobile_menu_controller.dart';
 import '../finance/finance_screen.dart';
 import '../health/health_screen.dart';
 import '../assistant/assistant_screen.dart';
@@ -19,6 +23,7 @@ import '../profile/profile_screen.dart';
 import '../quotes/quote_screen.dart';
 import 'dashboard_screen.dart';
 import 'more_screen.dart';
+import '../../core/network/api_client.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -43,6 +48,17 @@ class _Destination {
 
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int index = 0;
+  String? selectedLabel;
+  late final MobileMenuController menu;
+
+  void _menuChanged() {
+    if (!mounted) return;
+    final user = context.read<AuthSession>().user;
+    if (user == null) return;
+    final destinations = _phoneDestinations(user);
+    final previous = destinations.indexWhere((e) => e.label == selectedLabel);
+    setState(() => index = previous < 0 ? 0 : previous);
+  }
 
   Future<void> _openUserGuide() async {
     final session = context.read<AuthSession>();
@@ -68,12 +84,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    menu = MobileMenuController(context.read<ApiClient>())
+      ..addListener(_menuChanged);
+    unawaited(menu.load());
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _offerNotifications());
   }
 
   @override
   void dispose() {
+    menu.removeListener(_menuChanged);
+    menu.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -81,6 +102,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      unawaited(menu.load());
       unawaited(_refreshNotificationsOnResume());
     }
   }
@@ -95,7 +117,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (mounted) await notifications.refresh();
   }
 
-  List<_Destination> _destinations(AuthUser user) => [
+  List<_Destination> _destinations(AuthUser user) => _configured([
     const _Destination(
       'Tổng quan',
       Icons.dashboard_outlined,
@@ -110,11 +132,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         LunchScreen(),
       ),
     if (user.fitnessEnabled || user.isAdmin)
-      const _Destination(
+      _Destination(
         'Luyện tập',
         Icons.fitness_center_outlined,
         Icons.fitness_center,
-        FitnessScreen(),
+        FitnessScreen(showNutrition: menu.allows('nutrition', user)),
       ),
     if (user.healthEnabled || user.isAdmin)
       const _Destination(
@@ -158,6 +180,32 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         Icons.smart_toy,
         AssistantScreen(),
       ),
+    if (user.fitnessEnabled || user.isAdmin) ...[
+      const _Destination(
+        'Nhật ký ăn uống',
+        Icons.restaurant_menu_outlined,
+        Icons.restaurant_menu,
+        NutritionDiaryTab(),
+      ),
+      const _Destination(
+        'Giáo án',
+        Icons.calendar_month_outlined,
+        Icons.calendar_month,
+        WorkoutPlansScreen(),
+      ),
+      const _Destination(
+        'Kho bài tập',
+        Icons.list_alt_outlined,
+        Icons.list_alt,
+        CatalogScreen(kind: 'EXERCISE'),
+      ),
+      const _Destination(
+        'Kho thực phẩm',
+        Icons.restaurant_outlined,
+        Icons.restaurant,
+        CatalogScreen(kind: 'FOOD'),
+      ),
+    ],
     const _Destination(
       'Thông báo',
       Icons.notifications_outlined,
@@ -178,52 +226,59 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       Icons.person,
       ProfileScreen(),
     ),
-  ];
+  ], user);
+
+  String? _moduleKey(String label) => const <String, String>{
+    'Tổng quan': 'dashboard',
+    'Đặt cơm': 'lunch',
+    'Luyện tập': 'fitness',
+    'Sức khỏe': 'health',
+    'Lịch & việc': 'planner',
+    'Câu nói': 'quotes',
+    'Nhật ký': 'journal',
+    'Tài chính': 'finance',
+    'FitTrack PT': 'assistant',
+    'Giáo án': 'workoutPlans',
+    'Kho bài tập': 'exercises',
+    'Kho thực phẩm': 'foods',
+    'Nhật ký ăn uống': 'nutrition',
+  }[label];
+
+  List<_Destination> _configured(List<_Destination> input, AuthUser user) {
+    final modules =
+        input
+            .where(
+              (e) =>
+                  _moduleKey(e.label) != null &&
+                  menu.allows(_moduleKey(e.label)!, user),
+            )
+            .toList()
+          ..sort(
+            (a, b) => menu
+                .order(_moduleKey(a.label)!)
+                .compareTo(menu.order(_moduleKey(b.label)!)),
+          );
+    return [...modules, ...input.where((e) => _moduleKey(e.label) == null)];
+  }
 
   List<_Destination> _phoneDestinations(AuthUser user) {
-    final primaryModules = <_Destination>[
-      if (user.lunchEnabled || user.isAdmin)
-        const _Destination(
-          'Đặt cơm',
-          Icons.lunch_dining_outlined,
-          Icons.lunch_dining,
-          LunchScreen(),
-        ),
-      if (user.fitnessEnabled || user.isAdmin)
-        const _Destination(
-          'Luyện tập',
-          Icons.fitness_center_outlined,
-          Icons.fitness_center,
-          FitnessScreen(),
-        ),
-      if (user.healthEnabled || user.isAdmin)
-        const _Destination(
-          'Sức khỏe',
-          Icons.favorite_outline,
-          Icons.favorite,
-          HealthScreen(),
-        ),
-      if (user.todoEnabled || user.scheduleEnabled || user.isAdmin)
-        _Destination(
-          'Lịch & việc',
-          Icons.event_note_outlined,
-          Icons.event_note,
-          PlannerScreen(user: user),
-        ),
-    ];
+    final primaryModules = _destinations(user)
+        .where((e) => _moduleKey(e.label) != null)
+        .toList();
     return [
-      const _Destination(
-        'Tổng quan',
-        Icons.dashboard_outlined,
-        Icons.dashboard,
-        DashboardScreen(),
-      ),
-      ...primaryModules.take(3),
+      ...primaryModules.take(4),
+      if (primaryModules.isEmpty)
+        const _Destination(
+          'Cá nhân',
+          Icons.person_outline,
+          Icons.person,
+          ProfileScreen(),
+        ),
       _Destination(
         'Thêm',
         Icons.apps_outlined,
         Icons.apps,
-        MoreScreen(user: user),
+        MoreScreen(user: user, menu: menu),
         notification: true,
       ),
     ];
@@ -276,119 +331,128 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     final user = context.watch<AuthSession>().user!;
     final unreadCount = context.watch<NotificationCenter>().unreadCount;
     final wide = MediaQuery.sizeOf(context).width >= 760;
-    final allDestinations = _destinations(user);
-    final destinations = allDestinations.length > 5
-        ? _phoneDestinations(user)
-        : allDestinations;
+    final destinations = _phoneDestinations(user);
     if (index >= destinations.length) index = 0;
     final content = IndexedStack(
       index: index,
-      children: destinations.map((item) => item.page).toList(),
+      children: destinations
+          .map(
+            (item) => KeyedSubtree(key: ValueKey(item.label), child: item.page),
+          )
+          .toList(),
     );
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
-              backgroundImage: const AssetImage(
-                'assets/branding/app_icon_master.png',
+    return ChangeNotifierProvider.value(
+      value: menu,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                backgroundImage: const AssetImage(
+                  'assets/branding/app_icon_master.png',
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'FitTrack',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-                ),
-                Text(
-                  'Sống khỏe mỗi ngày',
-                  style: TextStyle(fontSize: 11, color: Colors.black54),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Thông báo',
-            onPressed: _openNotifications,
-            icon: unreadCount > 0
-                ? Badge(
-                    label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
-                    child: const Icon(Icons.notifications_outlined),
-                  )
-                : const Icon(Icons.notifications_outlined),
+              const SizedBox(width: 10),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'FitTrack',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+                  ),
+                  Text(
+                    'Sống khỏe mỗi ngày',
+                    style: TextStyle(fontSize: 11, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: 'Hướng dẫn sử dụng',
-            onPressed: _openUserGuide,
-            icon: const Icon(Icons.help_outline_rounded),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Tooltip(
-              message: user.fullName,
-              child: CircleAvatar(
-                radius: 17,
-                child: Text(
-                  _initials(user.fullName),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+          actions: [
+            IconButton(
+              tooltip: 'Thông báo',
+              onPressed: _openNotifications,
+              icon: unreadCount > 0
+                  ? Badge(
+                      label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
+                      child: const Icon(Icons.notifications_outlined),
+                    )
+                  : const Icon(Icons.notifications_outlined),
+            ),
+            IconButton(
+              tooltip: 'Hướng dẫn sử dụng',
+              onPressed: _openUserGuide,
+              icon: const Icon(Icons.help_outline_rounded),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Tooltip(
+                message: user.fullName,
+                child: CircleAvatar(
+                  radius: 17,
+                  child: Text(
+                    _initials(user.fullName),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: wide
-          ? Row(
-              children: [
-                NavigationRail(
-                  selectedIndex: index,
-                  onDestinationSelected: (value) =>
-                      setState(() => index = value),
-                  labelType: NavigationRailLabelType.all,
-                  destinations: destinations
-                      .map(
-                        (item) => NavigationRailDestination(
-                          icon: _destinationIcon(item, false, unreadCount),
-                          selectedIcon: _destinationIcon(
-                            item,
-                            true,
-                            unreadCount,
+          ],
+        ),
+        body: wide
+            ? Row(
+                children: [
+                  NavigationRail(
+                    selectedIndex: index,
+                    onDestinationSelected: (value) => setState(() {
+                      index = value;
+                      selectedLabel = destinations[value].label;
+                    }),
+                    labelType: NavigationRailLabelType.all,
+                    destinations: destinations
+                        .map(
+                          (item) => NavigationRailDestination(
+                            icon: _destinationIcon(item, false, unreadCount),
+                            selectedIcon: _destinationIcon(
+                              item,
+                              true,
+                              unreadCount,
+                            ),
+                            label: Text(item.label),
                           ),
-                          label: Text(item.label),
-                        ),
-                      )
-                      .toList(),
-                ),
-                const VerticalDivider(width: 1),
-                Expanded(child: content),
-              ],
-            )
-          : content,
-      bottomNavigationBar: wide
-          ? null
-          : NavigationBar(
-              selectedIndex: index,
-              onDestinationSelected: (value) => setState(() => index = value),
-              destinations: destinations
-                  .map(
-                    (item) => NavigationDestination(
-                      icon: _destinationIcon(item, false, unreadCount),
-                      selectedIcon: _destinationIcon(item, true, unreadCount),
-                      label: item.label,
-                    ),
-                  )
-                  .toList(),
-            ),
+                        )
+                        .toList(),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: content),
+                ],
+              )
+            : content,
+        bottomNavigationBar: wide
+            ? null
+            : NavigationBar(
+                selectedIndex: index,
+                onDestinationSelected: (value) => setState(() {
+                  index = value;
+                  selectedLabel = destinations[value].label;
+                }),
+                destinations: destinations
+                    .map(
+                      (item) => NavigationDestination(
+                        icon: _destinationIcon(item, false, unreadCount),
+                        selectedIcon: _destinationIcon(item, true, unreadCount),
+                        label: item.label,
+                      ),
+                    )
+                    .toList(),
+              ),
+      ),
     );
   }
 

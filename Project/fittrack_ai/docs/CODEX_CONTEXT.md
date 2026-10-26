@@ -1,6 +1,86 @@
 # FitTrack Current Project State
 
-Last updated: 2026-10-25
+Last updated: 2026-10-26
+
+## Latest build: Android release APK (2026-10-26)
+
+Built latest Flutter source using tool/build_android.ps1 -Mode release with its
+configured API URL. Initial build failed because inherited JAVA_HOME contained
+an invalid literal path; rerun succeeded with process-only JAVA_HOME set to the
+installed JDK21. No persistent environment change or dependency upgrade.
+Output: mobile/fittrack_mobile/build/app/outputs/flutter-apk/app-release.apk,
+62.6 MB as reported by Flutter; version remains 1.2.5+11. Build script verified
+the packaged ic_stat_fittrack notification drawable. Current Android release
+configuration still uses the existing debug signing key for internal testing.
+No install/device launch, backend deploy or production DB migration performed.
+Deploy compatible backend/Flyway V32–V35 before testing this APK; otherwise the
+new menu endpoint will be unavailable. Gradle emitted nonfatal plugin/SDK-tool
+compatibility warnings. Prior source verification and release smoke steps below.
+
+## Latest handoff: Flutter catalog/training parity and global app menu (2026-10-26)
+
+User approved splitting the latest web/backend upgrades into Flutter work and
+added global ADMIN-controlled module order/visibility, including ADMIN accounts.
+Two workers implemented training and catalogs; main integrated nutrition/menu,
+review fixes and verification. Agents exhausted their usage limit before final
+independent QA; main finished the remaining work and tests. No push, deployment,
+production DB write, APK build or Lunch business-code change performed.
+
+Mobile changes:
+
+- New workout_plans_screen.dart: paged CRUD, duplicate plan/day, reorder, multiple
+  exercise selection, prescriptions/rest/rep-range/coaching notes, version-aware
+  writes and explicit owner-scoped draft save/restore. Start opens unsaved live
+  workout; no generate endpoint or history write until completion.
+- Fitness history is paged/date/exercise-filtered; complete historical editing
+  calls /workouts/sessions/{id}/details, retains archived IDs and per-set rest.
+  Working volume excludes warmup and unfinished sets. Live editor supports the
+  new picker, images/descriptions and explicit-save drafts (not autosave).
+- New features/catalog/: paged search/facets/detail/image, food micros/source/
+  coverage/portion detail, ADMIN CRUD/archive/restore, USER suggestions/mine.
+  ADMIN import/export/templates/errors/history uses shared ApiClient/Dio, native
+  file-picker and paste, mapping/ignore, preview/actions/clears and two-stage
+  confirmation. No new dependencies. CatalogImage handles URL/relative/data media.
+- Nutrition diary now loads paged/debounced search rather than all foods, retains
+  selected IDs, resolves current foods explicitly for edit/copy, displays historical
+  snapshots including unknown micros and warns before recalculating old meals.
+  Unit choices prevent gram/ml inference; liquid photo estimates use 1 serving
+  with warning until reviewed. Failed saves preserve the open form.
+- Shared secure ModuleDraftStore: 7-day owner-scoped non-journal drafts, explicit
+  restore, logout cleanup. ApiClient clones finalized multipart on auth refresh
+  while keeping the same loading/mutation tracking operation.
+
+Global app menu:
+
+- New backend mobilemenu package and Flyway V35 singleton settings; authenticated
+  GET /api/mobile-menu, ADMIN PUT /api/admin/mobile-menu with {version, modules:
+  [{key,visible}]}. Exact 13-key list validated; pessimistic lock + @Version returns
+  stale409 rather than overwriting another admin. Stores last updater/time.
+  Missing configuration fails503 rather than re-enabling every module silently.
+- App Thêm → Sắp xếp menu app: drag order, toggles, explicit global confirmation.
+  Visibility intersects existing permissions, including for ADMIN. More/Profile/
+  Notifications/Admin recovery stay outside hideable modules. Config refreshes on
+  startup/resume or pull-to-refresh, not real-time push. Initial failure exposes
+  only safety entries; later failure retains the in-memory config, not a disk cache.
+- Bottom menu is at most four modules plus More; More uses the same ordering.
+  Nutrition has its own key and hidden state also removes the Fitness nutrition
+  tab. Fixed narrow set-type dropdown overflow and dynamic TabController lifecycle.
+  Monotonic menu versions prevent stale GET overwriting a successful save.
+
+Verification: full JDK21 backend suite 146 tests, zero failures/errors, 2 skipped.
+Flutter final combined suite 30 tests passed, including import confirmation at
+360px, snapshot display, selection preservation, multipart refresh, archived
+workout editing, draft cleanup and hiding/reopening the nutrition tab. Full
+analyze has no errors/warnings; pre-existing info-level lints remain outside
+this scope. Final scoped analyze of all changed mobile feature/core paths passed
+with no issues. No physical Android/iOS testing or APK release build yet.
+PostgreSQL/Flyway staging validation remains outstanding (Docker engine unavailable
+in preceding session). Guidance and smoke checklist: docs/MOBILE_TRAINING_CATALOG_MENU.md.
+
+Next: validate V32–V35 against PostgreSQL staging; deploy backend before new app.
+Then build APK with the normal script and test file choose/save, real account
+permissions, plan start/cancel/finish/edit, token-expired multipart import and
+global menu changes across two accounts/devices. Web sources unchanged this turn.
 
 ## Latest handoff: training, nutrition and catalog bulk import (2026-10-25)
 

@@ -6,9 +6,16 @@ import 'package:provider/provider.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
+import '../../core/storage/module_draft_store.dart';
+import '../auth/auth_session.dart';
+import '../catalog/catalog_exercise_picker.dart';
+import '../catalog/catalog_image.dart';
+import 'training_data.dart';
 
 class LiveWorkoutSheet extends StatefulWidget {
-  const LiveWorkoutSheet({super.key});
+  const LiveWorkoutSheet({super.key, this.planDay, this.initialSession});
+  final Map<String, dynamic>? planDay;
+  final Map<String, dynamic>? initialSession;
 
   @override
   State<LiveWorkoutSheet> createState() => _LiveWorkoutSheetState();
@@ -28,9 +35,15 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
   String selectedPlanDay = '';
   bool busy = true;
   int elapsedSeconds = 0;
+  int resumedSeconds = 0;
   int restSeconds = 0;
   Timer? elapsedTimer;
   Timer? restTimer;
+  String owner = '';
+  String get draftSlot =>
+      'workout-live:${widget.initialSession?['id'] ?? 'new'}';
+  final duration = TextEditingController();
+  String sessionDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
   @override
   void initState() {
@@ -38,7 +51,8 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
     elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() {
-        elapsedSeconds = DateTime.now().difference(startedAt).inSeconds;
+        elapsedSeconds =
+            resumedSeconds + DateTime.now().difference(startedAt).inSeconds;
       });
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
@@ -50,14 +64,16 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
     restTimer?.cancel();
     title.dispose();
     note.dispose();
+    duration.dispose();
     super.dispose();
   }
 
   Future<void> _load() async {
     try {
+      owner = context.read<AuthSession>().user?.id ?? '';
       final api = context.read<ApiClient>();
       final values = await Future.wait([
-        api.get('/exercises'),
+        api.get('/exercises/page', queryParameters: {'page': 0, 'size': 1}),
         api.get('/workout-plans'),
       ]);
       exercises = _list(values[0]);
@@ -75,6 +91,44 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
         final first = _DraftExercise(exercises.first['id'].toString());
         draft = [first];
         await _loadIntelligence(first);
+      }
+      if (widget.planDay != null) {
+        final option = _PlanDayOption(
+          value: '',
+          label: widget.planDay!['name']?.toString() ?? 'Ngày tập',
+          day: widget.planDay!,
+        );
+        _usePlanDay(option);
+      }
+      if (widget.initialSession != null) {
+        _restoreSession(widget.initialSession!);
+      }
+      final saved = await ModuleDraftStore.read(owner, draftSlot);
+      if (saved != null && mounted) {
+        final restore = await showDialog<bool>(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: const Text('Khôi phục buổi tập đang dở?'),
+            content: const Text(
+              'Bản nháp riêng của bạn chưa được ghi vào lịch sử.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c, false),
+                child: const Text('Bỏ bản nháp'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: const Text('Khôi phục'),
+              ),
+            ],
+          ),
+        );
+        if (restore == true) {
+          _restoreSession(saved);
+        } else {
+          await ModuleDraftStore.remove(owner, draftSlot);
+        }
       }
     } catch (error) {
       if (mounted) showMessage(context, displayError(error), error: true);
@@ -142,11 +196,24 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       showMessage(context, 'Hãy chọn một ngày trong giáo án.', error: true);
       return;
     }
+    _usePlanDay(selected);
+  }
+
+  void _usePlanDay(_PlanDayOption selected) {
     final rawExercises = selected.day['exercises'] is List
         ? selected.day['exercises'] as List
         : const [];
     final next = rawExercises.map((raw) {
       final item = Map<String, dynamic>.from(raw as Map);
+      if (!exercises.any(
+        (e) => e['id'].toString() == item['exerciseId'].toString(),
+      )) {
+        exercises.add({
+          ...item,
+          'id': item['exerciseId'],
+          'name': item['exerciseName'] ?? 'Bài tập',
+        });
+      }
       final targetSets = ((item['targetSets'] as num?)?.toInt() ?? 1).clamp(
         1,
         20,
@@ -154,18 +221,24 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       return _DraftExercise(
         item['exerciseId'].toString(),
         targetSets: targetSets,
-        minReps: (((item['targetReps'] as num?)?.toInt() ?? 10) - 2).clamp(
-          1,
-          500,
-        ),
-        maxReps: (item['targetReps'] as num?)?.toInt() ?? 10,
+        minReps:
+            ((item['minReps'] as num?)?.toInt() ??
+                    ((item['targetReps'] as num?)?.toInt() ?? 10))
+                .clamp(1, 500),
+        maxReps:
+            (item['maxReps'] as num?)?.toInt() ??
+            (item['targetReps'] as num?)?.toInt() ??
+            10,
         targetRir: (item['targetRir'] as num?)?.toInt() ?? 2,
+        rest: (item['restSeconds'] as num?)?.toInt() ?? 90,
+        coachingNote: item['coachingNote']?.toString() ?? '',
         sets: List.generate(
           targetSets,
           (_) => _DraftSet(
             weight: (item['targetWeight'] as num?)?.toDouble() ?? 0,
             reps: (item['targetReps'] as num?)?.toInt() ?? 10,
             rir: (item['targetRir'] as num?)?.toInt() ?? 2,
+            restSeconds: (item['restSeconds'] as num?)?.toInt() ?? 90,
           ),
         ),
       );
@@ -175,13 +248,114 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       return;
     }
     setState(() {
-      title.text = selected!.label;
+      title.text = selected.label;
       draft = next;
     });
     for (final exercise in next) {
       unawaited(_loadIntelligence(exercise));
     }
   }
+
+  void _restoreSession(Map<String, dynamic> value) {
+    title.text = value['note']?.toString() ?? 'Buổi tập';
+    note.clear();
+    duration.text = '${value['durationMinutes'] ?? 0}';
+    if (widget.initialSession == null) {
+      resumedSeconds =
+          (value['elapsedSeconds'] as num?)?.toInt() ??
+          ((value['durationMinutes'] as num?)?.toInt() ?? 0) * 60;
+      elapsedSeconds = resumedSeconds;
+    }
+    sessionDate = value['sessionDate']?.toString() ?? sessionDate;
+    final groups = <String, _DraftExercise>{};
+    for (final set in trainingList(value['sets'])) {
+      final id = set['exerciseId'].toString();
+      final key = '${set['exerciseOrder'] ?? 1}:$id';
+      if (!exercises.any((e) => e['id'].toString() == id)) {
+        exercises.add({
+          'id': id,
+          'name': set['exerciseName'] ?? 'Bài tập lịch sử',
+        });
+      }
+      final group = groups.putIfAbsent(
+        key,
+        () => _DraftExercise(
+          id,
+          sets: [],
+          rest: (set['restSeconds'] as num?)?.toInt() ?? 90,
+        ),
+      );
+      group.sets.add(
+        _DraftSet(
+            weight: (set['weight'] as num?)?.toDouble() ?? 0,
+            reps: (set['reps'] as num?)?.toInt() ?? 10,
+            rir: (set['rir'] as num?)?.toInt() ?? 2,
+            restSeconds: (set['restSeconds'] as num?)?.toInt() ?? 90,
+          )
+          ..setType = set['setType']?.toString() ?? 'NORMAL'
+          ..completed = set['completed'] == true,
+      );
+    }
+    draft = groups.values.toList();
+  }
+
+  Future<void> _addExercises() async {
+    final selected = await showCatalogExercisePicker(context, multiple: true);
+    if (!mounted || selected == null) return;
+    setState(() {
+      for (final item in selected) {
+        if (!exercises.any((e) => e['id'] == item['id'])) exercises.add(item);
+        draft.add(_DraftExercise(item['id'].toString()));
+      }
+    });
+  }
+
+  Future<void> _saveDraft() async {
+    setState(() => busy = true);
+    try {
+      await ModuleDraftStore.write(
+        owner,
+        draftSlot,
+        _sessionPayload(completedOnly: false),
+      );
+      if (mounted) Navigator.pop(context, false);
+    } catch (error) {
+      if (mounted) showMessage(context, displayError(error), error: true);
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Map<String, dynamic> _sessionPayload({bool completedOnly = true}) => {
+    if (!completedOnly) 'elapsedSeconds': elapsedSeconds,
+    'sessionDate': sessionDate,
+    'note': [
+      title.text.trim(),
+      note.text.trim(),
+    ].where((e) => e.isNotEmpty).join(' · '),
+    'durationMinutes': widget.initialSession != null
+        ? int.tryParse(duration.text) ?? 0
+        : (elapsedSeconds / 60).ceil().clamp(1, 600),
+    'sets': [
+      for (final group in draft.asMap().entries)
+        for (final set in group.value.sets.asMap().entries)
+          if (!completedOnly || set.value.completed)
+            {
+              'exerciseId': group.value.exerciseId,
+              'exerciseName': exercises
+                  .where((e) => e['id'].toString() == group.value.exerciseId)
+                  .firstOrNull?['name'],
+              'exerciseOrder': group.key + 1,
+              'setNumber': set.key + 1,
+              'setType': set.value.setType,
+              'weight': set.value.weight,
+              'reps': set.value.reps,
+              'rir': set.value.rir,
+              'restSeconds': set.value.restSeconds,
+              'completed': set.value.completed,
+            },
+    ],
+  };
 
   Future<void> _setPreference(String exerciseId, String preference) async {
     final oldValue = preferences[exerciseId] ?? 'NORMAL';
@@ -352,7 +526,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
           'weight': set.weight,
           'reps': set.reps,
           'rir': set.rir,
-          'restSeconds': exercise.restSeconds,
+          'restSeconds': set.restSeconds,
           'completed': true,
         });
       }
@@ -368,18 +542,26 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
 
     setState(() => busy = true);
     try {
-      final result = await context.read<ApiClient>().post(
-        '/workouts/sessions',
-        data: {
-          'sessionDate': DateFormat('yyyy-MM-dd').format(DateTime.now()),
-          'note': [
-            title.text.trim(),
-            note.text.trim(),
-          ].where((value) => value.isNotEmpty).join(' · '),
-          'durationMinutes': (elapsedSeconds / 60).ceil().clamp(1, 600),
-          'sets': sets,
-        },
-      );
+      final api = context.read<ApiClient>();
+      final payload = _sessionPayload();
+      // Full replacement includes unfinished historical sets, which cannot be
+      // persisted. Require users to finish or explicitly remove them first.
+      if (widget.initialSession != null &&
+          draft.any((e) => e.sets.any((s) => !s.completed))) {
+        showMessage(
+          context,
+          'Đánh dấu xong hoặc bỏ các hiệp chưa hoàn thành trước khi lưu.',
+          error: true,
+        );
+        return;
+      }
+      final result = widget.initialSession == null
+          ? await api.post('/workouts/sessions', data: payload)
+          : await api.put(
+              '/workouts/sessions/${widget.initialSession!['id']}/details',
+              data: payload,
+            );
+      await ModuleDraftStore.remove(owner, draftSlot);
       if (!mounted) return;
       final records = result is Map && result['newPersonalRecords'] is List
           ? result['newPersonalRecords'] as List
@@ -437,7 +619,9 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
             children: [
               Expanded(
                 child: Text(
-                  'Workout mode',
+                  widget.initialSession == null
+                      ? 'Buổi tập trực tiếp'
+                      : 'Chỉnh sửa buổi tập',
                   style: Theme.of(context).textTheme.titleLarge
                       ?.copyWith(fontWeight: FontWeight.w800),
                 ),
@@ -475,6 +659,22 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
                   controller: title,
                   decoration: const InputDecoration(labelText: 'Tên buổi tập'),
                 ),
+                if (widget.initialSession != null) ...[
+                  TextFormField(
+                    initialValue: sessionDate,
+                    decoration: const InputDecoration(
+                      labelText: 'Ngày tập (yyyy-MM-dd)',
+                    ),
+                    onChanged: (v) => sessionDate = v,
+                  ),
+                  TextField(
+                    controller: duration,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Thời lượng (phút)',
+                    ),
+                  ),
+                ],
                 if (planDays.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Row(
@@ -554,20 +754,14 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
                         setState(() => set.completed = !set.completed);
                         if (willComplete) {
                           _announcePotentialRecord(entry.value, set);
-                          _startRest(entry.value.restSeconds);
+                          _startRest(set.restSeconds);
                         }
                       },
                     ),
                   ),
-                if (!busy && exercises.isNotEmpty)
+                if (!busy)
                   OutlinedButton.icon(
-                    onPressed: () {
-                      final item = _DraftExercise(
-                        exercises.first['id'].toString(),
-                      );
-                      setState(() => draft.add(item));
-                      unawaited(_loadIntelligence(item));
-                    },
+                    onPressed: _addExercises,
                     icon: const Icon(Icons.add),
                     label: const Text('Thêm bài tập'),
                   ),
@@ -583,6 +777,11 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
             ),
           ),
           const SizedBox(height: 10),
+          TextButton.icon(
+            onPressed: busy ? null : _saveDraft,
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Lưu nháp và đóng'),
+          ),
           Row(
             children: [
               Expanded(
@@ -598,7 +797,13 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
                 child: FilledButton.icon(
                   onPressed: busy ? null : _save,
                   icon: const Icon(Icons.check_circle_outline),
-                  label: Text(busy ? 'Đang lưu...' : 'Hoàn thành buổi tập'),
+                  label: Text(
+                    busy
+                        ? 'Đang lưu...'
+                        : widget.initialSession == null
+                        ? 'Hoàn thành buổi tập'
+                        : 'Lưu thay đổi',
+                  ),
                 ),
               ),
             ],
@@ -646,6 +851,9 @@ class _ExerciseEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final previous = intelligence?['previousPerformance'];
+    final definition = exercises
+        .where((e) => e['id'].toString() == exercise.exerciseId)
+        .firstOrNull;
     final previousSets = previous is Map && previous['sets'] is List
         ? previous['sets'] as List
         : const [];
@@ -665,23 +873,27 @@ class _ExerciseEditor extends StatelessWidget {
                 CircleAvatar(radius: 15, child: Text('${index + 1}')),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: exercise.exerciseId,
-                    decoration: const InputDecoration(labelText: 'Bài tập'),
-                    items: exercises
-                        .map(
-                          (item) => DropdownMenuItem(
-                            value: item['id'].toString(),
-                            child: Text(
-                              item['name']?.toString() ?? 'Bài tập',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) onExerciseChanged(value);
+                  child: TextButton(
+                    onPressed: () async {
+                      final selected = await showCatalogExercisePicker(context);
+                      if (selected == null || selected.isEmpty) return;
+                      final item = selected.first;
+                      if (!exercises.any((e) => e['id'] == item['id'])) {
+                        exercises.add(item);
+                      }
+                      onExerciseChanged(item['id'].toString());
                     },
+                    child: Text(
+                      exercises
+                              .where(
+                                (e) =>
+                                    e['id'].toString() == exercise.exerciseId,
+                              )
+                              .firstOrNull?['name']
+                              ?.toString() ??
+                          'Chọn bài tập',
+                      maxLines: 3,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -696,6 +908,23 @@ class _ExerciseEditor extends StatelessWidget {
                 ),
               ],
             ),
+            if (exercise.coachingNote.isNotEmpty)
+              Text('Ghi chú: ${exercise.coachingNote}'),
+            if (definition != null &&
+                '${definition['imageUrl'] ?? ''}'.isNotEmpty)
+              CatalogImage('${definition['imageUrl']}', height: 100),
+            if (definition != null &&
+                '${definition['description'] ?? ''}'.isNotEmpty)
+              ExpansionTile(
+                title: const Text('Hướng dẫn bài tập'),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text('${definition['description']}'),
+                  ),
+                ],
+              ),
+            Text('Mục tiêu ${exercise.minReps}–${exercise.maxReps} lần/hiệp'),
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
@@ -818,6 +1047,9 @@ class _ExerciseEditor extends StatelessWidget {
                     onChanged: (value) {
                       exercise.restSeconds =
                           int.tryParse(value)?.clamp(0, 1800) ?? 90;
+                      for (final set in exercise.sets) {
+                        set.restSeconds = exercise.restSeconds;
+                      }
                     },
                   ),
                 ),
@@ -844,6 +1076,7 @@ class _ExerciseEditor extends StatelessWidget {
                         weight: last.weight,
                         reps: last.reps,
                         rir: last.rir,
+                        restSeconds: exercise.restSeconds,
                       ),
                     );
                     onChanged();
@@ -896,14 +1129,15 @@ class _SetEditor extends StatelessWidget {
         Row(
           children: [
             Text(
-              'Set $number',
+              'Hiệp $number',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: set.setType,
-                decoration: const InputDecoration(labelText: 'Loại set'),
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Loại hiệp'),
                 items: const [
                   DropdownMenuItem(value: 'WARMUP', child: Text('Khởi động')),
                   DropdownMenuItem(value: 'NORMAL', child: Text('Chính')),
@@ -929,7 +1163,7 @@ class _SetEditor extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: _integerInput(
-                'Reps',
+                'Lần lặp',
                 set.reps,
                 (value) => set.reps = value.clamp(1, 500),
               ),
@@ -1013,13 +1247,17 @@ class _DraftExercise {
     this.minReps = 8,
     this.maxReps = 12,
     this.targetRir = 2,
+    int rest = 90,
+    this.coachingNote = '',
   }) : key = '${DateTime.now().microsecondsSinceEpoch}-${_nextKey++}',
+       restSeconds = rest,
        sets = sets ?? List.generate(3, (_) => _DraftSet());
 
   static int _nextKey = 0;
   final String key;
   String exerciseId;
-  int restSeconds = 90;
+  int restSeconds;
+  final String coachingNote;
   final int targetSets;
   final int minReps;
   final int maxReps;
@@ -1031,8 +1269,12 @@ class _DraftExercise {
 }
 
 class _DraftSet {
-  _DraftSet({this.weight = 10, this.reps = 10, this.rir = 2})
-    : key = '${DateTime.now().microsecondsSinceEpoch}-${_nextKey++}';
+  _DraftSet({
+    this.weight = 10,
+    this.reps = 10,
+    this.rir = 2,
+    this.restSeconds = 90,
+  }) : key = '${DateTime.now().microsecondsSinceEpoch}-${_nextKey++}';
 
   static int _nextKey = 0;
   final String key;
@@ -1040,6 +1282,7 @@ class _DraftSet {
   double weight;
   int reps;
   int rir;
+  int restSeconds;
   bool completed = false;
 }
 

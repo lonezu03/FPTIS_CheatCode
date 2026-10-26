@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import 'auth_storage_keys.dart';
+import '../../core/storage/module_draft_store.dart';
 
 class AuthUser {
   const AuthUser({
@@ -208,10 +209,18 @@ class AuthSession extends ChangeNotifier {
   }
 
   Future<void> _clear() async {
+    final owner = user?.id;
     api.accessToken = null;
     api.refreshToken = null;
     api.journalUnlockToken = null;
     user = null;
+    if (owner != null) {
+      try {
+        await ModuleDraftStore.clearOwner(owner);
+      } catch (_) {
+        // Draft cleanup must not prevent clearing authentication credentials.
+      }
+    }
     await _storage.delete(key: AuthStorageKeys.accessToken);
     await _storage.delete(key: AuthStorageKeys.refreshToken);
     await _storage.delete(key: AuthStorageKeys.user);

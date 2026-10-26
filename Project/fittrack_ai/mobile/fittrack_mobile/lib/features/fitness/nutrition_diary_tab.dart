@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +11,8 @@ import 'dart:convert';
 
 import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
+import 'nutrition_contract.dart';
+import 'food_search_sheet.dart';
 
 class NutritionDiaryTab extends StatefulWidget {
   const NutritionDiaryTab({super.key});
@@ -44,16 +48,12 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
       final api = context.read<ApiClient>();
       final values = await Future.wait([
         api.get('/nutrition/diary', queryParameters: {'date': dateValue}),
-        api.get('/nutrition/foods'),
         api.get('/nutrition/convenience'),
       ]);
       if (!mounted) return;
       setState(() {
         diary = Map<String, dynamic>.from(values[0] as Map);
-        foods = (values[1] as List)
-            .map((item) => Map<String, dynamic>.from(item as Map))
-            .toList();
-        convenience = Map<String, dynamic>.from(values[2] as Map);
+        convenience = Map<String, dynamic>.from(values[1] as Map);
       });
     } catch (exception) {
       if (mounted) setState(() => error = exception);
@@ -193,6 +193,20 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
                       date: dateValue,
                       mealType: type,
                       foods: foods,
+                    ),
+                  );
+                  if (saved == true) _load();
+                },
+                onEdit: (meal, copy) async {
+                  final saved = await showModalBottomSheet<bool>(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => _MealLoggerSheet(
+                      date: dateValue,
+                      mealType: type,
+                      foods: foods,
+                      initialMeal: meal,
+                      copy: copy,
                     ),
                   );
                   if (saved == true) _load();
@@ -537,10 +551,12 @@ class _MealGroup extends StatelessWidget {
     required this.type,
     required this.meals,
     required this.onAdd,
+    required this.onEdit,
   });
   final String type;
   final List<Map<String, dynamic>> meals;
   final VoidCallback onAdd;
+  final void Function(Map<String, dynamic> meal, bool copy) onEdit;
   @override
   Widget build(BuildContext context) {
     final calories = meals.fold<num>(
@@ -575,6 +591,7 @@ class _MealGroup extends StatelessWidget {
                   ),
                 ),
                 TextButton.icon(
+                  key: ValueKey('meal-add-$type'),
                   onPressed: onAdd,
                   icon: const Icon(Icons.add),
                   label: const Text('Ghi món'),
@@ -585,22 +602,95 @@ class _MealGroup extends StatelessWidget {
               const Text('Chưa có món', style: TextStyle(color: Colors.black45))
             else
               ...meals.expand(
-                (meal) => _list(meal['items']).map(
-                  (item) => ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      meal['sourceType'] == 'LUNCH_ORDER'
-                          ? Icons.lunch_dining
-                          : Icons.restaurant_outlined,
+                (meal) => <Widget>[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Wrap(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => onEdit(meal, true),
+                          icon: const Icon(Icons.copy, size: 16),
+                          label: const Text('Sao chép'),
+                        ),
+                        if (meal['sourceType'] != 'LUNCH_ORDER')
+                          TextButton.icon(
+                            onPressed: () => onEdit(meal, false),
+                            icon: const Icon(Icons.edit_outlined, size: 16),
+                            label: const Text('Sửa bữa'),
+                          ),
+                      ],
                     ),
-                    title: Text(item['foodName']?.toString() ?? 'Món ăn'),
-                    subtitle: Text(
-                      '${item['servingAmount'] ?? item['quantity']} ${_unit(item['servingUnit'])}',
-                    ),
-                    trailing: Text('${_number(item['calories'])} kcal'),
                   ),
-                ),
+                  ..._list(meal['items']).map(
+                    (item) => ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        meal['sourceType'] == 'LUNCH_ORDER'
+                            ? Icons.lunch_dining
+                            : Icons.restaurant_outlined,
+                      ),
+                      title: Text(item['foodName']?.toString() ?? 'Món ăn'),
+                      onTap: () => showModalBottomSheet<void>(
+                        context: context,
+                        showDragHandle: true,
+                        isScrollControlled: true,
+                        builder: (_) => SafeArea(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['foodName']?.toString() ?? 'Món ăn',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                ),
+                                const Text(
+                                  'Thông tin đã lưu tại thời điểm ghi bữa, không phải giá trị hiện tại trong kho.',
+                                ),
+                                Text(
+                                  'Khẩu phần gốc: ${item['foodUnit'] ?? 'Chưa có dữ liệu lịch sử'}',
+                                ),
+                                Text(
+                                  'Nguồn: ${item['foodSourceName'] ?? 'Chưa biết'}',
+                                ),
+                                for (final field in const <String, String>{
+                                  'calories': 'Năng lượng (kcal)',
+                                  'protein': 'Đạm (g)',
+                                  'carbs': 'Tinh bột (g)',
+                                  'fat': 'Chất béo (g)',
+                                  'fiber': 'Chất xơ (g)',
+                                  'sugar': 'Đường (g)',
+                                  'sodium': 'Natri (mg)',
+                                  'potassium': 'Kali (mg)',
+                                  'calcium': 'Canxi (mg)',
+                                  'iron': 'Sắt (mg)',
+                                  'vitaminC': 'Vitamin C (mg)',
+                                  'water': 'Nước (ml)',
+                                }.entries)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    child: Text(
+                                      '${field.value}: ${item[field.key] ?? 'Chưa biết'}',
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${item['servingAmount'] ?? item['quantity']} ${_unit(item['servingUnit'])}'
+                        '${item['foodUnit'] == null ? '' : ' · Khẩu phần: ${item['foodUnit']}'}'
+                        '${item['foodSourceName'] == null ? '' : '\nNguồn: ${item['foodSourceName']}'}',
+                      ),
+                      trailing: Text('${_number(item['calories'])} kcal'),
+                    ),
+                  ),
+                ],
               ),
           ],
         ),
@@ -614,22 +704,153 @@ class _MealLoggerSheet extends StatefulWidget {
     required this.date,
     required this.mealType,
     required this.foods,
+    this.initialMeal,
+    this.copy = false,
   });
   final String date;
   final String mealType;
   final List<Map<String, dynamic>> foods;
+  final Map<String, dynamic>? initialMeal;
+  final bool copy;
   @override
   State<_MealLoggerSheet> createState() => _MealLoggerSheetState();
 }
 
 class _MealLoggerSheetState extends State<_MealLoggerSheet> {
   final selected = <String, _FoodAmount>{};
+  final foodCache = <String, Map<String, dynamic>>{};
+  List<Map<String, dynamic>> results = [];
+  Timer? debounce;
+  int page = 0, totalPages = 0, requestVersion = 0;
+  bool searching = false, hydrating = false;
+  String? searchError, hydrateError;
   String search = '';
   bool busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    for (final food in widget.foods) {
+      foodCache[food['id'].toString()] = food;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _hydrateInitial();
+      if (mounted) _searchFoods(0);
+    });
+  }
+
+  @override
+  void dispose() {
+    debounce?.cancel();
+    requestVersion++;
+    super.dispose();
+  }
+
+  Future<void> _hydrateInitial() async {
+    if (widget.initialMeal == null) return;
+    setState(() {
+      hydrating = true;
+      hydrateError = null;
+    });
+    try {
+      final api = context.read<ApiClient>();
+      final entries = _list(widget.initialMeal!['items']);
+      final loaded = <String, Map<String, dynamic>>{};
+      for (final item in entries) {
+        final id = item['foodId'].toString();
+        loaded[id] = _map(
+          await api.get('/nutrition/foods/${Uri.encodeComponent(id)}'),
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        foodCache.addAll(loaded);
+        selected.clear();
+        for (final item in entries) {
+          final id = item['foodId'].toString();
+          final unit = item['servingUnit']?.toString() ?? 'SERVING';
+          if (!nutritionUnits(foodCache[id]!).contains(unit)) {
+            hydrateError = 'Khẩu phần món đã thay đổi. Hãy chọn lại số lượng/đơn vị trước khi lưu.';
+          }
+          selected[id] = _FoodAmount()
+            ..unit = nutritionUnits(foodCache[id]!).contains(unit)
+                ? unit
+                : 'SERVING'
+            ..amount = nutritionUnits(foodCache[id]!).contains(unit)
+                ? ((item['servingAmount'] ?? item['quantity']) as num?)
+                          ?.toDouble() ??
+                      1
+                : 1;
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => hydrateError =
+              'Không thể lấy món đang hoạt động của bữa cũ: ${displayError(e)}',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => hydrating = false);
+    }
+  }
+
+  Future<void> _searchFoods(int targetPage) async {
+    final version = ++requestVersion;
+    setState(() {
+      searching = true;
+      searchError = null;
+    });
+    try {
+      final raw = _map(
+        await context.read<ApiClient>().get(
+          '/nutrition/foods/page',
+          queryParameters: {
+            'keyword': search.trim(),
+            'page': targetPage,
+            'size': 20,
+          },
+        ),
+      );
+      if (!mounted || version != requestVersion) return;
+      setState(() {
+        results = _list(raw['content']);
+        page = targetPage;
+        totalPages = (raw['totalPages'] as num?)?.toInt() ?? 0;
+        for (final food in results) {
+          foodCache[food['id'].toString()] = food;
+        }
+        final visibleIds = results.map((e) => e['id'].toString()).toSet();
+        foodCache.removeWhere(
+          (id, _) => !selected.containsKey(id) && !visibleIds.contains(id),
+        );
+      });
+    } catch (e) {
+      if (mounted && version == requestVersion) {
+        setState(() => searchError = displayError(e));
+      }
+    } finally {
+      if (mounted && version == requestVersion) {
+        setState(() => searching = false);
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> _payloadItems() => selected.entries
+      .map(
+        (entry) => nutritionItemPayload(
+          entry.key,
+          foodCache[entry.key]!,
+          entry.value.amount,
+          entry.value.unit,
+        ),
+      )
+      .toList();
+
   Future<void> _saveCollection() async {
-    if (selected.isEmpty)
+    if (selected.isEmpty) {
       return showMessage(context, 'Chọn ít nhất một món.', error: true);
+    }
     final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
@@ -662,15 +883,7 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
           'name': name,
           'type': 'SAVED_MEAL',
           'servings': 1,
-          'items': selected.entries
-              .map(
-                (entry) => {
-                  'foodId': entry.key,
-                  'servingAmount': entry.value.amount,
-                  'servingUnit': entry.value.unit,
-                },
-              )
-              .toList(),
+          'items': _payloadItems(),
         },
       );
       if (mounted) showMessage(context, 'Đã lưu bữa để dùng nhanh.');
@@ -726,8 +939,8 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
     try {
       final raw = await context.read<ApiClient>().get('/foods/barcode/$code');
       final food = Map<String, dynamic>.from(raw as Map);
-      if (!widget.foods.any((item) => item['id'] == food['id']))
-        widget.foods.add(food);
+      if (!mounted) return;
+      foodCache[food['id'].toString()] = food;
       setState(() => selected[food['id'].toString()] = _FoodAmount());
       if (mounted) showMessage(context, 'Đã thêm ${food['name']}.');
     } catch (error) {
@@ -801,7 +1014,7 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
       );
       if (!mounted) return;
       final result = Map<String, dynamic>.from(raw as Map);
-      final available = widget.foods
+      final available = foodCache.values
           .where(
             (food) =>
                 food['active'] != false &&
@@ -853,27 +1066,29 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                       Text(
                         '${match.name}: khoảng ${match.grams?.round() ?? '?'} g, ${match.calories?.round() ?? '?'} kcal',
                       ),
-                      DropdownButtonFormField<String>(
-                        initialValue: match.foodId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Món trong kho',
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.search),
+                        label: Text(
+                          match.foodId == null
+                              ? 'Tìm món tương ứng'
+                              : foodCache[match.foodId]?['name']?.toString() ??
+                                    'Đã chọn món',
                         ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: '',
-                            child: Text('Bỏ qua / chưa xác định'),
-                          ),
-                          for (final food in available)
-                            DropdownMenuItem(
-                              value: food['id'].toString(),
-                              child: Text(
-                                food['name'].toString(),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                        onChanged: (id) => update(() => match.foodId = id),
+                        onPressed: () async {
+                          final found =
+                              await showModalBottomSheet<Map<String, dynamic>>(
+                                context: dialogContext,
+                                isScrollControlled: true,
+                                builder: (_) => const FoodSearchSheet(),
+                              );
+                          if (found == null || !dialogContext.mounted) return;
+                          foodCache[found['id'].toString()] = found;
+                          update(() => match.foodId = found['id'].toString());
+                        },
+                      ),
+                      TextButton(
+                        onPressed: () => update(() => match.foodId = null),
+                        child: const Text('Bỏ qua món này'),
                       ),
                       const SizedBox(height: 10),
                     ],
@@ -888,6 +1103,9 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                     const Text(
                       'Ước tính chỉ để tham khảo; chưa lưu vào nhật ký.',
                       style: TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                    const Text(
+                      'Ảnh ước tính gram, không đổi sang ml. Đồ uống theo ml dùng 1 khẩu phần; hãy chỉnh lại trước khi lưu.',
                     ),
                   ],
                 ),
@@ -917,15 +1135,12 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
         for (final match in confirmed) {
           final id = match.foodId;
           if (id == null || id.isEmpty || selected.containsKey(id)) continue;
-          final food = available
-              .where((item) => item['id'].toString() == id)
-              .firstOrNull;
+          final food = foodCache[id];
           if (food == null) continue;
-          final hasGrams =
-              ((food['servingSizeGrams'] as num?)?.toDouble() ?? 0) > 0;
+          final serving = photoServing(food, match.grams);
           selected[id] = _FoodAmount()
-            ..unit = hasGrams && (match.grams ?? 0) > 0 ? 'GRAM' : 'SERVING'
-            ..amount = hasGrams && (match.grams ?? 0) > 0 ? match.grams! : 1;
+            ..unit = serving['unit'] as String
+            ..amount = (serving['amount'] as num).toDouble();
         }
         search = '';
       });
@@ -946,28 +1161,20 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
     }
     setState(() => busy = true);
     try {
-      await context.read<ApiClient>().post(
-        '/nutrition/meal-logs',
-        data: {
-          'mealType': widget.mealType,
-          'logDate': widget.date,
-          'items': selected.entries.map((entry) {
-            final food = widget.foods.firstWhere(
-              (item) => item['id'] == entry.key,
-            );
-            final size = (food['servingSizeGrams'] as num?)?.toDouble();
-            final factor = entry.value.unit == 'SERVING' || size == null
-                ? entry.value.amount
-                : entry.value.amount / size;
-            return {
-              'foodId': entry.key,
-              'quantity': factor,
-              'servingAmount': entry.value.amount,
-              'servingUnit': entry.value.unit,
-            };
-          }).toList(),
-        },
-      );
+      final payload = {
+        'mealType': widget.mealType,
+        'logDate': widget.date,
+        'items': _payloadItems(),
+      };
+      final api = context.read<ApiClient>();
+      if (widget.initialMeal != null && !widget.copy) {
+        await api.put(
+          '/nutrition/meal-logs/${widget.initialMeal!['id']}',
+          data: payload,
+        );
+      } else {
+        await api.post('/nutrition/meal-logs', data: payload);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (exception) {
       if (mounted) showMessage(context, displayError(exception), error: true);
@@ -978,24 +1185,18 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final matching = widget.foods
-        .where(
-          (food) => food['name'].toString().toLowerCase().contains(
-            search.toLowerCase(),
-          ),
-        )
-        .toList();
     final visible = [
-      ...matching.where((food) => selected.containsKey(food['id'].toString())),
-      ...matching
-          .where((food) => !selected.containsKey(food['id'].toString()))
-          .take(30),
+      ...selected.keys
+          .map((id) => foodCache[id])
+          .whereType<Map<String, dynamic>>(),
+      ...results.where((food) => !selected.containsKey(food['id'].toString())),
     ];
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: .88,
       maxChildSize: .95,
       builder: (context, controller) => ListView(
+        key: const ValueKey('meal-editor-list'),
         controller: controller,
         padding: EdgeInsets.fromLTRB(
           18,
@@ -1010,12 +1211,31 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                 ?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 12),
+          if (widget.initialMeal != null)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Bữa cũ giữ nguyên dữ liệu lịch sử. Khi sửa hoặc sao chép, dinh dưỡng sẽ tính lại theo kho hiện tại.',
+                style: TextStyle(color: Colors.orange),
+              ),
+            ),
+          if (hydrating) const LinearProgressIndicator(),
+          if (hydrateError != null)
+            Text(hydrateError!, style: const TextStyle(color: Colors.red)),
           TextField(
             decoration: const InputDecoration(
               prefixIcon: Icon(Icons.search),
               labelText: 'Tìm thực phẩm',
             ),
-            onChanged: (value) => setState(() => search = value),
+            onChanged: (value) {
+              setState(() => search = value);
+              debounce?.cancel();
+              requestVersion++;
+              debounce = Timer(
+                const Duration(milliseconds: 350),
+                () => _searchFoods(0),
+              );
+            },
           ),
           const SizedBox(height: 8),
           Row(
@@ -1038,10 +1258,17 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
             ],
           ),
           const SizedBox(height: 10),
+          if (searching) const LinearProgressIndicator(),
+          if (searchError != null)
+            TextButton(
+              onPressed: () => _searchFoods(page),
+              child: Text('Thử lại: $searchError'),
+            ),
           ...visible.map((food) {
             final id = food['id'].toString();
             final value = selected[id];
             return Card(
+              key: ValueKey(id),
               child: Column(
                 children: [
                   CheckboxListTile(
@@ -1050,13 +1277,15 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                     subtitle: Text(
                       '${food['unit'] ?? 'khẩu phần'}${food['verified'] == true ? ' · Đã xác minh' : ' · Tham khảo'}',
                     ),
-                    onChanged: (checked) => setState(() {
-                      if (checked == true) {
-                        selected[id] = _FoodAmount();
-                      } else {
-                        selected.remove(id);
-                      }
-                    }),
+                    onChanged: busy || hydrating
+                        ? null
+                        : (checked) => setState(() {
+                            if (checked == true) {
+                              selected[id] = _FoodAmount();
+                            } else {
+                              selected.remove(id);
+                            }
+                          }),
                   ),
                   if (value != null)
                     Padding(
@@ -1073,8 +1302,8 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                               decoration: const InputDecoration(
                                 labelText: 'Số lượng',
                               ),
-                              onChanged: (raw) =>
-                                  value.amount = double.tryParse(raw) ?? 1,
+                              onChanged: (raw) => value.amount =
+                                  double.tryParse(raw) ?? double.nan,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1089,12 +1318,12 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                                   value: 'SERVING',
                                   child: Text('Khẩu phần'),
                                 ),
-                                if (food['servingSizeGrams'] != null)
+                                if (nutritionUnits(food).contains('GRAM'))
                                   const DropdownMenuItem(
                                     value: 'GRAM',
                                     child: Text('Gram'),
                                   ),
-                                if (food['servingSizeGrams'] != null)
+                                if (nutritionUnits(food).contains('ML'))
                                   const DropdownMenuItem(
                                     value: 'ML',
                                     child: Text('ml'),
@@ -1112,14 +1341,34 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
               ),
             );
           }),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                tooltip: 'Trang trước',
+                onPressed: searching || page <= 0
+                    ? null
+                    : () => _searchFoods(page - 1),
+                icon: const Icon(Icons.chevron_left),
+              ),
+              Text('Trang ${totalPages == 0 ? 0 : page + 1}/$totalPages'),
+              IconButton(
+                tooltip: 'Trang sau',
+                onPressed: searching || page + 1 >= totalPages
+                    ? null
+                    : () => _searchFoods(page + 1),
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
-            onPressed: busy ? null : _saveCollection,
+            onPressed: busy || hydrating ? null : _saveCollection,
             icon: const Icon(Icons.bookmark_add_outlined),
             label: const Text('Lưu thành bữa dùng nhanh'),
           ),
           FilledButton(
-            onPressed: busy ? null : _save,
+            onPressed: busy || hydrating ? null : _save,
             child: Text(busy ? 'Đang lưu...' : 'Lưu ${selected.length} món'),
           ),
         ],

@@ -5,6 +5,7 @@ import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../auth/auth_session.dart';
 import '../quotes/daily_quote_card.dart';
+import 'mobile_menu_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -113,7 +114,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 12),
           ],
-          if (user.quoteEnabled || user.isAdmin) ...[
+          if (context.watch<MobileMenuController>().allows('quotes', user)) ...[
             const DailyQuoteCard(),
             const SizedBox(height: 20),
           ],

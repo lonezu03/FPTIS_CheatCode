@@ -72,6 +72,11 @@ class ApiClient {
             final request = error.requestOptions;
             request.headers['Authorization'] = 'Bearer $accessToken';
             request.extra[_retriedKey] = true;
+            // Multipart bodies were finalized by the failed send. Recreate the
+            // stream while retaining this same tracked operation/mutation guard.
+            if (request.data is FormData) {
+              request.data = (request.data as FormData).clone();
+            }
             handler.resolve(await this.dio.fetch(request));
           } on DioException {
             _finishTracking(error.requestOptions);

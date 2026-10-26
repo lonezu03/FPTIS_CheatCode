@@ -140,6 +140,12 @@ Deployment:
   data coverage.
 - The web uses secure HttpOnly auth cookies through the Vercel `/api` proxy. The
   mobile app persists refresh credentials in Keystore/Keychain until logout.
+- App module menu order/visibility is global (`/api/mobile-menu`, ADMIN writes
+  `/api/admin/mobile-menu`) and applies to ADMIN too. Intersect visibility with
+  each account's existing module permission; menu visibility never grants or
+  revokes API authorization. More, Notifications, Profile and ADMIN recovery
+  settings remain accessible. Updates require the current version to avoid
+  overwriting another admin's configuration.
 
 ## Engineering rules
 
