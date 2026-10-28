@@ -87,12 +87,8 @@ class MobileMenuController extends ChangeNotifier {
     return switch (key) {
       'dashboard' => true,
       'lunch' => user.lunchEnabled,
-      'fitness' ||
-      'workoutPlans' ||
-      'exercises' ||
-      'foods' ||
-      'nutrition' => user.fitnessEnabled,
-      'health' => user.healthEnabled,
+      'fitness' || 'workoutPlans' || 'exercises' => user.fitnessEnabled,
+      'health' || 'foods' || 'nutrition' => user.healthEnabled,
       'planner' => user.todoEnabled || user.scheduleEnabled,
       'quotes' => user.quoteEnabled,
       'finance' => user.financeEnabled,

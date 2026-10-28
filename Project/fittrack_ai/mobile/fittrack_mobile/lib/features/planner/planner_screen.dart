@@ -5,6 +5,7 @@ import '../auth/auth_session.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/widgets/common_widgets.dart';
+import '../fitness/training_programs_screen.dart';
 
 class PlannerScreen extends StatefulWidget {
   const PlannerScreen({super.key, required this.user});
@@ -1411,9 +1412,16 @@ class _ScheduleList extends StatelessWidget {
           );
         final item = items[index - 1];
         final isTodo = item['sourceType'] == 'TODO';
-        final completed = isTodo && item['status'] == 'DONE';
+        final isWorkout = item['sourceType'] == 'WORKOUT';
+        final completed = (isTodo || isWorkout) && item['status'] == 'DONE';
         return Card(
           child: ListTile(
+            onTap: isWorkout
+                ? () => openTrainingAppointment(
+                    context,
+                    item['sourceId'].toString(),
+                  )
+                : null,
             leading: CircleAvatar(
               child: Icon(
                 completed
@@ -1432,7 +1440,7 @@ class _ScheduleList extends StatelessWidget {
               ),
             ),
             subtitle: Text(
-              '${_dateLabel(item['startAt'])} • ${isTodo ? 'Việc cần làm' : 'Sự kiện'}${completed ? ' • Đã hoàn thành' : ''}${item['recurring'] == true ? ' • Lặp lại' : ''}',
+              '${_dateLabel(item['startAt'])} • ${isTodo ? 'Việc cần làm' : isWorkout ? 'Lịch tập' : 'Sự kiện'}${completed ? ' • Đã hoàn thành' : ''}${item['recurring'] == true ? ' • Lặp lại' : ''}',
             ),
           ),
         );

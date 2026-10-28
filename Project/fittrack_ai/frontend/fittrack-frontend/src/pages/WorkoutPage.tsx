@@ -55,6 +55,8 @@ import ErrorState from "../components/common/ErrorState";
 import DataPagination from "../components/common/DataPagination";
 import { useServerPagination } from "../hooks/useServerPagination";
 import ExercisePicker from "../components/workouts/ExercisePicker";
+import WorkoutGroupFields from "@/components/workouts/WorkoutGroupFields";
+import { getTrainingAppointment, completeTraining } from "@/api/training-program.api";
 import { useAuthStore } from "@/store/auth.store";
 import { clearSessionDraft, readSessionDraft, writeSessionDraft } from "@/lib/sessionDraft";
 import { maximumWorkoutSeconds, workoutElapsedSeconds } from "@/lib/workoutDraftTime";
@@ -79,6 +81,7 @@ type DraftExercise = {
   maxReps: number;
   targetRir: number;
   coachingNote?: string;
+  groupKey?:string|null;groupType?:string|null;groupRounds?:number|null;betweenExerciseRestSeconds?:number|null;betweenRoundRestSeconds?:number|null;
   sets: DraftSet[];
 };
 
@@ -90,6 +93,7 @@ type WorkoutSeed = {
   sessionId?: string;
   sessionDate?: string;
   durationMinutes?: number;
+  appointmentId?: string;
 };
 
 const setTypeLabels: Record<WorkoutSetType, string> = {
@@ -155,6 +159,14 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
   const [selectedPlanDay, setSelectedPlanDay] = useState(searchParams.get("planDay") ?? "");
   const [autoStarted, setAutoStarted] = useState(false);
   const [historyFilters, setHistoryFilters] = useState({ from: "", to: "", exerciseId: "" });
+  const appointmentQuery=useQuery({queryKey:['training-appointment',searchParams.get('appointment')],queryFn:()=>getTrainingAppointment(searchParams.get('appointment')!),enabled:!!searchParams.get('appointment')});
+  useEffect(()=>{
+    const a=appointmentQuery.data;
+    if(!a||autoStarted)return;
+    const timer=window.setTimeout(()=>{setAutoStarted(true);if(a.completedSessionId){toast.info('Lần tập này đã hoàn thành');return;}
+      setLiveSeed({title:a.title,appointmentId:a.id,exercises:a.day.exercises.map(item=>makeExercise(item.exerciseId,{...item,coachingNote:item.coachingNote??'',restSeconds:item.restSeconds??90,minReps:item.minReps??item.targetReps,maxReps:item.maxReps??item.targetReps,sets:Array.from({length:item.targetSets},()=>makeSet({weight:item.targetWeight??0,reps:item.targetReps,rir:item.targetRir}))}))});
+    },0);return()=>window.clearTimeout(timer);
+  },[appointmentQuery.data,autoStarted]);
 
   const exercisesQuery = useQuery({ queryKey: ["exercises"], queryFn: getExercises });
   const plansQuery = useQuery({ queryKey: ["workout-plans"], queryFn: getWorkoutPlans });
@@ -219,6 +231,7 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
     },
   });
   const editMutation = useMutation({ mutationFn: ({ id, payload }: { id: string; payload: Parameters<typeof createWorkoutSession>[0] }) => replaceWorkoutSession(id, payload), onSuccess: () => { toast.success('Đã cập nhật toàn bộ buổi tập'); refreshWorkoutData(); }, onError: () => toast.error('Không thể cập nhật buổi tập') });
+  const appointmentMutation=useMutation({mutationFn:({id,payload}:{id:string;payload:Parameters<typeof createWorkoutSession>[0]})=>completeTraining(id,payload),onSuccess:()=>{toast.success('Đã lưu buổi thực tế và hoàn thành lần tập trong lịch');refreshWorkoutData();queryClient.invalidateQueries({queryKey:['training-appointments']});queryClient.invalidateQueries({queryKey:['training-cycles']});queryClient.invalidateQueries({queryKey:['training-appointment']});},onError:error=>toast.error(axios.isAxiosError(error)?error.response?.data?.message||'Không lưu được lịch tập':'Không lưu được lịch tập')});
 
   const deleteMutation = useMutation({
     mutationFn: deleteWorkoutSession,
@@ -254,6 +267,7 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
           maxReps: item.maxReps ?? item.targetReps ?? 10,
           restSeconds: item.restSeconds ?? 90,
           coachingNote: item.coachingNote ?? '',
+          groupKey:item.groupKey,groupType:item.groupType,groupRounds:item.groupRounds,betweenExerciseRestSeconds:item.betweenExerciseRestSeconds,betweenRoundRestSeconds:item.betweenRoundRestSeconds,
           targetRir: item.targetRir ?? 2,
           sets: Array.from({ length: Math.max(1, item.targetSets || 1) }, () =>
             makeSet({
@@ -276,12 +290,13 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plansQuery.isSuccess, exercisesQuery.isSuccess, autoStarted, recoverable, searchParams]);
 
-  if (exercisesQuery.isLoading || sessionsQuery.isLoading || plansQuery.isLoading) {
+  if (exercisesQuery.isLoading || sessionsQuery.isLoading || plansQuery.isLoading || appointmentQuery.isLoading) {
     return <TableLoading />;
   }
   if (exercisesQuery.isError || sessionsQuery.isError || plansQuery.isError) {
     return <ErrorState title="Không thể tải dữ liệu luyện tập" message="Vui lòng tải lại trang." />;
   }
+  if(appointmentQuery.isError)return <div className="space-y-3"><ErrorState title="Không mở được lịch tập" message="Kiểm tra quyền luyện tập/thời khóa biểu hoặc tải lại. Buổi tập chưa được ghi vào lịch sử."/><Button onClick={()=>appointmentQuery.refetch()}>Thử lại</Button></div>;
 
   return (
     <div className="space-y-5">
@@ -361,7 +376,7 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
                 onEdit={() => {
                   if (recoverable && !window.confirm('Mở chỉnh sửa sẽ thay thế nháp buổi tập hiện tại. Tiếp tục?')) return;
                   const orders = [...new Set(session.sets.map(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}`))];
-                  setLiveSeed({ title: session.note ?? '', sessionId: session.id, sessionDate: session.sessionDate, durationMinutes: session.durationMinutes, exercises: orders.map(order => { const sets = session.sets.filter(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}` === order); return makeExercise(sets[0].exerciseId, { historicalExerciseName: sets[0].exerciseName, restSeconds: sets[0].restSeconds ?? 90, sets: sets.map(set => makeSet(set)) }); }) });
+setLiveSeed({ title: session.note ?? '', sessionId: session.id, sessionDate: session.sessionDate, durationMinutes: session.durationMinutes, exercises: orders.map(order => { const sets = session.sets.filter(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}` === order); return makeExercise(sets[0].exerciseId, { groupKey:sets[0].groupKey,groupType:sets[0].groupType,groupRounds:sets[0].groupRounds,betweenExerciseRestSeconds:sets[0].betweenExerciseRestSeconds,betweenRoundRestSeconds:sets[0].betweenRoundRestSeconds, historicalExerciseName: sets[0].exerciseName, restSeconds: sets[0].restSeconds ?? 90, sets: sets.map(set => makeSet(set)) }); }) });
                 }}
                 onDelete={() => {
                   if (window.confirm("Bạn có chắc muốn xóa toàn bộ buổi tập này?")) {
@@ -388,10 +403,11 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
           owner={owner}
           seed={liveSeed}
           exercises={exercises}
-          saving={createMutation.isPending || editMutation.isPending}
+          saving={createMutation.isPending || editMutation.isPending || appointmentMutation.isPending}
           onClose={() => { clearSessionDraft(owner, "workout"); setRecoverable(null); setLiveSeed(null); }}
           onFinish={async (payload) => {
             if (liveSeed.sessionId) await editMutation.mutateAsync({ id: liveSeed.sessionId, payload });
+            else if(liveSeed.appointmentId){await appointmentMutation.mutateAsync({id:liveSeed.appointmentId,payload});}
             else await createMutation.mutateAsync(payload);
             clearSessionDraft(owner, "workout");
             setRecoverable(null);
@@ -433,11 +449,11 @@ function LiveWorkoutDialog({
   const [announcedRecords] = useState(() => new Set<string>());
 
   useEffect(() => {
-    const persist = () => writeSessionDraft(owner, "workout", { title, note, exercises: groups, sessionId: seed.sessionId, sessionDate, durationMinutes, elapsedSeconds: workoutElapsedSeconds(seed.elapsedSeconds ?? 0, startedAt, Date.now()) });
+    const persist = () => writeSessionDraft(owner, "workout", { title, note, exercises: groups, appointmentId:seed.appointmentId,sessionId: seed.sessionId, sessionDate, durationMinutes, elapsedSeconds: workoutElapsedSeconds(seed.elapsedSeconds ?? 0, startedAt, Date.now()) });
     persist();
     window.addEventListener("pagehide", persist);
     return () => window.removeEventListener("pagehide", persist);
-  }, [owner, title, note, groups, startedAt, seed.elapsedSeconds, seed.sessionId, elapsed, sessionDate, durationMinutes]);
+  }, [owner, title, note, groups, startedAt, seed.elapsedSeconds, seed.sessionId,seed.appointmentId, elapsed, sessionDate, durationMinutes]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setElapsed(workoutElapsedSeconds(seed.elapsedSeconds ?? 0, startedAt, Date.now())), 1000);
@@ -516,12 +532,23 @@ function LiveWorkoutDialog({
       ...item,
       sets: item.sets.map((set) => (set.key === setKey ? { ...set, completed: !set.completed } : set)),
     }));
-    if (willComplete && group && group.restSeconds > 0) {
-      setRestSeconds(group.restSeconds);
+    if (willComplete && group) {
+      const same=group.groupKey?groups.filter(g=>g.groupKey===group.groupKey):[];
+      const rest=group.groupKey?(same[same.length-1]?.key===group.key?group.betweenRoundRestSeconds??90:group.betweenExerciseRestSeconds??15):group.restSeconds;
+      setRestSeconds(rest);
       setRestRunning(true);
     }
     if (willComplete && group && target) {
       announcePotentialRecord(group, target);
+      if(group.groupKey){
+        const members=groups.filter(g=>g.groupKey===group.groupKey);
+        const round=group.sets.findIndex(s=>s.key===setKey);
+        const order=members.indexOf(group);
+        const next=members.slice(order+1).find(g=>g.sets[round]&&!g.sets[round].completed)
+          ??members.find(g=>g.sets[round+1]&&!g.sets[round+1].completed);
+        const nextRound=next&&members.indexOf(next)>order?round:round+1;
+        toast.info(next?'Nhóm '+group.groupKey+' · tiếp theo: '+(exercises.find(e=>e.id===next.exerciseId)?.name??'Bài tiếp')+' · vòng '+(nextRound+1):'Đã đi hết các hiệp hiện có trong nhóm '+group.groupKey);
+      }
     }
   };
 
@@ -602,6 +629,7 @@ function LiveWorkoutDialog({
           rir: Number(set.rir),
           restSeconds: set.restSeconds ?? group.restSeconds,
           completed: true,
+          groupKey:group.groupKey,groupType:group.groupType,groupRounds:group.groupRounds,betweenExerciseRestSeconds:group.betweenExerciseRestSeconds,betweenRoundRestSeconds:group.betweenRoundRestSeconds,
         })),
     );
     if (!completedSets.length) {
@@ -701,6 +729,7 @@ function LiveWorkoutDialog({
                     </label>
                   </div>
                   {seed.sessionId && new Set(group.sets.map(set => set.restSeconds ?? group.restSeconds)).size > 1 && <p className="text-xs text-muted-foreground">Các hiệp có thời gian nghỉ khác nhau, giữ nguyên khi lưu. Đổi ô Nghỉ sẽ áp dụng cho tất cả hiệp của bài này.</p>}
+                  <WorkoutGroupFields value={group} onChange={fields=>updateGroup(group.key,item=>({...item,...fields}))}/>
                   <details className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-3">
                     <summary className="cursor-pointer text-sm font-semibold text-emerald-900">Gợi ý mức tạ, mức ưu tiên và bài thay thế</summary>
                   <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_auto]">

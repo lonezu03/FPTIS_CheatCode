@@ -19,6 +19,7 @@ export type WorkoutPlanExercise = {
   minReps?: number | null;
   maxReps?: number | null;
   coachingNote?: string | null;
+  groupKey?: string|null; groupType?: string|null; groupRounds?: number|null; betweenExerciseRestSeconds?:number|null; betweenRoundRestSeconds?:number|null;
 };
 
 export type WorkoutPlanDay = {
@@ -72,6 +73,7 @@ export type WorkoutPlanPayload = {
       minReps?: number;
       maxReps?: number;
       coachingNote?: string;
+      groupKey?: string|null; groupType?: string|null; groupRounds?: number|null; betweenExerciseRestSeconds?:number|null; betweenRoundRestSeconds?:number|null;
     }[];
   }[];
 };

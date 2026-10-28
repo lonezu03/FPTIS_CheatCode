@@ -9,6 +9,8 @@ import '../catalog/catalog_exercise_picker.dart';
 import '../catalog/catalog_image.dart';
 import 'live_workout_sheet.dart';
 import 'training_data.dart';
+import 'workout_group_editor.dart';
+import 'training_programs_screen.dart';
 
 class WorkoutPlansScreen extends StatefulWidget {
   const WorkoutPlansScreen({super.key});
@@ -86,6 +88,13 @@ class _WorkoutPlansScreenState extends State<WorkoutPlansScreen> {
             onPressed: () => edit(),
             icon: const Icon(Icons.add),
             label: const Text('Tạo giáo án'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const TrainingProgramsScreen()),
+            ),
+            icon: const Icon(Icons.calendar_month),
+            label: const Text('Chu kỳ và lịch tập'),
           ),
           if (plans.isEmpty)
             const EmptyView(
@@ -501,6 +510,10 @@ class _PlanEditorState extends State<_PlanEditor> {
                                         'coachingNote',
                                         'Ghi chú kỹ thuật',
                                         text: true,
+                                      ),
+                                      WorkoutGroupEditor(
+                                        value: e,
+                                        onChanged: () => setState(() {}),
                                       ),
                                       Wrap(
                                         children: [

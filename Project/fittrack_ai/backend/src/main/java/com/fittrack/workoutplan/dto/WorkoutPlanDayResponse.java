@@ -7,6 +7,9 @@ import java.util.List;
 
 @Getter
 @Builder
+@lombok.NoArgsConstructor
+@lombok.AllArgsConstructor
+@lombok.Setter
 public class WorkoutPlanDayResponse {
     private String id;
     private String name;

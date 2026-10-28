@@ -11,11 +11,18 @@ import '../auth/auth_session.dart';
 import '../catalog/catalog_exercise_picker.dart';
 import '../catalog/catalog_image.dart';
 import 'training_data.dart';
+import 'workout_group_editor.dart';
 
 class LiveWorkoutSheet extends StatefulWidget {
-  const LiveWorkoutSheet({super.key, this.planDay, this.initialSession});
+  const LiveWorkoutSheet({
+    super.key,
+    this.planDay,
+    this.initialSession,
+    this.appointmentId,
+  });
   final Map<String, dynamic>? planDay;
   final Map<String, dynamic>? initialSession;
+  final String? appointmentId;
 
   @override
   State<LiveWorkoutSheet> createState() => _LiveWorkoutSheetState();
@@ -41,7 +48,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
   Timer? restTimer;
   String owner = '';
   String get draftSlot =>
-      'workout-live:${widget.initialSession?['id'] ?? 'new'}';
+      'workout-live:${widget.appointmentId ?? widget.initialSession?['id'] ?? 'new'}';
   final duration = TextEditingController();
   String sessionDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
@@ -232,6 +239,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
         targetRir: (item['targetRir'] as num?)?.toInt() ?? 2,
         rest: (item['restSeconds'] as num?)?.toInt() ?? 90,
         coachingNote: item['coachingNote']?.toString() ?? '',
+        grouping: trainingGroup(item),
         sets: List.generate(
           targetSets,
           (_) => _DraftSet(
@@ -283,6 +291,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
           id,
           sets: [],
           rest: (set['restSeconds'] as num?)?.toInt() ?? 90,
+          grouping: trainingGroup(set),
         ),
       );
       group.sets.add(
@@ -353,6 +362,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
               'rir': set.value.rir,
               'restSeconds': set.value.restSeconds,
               'completed': set.value.completed,
+              ...group.value.grouping,
             },
     ],
   };
@@ -555,7 +565,12 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
         );
         return;
       }
-      final result = widget.initialSession == null
+      final result = widget.appointmentId != null
+          ? await api.post(
+              '/workout-plans/appointments/${widget.appointmentId}/complete',
+              data: {'session': payload},
+            )
+          : widget.initialSession == null
           ? await api.post('/workouts/sessions', data: payload)
           : await api.put(
               '/workouts/sessions/${widget.initialSession!['id']}/details',
@@ -754,7 +769,62 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
                         setState(() => set.completed = !set.completed);
                         if (willComplete) {
                           _announcePotentialRecord(entry.value, set);
-                          _startRest(set.restSeconds);
+                          final group = entry.value.grouping;
+                          final same = draft
+                              .where(
+                                (e) =>
+                                    e.grouping['groupKey'] == group['groupKey'],
+                              )
+                              .toList();
+                          _startRest(
+                            group['groupKey'] == null
+                                ? set.restSeconds
+                                : ((same.last == entry.value
+                                                  ? group['betweenRoundRestSeconds']
+                                                  : group['betweenExerciseRestSeconds'])
+                                              as num?)
+                                          ?.toInt() ??
+                                      90,
+                          );
+                          if (group['groupKey'] != null) {
+                            final round = entry.value.sets.indexOf(set),
+                                order = same.indexOf(entry.value);
+                            final next =
+                                same
+                                    .skip(order + 1)
+                                    .where(
+                                      (e) =>
+                                          e.sets.length > round &&
+                                          !e.sets[round].completed,
+                                    )
+                                    .firstOrNull ??
+                                same
+                                    .where(
+                                      (e) =>
+                                          e.sets.length > round + 1 &&
+                                          !e.sets[round + 1].completed,
+                                    )
+                                    .firstOrNull;
+                            if (next != null) {
+                              final n = same.indexOf(next) > order
+                                  ? round + 1
+                                  : round + 2;
+                              final name =
+                                  exercises
+                                      .where((e) => e['id'] == next.exerciseId)
+                                      .firstOrNull?['name'] ??
+                                  'Bài tiếp';
+                              showMessage(
+                                context,
+                                "Nhóm ${group['groupKey']} · tiếp: $name · vòng $n",
+                              );
+                            } else {
+                              showMessage(
+                                context,
+                                "Đã đi hết các hiệp hiện có trong nhóm ${group['groupKey']}",
+                              );
+                            }
+                          }
                         }
                       },
                     ),
@@ -938,6 +1008,7 @@ class _ExerciseEditor extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
+            WorkoutGroupEditor(value: exercise.grouping, onChanged: onChanged),
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -1249,14 +1320,17 @@ class _DraftExercise {
     this.targetRir = 2,
     int rest = 90,
     this.coachingNote = '',
+    Map<String, dynamic>? grouping,
   }) : key = '${DateTime.now().microsecondsSinceEpoch}-${_nextKey++}',
        restSeconds = rest,
+       grouping = grouping ?? {},
        sets = sets ?? List.generate(3, (_) => _DraftSet());
 
   static int _nextKey = 0;
   final String key;
   String exerciseId;
   int restSeconds;
+  final Map<String, dynamic> grouping;
   final String coachingNote;
   final int targetSets;
   final int minReps;

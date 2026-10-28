@@ -20,6 +20,16 @@ public class CreateWorkoutSetRequest {
     @NotNull
     @Positive
     private Integer setNumber;
+    @jakarta.validation.constraints.Size(max = 60)
+    private String groupKey;
+    @jakarta.validation.constraints.Pattern(regexp = "SUPERSET|CIRCUIT")
+    private String groupType;
+    @Min(1) @Max(20)
+    private Integer groupRounds;
+    @Min(0) @Max(1800)
+    private Integer betweenExerciseRestSeconds;
+    @Min(0) @Max(1800)
+    private Integer betweenRoundRestSeconds;
 
     @Min(1)
     @Max(50)

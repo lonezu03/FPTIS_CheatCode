@@ -49,6 +49,11 @@ Map<String, dynamic> trainingPlanPayload(Map<String, dynamic> plan) => {
                     'minReps',
                     'maxReps',
                     'coachingNote',
+                    'groupKey',
+                    'groupType',
+                    'groupRounds',
+                    'betweenExerciseRestSeconds',
+                    'betweenRoundRestSeconds',
                   ])
                     key: entry.value[key],
                   'exerciseOrder': entry.key + 1,

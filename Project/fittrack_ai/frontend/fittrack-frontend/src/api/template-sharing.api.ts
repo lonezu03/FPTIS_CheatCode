@@ -1,0 +1,10 @@
+import api from './axios';
+import type {PageResponse} from './pagination';
+export type ShareKind='WORKOUT_PLAN'|'MEAL_COLLECTION'|'MEAL_WEEK';
+export type TemplateShare={id:string;kind:ShareKind;title:string;ownerName:string;recipientName:string;active:boolean;createdAt:string;expiresAt:string;copiedAt:string|null;version:number};
+export type SharePreview={share:TemplateShare;template:unknown;unavailableItems:string[];itemNames:Record<string,string>};
+export const listTemplateShares=async(inbox:boolean,page:number):Promise<PageResponse<TemplateShare>>=>(await api.get('/template-shares',{params:{inbox,page,size:12}})).data;
+export const createTemplateShare=async(body:{kind:ShareKind;sourceId:string;recipientEmail:string;operationId:string;expiresInDays:number})=>(await api.post('/template-shares',body)).data;
+export const previewTemplateShare=async(id:string):Promise<SharePreview>=>(await api.get(`/template-shares/${id}`)).data;
+export const acceptTemplateShare=async(id:string,targetWeek?:string)=>(await api.post(`/template-shares/${id}/accept`,{targetWeek})).data;
+export const revokeTemplateShare=async(share:TemplateShare)=>api.delete(`/template-shares/${share.id}`,{params:{version:share.version}});

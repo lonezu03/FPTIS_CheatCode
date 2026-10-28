@@ -16,6 +16,7 @@ export type WorkoutSetResponse = {
   exerciseName: string;
   muscleGroup: string;
   setNumber: number;
+  groupKey?: string|null; groupType?: string|null; groupRounds?: number|null; betweenExerciseRestSeconds?:number|null; betweenRoundRestSeconds?:number|null;
   exerciseOrder: number;
   setType: WorkoutSetType;
   weight: number;
@@ -150,6 +151,7 @@ export const createWorkoutSession = async (payload: {
     exerciseId: string;
     setNumber: number;
     exerciseOrder: number;
+    groupKey?:string|null;groupType?:string|null;groupRounds?:number|null;betweenExerciseRestSeconds?:number|null;betweenRoundRestSeconds?:number|null;
     setType: WorkoutSetType;
     weight: number;
     reps: number;

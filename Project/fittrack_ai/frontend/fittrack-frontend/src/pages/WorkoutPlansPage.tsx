@@ -25,6 +25,8 @@ import DataPagination from "../components/common/DataPagination";
 import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
 import ExercisePicker from "../components/workouts/ExercisePicker";
+import TrainingPrograms from "@/components/workouts/TrainingPrograms";
+import WorkoutGroupFields from "@/components/workouts/WorkoutGroupFields";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +44,7 @@ type PlanExerciseDraft = {
   minReps?: number;
   maxReps?: number;
   coachingNote?: string;
+  groupKey?: string|null; groupType?: string|null; groupRounds?: number|null; betweenExerciseRestSeconds?:number|null; betweenRoundRestSeconds?:number|null;
 };
 
 type PlanDayDraft = {
@@ -279,6 +282,7 @@ function WorkoutPlanWorkspace({ owner }: { owner: string }) {
           minReps: exercise.minReps ?? exercise.targetReps,
           maxReps: exercise.maxReps ?? exercise.targetReps,
           coachingNote: exercise.coachingNote ?? "",
+          groupKey:exercise.groupKey,groupType:exercise.groupType,groupRounds:exercise.groupRounds,betweenExerciseRestSeconds:exercise.betweenExerciseRestSeconds,betweenRoundRestSeconds:exercise.betweenRoundRestSeconds,
         })),
       })),
   });
@@ -315,6 +319,7 @@ function WorkoutPlanWorkspace({ owner }: { owner: string }) {
         minReps: exercise.minReps ?? exercise.targetReps,
         maxReps: exercise.maxReps ?? exercise.targetReps,
         coachingNote: exercise.coachingNote ?? "",
+        groupKey:exercise.groupKey,groupType:exercise.groupType,groupRounds:exercise.groupRounds,betweenExerciseRestSeconds:exercise.betweenExerciseRestSeconds,betweenRoundRestSeconds:exercise.betweenRoundRestSeconds,
       })),
     })));
     window.setTimeout(() => document.getElementById("workout-plan-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
@@ -335,6 +340,7 @@ function WorkoutPlanWorkspace({ owner }: { owner: string }) {
         title="Giáo án"
         description="Tạo giáo án dùng lại và khởi tạo nhanh các buổi tập."
       />
+      <details className="rounded-2xl border bg-card p-4"><summary className="cursor-pointer font-semibold">Chu kỳ 4–12 tuần và lịch tập giáo án</summary><div className="mt-4"><TrainingPrograms plans={plans} /></div></details>
 
       {recoverable && <Card><CardContent className="space-y-3 p-4"><p>Có bản nháp giáo án chưa lưu trong tab này.</p><div className="flex flex-wrap gap-2"><Button onClick={async () => {
         try {
@@ -438,6 +444,7 @@ function WorkoutPlanWorkspace({ owner }: { owner: string }) {
                       />
                       <div className="flex gap-2 md:col-span-12"><Button variant="outline" size="sm" disabled={exerciseIndex === 0} onClick={() => reorder(dayIndex, exerciseIndex, -1)}>↑ Lên</Button><Button variant="outline" size="sm" disabled={exerciseIndex === day.exercises.length - 1} onClick={() => reorder(dayIndex, exerciseIndex, 1)}>↓ Xuống</Button></div>
                       {([['minReps', 'Số lần tối thiểu'], ['maxReps', 'Số lần tối đa'], ['restSeconds', 'Nghỉ giữa hiệp (giây)']] as const).map(([field, label]) => <FormField key={field} label={label} className="md:col-span-4"><Input type="number" min={field === 'restSeconds' ? 0 : 1} max={field === 'restSeconds' ? 1800 : 100} value={exercise[field] ?? (field === 'restSeconds' ? 90 : exercise.targetReps)} onChange={event => updateDayExercise(dayIndex, exerciseIndex, field, Number(event.target.value))} /></FormField>)}
+                      <div className="md:col-span-12"><WorkoutGroupFields value={exercise} onChange={group => setDraftDays(days => days.map((day, di) => di !== dayIndex ? day : {...day, exercises:day.exercises.map((item, ei) => ei===exerciseIndex ? {...item,...group} : item)}))}/></div>
                       <FormField label="Ghi chú riêng cho bài trong giáo án" className="md:col-span-12"><Input maxLength={1000} value={exercise.coachingNote ?? ''} onChange={event => updateDayExercise(dayIndex, exerciseIndex, 'coachingNote', event.target.value)} /></FormField>
 
                       <FormField label="Số hiệp" htmlFor={`plan-sets-${dayIndex}-${exerciseIndex}`} hint="Số lượt thực hiện." className="md:col-span-2" required>

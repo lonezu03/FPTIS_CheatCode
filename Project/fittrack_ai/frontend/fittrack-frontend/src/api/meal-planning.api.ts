@@ -1,0 +1,22 @@
+import api from './axios';
+import type { PageResponse } from './pagination';
+import type { ServingUnit } from './nutrition.api';
+
+export type PlannedItem = { foodId: string; foodName: string; foodUnit: string; servingAmount: number; servingUnit: ServingUnit; calories: number | null; protein: number | null; carbs: number | null; fat: number | null; verified?: boolean };
+export type PlannedMeal = { id: string; version: number; date: string; mealType: string; name: string; notes: string | null; items: PlannedItem[]; totals: { calories: number; protein: number; carbs: number; fat: number; knownMicronutrientValues: number; possibleMicronutrientValues: number }; loggedMealId: string | null };
+export type PlannedMealInput = { version?: number; date: string; mealType: string; name: string; notes?: string; collectionId?: string; servings?: number; items?: { foodId: string; servingAmount: number; servingUnit: ServingUnit }[] };
+export type GroceryItem = { id: string; foodId: string | null; name: string; amount: number; unit: string; checked: boolean; manual: boolean; stale: boolean };
+export type GroceryList = { version: number; week: string; items: GroceryItem[] };
+export type MealWeekSummary = { week: string; plannedMealCount: number; totals: PlannedMeal['totals'] };
+const base = '/nutrition/planning';
+export const getMealWeekSummary = async (week: string): Promise<MealWeekSummary> => (await api.get(`${base}/summary`, { params: { week } })).data;
+export const listPlannedMeals = async (from: string, to: string, page = 0): Promise<PageResponse<PlannedMeal>> => (await api.get(`${base}/meals`, { params: { from, to, page, size: 30 } })).data;
+export const savePlannedMeal = async (body: PlannedMealInput, id?: string): Promise<PlannedMeal> => (id ? await api.put(`${base}/meals/${id}`, body) : await api.post(`${base}/meals`, body)).data;
+export const removePlannedMeal = async (meal: PlannedMeal) => api.delete(`${base}/meals/${meal.id}`, { params: { version: meal.version } });
+export const consumePlannedMeal = async (meal: PlannedMeal) => api.post(`${base}/meals/${meal.id}/log`, { version: meal.version });
+export const copyMealWeek = async (fromWeek: string, toWeek: string, operationId: string) => api.post(`${base}/copy-week`, { fromWeek, toWeek, operationId });
+export const getGroceries = async (week: string): Promise<GroceryList> => (await api.get(`${base}/groceries`, { params: { week } })).data;
+export const regenerateGroceries = async (week: string, version: number): Promise<GroceryList> => (await api.post(`${base}/groceries/regenerate`, { week, version })).data;
+export const addGrocery = async (week: string, version: number, name: string, amount: number, unit: string): Promise<GroceryList> => (await api.post(`${base}/groceries/items`, { week, version, name, amount, unit })).data;
+export const checkGrocery = async (week: string, version: number, item: GroceryItem, checked: boolean): Promise<GroceryList> => (await api.put(`${base}/groceries/items/${item.id}`, { week, version, checked })).data;
+export const deleteGrocery = async (week: string, version: number, id: string): Promise<GroceryList> => (await api.delete(`${base}/groceries/items/${id}`, { params: { week, version } })).data;

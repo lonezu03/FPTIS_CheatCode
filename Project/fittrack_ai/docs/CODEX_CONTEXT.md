@@ -1,6 +1,42 @@
 # FitTrack Current Project State
 
-Last updated: 2026-10-26
+Last updated: 2026-10-27
+
+## Current task: 10-feature web/Flutter expansion — plan review pending
+
+User asked to implement all proposed new features: cycles, superset/circuit,
+plan-linked calendar, weekly meals, groceries, phased goals, habits, recovery/
+sleep, savings goals and share-copy templates. Read-only BA and DB agents
+completed source-backed analysis; no feature code/schema/production writes yet.
+Plan/defaults/acceptance criteria: docs/FEATURE_EXPANSION_PLAN.md. Await user
+approval of technical plan before implementation per feature-pipeline.
+Key choices proposed: manual per-week load targets; habits reuse Todo permission;
+manual virtual savings progress (no balance/expense effect or locked-money claim);
+explicit selected-account sharing only. Preserve prior menu-fix dirty files.
+Next after approval: implement training/contracts/calendar snapshots first, then
+nutrition/groceries, personal tracking, savings and sharing; complete backend,
+web and Flutter together per phase with independent QA/code review and tests.
+
+## Latest fix: app exercise-library menu visibility (2026-10-27)
+
+User reported exercise library remained visible after hiding it globally.
+MoreScreen now subscribes directly to MobileMenuController instead of relying on
+AppShell to rebuild it. CatalogScreen also observes the controller itself and
+requires visibility plus current account permission before rendering management;
+an already-open library switches to a hidden-module message, including ADMIN.
+The same shared guard covers food library. No API/DB/permission changes.
+CatalogBrowser used as an exercise picker remains available inside permitted
+workouts/plans: hiding library management is not revoking training permission.
+
+New regression tests cover live More-menu removal, hiding an open ADMIN library,
+and keeping the workout picker functional. Updated the catalog UI fixture to
+provide real fitness permission and loaded menu configuration rather than bypass
+the new screen guard. Full Flutter suite: 33 tests passed; scoped analyze passed
+with no issues. Release APK rebuilt successfully (62.6 MB), notification icon
+package check passed. Output: mobile/fittrack_mobile/build/app/outputs/flutter-apk/
+app-release.apk (same version 1.2.5+11, existing signing configuration). No device
+installation/launch verified. No production changes or backend deploy needed for
+this client-only fix; users must install the rebuilt APK.
 
 ## Latest build: Android release APK (2026-10-26)
 

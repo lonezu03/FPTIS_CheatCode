@@ -16,5 +16,10 @@ public class CreateWorkoutPlanExerciseRequest {
     private Integer minReps;
     private Integer maxReps;
     private String coachingNote;
+    private String groupKey;
+    private String groupType;
+    private Integer groupRounds;
+    private Integer betweenExerciseRestSeconds;
+    private Integer betweenRoundRestSeconds;
 }
 

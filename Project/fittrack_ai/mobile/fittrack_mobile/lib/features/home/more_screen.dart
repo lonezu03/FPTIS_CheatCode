@@ -22,6 +22,10 @@ import 'mobile_menu_controller.dart';
 import '../health/health_screen.dart';
 import '../lunch/lunch_screen.dart';
 import '../planner/planner_screen.dart';
+import '../nutrition_planning/meal_planning_screen.dart';
+import '../personal_tracking/personal_tracking_screen.dart';
+import '../finance/savings_goals_screen.dart';
+import '../sharing/template_sharing_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key, required this.user, required this.menu});
@@ -30,7 +34,12 @@ class MoreScreen extends StatelessWidget {
   final MobileMenuController menu;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: menu,
+    builder: (context, _) => _buildContent(context),
+  );
+
+  Widget _buildContent(BuildContext context) {
     final user = context.watch<AuthSession>().user ?? this.user;
     final notifications = context.watch<NotificationCenter>();
     final permissionGranted = notifications.permissionGranted == true;
@@ -109,6 +118,7 @@ class MoreScreen extends StatelessWidget {
                   },
                 ),
                 ..._moduleTiles(context, user),
+                ..._extensionTiles(context, user),
                 if (user.isAdmin) ...[
                   const Divider(height: 1),
                   ListTile(
@@ -301,6 +311,76 @@ class MoreScreen extends StatelessWidget {
     ];
   }
 
+  List<Widget> _extensionTiles(BuildContext context, AuthUser user) {
+    final entries = <(String, String, IconData, Widget)>[
+      if (menu.allows('fitness', user))
+        (
+          'fitness',
+          'Mục tiêu luyện tập',
+          Icons.flag_outlined,
+          const PersonalTrackingScreen(kind: 'WORKOUT'),
+        ),
+      if (menu.allows('nutrition', user))
+        (
+          'nutrition',
+          'Thực đơn & danh sách mua',
+          Icons.shopping_basket_outlined,
+          const MealPlanningScreen(),
+        ),
+      if (menu.allows('health', user)) ...[
+        (
+          'health',
+          'Mục tiêu sức khỏe',
+          Icons.flag_outlined,
+          const PersonalTrackingScreen(),
+        ),
+        (
+          'health',
+          'Giấc ngủ & phục hồi',
+          Icons.bedtime_outlined,
+          const PersonalTrackingScreen(section: 'recovery'),
+        ),
+      ],
+      if (menu.allows('planner', user) && (user.isAdmin || user.todoEnabled))
+        (
+          'planner',
+          'Thói quen',
+          Icons.checklist,
+          const PersonalTrackingScreen(section: 'habits'),
+        ),
+      if (menu.allows('finance', user))
+        (
+          'finance',
+          'Mục tiêu tiết kiệm',
+          Icons.savings_outlined,
+          const SavingsGoalsScreen(),
+        ),
+      if (menu.allows('workoutPlans', user) || menu.allows('nutrition', user))
+        (
+          menu.allows('workoutPlans', user) ? 'workoutPlans' : 'nutrition',
+          'Chia sẻ bản mẫu',
+          Icons.share_outlined,
+          const TemplateSharingScreen(),
+        ),
+    ];
+    return [
+      for (final entry in entries) ...[
+        const Divider(height: 1),
+        ListTile(
+          leading: CircleAvatar(child: Icon(entry.$3)),
+          title: Text(entry.$2),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _open(
+            context,
+            title: entry.$2,
+            page: entry.$4,
+            moduleKey: entry.$1,
+          ),
+        ),
+      ],
+    ];
+  }
+
   void _open(
     BuildContext context, {
     required String title,
@@ -323,7 +403,7 @@ class MoreScreen extends StatelessWidget {
                     ? const Center(
                         child: Text('Admin đã ẩn module này khỏi app.'),
                       )
-                    : moduleKey == 'fitness'
+                    : page is FitnessScreen
                     ? FitnessScreen(
                         showNutrition: menu.allows('nutrition', current),
                       )

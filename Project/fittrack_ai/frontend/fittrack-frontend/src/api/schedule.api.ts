@@ -1,7 +1,7 @@
 import api from './axios';
 export type ScheduleItem = { id:string; title:string; description:string|null; category:'PERSONAL'|'WORK'|'HEALTH'|'STUDY'|'MEAL'; startAt:string; endAt:string|null; repeatRule:'NONE'|'DAILY'|'WEEKLY'|'MONTHLY'|'YEARLY'; repeatInterval:number; repeatEndAt:string|null; daysOfWeek:string|null; reminderMinutes:number; reminderEnabled:boolean; enabled:boolean; lastRemindedAt:string|null; createdAt:string };
 export type SchedulePayload = { title:string; description?:string|null; category?:ScheduleItem['category']; startAt:string; endAt?:string|null; repeatRule?:ScheduleItem['repeatRule']; repeatInterval?:number; repeatEndAt?:string|null; daysOfWeek?:string|null; reminderMinutes?:number; reminderEnabled?:boolean; enabled?:boolean };
-export type CalendarEntry = { occurrenceId:string; sourceType:'TODO'|'EVENT'; sourceId:string; title:string; description:string|null; category:string; startAt:string; endAt:string|null; status:string; recurring:boolean; originalStartAt?:string|null; carryOver?:boolean };
+export type CalendarEntry = { occurrenceId:string; sourceType:'TODO'|'EVENT'|'WORKOUT'; sourceId:string; title:string; description:string|null; category:string; startAt:string; endAt:string|null; status:string; recurring:boolean; originalStartAt?:string|null; carryOver?:boolean };
 export const getSchedule = async (from?:string,to?:string) => (await api.get<ScheduleItem[]>('/schedule',{params:{from,to}})).data;
 export const getScheduleItem = async (id:string) => (await api.get<ScheduleItem>(`/schedule/${encodeURIComponent(id)}`)).data;
 export const createSchedule = async (payload:SchedulePayload) => (await api.post<ScheduleItem>('/schedule', payload)).data;

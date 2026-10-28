@@ -182,12 +182,6 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       ),
     if (user.fitnessEnabled || user.isAdmin) ...[
       const _Destination(
-        'Nhật ký ăn uống',
-        Icons.restaurant_menu_outlined,
-        Icons.restaurant_menu,
-        NutritionDiaryTab(),
-      ),
-      const _Destination(
         'Giáo án',
         Icons.calendar_month_outlined,
         Icons.calendar_month,
@@ -198,6 +192,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         Icons.list_alt_outlined,
         Icons.list_alt,
         CatalogScreen(kind: 'EXERCISE'),
+      ),
+    ],
+    if (user.healthEnabled || user.isAdmin) ...[
+      const _Destination(
+        'Nhật ký ăn uống',
+        Icons.restaurant_menu_outlined,
+        Icons.restaurant_menu,
+        NutritionDiaryTab(),
       ),
       const _Destination(
         'Kho thực phẩm',

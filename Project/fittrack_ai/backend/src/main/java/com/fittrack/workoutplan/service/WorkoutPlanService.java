@@ -127,6 +127,11 @@ public class WorkoutPlanService {
                         .session(session)
                         .exercise(planExercise.getExercise())
                         .setNumber(i)
+                        .groupKey(planExercise.getGroupKey())
+                        .groupType(planExercise.getGroupType())
+                        .groupRounds(planExercise.getGroupRounds())
+                        .betweenExerciseRestSeconds(planExercise.getBetweenExerciseRestSeconds())
+                        .betweenRoundRestSeconds(planExercise.getBetweenRoundRestSeconds())
                         .exerciseOrder(planExercise.getExerciseOrder() == null ? 1 : planExercise.getExerciseOrder())
                         .setType(com.fittrack.workout.entity.WorkoutSetType.NORMAL)
                         .weight(planExercise.getTargetWeight())
@@ -169,6 +174,11 @@ public class WorkoutPlanService {
                         .minReps(exerciseRequest.getMinReps())
                         .maxReps(exerciseRequest.getMaxReps())
                         .coachingNote(trim(exerciseRequest.getCoachingNote()))
+                        .groupKey(exerciseRequest.getGroupKey())
+                        .groupType(exerciseRequest.getGroupType())
+                        .groupRounds(exerciseRequest.getGroupRounds())
+                        .betweenExerciseRestSeconds(exerciseRequest.getBetweenExerciseRestSeconds())
+                        .betweenRoundRestSeconds(exerciseRequest.getBetweenRoundRestSeconds())
                         .build());
             }
             plan.getDays().add(day);
@@ -198,6 +208,9 @@ public class WorkoutPlanService {
             if (day.getExercises() == null || day.getExercises().isEmpty()) {
                 throw new IllegalArgumentException("Mỗi ngày phải có ít nhất một bài tập");
             }
+            if(day.getExercises().stream().anyMatch(java.util.Objects::isNull))throw new IllegalArgumentException("Bài tập không hợp lệ");
+            WorkoutGroups.validate(day.getExercises().stream().map(e -> new WorkoutGroups.Group(
+                    e.getGroupKey(), e.getGroupType(), e.getGroupRounds(), e.getBetweenExerciseRestSeconds(), e.getBetweenRoundRestSeconds())).toList());
             for (CreateWorkoutPlanExerciseRequest exercise : day.getExercises()) {
                 if (exercise == null) throw new IllegalArgumentException("Bài tập không hợp lệ");
                 if (exercise.getTargetSets() != null && exercise.getTargetSets() > 20

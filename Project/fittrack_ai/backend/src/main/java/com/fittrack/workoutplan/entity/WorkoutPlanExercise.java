@@ -37,5 +37,12 @@ public class WorkoutPlanExercise {
     private Integer maxReps;
     @Column(length = 1000)
     private String coachingNote;
+    @Column(length = 60)
+    private String groupKey;
+    @Column(length = 12)
+    private String groupType;
+    private Integer groupRounds;
+    private Integer betweenExerciseRestSeconds;
+    private Integer betweenRoundRestSeconds;
 }
 

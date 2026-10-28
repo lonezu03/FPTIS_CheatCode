@@ -31,6 +31,7 @@ public class WorkoutService {
 
     @Transactional
     public WorkoutSessionResponse createSession(User user, CreateWorkoutSessionRequest request) {
+        validateGroups(request);
         WorkoutSession session = WorkoutSession.builder()
                 .user(user)
                 .sessionDate(request.getSessionDate())
@@ -48,6 +49,11 @@ public class WorkoutService {
                         .session(session)
                         .exercise(exercise)
                         .setNumber(setRequest.getSetNumber())
+                        .groupKey(setRequest.getGroupKey())
+                        .groupType(setRequest.getGroupType())
+                        .groupRounds(setRequest.getGroupRounds())
+                        .betweenExerciseRestSeconds(setRequest.getBetweenExerciseRestSeconds())
+                        .betweenRoundRestSeconds(setRequest.getBetweenRoundRestSeconds())
                         .exerciseOrder(setRequest.getExerciseOrder() == null ? 1 : setRequest.getExerciseOrder())
                         .setType(setRequest.getSetType() == null
                                 ? com.fittrack.workout.entity.WorkoutSetType.NORMAL
@@ -94,6 +100,7 @@ public class WorkoutService {
 
     @Transactional
     public WorkoutSessionResponse replaceSession(User user, String sessionId, CreateWorkoutSessionRequest request) {
+        validateGroups(request);
         WorkoutSession session = workoutSessionRepository.findByIdAndUser(sessionId, user)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy buổi tập"));
         // Resolve every exercise before changing the aggregate; an invalid ID cannot partially update history.
@@ -115,7 +122,12 @@ public class WorkoutService {
         for (int i = 0; i < request.getSets().size(); i++) {
             var value = request.getSets().get(i);
             session.getSets().add(WorkoutSet.builder().session(session).exercise(resolved.get(i))
-                    .setNumber(value.getSetNumber()).exerciseOrder(value.getExerciseOrder() == null ? 1 : value.getExerciseOrder())
+                        .setNumber(value.getSetNumber()).exerciseOrder(value.getExerciseOrder() == null ? 1 : value.getExerciseOrder())
+                        .groupKey(value.getGroupKey())
+                        .groupType(value.getGroupType())
+                        .groupRounds(value.getGroupRounds())
+                        .betweenExerciseRestSeconds(value.getBetweenExerciseRestSeconds())
+                        .betweenRoundRestSeconds(value.getBetweenRoundRestSeconds())
                     .setType(value.getSetType() == null ? com.fittrack.workout.entity.WorkoutSetType.NORMAL : value.getSetType())
                     .weight(value.getWeight()).reps(value.getReps()).rir(value.getRir())
                     .restSeconds(value.getRestSeconds() == null ? 90 : value.getRestSeconds()).completed(true).build());
@@ -194,5 +206,12 @@ public class WorkoutService {
                 .orElseThrow(() -> new IllegalArgumentException("Workout session not found"));
 
         workoutSessionRepository.delete(session);
+    }
+
+    private void validateGroups(CreateWorkoutSessionRequest request) {
+        if(request.getSets()!=null&&request.getSets().stream().anyMatch(java.util.Objects::isNull))throw new IllegalArgumentException("Hiệp tập không hợp lệ");
+        if (request.getSets() != null) com.fittrack.workoutplan.service.WorkoutGroups.validate(request.getSets().stream()
+                .map(e -> new com.fittrack.workoutplan.service.WorkoutGroups.Group(e.getGroupKey(), e.getGroupType(),
+                        e.getGroupRounds(), e.getBetweenExerciseRestSeconds(), e.getBetweenRoundRestSeconds())).toList());
     }
 }

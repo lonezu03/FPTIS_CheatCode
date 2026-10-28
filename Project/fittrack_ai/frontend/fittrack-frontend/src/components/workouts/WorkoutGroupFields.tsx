@@ -1,0 +1,8 @@
+import type { WorkoutGroup } from "@/api/training-program.api";
+export default function WorkoutGroupFields({value,onChange}:{value:WorkoutGroup;onChange:(g:WorkoutGroup)=>void}){
+ const enabled=!!value.groupKey;
+ return <fieldset className="rounded-xl border p-3"><legend>Superset / Circuit (tùy chọn)</legend><div className="grid gap-3 sm:grid-cols-2">
+ <label className="text-sm">Nhóm bài<select className="mt-1 w-full rounded border p-2" value={enabled?value.groupType??'SUPERSET':''} onChange={e=>onChange(e.target.value?{groupKey:'A',groupType:e.target.value,groupRounds:3,betweenExerciseRestSeconds:15,betweenRoundRestSeconds:90}:{groupKey:null,groupType:null,groupRounds:null,betweenExerciseRestSeconds:null,betweenRoundRestSeconds:null})}><option value="">Tập riêng</option><option value="SUPERSET">Superset</option><option value="CIRCUIT">Circuit</option></select></label>
+ {enabled&&<><label className="text-sm">Mã nhóm (cùng mã để ghép)<input className="mt-1 w-full rounded border p-2" maxLength={60} value={value.groupKey??''} onChange={e=>onChange({...value,groupKey:e.target.value})}/></label>{([['groupRounds','Số vòng',1,20],['betweenExerciseRestSeconds','Nghỉ giữa bài (giây)',0,1800],['betweenRoundRestSeconds','Nghỉ giữa vòng (giây)',0,1800]] as const).map(([key,label,min,max])=><label key={key} className="text-sm">{label}<input className="mt-1 w-full rounded border p-2" type="number" min={min} max={max} value={value[key]??min} onChange={e=>onChange({...value,[key]:Number(e.target.value)})}/></label>)}</>}
+ </div><p className="mt-2 text-xs text-muted-foreground">Các bài cùng mã dùng cùng số vòng và thời gian nghỉ. Số hiệp của mỗi bài nên bằng số vòng; chỉ hiệp đã thực hiện mới được lưu.</p></fieldset>;
+}

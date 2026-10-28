@@ -31,6 +31,10 @@ const FinancePage = lazy(() => import("../pages/FinancePage"));
 const JournalPage = lazy(() => import("../pages/JournalPage"));
 const AdminJournalPromptsPage = lazy(() => import("../pages/AdminJournalPromptsPage"));
 const ChangePasswordPage = lazy(() => import("../pages/ChangePasswordPage"));
+const MealPlanningPage = lazy(() => import('../pages/MealPlanningPage'));
+const PersonalTrackingPage = lazy(() => import('../pages/PersonalTrackingPage'));
+const SavingsGoalsPage = lazy(() => import('../pages/SavingsGoalsPage'));
+const TemplateSharingPage = lazy(() => import('../pages/TemplateSharingPage'));
 
 export default function AppRoutes() {
   return (
@@ -55,6 +59,7 @@ export default function AppRoutes() {
                 <Route path="/workout-plans" element={<WorkoutPlansPage />} />
                 <Route path="/exercises" element={<ExercisesPage />} />
                 <Route path="/achievements" element={<AchievementsPage />} />
+                <Route path="/training-goals" element={<PersonalTrackingPage section="goals" kind="WORKOUT" key="goals-WORKOUT" />} />
               </Route>
               <Route element={<FeatureRoute feature="healthEnabled" />}>
                 <Route path="/foods" element={<FoodsPage />} />
@@ -62,6 +67,9 @@ export default function AppRoutes() {
                 <Route path="/body" element={<BodyTrackingPage />} />
                 <Route path="/reports/weekly" element={<WeeklyReportPage />} />
                 <Route path="/health" element={<HealthPage />} />
+                <Route path="/meal-planning" element={<MealPlanningPage />} />
+                <Route path="/personal-goals" element={<PersonalTrackingPage section="goals" kind="BODY" key="goals-BODY" />} />
+                <Route path="/recovery" element={<PersonalTrackingPage section="recovery" key="recovery-BODY" />} />
               </Route>
               <Route path="/profile" element={<ProfilePage />} />
               <Route element={<FeatureRoute feature="quoteEnabled" />}>
@@ -69,11 +77,13 @@ export default function AppRoutes() {
               </Route>
               <Route element={<FeatureRoute feature="financeEnabled" />}>
                 <Route path="/finance" element={<FinancePage />} />
+                <Route path="/finance/savings" element={<SavingsGoalsPage />} />
               </Route>
               <Route element={<FeatureRoute feature="journalEnabled" />}>
                 <Route path="/journal" element={<JournalPage />} />
               </Route>
-              <Route element={<FeatureRoute feature="todoEnabled" />}><Route path="/todos" element={<TodoPage />} /></Route>
+              <Route element={<FeatureRoute feature="todoEnabled" />}><Route path="/todos" element={<TodoPage />} /><Route path="/habits" element={<PersonalTrackingPage section="habits" key="habits-BODY" />} /></Route>
+              <Route path="/template-sharing" element={<TemplateSharingPage />} />
               <Route element={<FeatureRoute feature="scheduleEnabled" />}><Route path="/schedule" element={<SchedulePage />} /></Route>
 
               <Route element={<AdminRoute />}>

@@ -1,0 +1,16 @@
+import api from "./axios";
+import type { PageResponse } from "./pagination";
+import type { WorkoutPlanDay } from "./workout-plan.api";
+import type { createWorkoutSession, WorkoutSession } from "./workout.api";
+export type WorkoutGroup = {groupKey?: string|null; groupType?: string|null; groupRounds?: number|null; betweenExerciseRestSeconds?:number|null; betweenRoundRestSeconds?:number|null};
+export type TrainingWeek={number:number;deload:boolean;targetSessions:number;targetNote:string};
+export type TrainingCycle={id:string;name:string;startDate:string;version:number;weeks:TrainingWeek[];plannedSessions:number;completedSessions:number;completedByWeek:Record<string,number>};
+export type TrainingAppointment={id:string;title:string;startAt:string;version:number;cycleId?:string;weekNumber?:number;day:WorkoutPlanDay;completedSessionId?:string};
+export const trainingCycles=async(page=0):Promise<PageResponse<TrainingCycle>>=>(await api.get('/workout-plans/cycles',{params:{page,size:12}})).data;
+export const saveCycle=async(c:Partial<TrainingCycle>)=>(await(c.id?api.put('/workout-plans/cycles/'+c.id,c):api.post('/workout-plans/cycles',c))).data;
+export const deleteCycle=async(c:TrainingCycle)=>api.delete('/workout-plans/cycles/'+c.id,{params:{version:c.version}});
+export const trainingAppointments=async(from:string,to:string):Promise<TrainingAppointment[]>=>(await api.get('/workout-plans/appointments',{params:{from,to}})).data;
+export const getTrainingAppointment=async(id:string):Promise<TrainingAppointment>=>(await api.get('/workout-plans/appointments/'+id)).data;
+export const scheduleTraining=async(payload:{planId:string;dayId:string;startAt:string;repeatWeeks:number;cycleId?:string})=>(await api.post('/workout-plans/appointments',payload)).data;
+export const deleteTrainingAppointment=async(a:TrainingAppointment)=>api.delete('/workout-plans/appointments/'+a.id,{params:{version:a.version}});
+export const completeTraining=async(id:string,session:Parameters<typeof createWorkoutSession>[0]):Promise<WorkoutSession>=>(await api.post('/workout-plans/appointments/'+id+'/complete',{session})).data;

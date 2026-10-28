@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
 import '../auth/auth_session.dart';
+import '../home/mobile_menu_controller.dart';
 import 'catalog_contract.dart';
 import 'catalog_image.dart';
 import 'catalog_import_screen.dart';
@@ -14,12 +15,34 @@ class CatalogScreen extends StatelessWidget {
   const CatalogScreen({super.key, required this.kind});
   final String kind;
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(kind == 'FOOD' ? 'Kho thực phẩm' : 'Kho bài tập'),
-    ),
-    body: CatalogBrowser(kind: kind),
-  );
+  Widget build(BuildContext context) {
+    final menu = context.watch<MobileMenuController?>();
+    final user = context.watch<AuthSession>().user;
+    final visible =
+        menu != null &&
+        user != null &&
+        menu.allows(kind == 'FOOD' ? 'foods' : 'exercises', user);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          !visible
+              ? 'Module đã ẩn'
+              : kind == 'FOOD'
+              ? 'Kho thực phẩm'
+              : 'Kho bài tập',
+        ),
+      ),
+      body: visible
+          ? CatalogBrowser(kind: kind)
+          : Center(
+              child: Text(
+                menu == null
+                    ? 'Chưa tải được cấu hình menu app.'
+                    : 'Admin đã ẩn module này khỏi app.',
+              ),
+            ),
+    );
+  }
 }
 
 /// Server paging is shared by the library and the exercise picker. Selection

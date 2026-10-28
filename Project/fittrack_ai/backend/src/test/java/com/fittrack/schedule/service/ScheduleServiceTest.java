@@ -31,6 +31,7 @@ class ScheduleServiceTest {
     private TodoRepository todoRepository;
     @Mock
     private LunchNotificationService notificationService;
+    @Mock private com.fittrack.workoutplan.service.TrainingProgramService trainingPrograms;
     @InjectMocks
     private ScheduleService service;
 

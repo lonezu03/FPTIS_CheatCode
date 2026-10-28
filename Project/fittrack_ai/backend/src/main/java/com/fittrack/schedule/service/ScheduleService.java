@@ -37,6 +37,7 @@ public class ScheduleService {
     private final ScheduleRepository repository;
     private final TodoRepository todoRepository;
     private final LunchNotificationService notificationService;
+    private final com.fittrack.workoutplan.service.TrainingProgramService trainingPrograms;
 
     @Value("${app.scheduler.internal-enabled:true}")
     private boolean internalSchedulerEnabled;
@@ -86,6 +87,7 @@ public class ScheduleService {
         for (ScheduleItem item : repository.findCalendarCandidates(user, from, to, ScheduleItem.RepeatRule.NONE)) {
             expandEvent(item, from, to, result);
         }
+        result.addAll(trainingPrograms.calendar(user, from, to));
         return result.stream().sorted(Comparator.comparing(CalendarEntryResponse::startAt)
                 .thenComparing(CalendarEntryResponse::title)).toList();
     }

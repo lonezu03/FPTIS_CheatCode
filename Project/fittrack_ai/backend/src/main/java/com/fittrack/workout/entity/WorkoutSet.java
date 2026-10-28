@@ -25,6 +25,13 @@ public class WorkoutSet {
     private Exercise exercise;
 
     private Integer setNumber;
+    @Column(length = 60)
+    private String groupKey;
+    @Column(length = 12)
+    private String groupType;
+    private Integer groupRounds;
+    private Integer betweenExerciseRestSeconds;
+    private Integer betweenRoundRestSeconds;
 
     @Builder.Default
     private Integer exerciseOrder = 1;

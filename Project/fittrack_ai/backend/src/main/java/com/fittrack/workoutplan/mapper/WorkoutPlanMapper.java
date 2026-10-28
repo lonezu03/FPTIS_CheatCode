@@ -76,7 +76,12 @@ public class WorkoutPlanMapper {
                 .restSeconds(planExercise.getRestSeconds())
                 .minReps(planExercise.getMinReps())
                 .maxReps(planExercise.getMaxReps())
-                .coachingNote(planExercise.getCoachingNote())
+                        .coachingNote(planExercise.getCoachingNote())
+                        .groupKey(planExercise.getGroupKey())
+                        .groupType(planExercise.getGroupType())
+                        .groupRounds(planExercise.getGroupRounds())
+                        .betweenExerciseRestSeconds(planExercise.getBetweenExerciseRestSeconds())
+                        .betweenRoundRestSeconds(planExercise.getBetweenRoundRestSeconds())
                 .build();
     }
 }

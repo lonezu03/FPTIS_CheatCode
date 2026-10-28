@@ -48,6 +48,11 @@ void main() {
               'minReps': 8,
               'maxReps': 12,
               'coachingNote': 'Chậm',
+              'groupKey': 'A',
+              'groupType': 'SUPERSET',
+              'groupRounds': 3,
+              'betweenExerciseRestSeconds': 15,
+              'betweenRoundRestSeconds': 90,
             },
           ],
         },
@@ -63,6 +68,11 @@ void main() {
     expect(exercise['restSeconds'], 120);
     expect(exercise['minReps'], 8);
     expect(exercise['coachingNote'], 'Chậm');
+    expect(exercise['groupKey'], 'A');
+    expect(exercise['groupType'], 'SUPERSET');
+    expect(exercise['groupRounds'], 3);
+    expect(exercise['betweenExerciseRestSeconds'], 15);
+    expect(exercise['betweenRoundRestSeconds'], 90);
   });
 
   Future<void> mount(WidgetTester tester, ApiClient api, Widget child) async {
@@ -152,6 +162,54 @@ void main() {
         isTrue,
       );
       expect(writes, isEmpty);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'scheduled completion posts one occurrence only and preserves group',
+    (tester) async {
+      final writes = <RequestOptions>[];
+      await mount(
+        tester,
+        mockApi(writes),
+        const LiveWorkoutSheet(
+          appointmentId: 'occurrence',
+          planDay: {
+            'name': 'Ngày đẩy',
+            'exercises': [
+              {
+                'exerciseId': 'plan-ex',
+                'exerciseName': 'Máy đẩy ngực',
+                'targetSets': 1,
+                'targetReps': 8,
+                'groupKey': 'A',
+                'groupType': 'SUPERSET',
+                'groupRounds': 1,
+                'betweenExerciseRestSeconds': 15,
+                'betweenRoundRestSeconds': 90,
+              },
+            ],
+          },
+        ),
+      );
+      expect(writes, isEmpty);
+      final checkbox = find.byType(Checkbox).first;
+      await tester.ensureVisible(checkbox);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(checkbox);
+      await tester.pump();
+      await tester.tap(find.text('Hoàn thành buổi tập'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(writes, hasLength(1));
+      expect(
+        writes.single.path,
+        '/workout-plans/appointments/occurrence/complete',
+      );
+      final data = writes.single.data as Map;
+      expect(((data['session'] as Map)['sets'] as List).first['groupKey'], 'A');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
     },

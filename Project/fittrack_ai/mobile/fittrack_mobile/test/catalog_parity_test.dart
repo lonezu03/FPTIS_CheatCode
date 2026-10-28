@@ -5,6 +5,7 @@ import 'package:fittrack_mobile/core/network/api_client.dart';
 import 'package:fittrack_mobile/features/auth/auth_session.dart';
 import 'package:fittrack_mobile/features/catalog/catalog_contract.dart';
 import 'package:fittrack_mobile/features/catalog/catalog_screen.dart';
+import 'package:fittrack_mobile/features/home/mobile_menu_controller.dart';
 
 class FakeCatalogApi extends ApiClient {
   final queries = <Map<String, dynamic>?>[];
@@ -92,12 +93,24 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final api = FakeCatalogApi();
       final session = AuthSession(api);
-      session.user = AuthUser.fromJson({'id': 'user', 'role': 'USER'});
+      session.user = AuthUser.fromJson({
+        'id': 'user',
+        'role': 'USER',
+        'fitnessEnabled': true,
+      });
+      final menu = MobileMenuController(api)
+        ..accept({
+          'version': 0,
+          'modules': mobileModuleLabels.keys
+              .map((key) => {'key': key, 'visible': true})
+              .toList(),
+        });
       await tester.pumpWidget(
         MultiProvider(
           providers: [
             Provider<ApiClient>.value(value: api),
             ChangeNotifierProvider<AuthSession>.value(value: session),
+            ChangeNotifierProvider<MobileMenuController>.value(value: menu),
           ],
           child: const MaterialApp(home: CatalogScreen(kind: 'EXERCISE')),
         ),
@@ -113,6 +126,8 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       session.dispose();
+      menu.dispose();
+      api.activity.dispose();
     },
   );
 }
