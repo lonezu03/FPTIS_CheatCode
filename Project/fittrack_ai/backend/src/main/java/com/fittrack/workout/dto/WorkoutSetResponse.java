@@ -7,6 +7,8 @@ import com.fittrack.workout.entity.WorkoutSetType;
 @Getter
 @Builder
 public class WorkoutSetResponse {
+    private String originalExerciseId;
+    private String replacementKind;
     private String id;
     private String exerciseId;
     private String exerciseName;

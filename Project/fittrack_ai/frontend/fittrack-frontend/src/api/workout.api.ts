@@ -11,6 +11,8 @@ export type Exercise = {
 };
 
 export type WorkoutSetResponse = {
+  originalExerciseId?:string|null;
+  replacementKind?:'MANUAL'|'ALTERNATIVE'|null;
   id: string;
   exerciseId: string;
   exerciseName: string;
@@ -148,6 +150,8 @@ export const createWorkoutSession = async (payload: {
   note: string;
   durationMinutes: number;
   sets: {
+    originalExerciseId?:string|null;
+    replacementKind?:'MANUAL'|'ALTERNATIVE'|null;
     exerciseId: string;
     setNumber: number;
     exerciseOrder: number;
@@ -208,9 +212,11 @@ export const setExercisePreference = async (
 
 export const getAlternativeExercises = async (
   exerciseId: string,
+  equipment?:string,
 ): Promise<AlternativeExercise[]> => {
   const response = await api.get<AlternativeExercise[]>(
     `/workouts/exercises/${exerciseId}/alternatives`,
+    {params:{equipment}},
   );
   return response.data;
 };

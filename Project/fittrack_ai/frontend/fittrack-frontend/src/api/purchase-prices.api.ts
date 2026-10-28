@@ -1,0 +1,11 @@
+import api from './axios';
+import type { PageResponse } from './pagination';
+import type { ServingUnit } from './nutrition.api';
+export type PurchasePrice = { id:string;version:number;foodId:string;foodName:string;amount:number;unit:ServingUnit;totalPrice:number;unitPrice:number;currency:string;purchasedOn:string;store:string|null;note:string|null;active:boolean };
+export type PurchasePriceInput = { version?:number;foodId:string;amount:number;unit:ServingUnit;totalPrice:number;purchasedOn:string;store?:string;note?:string;operationId:string };
+export type WeekCost = { week:string;referenceDate:string;currency:string;knownSubtotal:number;pricedLines:number;totalLines:number;coverage:number;items:{foodId:string;foodName:string;amount:number;unit:ServingUnit;estimatedCost:number|null;priceId:string|null;priceDate:string|null;store:string|null;reason:string|null}[] };
+const base='/nutrition/purchase-prices';
+export const listPurchasePrices = async (active:boolean,page:number,foodId?:string):Promise<PageResponse<PurchasePrice>> => (await api.get(base,{params:{active,page,size:20,foodId:foodId||undefined}})).data;
+export const savePurchasePrice = async (body:PurchasePriceInput,id?:string):Promise<PurchasePrice> => (id?await api.put(`${base}/${id}`,body):await api.post(base,body)).data;
+export const archivePurchasePrice = async (price:PurchasePrice) => api.delete(`${base}/${price.id}`,{params:{version:price.version}});
+export const getWeekCost = async (week:string,referenceDate:string):Promise<WeekCost> => (await api.get(`${base}/week-cost`,{params:{week,referenceDate}})).data;

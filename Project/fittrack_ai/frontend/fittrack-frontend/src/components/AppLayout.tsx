@@ -61,10 +61,12 @@ const navGroups: NavGroup[] = [
       { to: "/lunch", label: "Đặt cơm", description: "Menu hằng ngày", icon: Soup, highlight: true, feature: "lunchEnabled" },
       { to: "/todos", label: "Việc cần làm", description: "Task cá nhân", icon: ListPlus, feature: "todoEnabled" },
       { to: "/habits", label: "Thói quen", icon: ListPlus, feature: "todoEnabled" },
+      { to: "/focus", label: "Tập trung", icon: ListPlus, feature: "todoEnabled" },
       { to: "/schedule", label: "Thời khóa biểu", description: "Lịch & nhắc việc", icon: CalendarDays, feature: "scheduleEnabled" },
       { to: "/quotes", label: "Câu nói", description: "Kho câu yêu thích", icon: QuoteIcon, feature: "quoteEnabled" },
       { to: "/finance", label: "Tài chính", description: "Thu chi & ngân sách", icon: WalletCards, feature: "financeEnabled" },
       { to: "/finance/savings", label: "Mục tiêu tiết kiệm", icon: WalletCards, feature: "financeEnabled" },
+      { to: "/finance/shared", label: "Chi tiêu chung", icon: UsersRound, feature: "financeEnabled" },
       { to: "/journal", label: "Nhật ký", description: "Một phút cho bản thân", icon: BookHeart, feature: "journalEnabled" },
     ],
   },
@@ -74,6 +76,7 @@ const navGroups: NavGroup[] = [
       { to: "/workouts", label: "Buổi tập", icon: Dumbbell, feature: "fitnessEnabled" },
       { to: "/workout-plans", label: "Giáo án", icon: CalendarDays, feature: "fitnessEnabled" },
       { to: "/training-goals", label: "Mục tiêu luyện tập", icon: Dumbbell, feature: "fitnessEnabled" },
+      { to: "/training-comparison", label: "So sánh luyện tập", icon: FileBarChart, feature: "fitnessEnabled" },
       { to: "/exercises", label: "Kho bài tập", icon: ListPlus, feature: "fitnessEnabled" },
     ],
   },
@@ -82,6 +85,8 @@ const navGroups: NavGroup[] = [
     items: [
       { to: "/nutrition", label: "Nhật ký ăn uống", icon: Apple, feature: "healthEnabled" },
       { to: "/meal-planning", label: "Thực đơn & danh sách mua", icon: Apple, feature: "healthEnabled" },
+      { to: "/pantry", label: "Tủ thực phẩm cá nhân", icon: Utensils, feature: "healthEnabled" },
+      { to: "/purchase-prices", label: "Giá mua & chi phí thực đơn", icon: WalletCards, feature: "healthEnabled" },
       { to: "/foods", label: "Kho thực phẩm", icon: Utensils, feature: "healthEnabled" },
       { to: "/body", label: "Chỉ số cơ thể", icon: Activity, feature: "healthEnabled" },
       { to: "/personal-goals", label: "Mục tiêu sức khỏe", icon: Activity, feature: "healthEnabled" },
@@ -96,6 +101,7 @@ const navGroups: NavGroup[] = [
     items: [
       { to: "/profile", label: "Hồ sơ cá nhân", icon: User },
       { to: "/template-sharing", label: "Chia sẻ bản mẫu", icon: UsersRound },
+      { to: "/reports/monthly", label: "Báo cáo tháng", icon: FileBarChart },
       { to: "/admin/lunch", label: "Điều phối cơm", icon: ShieldCheck, adminOnly: true },
       { to: "/admin/users", label: "Quản lý tài khoản", icon: UsersRound, adminOnly: true },
       { to: "/admin/notifications", label: "Gửi thông báo", icon: BellRing, adminOnly: true },
@@ -172,6 +178,8 @@ export default function AppLayout() {
             (item) =>
               (!item.adminOnly || isAdmin) &&
               (item.to !== '/template-sharing' || canUseFeature(authUser,'fitnessEnabled') || canUseFeature(authUser,'healthEnabled')) &&
+              (item.to !== '/purchase-prices' || canUseFeature(authUser,'financeEnabled')) &&
+              (item.to !== '/reports/monthly' || (['fitnessEnabled','healthEnabled','todoEnabled','financeEnabled'] as const).some(flag=>canUseFeature(authUser,flag))) &&
               (!item.feature || canUseFeature(authUser, item.feature)),
           ),
         }))

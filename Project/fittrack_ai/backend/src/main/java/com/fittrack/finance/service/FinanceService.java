@@ -47,7 +47,9 @@ public class FinanceService {
     }
     @Transactional public AccountResponse updateAccount(User user,String id,AccountRequest r){
         accounts.lockByOwner(user);validateAccount(r); var a=account(user,id); a.setName(r.name().trim());a.setAccountType(upper(r.accountType()));
-        a.setCurrencyCode(r.currencyCode()==null?"VND":upper(r.currencyCode()));a.setOpeningBalance(r.openingBalance());
+        String nextCurrency=r.currencyCode()==null?"VND":upper(r.currencyCode());
+        if(!a.getCurrencyCode().equals(nextCurrency)&&transactions.hasAccountHistory(user,id))throw new IllegalArgumentException("Ví đã có lịch sử giao dịch nên không đổi tiền tệ. Hãy tạo ví mới để giữ đúng báo cáo cũ.");
+        a.setCurrencyCode(nextCurrency);a.setOpeningBalance(r.openingBalance());
         return accountResponse(accounts.save(a),transactions.findByUserAndStatus(user,"POSTED"));
     }
     @Transactional public void archiveAccount(User user,String id){

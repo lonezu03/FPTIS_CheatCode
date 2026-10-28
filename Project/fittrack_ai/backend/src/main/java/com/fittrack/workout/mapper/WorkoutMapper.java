@@ -55,6 +55,8 @@ public class WorkoutMapper {
         return WorkoutSetResponse.builder()
                 .id(set.getId())
                 .exerciseId(exercise.getId())
+                .originalExerciseId(set.getOriginalExerciseId())
+                .replacementKind(set.getReplacementKind())
                 .exerciseName(exercise.getName())
                 .muscleGroup(exercise.getMuscleGroup())
                         .setNumber(set.getSetNumber())

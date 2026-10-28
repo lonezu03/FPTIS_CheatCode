@@ -17,6 +17,7 @@ public class TrackingService {
  private final TrackingRepository entries;
  private final TrackingCheckinRepository checkins;
  private final GoalPhaseRepository phases;
+ private final HabitScheduleRepository habitSchedules;
  private final com.fittrack.user.repository.UserRepository users;
  private static final ZoneId VN=ZoneId.of("Asia/Ho_Chi_Minh");
  @Transactional(readOnly=true) public PageResponse<Response> list(User u,String kind,boolean archived,int page,int size){
@@ -25,6 +26,9 @@ public class TrackingService {
  public Response save(User u,String kind,String id,Request r){
   if("RECOVERY".equals(kind))users.findByIdForUpdate(u.getId()).orElseThrow();
   var e=id==null?new TrackingEntry():owned(u,kind,id,true);
+  var previousStart=e.getStartDate();
+  var previousWeekdays=e.getWeekdays();
+  if("HABIT".equals(kind)&&id!=null&&e.isArchived()&&!Boolean.TRUE.equals(r.archived()))throw bad("Thói quen đã lưu trữ giữ nguyên lịch sử; hãy tạo thói quen mới để tiếp tục");
   if(id!=null&&!Objects.equals(e.getVersion(),r.version()))throw conflict("Dữ liệu đã thay đổi. Vui lòng tải lại.");
   if(r.title()==null||r.title().isBlank()||r.title().length()>160)throw bad("Tên cần từ 1 đến 160 ký tự");
   if(r.note()!=null&&r.note().length()>2000)throw bad("Ghi chú tối đa 2000 ký tự");
@@ -32,6 +36,8 @@ public class TrackingService {
   e.setStartDate(r.startDate()==null?LocalDate.now(VN):r.startDate());e.setTargetDate(r.targetDate());
   if(r.targetDate()!=null&&r.targetDate().isBefore(e.getStartDate()))throw bad("Ngày đích không thể trước ngày bắt đầu");
   e.setArchived(Boolean.TRUE.equals(r.archived()));
+  if("HABIT".equals(kind)&&e.isArchived()&&e.getHabitArchivedOn()==null)e.setHabitArchivedOn(LocalDate.now(VN));
+  if("HABIT".equals(kind)&&e.isArchived()&&e.getHabitArchivedOn()==null)e.setHabitArchivedOn(LocalDate.now(VN));
   if(kind.endsWith("GOAL")){
    e.setContentRevision(e.getContentRevision()+1);
    if(!validNumber(r.baseline())||!validNumber(r.target()))throw bad("Nhập số đo ban đầu và mục tiêu hợp lệ (tối đa 15 chữ số nguyên, 3 thập phân)");
@@ -52,6 +58,15 @@ public class TrackingService {
    e.setSleepStart(r.sleepStart());e.setSleepEnd(r.sleepEnd());e.setQuality(r.quality());e.setFatigue(r.fatigue());e.setSoreness(r.soreness());e.setStartDate(r.sleepEnd().toLocalDate());
   }
   entries.saveAndFlush(e);
+  if("HABIT".equals(kind)){
+   if(id!=null&&!Objects.equals(previousStart,e.getStartDate()))throw bad("Không đổi ngày bắt đầu thói quen đã tạo; hãy tạo thói quen mới để giữ lịch sử");
+   if(id==null||!Objects.equals(previousWeekdays,e.getWeekdays())){
+    var tomorrow=LocalDate.now(VN).plusDays(1);
+    var effective=id==null||e.getStartDate().isAfter(tomorrow)?e.getStartDate():tomorrow;
+    var schedule=habitSchedules.findByEntryIdAndEffectiveFrom(e.getId(),effective).orElseGet(HabitSchedule::new);
+    schedule.setEntryId(e.getId());schedule.setEffectiveFrom(effective);schedule.setWeekdays(e.getWeekdays());habitSchedules.save(schedule);
+   }
+  }
   if(kind.endsWith("GOAL")){
    phases.deleteByGoalId(e.getId());phases.flush();int position=0;LocalDate previous=e.getStartDate();
    for(var p:r.phases()==null?List.<Phase>of():r.phases()){
@@ -61,7 +76,7 @@ public class TrackingService {
   }
   return response(e);
  }
- public void archive(User u,String kind,String id,Long version){var e=owned(u,kind,id,true);if(!Objects.equals(e.getVersion(),version))throw conflict("Dữ liệu đã thay đổi");e.setArchived(true);}
+ public void archive(User u,String kind,String id,Long version){var e=owned(u,kind,id,true);if(!Objects.equals(e.getVersion(),version))throw conflict("Dữ liệu đã thay đổi");e.setArchived(true);if("HABIT".equals(kind)&&e.getHabitArchivedOn()==null)e.setHabitArchivedOn(LocalDate.now(VN));}
  @Transactional(readOnly=true) public List<CheckinResponse> history(User u,String kind,String id,LocalDate from,LocalDate to){owned(u,kind,id,false);range(from,to);return checkins.findByEntryIdAndDayBetweenOrderByDayAsc(id,from,to).stream().map(this::response).toList();}
  public CheckinResponse checkin(User u,String kind,String id,LocalDate day,CheckinRequest r){
   if("RECOVERY".equals(kind))throw bad("Giấc ngủ được chỉnh trực tiếp, không có ghi nhận số đo riêng");
@@ -69,7 +84,9 @@ public class TrackingService {
   if(r.note()!=null&&r.note().length()>1000||r.evidence()!=null&&r.evidence().length()>500)throw bad("Ghi chú hoặc minh chứng quá dài");
   if("HABIT".equals(kind)){
    if(!Set.of("DONE","SKIPPED").contains(Objects.toString(r.status(),"")))throw bad("Trạng thái không hợp lệ");
-   if(e.getWeekdays()!=null&&!e.getWeekdays().isBlank()&&!Arrays.asList(e.getWeekdays().split(",")).contains(String.valueOf(day.getDayOfWeek().getValue())))throw bad("Ngày này không nằm trong lịch thói quen");
+   var effective=habitSchedules.findFirstByEntryIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(id,day).orElse(null);
+   if(effective==null)throw bad("Lịch thực hiện của ngày cũ chưa được xác minh");
+   if(!HabitCalendarService.scheduled(effective.getWeekdays(),day))throw bad("Ngày này không nằm trong lịch thói quen");
   }else if(!validNumber(r.value()))throw bad("Nhập giá trị đo hợp lệ; dữ liệu thiếu không phải số 0");
   var c=checkins.findByEntryIdAndDay(id,day).orElseGet(TrackingCheckin::new);c.setEntryId(id);c.setDay(day);c.setStatus("HABIT".equals(kind)?r.status():"RECORDED");c.setValue(r.value());c.setNote(r.note());c.setEvidence(r.evidence());return response(checkins.save(c));
  }

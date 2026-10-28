@@ -29,6 +29,7 @@ public class TrackingEntry {
  private Integer fatigue;
  private Integer soreness;
  @Column(nullable=false) private boolean archived;
+ private LocalDate habitArchivedOn;
  /** Marks child-only goal phase replacements dirty so @Version protects the aggregate. */
  @Column(nullable=false) private long contentRevision;
  @Version private Long version;

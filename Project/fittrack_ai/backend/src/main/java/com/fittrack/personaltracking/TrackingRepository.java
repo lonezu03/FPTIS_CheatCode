@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType;
 import java.util.*;
 import java.time.LocalDateTime;
 public interface TrackingRepository extends JpaRepository<TrackingEntry,String> {
+ List<TrackingEntry> findByOwnerIdAndKind(String owner,String kind,Pageable page);
  Page<TrackingEntry> findByOwnerIdAndKindAndArchivedOrderByStartDateDesc(String owner,String kind,boolean archived,Pageable page);
  Optional<TrackingEntry> findByIdAndOwnerIdAndKind(String id,String owner,String kind);
  @Lock(LockModeType.PESSIMISTIC_WRITE) @Query("select e from TrackingEntry e where e.id=:id and e.ownerId=:owner and e.kind=:kind")

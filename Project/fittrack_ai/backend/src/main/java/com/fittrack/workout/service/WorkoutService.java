@@ -46,6 +46,8 @@ public class WorkoutService {
                         .orElseThrow(() -> new IllegalArgumentException("Bài tập phải đang hoạt động và đã được duyệt"));
 
                 WorkoutSet set = WorkoutSet.builder()
+                        .originalExerciseId(validateOriginal(user,setRequest,exercise))
+                        .replacementKind(setRequest.getReplacementKind())
                         .session(session)
                         .exercise(exercise)
                         .setNumber(setRequest.getSetNumber())
@@ -106,6 +108,8 @@ public class WorkoutService {
         // Resolve every exercise before changing the aggregate; an invalid ID cannot partially update history.
         var historicalIds = session.getSets().stream().map(set -> set.getExercise().getId())
                 .collect(java.util.stream.Collectors.toSet());
+        var historicalProvenance=session.getSets().stream().filter(s->s.getOriginalExerciseId()!=null)
+                .map(s->s.getExercise().getId()+":"+s.getOriginalExerciseId()).collect(java.util.stream.Collectors.toSet());
         var resolved = request.getSets().stream().map(set -> {
             var exercise = exerciseRepository.findById(set.getExerciseId())
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy bài tập"));
@@ -113,6 +117,7 @@ public class WorkoutService {
                     && (!Boolean.TRUE.equals(exercise.getActive()) || !"APPROVED".equals(exercise.getApprovalStatus()))) {
                 throw new IllegalArgumentException("Bài tập mới phải đang hoạt động và đã được duyệt");
             }
+            if(set.getOriginalExerciseId()!=null&&!historicalProvenance.contains(exercise.getId()+":"+set.getOriginalExerciseId()))validateOriginal(user,set,exercise);
             return exercise;
         }).toList();
         session.setSessionDate(request.getSessionDate());
@@ -122,6 +127,8 @@ public class WorkoutService {
         for (int i = 0; i < request.getSets().size(); i++) {
             var value = request.getSets().get(i);
             session.getSets().add(WorkoutSet.builder().session(session).exercise(resolved.get(i))
+                        .originalExerciseId(value.getOriginalExerciseId())
+                        .replacementKind(value.getReplacementKind())
                         .setNumber(value.getSetNumber()).exerciseOrder(value.getExerciseOrder() == null ? 1 : value.getExerciseOrder())
                         .groupKey(value.getGroupKey())
                         .groupType(value.getGroupType())
@@ -213,5 +220,14 @@ public class WorkoutService {
         if (request.getSets() != null) com.fittrack.workoutplan.service.WorkoutGroups.validate(request.getSets().stream()
                 .map(e -> new com.fittrack.workoutplan.service.WorkoutGroups.Group(e.getGroupKey(), e.getGroupType(),
                         e.getGroupRounds(), e.getBetweenExerciseRestSeconds(), e.getBetweenRoundRestSeconds())).toList());
+    }
+    private String validateOriginal(User user,CreateWorkoutSetRequest request,Exercise actual){
+        var id=request.getOriginalExerciseId();
+        if(request.getReplacementKind()!=null&&!java.util.Set.of("MANUAL","ALTERNATIVE").contains(request.getReplacementKind()))throw new IllegalArgumentException("Loại thay bài không hợp lệ");
+        if(id==null)return null;
+        var original=exerciseRepository.findById(id).orElseThrow(()->new IllegalArgumentException("Không tìm thấy bài dự kiến"));
+        if("MANUAL".equals(request.getReplacementKind()))return id; // Explicit choice retains provenance; it is not an equivalent-exercise recommendation.
+        if(!workoutIntelligenceService.isAllowedAlternative(user,original,actual))throw new IllegalArgumentException("Bài thay thế phải cùng nhóm cơ, được duyệt và không bị loại trừ");
+        return id;
     }
 }

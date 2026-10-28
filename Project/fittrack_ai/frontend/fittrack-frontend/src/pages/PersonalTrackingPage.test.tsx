@@ -4,6 +4,7 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import PersonalTrackingPage from './PersonalTrackingPage';
 import {personalTrackingApi as api,type TrackingEntry,type TrackingCheckin} from '../api/personaltracking.api';
 vi.mock('../api/personaltracking.api',async()=>{const actual=await vi.importActual('../api/personaltracking.api');return {...actual,personalTrackingApi:{list:vi.fn(),save:vi.fn(),archive:vi.fn(),history:vi.fn(),checkin:vi.fn()}};});
+vi.mock('@/components/HabitHeatmap',()=>({default:()=>null}));
 const entry=(id:string):TrackingEntry=>({id,kind:'HABIT',title:`Thói quen ${id}`,startDate:'2020-01-01',weekdays:[],archived:false,version:0,phases:[]});
 const check=(id:string,note:string):TrackingCheckin=>({id,day:'2026-10-27',status:'DONE',note});
 function show(){return render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false},mutations:{retry:false}}})}><PersonalTrackingPage section="habits"/></QueryClientProvider>);}

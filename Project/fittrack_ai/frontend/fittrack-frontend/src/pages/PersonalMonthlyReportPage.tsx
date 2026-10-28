@@ -1,0 +1,35 @@
+import {useState} from 'react';
+import {useQuery} from '@tanstack/react-query';
+import PageHeader from '@/components/PageHeader';
+import {Button} from '@/components/ui/button';
+import {Input} from '@/components/ui/input';
+import {getPersonalMonthlyReport,type ReportSection} from '@/api/personal-report.api';
+import {useAuthStore} from '@/store/auth.store';
+import {canUseFeature} from '@/lib/feature-access';
+import {getApiErrorMessage} from '@/lib/format';
+
+const labels:Record<ReportSection,string>={TRAINING:'Luyện tập',NUTRITION:'Dinh dưỡng',HABITS:'Thói quen',FINANCE:'Thu chi cá nhân',FOCUS:'Tập trung'};
+const numeric=(n:number|null|undefined,unit='')=>n==null?'Chưa đủ dữ liệu':`${n.toLocaleString('vi-VN',{maximumFractionDigits:1})}${unit}`;
+const money=(value:string)=>{const [a,b]=value.split('.');return `${a.replace(/\B(?=(\d{3})+(?!\d))/g,'.')}${b?','+b:''}`;};
+const categoryNames:Record<string,string>={WORK:'Công việc',STUDY:'Học tập',PERSONAL:'Cá nhân',HEALTH:'Sức khỏe',FINANCE:'Tài chính',SHOPPING:'Mua sắm'};
+export default function PersonalMonthlyReportPage(){
+ const user=useAuthStore(s=>s.user);
+ const [month,setMonth]=useState(()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date()).slice(0,7)),[sections,setSections]=useState<ReportSection[]>([]),[request,setRequest]=useState<{month:string;sections:ReportSection[]}|null>(null);
+ const allowed=(Object.keys(labels) as ReportSection[]).filter(s=>canUseFeature(user,s==='TRAINING'?'fitnessEnabled':s==='NUTRITION'?'healthEnabled':s==='FINANCE'?'financeEnabled':'todoEnabled'));
+ const selected=sections.filter(s=>allowed.includes(s));
+ const report=useQuery({queryKey:['personal-monthly-report',user?.userId,request],queryFn:()=>getPersonalMonthlyReport(request!.month,request!.sections),enabled:request!==null&&request.sections.every(s=>allowed.includes(s)),staleTime:0});
+ const data=report.data,valid=data&&data.sections.every(s=>allowed.includes(s)),changed=JSON.stringify({month:`${month}-01`,sections:[...selected].sort()})!==JSON.stringify(request);
+ return <main className="space-y-5"><PageHeader title="Báo cáo cá nhân theo tháng" description="Chủ động chọn nội dung, xem trước và in/lưu PDF. Không tự gửi email hoặc đưa nội dung nhật ký riêng vào báo cáo."/>
+ <form className="flex flex-wrap items-end gap-4 rounded-2xl border bg-white p-4" onSubmit={e=>{e.preventDefault();setRequest({month:`${month}-01`,sections:[...selected].sort()});}}><label>Tháng<Input required type="month" min="2000-01" value={month} onChange={e=>setMonth(e.target.value)}/></label><fieldset className="flex flex-wrap gap-4"><legend>Nội dung được cấp quyền</legend>{allowed.map(s=><label key={s} className="flex items-center gap-2"><input type="checkbox" checked={selected.includes(s)} onChange={e=>setSections(current=>e.target.checked?[...current,s]:current.filter(v=>v!==s))}/>{labels[s]}</label>)}</fieldset><Button disabled={!selected.length||report.isFetching}>Xem báo cáo</Button><Button type="button" variant="outline" disabled={!valid||changed||report.isFetching} onClick={()=>window.print()}>In / lưu PDF</Button></form>
+ {report.isFetching&&<p role="status">Đang tổng hợp nội dung đã chọn…</p>}{report.error&&<p role="alert" className="text-red-700">{getApiErrorMessage(report.error,'Không tải được báo cáo.')} <Button variant="outline" onClick={()=>void report.refetch()}>Thử lại</Button></p>}
+ {!allowed.length&&<p>Bạn chưa có quyền xem các nguồn báo cáo.</p>}{changed&&valid&&<p>Đã đổi lựa chọn. Nhấn “Xem báo cáo” để cập nhật trước khi in.</p>}
+ {valid&&<article className="monthly-report space-y-5 rounded-2xl border bg-white p-5"><header><h1 className="text-2xl font-bold">Báo cáo tháng {data.month.slice(0,7)}</h1><p>Qua ngày {data.through} · Múi giờ {data.timezone}</p><p>{data.sections.map(s=>labels[s]).join(' · ')}</p></header>
+ {data.training&&<section className="space-y-2 rounded-xl border p-4"><h2 className="text-lg font-semibold">Luyện tập thực tế</h2><p>{data.training.sessions} buổi có hiệp chính hoàn tất · {data.training.trainingDays} ngày luyện tập · {data.training.workingSets} hiệp chính</p><p>Khối lượng: {numeric(data.training.volumeKgReps,' kg × lần')}</p><p className="text-sm text-slate-600">Không tính khởi động hoặc hiệp chưa hoàn thành; không phải kết luận về tăng cơ.</p></section>}
+ {data.nutrition&&<section className="space-y-2 rounded-xl border p-4"><h2 className="text-lg font-semibold">Dinh dưỡng có xác nhận</h2><p>{data.nutrition.qualifyingDays}/{data.nutrition.observedDays} ngày đủ điều kiện · Bao phủ {numeric(data.nutrition.coveragePercent,'%')}</p><p>{data.nutrition.partialDays} ngày ghi chưa đầy đủ · {data.nutrition.unloggedDays} ngày chưa ghi</p><div className="grid gap-3 sm:grid-cols-2"><p>Năng lượng TB: {numeric(data.nutrition.averageCalories,' kcal/ngày')}</p><p>Chất đạm TB: {numeric(data.nutrition.averageProtein,' g/ngày')}</p><p>Tinh bột TB: {numeric(data.nutrition.averageCarbs,' g/ngày')}</p><p>Chất béo TB: {numeric(data.nutrition.averageFat,' g/ngày')}</p></div><p className="text-sm text-slate-600">Chỉ COMPLETE/FASTING tham gia trung bình. Thiếu nhật ký không phải đã ăn 0; thiếu chỉ số không tự xem là 0.</p></section>}
+ {data.habits&&<section className="space-y-2 rounded-xl border p-4"><h2 className="text-lg font-semibold">Thói quen</h2><p>{data.habits.habitCount} thói quen · {data.habits.done}/{data.habits.eligibleDays} lượt theo lịch · {numeric(data.habits.completionRate,'%')}</p>{!data.habits.historyVerified&&<p className="text-amber-800">Một phần lịch cũ chưa xác minh được; các ngày chưa biết không đưa vào tỷ lệ.</p>}</section>}
+ {data.finance&&<section className="space-y-3 rounded-xl border p-4"><h2 className="text-lg font-semibold">Thu chi cá nhân — theo từng tiền tệ</h2>{data.finance.map(f=><div key={f.currencyCode} className="space-y-1 border-b py-2"><h3>{f.currencyCode}</h3><p>Thu: {money(f.income)} · Chi: {money(f.expense)} · Chênh lệch: {money(f.net)}</p></div>)}{data.finance.length===0&&<p>Chưa có giao dịch thu/chi hợp lệ trong tháng.</p>}<p className="text-sm text-slate-600">Chỉ POSTED; loại VOID. Chuyển ví và số dư đầu kỳ không phải thu/chi. Không gộp tiền tệ, quỹ cơm hoặc công nợ nhóm.</p></section>}
+ {data.focus&&<section className="space-y-2 rounded-xl border p-4"><h2 className="text-lg font-semibold">Thời gian tập trung đã kết thúc</h2>{data.focus.map(f=><p key={f.category}>{categoryNames[f.category]??'Khác'}: {f.completedSessions} phiên · {numeric(f.focusSeconds/60,' phút')}</p>)}{data.focus.length===0&&<p>Chưa có phiên tập trung hoàn tất.</p>}<p className="text-sm text-slate-600">Không cộng phiên nghỉ, đã hủy hoặc đang chạy; đây là thời gian đồng hồ.</p></section>}
+ <footer className="border-t pt-3 text-sm text-slate-600">{data.disclaimer}</footer></article>}
+ <style>{`@media print {body * {visibility:hidden!important;} .monthly-report,.monthly-report * {visibility:visible!important;} .monthly-report {position:absolute;left:0;top:0;width:100%;border:0!important;padding:0!important;background:white!important;} .monthly-report section {break-inside:avoid;} @page {size:A4;margin:15mm;} }`}</style>
+ </main>;
+}

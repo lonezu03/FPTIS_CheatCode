@@ -27,4 +27,25 @@ class TrackingSchemaTest {
    assertNotNull(jdbc.queryForObject("select count(*) from "+table,Long.class));
   jdbc.queryForList("select metric_value,checkin_date from personal_tracking_checkins where 1=0");
  }
+ @Test void habitWeekdayEditsStartTomorrowAndPreserveToday(){
+  var user=users.save(com.fittrack.user.entity.User.builder().email(java.util.UUID.randomUUID()+"@example.test").fullName("Habit test").password("encoded").role("USER").build());
+  var today=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh"));
+  var create=new TrackingDtos.Request("Đi bộ",null,null,null,null,null,today,null,java.util.List.of(),null,null,null,null,null,false,null,null);
+  var first=service.save(user,"HABIT",null,create);
+  service.checkin(user,"HABIT",first.id(),today,new TrackingDtos.CheckinRequest("DONE",null,null,null));
+  var nextWeekday=today.plusDays(1).getDayOfWeek().getValue();
+  var edit=new TrackingDtos.Request(first.title(),null,null,null,null,null,today,null,java.util.List.of(nextWeekday),null,null,null,null,null,false,first.version(),null);
+  service.save(user,"HABIT",first.id(),edit);
+  service.checkin(user,"HABIT",first.id(),today,new TrackingDtos.CheckinRequest("DONE",null,null,null));
+  org.junit.jupiter.api.Assertions.assertEquals(2,jdbc.queryForObject("select count(*) from habit_schedule_history where entry_id=?",Integer.class,first.id()));
+  org.junit.jupiter.api.Assertions.assertEquals(1,service.history(user,"HABIT",first.id(),today,today).size());
+ }
+ @Test void futureHabitEditTakesEffectAtStartInsteadOfBeingOverridden(){
+  var user=users.save(com.fittrack.user.entity.User.builder().email(java.util.UUID.randomUUID()+"@example.test").fullName("Future habit").password("encoded").role("USER").build());
+  var future=java.time.LocalDate.now(java.time.ZoneId.of("Asia/Ho_Chi_Minh")).plusDays(7);
+  var first=service.save(user,"HABIT",null,new TrackingDtos.Request("Đi bộ",null,null,null,null,null,future,null,java.util.List.of(1),null,null,null,null,null,false,null,null));
+  service.save(user,"HABIT",first.id(),new TrackingDtos.Request(first.title(),null,null,null,null,null,future,null,java.util.List.of(2),null,null,null,null,null,false,first.version(),null));
+  org.junit.jupiter.api.Assertions.assertEquals(1,jdbc.queryForObject("select count(*) from habit_schedule_history where entry_id=?",Integer.class,first.id()));
+  org.junit.jupiter.api.Assertions.assertEquals("2",jdbc.queryForObject("select weekdays from habit_schedule_history where entry_id=? and effective_from=?",String.class,first.id(),future));
+ }
 }

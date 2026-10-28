@@ -1,21 +1,79 @@
 # FitTrack Current Project State
 
-Last updated: 2026-10-27
+Last updated: 2026-10-28
 
-## Current task: 10-feature web/Flutter expansion — plan review pending
+## Current handoff: 8 backend/web features implemented; deployment checks remain
 
-User asked to implement all proposed new features: cycles, superset/circuit,
-plan-linked calendar, weekly meals, groceries, phased goals, habits, recovery/
-sleep, savings goals and share-copy templates. Read-only BA and DB agents
-completed source-backed analysis; no feature code/schema/production writes yet.
-Plan/defaults/acceptance criteria: docs/FEATURE_EXPANSION_PLAN.md. Await user
-approval of technical plan before implementation per feature-pipeline.
-Key choices proposed: manual per-week load targets; habits reuse Todo permission;
-manual virtual savings progress (no balance/expense effect or locked-money claim);
-explicit selected-account sharing only. Preserve prior menu-fix dirty files.
-Next after approval: implement training/contracts/calendar snapshots first, then
-nutrition/groceries, personal tracking, savings and sharing; complete backend,
-web and Flutter together per phase with independent QA/code review and tests.
+User approved docs/WEB_FEATURE_EXPANSION_PLAN.md. Implemented pantry/expiry,
+training comparison, safe live substitution, purchase prices/weekly meal costs,
+shared expenses, habit heatmap/streak, focus timer and monthly report with browser
+print/save PDF. Usage, routes, limitations and staging checklist are documented in
+docs/WEB_FEATURE_EXPANSION_RELEASE.md. Do not redo the completed implementation.
+Scope: backend + web only. No Lunch/mobile edits, APK, push, deployment or production
+database writes. This does not claim mobile parity for these eight features.
+
+Changed backend modules: nutrition/pantry, nutrition/purchaseprices, finance/shared,
+focus, personalreport, personaltracking and workout; new Flyway migrations V42–V45.
+Web adds six pages/API clients, habit heatmap and substitution helper, integrating
+them into routes, navigation, PersonalTrackingPage and WorkoutPage. Existing
+alternatives and habit check-ins are reused. API permissions remain server-side and
+owner-scoped; purchase prices require both health and finance permissions.
+
+Important decisions/review fixes:
+- Pantry operations are versioned/idempotent and cannot create negative stock.
+  Pantry/price actions never silently post intake or private Finance transactions.
+- Training comparisons use actual completed working sets, never infer historical
+  plan attribution. Manual substitution retains provenance without claiming muscle
+  equivalence; recommended alternatives retain the stricter eligibility rules.
+- Shared expenses require invitation consent and counterparty settlement approval.
+  Former accepted members retain group history/settlement access (disclosed in UI).
+  Audit responses hide invitee email from non-owners; null splits are rejected.
+- Habit schedule changes apply from max(start date, tomorrow); legacy unverified
+  days stay UNKNOWN and are not counted as missed. Archive cuts off future days.
+- Focus has one active session per owner, server elapsed time, version checks and
+  idempotent actions. It never completes Todos automatically. Browser notification
+  support is optional; background/closed-browser delivery is not guaranteed.
+- Monthly reports read selected permitted sources only. Unlogged/partial nutrition
+  is not zero, currencies are separate, and Journal content is excluded. Account
+  currency cannot change after transaction history exists; historical currency
+  relabeling before this guard cannot be reconstructed automatically.
+
+Verification after independent QA/code review fixes: full JDK21 Maven suite
+214 tests, zero failures/errors, 2 PostgreSQL/Docker skips; web ESLint and production
+build passed; Vitest 28 files/66 tests passed; Playwright 2 responsive/permission
+tests passed at 320/390 px; git diff --check clean. Vitest used one worker to avoid
+local resource contention. Docker engine is unavailable, so real PostgreSQL Flyway
+and Hibernate validation have NOT been verified. No physical-device or production
+notification delivery was tested. Pantry expiry reminders need the server awake
+at their scheduled 08:00 Vietnam time.
+
+Exact next steps: enable Docker or use a disposable staging PostgreSQL; run the
+PostgreSQL migration/context tests and validate upgrade V41→V45 with ddl-auto=validate.
+Then deploy backend before web and follow the release document's staging smoke
+checks (permissions/ownership, concurrent/retried writes, settlement confirmation,
+unknown nutrition and multi-currency reports). Do not build/update mobile unless
+the user requests a coordinated follow-up.
+
+## Prior expansion baseline now present
+
+Commit 5284d330 (20261027-lan1) contains the prior 10-feature backend/web/Flutter
+expansion, migrations V36–V41. The old pending-plan header was stale: do not redo
+that implementation. Scope/usage/release checklist: docs/FEATURE_EXPANSION_PLAN.md
+and docs/FEATURE_EXPANSION_RELEASE.md. Includes cycles, grouped workouts, linked
+calendar snapshots, weekly meals/groceries, phased goals, habits, recovery,
+virtual savings and selected-account template copies. Independent QA/code review
+findings were addressed (HTTP 4xx mapping, bounds, empty workout completion,
+phase-only goal versioning, mobile menu routing/permissions and sharing races).
+
+Last observed verification from preceding work: full JDK21 suite 179 tests,
+zero failures/errors, 2 Docker/PostgreSQL skips; after goal version fix, focused
+8 backend tests passed. Web lint/build and 52 tests passed. Last full Flutter
+run had 41 passed / 1 failed: newly added goal-navigation test tapped offscreen;
+after fixing scroll/layout settling, all 10 mobile-menu tests passed separately.
+Full Flutter suite should be rerun before release; analyze had no errors/warnings
+but existing info lints. No production/Flyway validation or physical device run,
+APK build, push or deploy was performed by this expansion workflow. Docker engine
+was unavailable. Deployment status cannot be inferred from the local commit.
 
 ## Latest fix: app exercise-library menu visibility (2026-10-27)
 

@@ -16,6 +16,10 @@ import lombok.Setter;
 public class CreateWorkoutSetRequest {
     @NotBlank
     private String exerciseId;
+    @jakarta.validation.constraints.Size(max=255)
+    private String originalExerciseId;
+    @jakarta.validation.constraints.Pattern(regexp="MANUAL|ALTERNATIVE")
+    private String replacementKind;
 
     @NotNull
     @Positive

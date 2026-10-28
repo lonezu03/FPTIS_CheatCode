@@ -1,0 +1,16 @@
+import api from './axios';
+import type { PageResponse } from './pagination';
+import type { ServingUnit } from './nutrition.api';
+export type PantryBatch = { id:string; version:number; foodId:string; foodName:string; location:string; unit:ServingUnit; quantity:number; expiresOn:string|null; note:string|null; active:boolean };
+export type PantryInput = { foodId:string; location:string; unit:ServingUnit; quantity:number; expiresOn?:string|null; note?:string; operationId:string };
+export type PantryEdit = { version:number; location:string; expiresOn?:string|null; note?:string; active:boolean };
+export type PantryOperationInput = { version:number; type:'ADD'|'CONSUME'|'DISCARD'|'CORRECTION'; amount:number; note?:string; operationId:string };
+export type PantryOperation = { id:string; type:string; amount:number; balanceAfter:number; note:string|null; createdAt:string };
+export type PantrySuggestion = { id:string; name:string; sufficient:boolean; missing:string[] };
+const base='/nutrition/pantry';
+export const listPantry = async (active:boolean,page:number):Promise<PageResponse<PantryBatch>> => (await api.get(base,{params:{active,page,size:20}})).data;
+export const createPantry = async (body:PantryInput):Promise<PantryBatch> => (await api.post(base,body)).data;
+export const editPantry = async (id:string,body:PantryEdit):Promise<PantryBatch> => (await api.put(`${base}/${id}`,body)).data;
+export const operatePantry = async (id:string,body:PantryOperationInput):Promise<PantryBatch> => (await api.post(`${base}/${id}/operations`,body)).data;
+export const pantryHistory = async (id:string,page:number):Promise<PageResponse<PantryOperation>> => (await api.get(`${base}/${id}/operations`,{params:{page}})).data;
+export const pantrySuggestions = async ():Promise<PantrySuggestion[]> => (await api.get(`${base}/suggestions`)).data;

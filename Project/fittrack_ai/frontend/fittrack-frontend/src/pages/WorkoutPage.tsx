@@ -60,6 +60,7 @@ import { getTrainingAppointment, completeTraining } from "@/api/training-program
 import { useAuthStore } from "@/store/auth.store";
 import { clearSessionDraft, readSessionDraft, writeSessionDraft } from "@/lib/sessionDraft";
 import { maximumWorkoutSeconds, workoutElapsedSeconds } from "@/lib/workoutDraftTime";
+import { substituteUnfinished } from '@/lib/workoutSubstitution';
 
 type DraftSet = {
   key: string;
@@ -72,6 +73,8 @@ type DraftSet = {
 };
 
 type DraftExercise = {
+  originalExerciseId?:string;
+  replacementKind?:'MANUAL'|'ALTERNATIVE'|null;
   key: string;
   exerciseId: string;
   historicalExerciseName?: string;
@@ -376,7 +379,7 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
                 onEdit={() => {
                   if (recoverable && !window.confirm('Mở chỉnh sửa sẽ thay thế nháp buổi tập hiện tại. Tiếp tục?')) return;
                   const orders = [...new Set(session.sets.map(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}`))];
-setLiveSeed({ title: session.note ?? '', sessionId: session.id, sessionDate: session.sessionDate, durationMinutes: session.durationMinutes, exercises: orders.map(order => { const sets = session.sets.filter(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}` === order); return makeExercise(sets[0].exerciseId, { groupKey:sets[0].groupKey,groupType:sets[0].groupType,groupRounds:sets[0].groupRounds,betweenExerciseRestSeconds:sets[0].betweenExerciseRestSeconds,betweenRoundRestSeconds:sets[0].betweenRoundRestSeconds, historicalExerciseName: sets[0].exerciseName, restSeconds: sets[0].restSeconds ?? 90, sets: sets.map(set => makeSet(set)) }); }) });
+setLiveSeed({ title: session.note ?? '', sessionId: session.id, sessionDate: session.sessionDate, durationMinutes: session.durationMinutes, exercises: orders.map(order => { const sets = session.sets.filter(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}` === order); return makeExercise(sets[0].exerciseId, { originalExerciseId:sets[0].originalExerciseId??undefined,replacementKind:sets[0].replacementKind,groupKey:sets[0].groupKey,groupType:sets[0].groupType,groupRounds:sets[0].groupRounds,betweenExerciseRestSeconds:sets[0].betweenExerciseRestSeconds,betweenRoundRestSeconds:sets[0].betweenRoundRestSeconds, historicalExerciseName: sets[0].exerciseName, restSeconds: sets[0].restSeconds ?? 90, sets: sets.map(set => makeSet(set)) }); }) });
                 }}
                 onDelete={() => {
                   if (window.confirm("Bạn có chắc muốn xóa toàn bộ buổi tập này?")) {
@@ -446,6 +449,7 @@ function LiveWorkoutDialog({
   const [intelligence, setIntelligence] = useState<Record<string, WorkoutIntelligence | null>>({});
   const [preferences, setPreferences] = useState<Record<string, ExercisePreference>>({});
   const [alternatives, setAlternatives] = useState<Record<string, AlternativeExercise[] | null>>({});
+  const [alternativeEquipment,setAlternativeEquipment]=useState('');
   const [announcedRecords] = useState(() => new Set<string>());
 
   useEffect(() => {
@@ -599,10 +603,10 @@ function LiveWorkoutDialog({
     }
   };
 
-  const loadAlternatives = async (group: DraftExercise) => {
+  const loadAlternatives = async (group: DraftExercise,equipment=alternativeEquipment) => {
     setAlternatives((current) => ({ ...current, [group.key]: null }));
     try {
-      const values = await getAlternativeExercises(group.exerciseId);
+      const values = await getAlternativeExercises(group.exerciseId,equipment);
       setAlternatives((current) => ({ ...current, [group.key]: values }));
       if (!values.length) toast.info("Chưa có bài thay thế phù hợp cùng nhóm cơ");
     } catch {
@@ -621,6 +625,8 @@ function LiveWorkoutDialog({
         .filter((set) => set.completed)
         .map((set, setIndex) => ({
           exerciseId: group.exerciseId,
+          originalExerciseId: group.originalExerciseId,
+          replacementKind: group.replacementKind,
           exerciseOrder: exerciseIndex + 1,
           setNumber: setIndex + 1,
           setType: set.setType,
@@ -714,6 +720,10 @@ function LiveWorkoutDialog({
                       value={group.exerciseId}
                       missingValueLabel={group.historicalExerciseName}
                       onChange={(exerciseId) => {
+                        if(!seed.sessionId){
+                          if(!window.confirm('Chỉ đổi các hiệp chưa làm; hiệp đã xong giữ nguyên. Mức tạ bài mới đặt về 0 kg, hãy kiểm tra lại trước khi tập.'))return;
+                          setGroups(current=>substituteUnfinished(current,group.key,exerciseId,draftKey,false));return;
+                        }
                         updateGroup(group.key, (item) => ({ ...item, exerciseId, historicalExerciseName: undefined }));
                         setAlternatives((current) => {
                           const next = { ...current };
@@ -779,7 +789,7 @@ function LiveWorkoutDialog({
                         <option value="LESS">Ít ưu tiên</option>
                         <option value="EXCLUDED">Không đề xuất</option>
                       </select>
-                      <Button type="button" variant="outline" size="sm" onClick={() => loadAlternatives(group)}>
+                      <Button disabled={!!seed.sessionId||group.sets.every(s=>s.completed)} type="button" variant="outline" size="sm" onClick={() => loadAlternatives(group)}>
                         <RefreshCw className={`h-4 w-4 ${alternativesOpened && alternativeState === null ? "animate-spin" : ""}`} />
                         Đổi bài tương đương
                       </Button>
@@ -787,18 +797,21 @@ function LiveWorkoutDialog({
                   </div>
                   {alternativesOpened && alternativeState !== null && (
                     <div className="rounded-2xl border bg-slate-50 p-3">
+                      <label className="mb-3 block text-sm">Lọc dụng cụ<select className="mt-1 w-full rounded-xl border p-2" value={alternativeEquipment} onChange={e=>{setAlternativeEquipment(e.target.value);void loadAlternatives(group,e.target.value);}}><option value="">Tất cả dụng cụ</option>{[...new Set(exercises.filter(x=>x.muscleGroup===exercise?.muscleGroup).map(x=>x.equipment))].sort().map(value=><option key={value} value={value}>{value}</option>)}</select></label>
+                      <p className="mb-3 text-sm text-amber-800">Chỉ thay hiệp chưa làm. Bài mới bắt đầu 0 kg; cần tự chọn lại mức tạ phù hợp.</p>
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Cùng nhóm cơ {exercise?.muscleGroup ?? ""}
                       </p>
                       {alternativeState.length ? (
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                          {alternativeState.map((item) => (
+                          {alternativeState.filter(item=>!alternativeEquipment||item.exercise.equipment===alternativeEquipment).map((item) => (
                             <button
                               type="button"
                               key={item.exercise.id}
                               className="rounded-xl border bg-white p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50"
                               onClick={() => {
-                                updateGroup(group.key, (current) => ({ ...current, exerciseId: item.exercise.id }));
+                                if(!window.confirm(`Thay hiệp chưa làm bằng ${item.exercise.name}? Giữ hiệp cũ đã xong và đặt tạ bài mới về 0 kg.`))return;
+                                setGroups(current=>substituteUnfinished(current,group.key,item.exercise.id,draftKey));
                                 setAlternatives((current) => {
                                   const next = { ...current };
                                   delete next[group.key];

@@ -25,6 +25,10 @@ public class WorkoutSet {
     private Exercise exercise;
 
     private Integer setNumber;
+    /** Optional planned exercise provenance; the exercise relation is always the actual exercise. */
+    private String originalExerciseId;
+    @Column(length=12)
+    private String replacementKind;
     @Column(length = 60)
     private String groupKey;
     @Column(length = 12)

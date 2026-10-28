@@ -146,10 +146,11 @@ public class WorkoutController {
     @GetMapping("/exercises/{exerciseId}/alternatives")
     public List<AlternativeExerciseResponse> getExerciseAlternatives(
             Authentication authentication,
-            @PathVariable String exerciseId
+            @PathVariable String exerciseId,
+            @RequestParam(required=false) String equipment
     ) {
         return workoutIntelligenceService.getAlternatives(
-                (User) authentication.getPrincipal(), exerciseId
+                (User) authentication.getPrincipal(), exerciseId,equipment
         );
     }
 

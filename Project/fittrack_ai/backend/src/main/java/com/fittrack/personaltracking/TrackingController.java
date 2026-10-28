@@ -13,6 +13,8 @@ import java.util.List;
 @RequestMapping({"/api/health-management/tracking/goals","/api/workouts/goals","/api/todos/habits","/api/health-management/tracking/recovery"})
 public class TrackingController {
  private final TrackingService service;
+ private final HabitCalendarService habitCalendar;
+ @GetMapping("/{id}/calendar") public HabitCalendarService.Calendar calendar(@AuthenticationPrincipal User u,HttpServletRequest req,@PathVariable String id,@RequestParam LocalDate from,@RequestParam LocalDate to){if(!"HABIT".equals(kind(req)))throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);return habitCalendar.calendar(u,id,from,to);}
  private String kind(HttpServletRequest r){var p=r.getRequestURI();return p.contains("/habits")?"HABIT":p.contains("/recovery")?"RECOVERY":p.contains("/workouts/")?"WORKOUT_GOAL":"BODY_GOAL";}
  @GetMapping public PageResponse<Response> list(@AuthenticationPrincipal User u,HttpServletRequest req,@RequestParam(defaultValue="false")boolean archived,@RequestParam(defaultValue="0")int page,@RequestParam(defaultValue="15")int size){return service.list(u,kind(req),archived,page,size);}
  @PostMapping public Response create(@AuthenticationPrincipal User u,HttpServletRequest req,@RequestBody Request r){return service.save(u,kind(req),null,r);}

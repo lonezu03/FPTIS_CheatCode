@@ -192,6 +192,16 @@ public class WorkoutIntelligenceService {
             User user,
             String exerciseId
     ) {
+        return getAlternatives(user,exerciseId,null);
+    }
+    @Transactional(readOnly=true)
+    public boolean isAllowedAlternative(User user,Exercise source,Exercise actual){
+        return Boolean.TRUE.equals(actual.getActive())&&"APPROVED".equals(actual.getApprovalStatus())
+            &&normalize(source.getMuscleGroup()).equals(normalize(actual.getMuscleGroup()))
+            &&preferenceRepository.findByUserAndExerciseId(user,actual.getId()).map(p->p.getPreference()!=ExercisePreferenceLevel.EXCLUDED).orElse(true);
+    }
+    @Transactional(readOnly=true)
+    public List<AlternativeExerciseResponse> getAlternatives(User user,String exerciseId,String equipment){
         Exercise source = requireExercise(exerciseId);
         Map<String, ExercisePreferenceLevel> preferences = preferenceMap(user);
         String sourceMuscle = normalize(source.getMuscleGroup());
@@ -200,6 +210,7 @@ public class WorkoutIntelligenceService {
         return exerciseRepository.findByActiveTrueOrderByNameAsc().stream()
                 .filter(candidate -> !candidate.getId().equals(exerciseId))
                 .filter(candidate -> "APPROVED".equals(candidate.getApprovalStatus()))
+                .filter(candidate -> equipment==null||equipment.isBlank()||normalize(candidate.getEquipment()).equals(normalize(equipment)))
                 .filter(candidate -> normalize(candidate.getMuscleGroup()).equals(sourceMuscle))
                 .filter(candidate -> preferences.getOrDefault(
                         candidate.getId(), ExercisePreferenceLevel.NORMAL
