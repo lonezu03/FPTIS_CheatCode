@@ -1,6 +1,35 @@
 # FitTrack Current Project State
 
-Last updated: 2026-10-28
+Last updated: 2026-10-29
+
+## Current task: mobile parity for eight web features and Android build
+
+User requested mobile updates and a new APK. Implemented Flutter screens for pantry
+and expiry, purchase prices/weekly cost, training comparison, shared expenses,
+focus timer, habit heatmap and monthly report/PDF; live substitution preserves
+completed sets, original exercise and replacement kind and resets replacement
+weight. Added navigation using existing global menu visibility and owner permissions;
+purchase prices require both health and finance. Monthly PDF uses local Noto Sans
+and printing packages and rechecks current permissions. No Lunch changes or deploy.
+
+Independent review fixes: changed exercise keeps completed sets; shared expense
+preview ignores stale responses after edits; pantry pending operation IDs persist
+in owner-scoped secure storage for retry after timeout/restart; focus resets a
+removed todo selection and ignores stale reads; report locks filters while loading
+or exporting and rechecks permissions. Focus notification is opt-in and applies
+only while its screen is running; no closed-app delivery guarantee. Focus history
+currently shows the first 15 sessions of the current month and todo selection the
+first 50 returned tasks. Pantry pending retry data remains secure and account-scoped.
+
+Flutter full suite passed 53 tests after the final pantry-key, preview-race and
+dialog-lifecycle fixes. Scoped Dart analysis of pantry/prices and focus/report
+had no errors or warnings, with informational lints. Release build succeeded using
+JDK 21 on 2026-10-29; build script verified the notification icon. APK:
+mobile/fittrack_mobile/build/app/outputs/flutter-apk/app-release.apk (72,686,561
+bytes, version 1.2.5+11, current debug signing configuration for internal testing).
+Backend migrations V42–V45 must be tested on PostgreSQL staging and deployed
+before testing the new screens against production. Physical Android, notification
+permission and PDF print/save have not been verified. No deployment was performed.
 
 ## Current handoff: 8 backend/web features implemented; deployment checks remain
 

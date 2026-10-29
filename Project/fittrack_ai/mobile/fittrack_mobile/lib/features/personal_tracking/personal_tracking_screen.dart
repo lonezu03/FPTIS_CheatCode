@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/network/api_client.dart';
+import 'habit_heatmap.dart';
 
 /// Shared real-API screens; no mock records and no writes to Todo/diary/profile.
 class PersonalTrackingScreen extends StatefulWidget {
@@ -388,6 +389,8 @@ class _PersonalTrackingScreenState extends State<PersonalTrackingScreen> {
     List<Map<String, dynamic>> rows = [];
     bool busy = false;
     String? message;
+    String? calendarFrom, calendarTo;
+    int calendarRevision = 0;
     await showDialog<void>(
       context: context,
       builder: (dc) => StatefulBuilder(
@@ -403,11 +406,16 @@ class _PersonalTrackingScreenState extends State<PersonalTrackingScreen> {
                 queryParameters: {'from': from.text, 'to': to.text},
               );
               if (dc.mounted) {
-                change(
-                  () => rows = (result as List)
+                change(() {
+                  rows = (result as List)
                       .map((e) => Map<String, dynamic>.from(e as Map))
-                      .toList(),
-                );
+                      .toList();
+                  if (widget.section == 'habits') {
+                    calendarFrom = from.text;
+                    calendarTo = to.text;
+                    calendarRevision++;
+                  }
+                });
               }
             } catch (e) {
               if (dc.mounted) change(() => message = e.toString());
@@ -466,6 +474,13 @@ class _PersonalTrackingScreenState extends State<PersonalTrackingScreen> {
                       onPressed: busy ? null : fetch,
                       child: const Text('Xem lịch sử (tối đa 366 ngày)'),
                     ),
+                    if (calendarFrom != null && calendarTo != null)
+                      HabitHeatmap(
+                        id: item['id'].toString(),
+                        from: calendarFrom!,
+                        to: calendarTo!,
+                        revision: '$calendarRevision',
+                      ),
                     if (item['archived'] != true) ...[
                       TextField(
                         controller: day,

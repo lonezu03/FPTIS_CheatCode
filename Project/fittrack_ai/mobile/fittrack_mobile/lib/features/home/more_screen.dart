@@ -26,6 +26,12 @@ import '../nutrition_planning/meal_planning_screen.dart';
 import '../personal_tracking/personal_tracking_screen.dart';
 import '../finance/savings_goals_screen.dart';
 import '../sharing/template_sharing_screen.dart';
+import '../nutrition_planning/pantry_screen.dart';
+import '../nutrition_planning/purchase_prices_screen.dart';
+import '../finance/shared_expenses_screen.dart';
+import '../fitness/training_comparison_screen.dart';
+import '../planner/focus_screen.dart';
+import '../personal_tracking/monthly_report_screen.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key, required this.user, required this.menu});
@@ -320,6 +326,13 @@ class MoreScreen extends StatelessWidget {
           Icons.flag_outlined,
           const PersonalTrackingScreen(kind: 'WORKOUT'),
         ),
+      if (menu.allows('fitness', user))
+        (
+          'fitness',
+          'So sánh luyện tập',
+          Icons.query_stats,
+          const TrainingComparisonScreen(),
+        ),
       if (menu.allows('nutrition', user))
         (
           'nutrition',
@@ -328,6 +341,19 @@ class MoreScreen extends StatelessWidget {
           const MealPlanningScreen(),
         ),
       if (menu.allows('health', user)) ...[
+        (
+          'health',
+          'Thực phẩm đang có',
+          Icons.kitchen_outlined,
+          const PantryScreen(),
+        ),
+        if (menu.allows('finance', user))
+          (
+            'health',
+            'Giá mua & chi phí thực đơn',
+            Icons.price_check,
+            const PurchasePricesScreen(),
+          ),
         (
           'health',
           'Mục tiêu sức khỏe',
@@ -348,12 +374,36 @@ class MoreScreen extends StatelessWidget {
           Icons.checklist,
           const PersonalTrackingScreen(section: 'habits'),
         ),
+      if (menu.allows('planner', user) && (user.isAdmin || user.todoEnabled))
+        (
+          'planner',
+          'Chế độ tập trung',
+          Icons.timer_outlined,
+          const FocusScreen(),
+        ),
       if (menu.allows('finance', user))
         (
           'finance',
           'Mục tiêu tiết kiệm',
           Icons.savings_outlined,
           const SavingsGoalsScreen(),
+        ),
+      if (menu.allows('finance', user))
+        (
+          'finance',
+          'Chi tiêu chung',
+          Icons.people_outline,
+          const SharedExpensesScreen(),
+        ),
+      if (menu.allows('fitness', user) ||
+          menu.allows('nutrition', user) ||
+          menu.allows('finance', user) ||
+          (menu.allows('planner', user) && (user.isAdmin || user.todoEnabled)))
+        (
+          '',
+          'Báo cáo cá nhân theo tháng',
+          Icons.summarize_outlined,
+          const MonthlyReportScreen(),
         ),
       if (menu.allows('workoutPlans', user) || menu.allows('nutrition', user))
         (
@@ -374,7 +424,15 @@ class MoreScreen extends StatelessWidget {
             context,
             title: entry.$2,
             page: entry.$4,
-            moduleKey: entry.$1,
+            moduleKey: entry.$1.isEmpty ? null : entry.$1,
+            additionalAccess: entry.$4 is PurchasePricesScreen
+                ? (current) => menu.allows('finance', current)
+                : entry.$4 is FocusScreen ||
+                      (entry.$4 is PersonalTrackingScreen &&
+                          (entry.$4 as PersonalTrackingScreen).section ==
+                              'habits')
+                ? (current) => current.isAdmin || current.todoEnabled
+                : null,
           ),
         ),
       ],
@@ -386,6 +444,7 @@ class MoreScreen extends StatelessWidget {
     required String title,
     required Widget page,
     String? moduleKey,
+    bool Function(AuthUser)? additionalAccess,
   }) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -396,7 +455,8 @@ class MoreScreen extends StatelessWidget {
             builder: (c, _) {
               final current = c.watch<AuthSession>().user ?? user;
               final visible =
-                  moduleKey == null || menu.allows(moduleKey, current);
+                  (moduleKey == null || menu.allows(moduleKey, current)) &&
+                  (additionalAccess?.call(current) ?? true);
               return Scaffold(
                 appBar: AppBar(title: Text(title)),
                 body: !visible

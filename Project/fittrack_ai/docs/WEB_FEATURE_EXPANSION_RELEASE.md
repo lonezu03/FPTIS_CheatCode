@@ -1,8 +1,15 @@
 # Hướng dẫn 8 tính năng web mới
 
-Ngày 28/10/2026. Backend + web responsive, không cập nhật Flutter, không build
-APK, không sửa nghiệp vụ/giao diện đặt cơm, không deploy hoặc truy cập DB thật.
-Kế hoạch được người dùng duyệt: WEB_FEATURE_EXPANSION_PLAN.md.
+Ngày 28/10/2026: backend + web responsive. Ngày 29/10: bổ sung Flutter cho các
+tính năng này; trạng thái build và kiểm thử cuối xem đầu CODEX_CONTEXT.md. Không
+sửa nghiệp vụ/giao diện đặt cơm, không deploy hoặc truy cập DB thật. Kế hoạch web
+được người dùng duyệt: WEB_FEATURE_EXPANSION_PLAN.md.
+
+Trên app, mở các màn mới từ mục **Thêm** theo module và quyền được cấp. Báo cáo
+tháng có in/lưu PDF cục bộ. Đồng hồ tập trung chỉ nhắc khi màn hình đang chạy;
+lịch sử hiện giới hạn 15 phiên đầu tháng và danh sách chọn việc 50 mục đầu. Cần
+kiểm tra thông báo và hộp thoại in trên điện thoại thật. V42–V45 vẫn cần được
+kiểm tra PostgreSQL staging và deploy backend trước khi dùng các màn mới.
 
 ## Mở chức năng
 
@@ -132,4 +139,4 @@ Browser tests dùng API giả lập và bản build production tại localhost, 
 production. Phải kiểm PostgreSQL nâng từ V41 có dữ liệu + Hibernate validate,
 mail/nhắc hạn thật và thao tác trên điện thoại trước khi phát hành chính thức.
 Docker engine chưa hoạt động trên máy này, vì vậy H2/build không chứng minh
-Flyway V42–45 đã chạy được trên Aiven. App vẫn bản cũ, không có 8 màn web mới.
+Flyway V42–45 đã chạy được trên Aiven.

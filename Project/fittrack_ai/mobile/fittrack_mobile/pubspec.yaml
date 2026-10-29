@@ -45,6 +45,8 @@ dependencies:
   health: ^13.3.2
   mobile_scanner: ^7.4.1
   local_auth: ^3.0.2
+  pdf: ^3.11.3
+  printing: ^5.14.2
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +73,7 @@ flutter:
 
   assets:
     - assets/branding/app_icon_master.png
+    - assets/fonts/NotoSans-Regular.ttf
 
 flutter_launcher_icons:
   android: true

@@ -110,6 +110,11 @@ void main() {
           if (options.path.contains('/intelligence')) {
             data = <String, dynamic>{};
           }
+          if (options.path.endsWith('/alternatives')) {
+            data = [
+              {'exercise': {'id': 'replacement', 'name': 'Máy thay thế', 'equipment': 'Máy'}, 'preference': 'NORMAL'},
+            ];
+          }
           if (options.method == 'PUT' || options.method == 'POST') {
             data = {'id': 'saved', 'newPersonalRecords': []};
           }
@@ -123,6 +128,60 @@ void main() {
   }
 
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+  testWidgets('đổi bài giữ hiệp đã hoàn thành và lưu nguồn thay thế', (tester) async {
+    // Give the workout editor enough vertical space for its fixed footer;
+    // the separate 360px test below covers the compact layout.
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final writes = <RequestOptions>[];
+    await mount(tester, mockApi(writes), const LiveWorkoutSheet(planDay: {
+      'name': 'Ngày tập',
+      'exercises': [{
+        'exerciseId': 'plan-ex', 'exerciseName': 'Bài ban đầu',
+        'targetSets': 2, 'targetReps': 10, 'targetWeight': 25.0,
+      }],
+    }));
+    final first = find.byType(Checkbox).first;
+    await tester.ensureVisible(first);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(first);
+    await tester.pump();
+    final change = find.text('Đổi bài tương đương');
+    await tester.ensureVisible(change);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(change);
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    await tester.tap(find.text('Máy thay thế'));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    await tester.tap(find.text('Đổi bài'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Bài ban đầu'), findsOneWidget);
+    expect(find.text('Máy thay thế'), findsOneWidget);
+    final checkboxes = find.byType(Checkbox);
+    expect(tester.widget<Checkbox>(checkboxes.first).value, isTrue);
+    expect(tester.widget<Checkbox>(checkboxes.last).value, isFalse);
+    await tester.ensureVisible(checkboxes.last);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(checkboxes.last);
+    await tester.pump();
+    final save = find.text('Hoàn thành buổi tập');
+    await tester.ensureVisible(save);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(save);
+    await tester.pump(const Duration(milliseconds: 200));
+    final sets = (writes.single.data as Map)['sets'] as List;
+    expect(sets, hasLength(2));
+    expect(sets[0]['exerciseId'], 'plan-ex');
+    expect(sets[0]['weight'], 25.0);
+    expect(sets[1]['exerciseId'], 'replacement');
+    expect(sets[1]['weight'], 0);
+    expect(sets[1]['originalExerciseId'], 'plan-ex');
+    expect(sets[1]['replacementKind'], 'ALTERNATIVE');
+    await tester.pumpWidget(const SizedBox());
+  });
 
   testWidgets(
     'plan start opens incomplete live sets without POST/generate at 360px',

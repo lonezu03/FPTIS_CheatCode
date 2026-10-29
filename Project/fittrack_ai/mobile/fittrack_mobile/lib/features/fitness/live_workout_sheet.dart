@@ -290,6 +290,8 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
         () => _DraftExercise(
           id,
           sets: [],
+          originalExerciseId: set['originalExerciseId']?.toString(),
+          replacementKind: set['replacementKind']?.toString(),
           rest: (set['restSeconds'] as num?)?.toInt() ?? 90,
           grouping: trainingGroup(set),
         ),
@@ -351,6 +353,10 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
           if (!completedOnly || set.value.completed)
             {
               'exerciseId': group.value.exerciseId,
+              if (group.value.originalExerciseId != null)
+                'originalExerciseId': group.value.originalExerciseId,
+              if (group.value.replacementKind != null)
+                'replacementKind': group.value.replacementKind,
               'exerciseName': exercises
                   .where((e) => e['id'].toString() == group.value.exerciseId)
                   .firstOrNull?['name'],
@@ -433,11 +439,85 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
         ),
       );
       if (selected == null || !mounted) return;
-      setState(() => exercise.exerciseId = selected);
-      unawaited(_loadIntelligence(exercise));
+      for (final item in alternatives) {
+        final candidate = item['exercise'];
+        if (candidate is Map &&
+            candidate['id']?.toString() == selected &&
+            !exercises.any((entry) => entry['id']?.toString() == selected)) {
+          exercises.add(Map<String, dynamic>.from(candidate));
+        }
+      }
+      await _substitute(exercise, selected, 'ALTERNATIVE');
     } catch (error) {
       if (mounted) showMessage(context, displayError(error), error: true);
     }
+  }
+
+  Future<void> _substitute(
+    _DraftExercise exercise,
+    String selected,
+    String kind,
+  ) async {
+    if (selected == exercise.exerciseId || !draft.contains(exercise)) return;
+    final remaining = exercise.sets.where((set) => !set.completed).toList();
+    if (remaining.isEmpty) {
+      showMessage(context, 'Bài tập đã hoàn thành hết các hiệp.');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Đổi bài tập?'),
+        content: const Text(
+          'Các hiệp đã hoàn thành được giữ nguyên. Hiệp còn lại chuyển sang bài mới với mức tạ 0 kg; hãy kiểm tra và nhập lại mức tạ.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Đổi bài'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted || !draft.contains(exercise)) return;
+    final replacement = _DraftExercise(
+      selected,
+      originalExerciseId: exercise.originalExerciseId ?? exercise.exerciseId,
+      replacementKind: kind == 'MANUAL' || exercise.replacementKind == 'MANUAL'
+          ? 'MANUAL'
+          : 'ALTERNATIVE',
+      targetSets: exercise.targetSets,
+      minReps: exercise.minReps,
+      maxReps: exercise.maxReps,
+      targetRir: exercise.targetRir,
+      rest: exercise.restSeconds,
+      coachingNote: exercise.coachingNote,
+      grouping: Map<String, dynamic>.from(exercise.grouping),
+      sets: remaining
+          .map(
+            (old) => _DraftSet(
+              weight: 0,
+              reps: old.reps,
+              rir: old.rir,
+              restSeconds: old.restSeconds,
+            )..setType = old.setType,
+          )
+          .toList(),
+    );
+    setState(() {
+      final index = draft.indexOf(exercise);
+      exercise.sets.removeWhere((set) => !set.completed);
+      if (exercise.sets.isEmpty) {
+        draft[index] = replacement;
+      } else {
+        draft.insert(index + 1, replacement);
+      }
+    });
+    unawaited(_loadIntelligence(replacement));
   }
 
   void _applyProgression(_DraftExercise exercise) {
@@ -748,8 +828,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
                       canDelete: draft.length > 1,
                       onChanged: () => setState(() {}),
                       onExerciseChanged: (id) {
-                        setState(() => entry.value.exerciseId = id);
-                        unawaited(_loadIntelligence(entry.value));
+                        unawaited(_substitute(entry.value, id, 'MANUAL'));
                       },
                       onPreferenceChanged: (value) =>
                           _setPreference(entry.value.exerciseId, value),
@@ -1320,6 +1399,8 @@ class _DraftExercise {
     this.targetRir = 2,
     int rest = 90,
     this.coachingNote = '',
+    this.originalExerciseId,
+    this.replacementKind,
     Map<String, dynamic>? grouping,
   }) : key = '${DateTime.now().microsecondsSinceEpoch}-${_nextKey++}',
        restSeconds = rest,
@@ -1329,6 +1410,8 @@ class _DraftExercise {
   static int _nextKey = 0;
   final String key;
   String exerciseId;
+  final String? originalExerciseId;
+  final String? replacementKind;
   int restSeconds;
   final Map<String, dynamic> grouping;
   final String coachingNote;
