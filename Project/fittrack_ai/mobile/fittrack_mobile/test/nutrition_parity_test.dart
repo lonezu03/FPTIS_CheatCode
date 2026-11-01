@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:fittrack_mobile/core/network/api_client.dart';
@@ -12,6 +13,7 @@ class _NutritionApi extends ApiClient {
   Future<dynamic> get(
     String path, {
     Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
   }) async {
     calls.add('$path:${queryParameters?['keyword'] ?? ''}');
     if (path == '/nutrition/diary') return {'meals': [], 'status': 'UNLOGGED'};
@@ -52,6 +54,7 @@ class _SnapshotApi extends _NutritionApi {
   Future<dynamic> get(
     String path, {
     Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
   }) async {
     if (path == '/nutrition/diary') {
       calls.add(path);

@@ -92,8 +92,18 @@ class _PreviewAdapter implements HttpClientAdapter {
           'version': 1,
         },
         'members': [
-          {'userId': 'u', 'name': 'Người dùng', 'status': 'ACTIVE', 'acceptedAt': '2026-01-01'},
-          {'userId': 'v', 'name': 'Bạn bè', 'status': 'ACTIVE', 'acceptedAt': '2026-01-01'},
+          {
+            'userId': 'u',
+            'name': 'Người dùng',
+            'status': 'ACTIVE',
+            'acceptedAt': '2026-01-01',
+          },
+          {
+            'userId': 'v',
+            'name': 'Bạn bè',
+            'status': 'ACTIVE',
+            'acceptedAt': '2026-01-01',
+          },
         ],
       });
     }
@@ -112,43 +122,261 @@ class _PreviewAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _PartialFailureAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? stream,
+    Future<void>? cancelFuture,
+  ) async {
+    final failed = options.path.endsWith('/invitations');
+    return ResponseBody.fromString(
+      jsonEncode(
+        failed
+            ? {'message': 'Không thể tải lời mời'}
+            : {
+                'content': [
+                  {
+                    'id': 'g',
+                    'name': 'Nhóm vẫn truy cập được',
+                    'myStatus': 'ACTIVE',
+                  },
+                ],
+                'totalPages': 1,
+              },
+      ),
+      failed ? 500 : 200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _SwitchGroupAdapter extends _PreviewAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? stream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/groups')) {
+      return super.json({
+        'content': [
+          {'id': 'group', 'name': 'Nhóm A', 'myStatus': 'ACTIVE'},
+          {'id': 'other', 'name': 'Nhóm B', 'myStatus': 'ACTIVE'},
+        ],
+        'totalPages': 1,
+      });
+    }
+    if (options.path.endsWith('/groups/other')) {
+      return ResponseBody.fromString(
+        jsonEncode({'message': 'Lỗi nhóm B'}),
+        500,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
+    return super.fetch(options, stream, cancelFuture);
+  }
+}
+
+class _RefreshCancellationAdapter implements HttpClientAdapter {
+  final refreshStarted = Completer<void>();
+  final refreshResult = Completer<ResponseBody>();
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? stream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/auth/refresh')) {
+      refreshStarted.complete();
+      return refreshResult.future;
+    }
+    return ResponseBody.fromString(
+      '{}',
+      401,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
-  testWidgets('group, invite and settlement dialogs close without disposed controllers', (tester) async {
+  test(
+    'cancel while refreshing releases original request without logging out',
+    () async {
+      final adapter = _RefreshCancellationAdapter();
+      final api =
+          ApiClient(
+              dio: Dio(BaseOptions(baseUrl: 'https://example.invalid/api'))
+                ..httpClientAdapter = adapter,
+            )
+            ..accessToken = 'old'
+            ..refreshToken = 'refresh';
+      var unauthorized = false;
+      api.onUnauthorized = () => unauthorized = true;
+      final token = CancelToken();
+      final request = api.get('/finance/shared/groups', cancelToken: token);
+      final completed = request.then<Object?>(
+        (_) => null,
+        onError: (Object e) => e,
+      );
+      await adapter.refreshStarted.future;
+      token.cancel();
+      expect(await completed, isNotNull);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(
+        api.activity.pendingRequests,
+        1,
+      ); // Shared refresh continues independently.
+      expect(unauthorized, isFalse);
+      adapter.refreshResult.complete(
+        ResponseBody.fromString(
+          jsonEncode({'token': 'new', 'refreshToken': 'new-refresh'}),
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['application/json'],
+          },
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(api.activity.pendingRequests, 0);
+      expect(unauthorized, isFalse);
+    },
+  );
+  testWidgets('switching groups hides previous group when new detail fails', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 1800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final adapter = _PreviewAdapter();
-    final api = ApiClient(dio: Dio(BaseOptions(baseUrl: 'https://example.invalid/api'))
-      ..httpClientAdapter = adapter);
+    final api = ApiClient(
+      dio: Dio(BaseOptions(baseUrl: 'https://example.invalid/api'))
+        ..httpClientAdapter = _SwitchGroupAdapter(),
+    );
     final session = AuthSession(api)
-      ..user = const AuthUser(id: 'u', email: 'u@example.invalid', fullName: 'Người dùng',
-        role: 'USER', lunchEnabled: false, fitnessEnabled: true, healthEnabled: true,
-        chatbotEnabled: false, todoEnabled: true, scheduleEnabled: true,
-        financeEnabled: true, passwordChangeRequired: false);
-    await tester.pumpWidget(MultiProvider(
-      providers: [Provider<ApiClient>.value(value: api),
-        ChangeNotifierProvider<AuthSession>.value(value: session)],
-      child: const MaterialApp(home: SharedExpensesScreen()),
-    ));
+      ..user = const AuthUser(
+        id: 'u',
+        email: 'u@example.invalid',
+        fullName: 'Người dùng',
+        role: 'USER',
+        lunchEnabled: false,
+        fitnessEnabled: true,
+        healthEnabled: true,
+        chatbotEnabled: false,
+        todoEnabled: true,
+        scheduleEnabled: true,
+        financeEnabled: true,
+        passwordChangeRequired: false,
+      );
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<ApiClient>.value(value: api),
+          ChangeNotifierProvider<AuthSession>.value(value: session),
+        ],
+        child: const MaterialApp(home: SharedExpensesScreen()),
+      ),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tạo nhóm'));
+    await tester.tap(find.text('Nhóm A'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hủy').last);
+    expect(find.text('Nhóm test'), findsOneWidget);
+    await tester.tap(find.text('Nhóm B'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Nhóm test').first);
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Mời thành viên'));
-    await tester.tap(find.text('Mời thành viên'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Hủy').last);
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Đề nghị'));
-    await tester.tap(find.text('Đề nghị'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Hủy').last);
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    expect(adapter.writes, isEmpty);
+    expect(find.text('Nhóm test'), findsNothing);
+    expect(find.text('Mời thành viên'), findsNothing);
+    expect(find.text('Không tải được thông tin nhóm'), findsOneWidget);
   });
+  testWidgets(
+    'failed invitations do not hide available groups or claim empty data',
+    (tester) async {
+      final api = ApiClient(
+        dio: Dio(BaseOptions(baseUrl: 'https://example.invalid/api'))
+          ..httpClientAdapter = _PartialFailureAdapter(),
+      );
+      final session = AuthSession(api);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ApiClient>.value(value: api),
+            ChangeNotifierProvider<AuthSession>.value(value: session),
+          ],
+          child: const MaterialApp(home: SharedExpensesScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Nhóm vẫn truy cập được'), findsOneWidget);
+      expect(find.text('Không tải được lời mời'), findsOneWidget);
+      expect(find.text('Không có lời mời đang chờ.'), findsNothing);
+      expect(find.byTooltip('Thử lại'), findsOneWidget);
+    },
+  );
+  testWidgets(
+    'group, invite and settlement dialogs close without disposed controllers',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 1800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final adapter = _PreviewAdapter();
+      final api = ApiClient(
+        dio: Dio(BaseOptions(baseUrl: 'https://example.invalid/api'))
+          ..httpClientAdapter = adapter,
+      );
+      final session = AuthSession(api)
+        ..user = const AuthUser(
+          id: 'u',
+          email: 'u@example.invalid',
+          fullName: 'Người dùng',
+          role: 'USER',
+          lunchEnabled: false,
+          fitnessEnabled: true,
+          healthEnabled: true,
+          chatbotEnabled: false,
+          todoEnabled: true,
+          scheduleEnabled: true,
+          financeEnabled: true,
+          passwordChangeRequired: false,
+        );
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ApiClient>.value(value: api),
+            ChangeNotifierProvider<AuthSession>.value(value: session),
+          ],
+          child: const MaterialApp(home: SharedExpensesScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tạo nhóm'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hủy').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Nhóm test').first);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Mời thành viên'));
+      await tester.tap(find.text('Mời thành viên'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hủy').last);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Đề nghị'));
+      await tester.tap(find.text('Đề nghị'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Hủy').last);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(adapter.writes, isEmpty);
+    },
+  );
   testWidgets('late preview is discarded after amount changes', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1200, 1800));
     addTearDown(() => tester.binding.setSurfaceSize(null));

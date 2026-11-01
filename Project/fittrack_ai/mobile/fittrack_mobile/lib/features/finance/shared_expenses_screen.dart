@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -26,7 +28,9 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
       audit = [];
   Map<String, dynamic>? group;
   String? selected;
-  Object? error;
+  final sectionErrors = <String, Object>{};
+  final pendingSections = <String>{};
+  final requestTokens = <CancelToken>[];
   bool loading = true, busy = false;
   int loadGeneration = 0;
   int groupPage = 0,
@@ -44,7 +48,7 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
   String get userId => context.read<AuthSession>().user?.id ?? '';
   bool get owner => group?['ownerId'] == userId;
   bool get active => group?['myStatus'] == 'ACTIVE';
-  bool get canWrite => active && group?['archived'] != true;
+  bool get canWrite => !loading && active && group?['archived'] != true;
   String memberName(Object? id) =>
       members
           .where((m) => m['userId'] == id)
@@ -65,67 +69,164 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => load());
   }
 
+  @override
+  void dispose() {
+    for (final token in requestTokens) {
+      token.cancel('Màn hình đã đóng');
+    }
+    super.dispose();
+  }
+
   Future<void> load() async {
     if (!mounted) return;
     final generation = ++loadGeneration;
+    for (final token in requestTokens) {
+      token.cancel('Đã yêu cầu dữ liệu mới');
+    }
+    requestTokens.clear();
     setState(() {
       loading = true;
-      error = null;
+      sectionErrors.clear();
+      pendingSections
+        ..clear()
+        ..addAll(['groups', 'invitations']);
+      if (selected != null) {
+        pendingSections.addAll(['detail', 'expenses', 'settlements', 'audit']);
+      }
     });
-    try {
-      final current = selected;
-      final result = await Future.wait([
-        api.get(
+    final current = selected;
+    Future<void> section(
+      String key,
+      Future<dynamic> Function(CancelToken) request,
+      void Function(dynamic) update,
+    ) async {
+      final token = CancelToken();
+      requestTokens.add(token);
+      try {
+        final data = await request(token).timeout(
+          const Duration(seconds: 25),
+          onTimeout: () {
+            token.cancel('Yêu cầu quá thời gian chờ');
+            throw TimeoutException('Yêu cầu quá thời gian chờ');
+          },
+        );
+        if (!mounted || generation != loadGeneration || current != selected)
+          return;
+        setState(() => update(data));
+      } catch (e) {
+        if (mounted && generation == loadGeneration && current == selected) {
+          setState(() => sectionErrors[key] = e);
+        }
+      } finally {
+        requestTokens.remove(token);
+        if (mounted && generation == loadGeneration && current == selected) {
+          setState(() {
+            pendingSections.remove(key);
+            loading = pendingSections.isNotEmpty;
+          });
+        }
+      }
+    }
+
+    await Future.wait([
+      section(
+        'groups',
+        (token) => api.get(
           '$base/groups',
           queryParameters: {'page': groupPage, 'size': 12},
+          cancelToken: token,
         ),
-        api.get(
+        (v) {
+          groups = items(v);
+          groupPages = pages(v);
+        },
+      ),
+      section(
+        'invitations',
+        (token) => api.get(
           '$base/invitations',
           queryParameters: {'page': invitePage, 'size': 12},
+          cancelToken: token,
         ),
-        if (current != null) ...[
-          api.get('$base/groups/$current'),
-          api.get(
+        (v) {
+          invitations = items(v);
+          invitePages = pages(v);
+        },
+      ),
+      if (current != null) ...[
+        section(
+          'detail',
+          (token) => api.get('$base/groups/$current', cancelToken: token),
+          (v) {
+            final detail = Map<String, dynamic>.from(v as Map);
+            group = Map<String, dynamic>.from(detail['group'] as Map);
+            members = (detail['members'] as List)
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList();
+          },
+        ),
+        section(
+          'expenses',
+          (token) => api.get(
             '$base/groups/$current/expenses',
             queryParameters: {'page': expensePage, 'size': 15},
+            cancelToken: token,
           ),
-          api.get(
+          (v) {
+            expenses = items(v);
+            expensePages = pages(v);
+          },
+        ),
+        section(
+          'settlements',
+          (token) => api.get(
             '$base/groups/$current/settlements',
             queryParameters: {'page': settlementPage, 'size': 15},
+            cancelToken: token,
           ),
-          api.get(
+          (v) {
+            settlements = items(v);
+            settlementPages = pages(v);
+          },
+        ),
+        section(
+          'audit',
+          (token) => api.get(
             '$base/groups/$current/audit',
             queryParameters: {'page': auditPage, 'size': 15},
+            cancelToken: token,
           ),
-        ],
-      ]);
-      if (!mounted || generation != loadGeneration || current != selected)
-        return;
-      setState(() {
-        groups = items(result[0]);
-        groupPages = pages(result[0]);
-        invitations = items(result[1]);
-        invitePages = pages(result[1]);
-        if (current != null) {
-          final detail = Map<String, dynamic>.from(result[2] as Map);
-          group = Map<String, dynamic>.from(detail['group'] as Map);
-          members = (detail['members'] as List)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
-          expenses = items(result[3]);
-          expensePages = pages(result[3]);
-          settlements = items(result[4]);
-          settlementPages = pages(result[4]);
-          audit = items(result[5]);
-          auditPages = pages(result[5]);
-        }
-      });
-    } catch (e) {
-      if (mounted && generation == loadGeneration) setState(() => error = e);
-    } finally {
-      if (mounted && generation == loadGeneration)
-        setState(() => loading = false);
+          (v) {
+            audit = items(v);
+            auditPages = pages(v);
+          },
+        ),
+      ],
+    ]);
+  }
+
+  Widget sectionStatus(String key, String label) {
+    if (pendingSections.contains(key)) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text('Đang tải $label...'),
+      );
     }
+    final failure = sectionErrors[key];
+    if (failure == null) return const SizedBox.shrink();
+    return ListTile(
+      title: Text('Không tải được $label'),
+      subtitle: Text(
+        failure is TimeoutException
+            ? 'Kết nối quá lâu. Vui lòng thử lại.'
+            : '$failure',
+      ),
+      trailing: IconButton(
+        icon: const Icon(Icons.refresh),
+        onPressed: load,
+        tooltip: 'Thử lại',
+      ),
+    );
   }
 
   String operation(String key) => operations.putIfAbsent(key, () {
@@ -686,49 +787,47 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
           if (loading) const LinearProgressIndicator(),
-          if (error != null)
-            ListTile(
-              title: const Text('Không tải được dữ liệu'),
-              subtitle: Text('$error'),
-              trailing: IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: load,
-              ),
-            ),
           const SizedBox(height: 12),
           Text('Lời mời', style: Theme.of(context).textTheme.titleLarge),
-          if (invitations.isEmpty && !loading)
+          sectionStatus('invitations', 'lời mời'),
+          if (invitations.isEmpty &&
+              !pendingSections.contains('invitations') &&
+              !sectionErrors.containsKey('invitations'))
             const Text('Không có lời mời đang chờ.'),
-          ...invitations.map(
-            (i) => Card(
-              child: ListTile(
-                title: Text('${i['groupName']}'),
-                subtitle: Text('Mời bởi ${i['invitedBy']}'),
-                trailing: Wrap(
-                  children: [
-                    IconButton(
-                      tooltip: 'Chấp nhận',
-                      onPressed: busy
-                          ? null
-                          : () => memberAction('ACCEPT', invite: i),
-                      icon: const Icon(Icons.check),
-                    ),
-                    IconButton(
-                      tooltip: 'Từ chối',
-                      onPressed: busy
-                          ? null
-                          : () => memberAction('DECLINE', invite: i),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
+          if (!pendingSections.contains('invitations') &&
+              !sectionErrors.containsKey('invitations'))
+            ...invitations.map(
+              (i) => Card(
+                child: ListTile(
+                  title: Text('${i['groupName']}'),
+                  subtitle: Text('Mời bởi ${i['invitedBy']}'),
+                  trailing: Wrap(
+                    children: [
+                      IconButton(
+                        tooltip: 'Chấp nhận',
+                        onPressed: busy
+                            ? null
+                            : () => memberAction('ACCEPT', invite: i),
+                        icon: const Icon(Icons.check),
+                      ),
+                      IconButton(
+                        tooltip: 'Từ chối',
+                        onPressed: busy
+                            ? null
+                            : () => memberAction('DECLINE', invite: i),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          pager(invitePage, invitePages, (p) {
-            setState(() => invitePage = p);
-            load();
-          }),
+          if (!pendingSections.contains('invitations') &&
+              !sectionErrors.containsKey('invitations'))
+            pager(invitePage, invitePages, (p) {
+              setState(() => invitePage = p);
+              load();
+            }),
           Row(
             children: [
               Expanded(
@@ -744,35 +843,51 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
               ),
             ],
           ),
-          if (groups.isEmpty && !loading) const Text('Chưa có nhóm.'),
-          ...groups.map(
-            (g) => Card(
-              child: ListTile(
-                title: Text('${g['name']}'),
-                subtitle: Text(
-                  g['archived'] == true
-                      ? 'Đã lưu trữ'
-                      : g['myStatus'] == 'REMOVED'
-                      ? 'Đã rời nhóm'
-                      : 'Đang tham gia',
+          sectionStatus('groups', 'danh sách nhóm'),
+          if (groups.isEmpty &&
+              !pendingSections.contains('groups') &&
+              !sectionErrors.containsKey('groups'))
+            const Text('Chưa có nhóm.'),
+          if (!pendingSections.contains('groups') &&
+              !sectionErrors.containsKey('groups'))
+            ...groups.map(
+              (g) => Card(
+                child: ListTile(
+                  title: Text('${g['name']}'),
+                  subtitle: Text(
+                    g['archived'] == true
+                        ? 'Đã lưu trữ'
+                        : g['myStatus'] == 'REMOVED'
+                        ? 'Đã rời nhóm'
+                        : 'Đang tham gia',
+                  ),
+                  selected: selected == g['id'],
+                  onTap: () {
+                    setState(() {
+                      selected = g['id'].toString();
+                      group = null;
+                      members = [];
+                      expenses = [];
+                      settlements = [];
+                      audit = [];
+                      expensePage = settlementPage = auditPage = 0;
+                      expensePages = settlementPages = auditPages = 0;
+                    });
+                    load();
+                  },
                 ),
-                selected: selected == g['id'],
-                onTap: () {
-                  setState(() {
-                    selected = g['id'].toString();
-                    group = null;
-                    expensePage = settlementPage = auditPage = 0;
-                  });
-                  load();
-                },
               ),
             ),
-          ),
-          pager(groupPage, groupPages, (p) {
-            setState(() => groupPage = p);
-            load();
-          }),
-          if (group != null) ...[
+          if (!pendingSections.contains('groups') &&
+              !sectionErrors.containsKey('groups'))
+            pager(groupPage, groupPages, (p) {
+              setState(() => groupPage = p);
+              load();
+            }),
+          if (selected != null) sectionStatus('detail', 'thông tin nhóm'),
+          if (group != null &&
+              !pendingSections.contains('detail') &&
+              !sectionErrors.containsKey('detail')) ...[
             Row(
               children: [
                 Expanded(
@@ -784,7 +899,9 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
                 if (owner)
                   IconButton(
                     tooltip: 'Sửa nhóm',
-                    onPressed: busy ? null : () => groupEditor(group),
+                    onPressed: busy || loading
+                        ? null
+                        : () => groupEditor(group),
                     icon: const Icon(Icons.edit),
                   ),
               ],
@@ -804,7 +921,7 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
                     ? IconButton(
                         tooltip: 'Gỡ thành viên',
                         icon: const Icon(Icons.person_remove),
-                        onPressed: busy
+                        onPressed: busy || loading
                             ? null
                             : () async {
                                 if (await confirm(
@@ -822,7 +939,7 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
             ),
             if (owner && group!['archived'] != true)
               OutlinedButton(
-                onPressed: busy
+                onPressed: busy || loading
                     ? null
                     : () async {
                         final email = await ask(
@@ -850,70 +967,75 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
                   ),
               ],
             ),
-            ...expenses.map(
-              (e) => Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${e['title']} · ${money(e['amount'])}${e['voided'] == true ? ' · Đã hủy' : ''}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        '${e['spentOn']} · Người trả: ${memberName(e['payerId'])}',
-                      ),
-                      Text(
-                        ((e['splits'] as List?) ?? [])
-                            .map(
-                              (s) =>
-                                  '${memberName((s as Map)['userId'])}: ${money(s['amount'])}',
-                            )
-                            .join(' · '),
-                      ),
-                      Wrap(
-                        children: [
-                          if (canWrite &&
-                              e['voided'] != true &&
-                              e['creatorId'] == userId)
-                            TextButton(
-                              onPressed: busy ? null : () => expenseEditor(e),
-                              child: const Text('Sửa'),
-                            ),
-                          if (active &&
-                              e['voided'] != true &&
-                              (owner || e['creatorId'] == userId))
-                            TextButton(
-                              onPressed: busy
-                                  ? null
-                                  : () async {
-                                      final reason = await ask(
-                                        'Hủy khoản chi',
-                                        label: 'Lý do hủy',
-                                      );
-                                      if (reason != null && reason.isNotEmpty)
-                                        await mutate(
-                                          '$base/groups/$selected/expenses/${e['id']}/void',
-                                          {
-                                            'version': e['version'],
-                                            'reason': reason,
-                                          },
+            sectionStatus('expenses', 'khoản chi'),
+            if (!pendingSections.contains('expenses') &&
+                !sectionErrors.containsKey('expenses'))
+              ...expenses.map(
+                (e) => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${e['title']} · ${money(e['amount'])}${e['voided'] == true ? ' · Đã hủy' : ''}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          '${e['spentOn']} · Người trả: ${memberName(e['payerId'])}',
+                        ),
+                        Text(
+                          ((e['splits'] as List?) ?? [])
+                              .map(
+                                (s) =>
+                                    '${memberName((s as Map)['userId'])}: ${money(s['amount'])}',
+                              )
+                              .join(' · '),
+                        ),
+                        Wrap(
+                          children: [
+                            if (canWrite &&
+                                e['voided'] != true &&
+                                e['creatorId'] == userId)
+                              TextButton(
+                                onPressed: busy ? null : () => expenseEditor(e),
+                                child: const Text('Sửa'),
+                              ),
+                            if (active &&
+                                e['voided'] != true &&
+                                (owner || e['creatorId'] == userId))
+                              TextButton(
+                                onPressed: busy
+                                    ? null
+                                    : () async {
+                                        final reason = await ask(
+                                          'Hủy khoản chi',
+                                          label: 'Lý do hủy',
                                         );
-                                    },
-                              child: const Text('Hủy khoản chi'),
-                            ),
-                        ],
-                      ),
-                    ],
+                                        if (reason != null && reason.isNotEmpty)
+                                          await mutate(
+                                            '$base/groups/$selected/expenses/${e['id']}/void',
+                                            {
+                                              'version': e['version'],
+                                              'reason': reason,
+                                            },
+                                          );
+                                      },
+                                child: const Text('Hủy khoản chi'),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            pager(expensePage, expensePages, (p) {
-              setState(() => expensePage = p);
-              load();
-            }),
+            if (!pendingSections.contains('expenses') &&
+                !sectionErrors.containsKey('expenses'))
+              pager(expensePage, expensePages, (p) {
+                setState(() => expensePage = p);
+                load();
+              }),
             Row(
               children: [
                 Expanded(
@@ -923,76 +1045,87 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
                   ),
                 ),
                 TextButton(
-                  onPressed: busy ? null : settlementEditor,
+                  onPressed: busy || loading ? null : settlementEditor,
                   child: const Text('Đề nghị'),
                 ),
               ],
             ),
-            ...settlements.map(
-              (s) => Card(
-                child: ListTile(
-                  title: Text(
-                    '${memberName(s['debtorId'])} → ${memberName(s['creditorId'])}: ${money(s['amount'])}',
+            sectionStatus('settlements', 'đối soát'),
+            if (!pendingSections.contains('settlements') &&
+                !sectionErrors.containsKey('settlements'))
+              ...settlements.map(
+                (s) => Card(
+                  child: ListTile(
+                    title: Text(
+                      '${memberName(s['debtorId'])} → ${memberName(s['creditorId'])}: ${money(s['amount'])}',
+                    ),
+                    subtitle: Text('${s['status']} · ${s['note'] ?? ''}'),
+                    trailing:
+                        s['status'] == 'PENDING' &&
+                            s['initiatorId'] != userId &&
+                            (s['debtorId'] == userId ||
+                                s['creditorId'] == userId)
+                        ? Wrap(
+                            children: [
+                              IconButton(
+                                tooltip: 'Xác nhận',
+                                icon: const Icon(Icons.check),
+                                onPressed: busy || loading
+                                    ? null
+                                    : () async {
+                                        if (await confirm(
+                                          'Xác nhận',
+                                          'Bạn xác nhận khoản tiền đã thực sự được trả hoặc nhận?',
+                                        ))
+                                          await mutate(
+                                            '$base/groups/$selected/settlements/${s['id']}/confirm',
+                                            {'version': s['version']},
+                                          );
+                                      },
+                              ),
+                              IconButton(
+                                tooltip: 'Từ chối',
+                                icon: const Icon(Icons.close),
+                                onPressed: busy || loading
+                                    ? null
+                                    : () => mutate(
+                                        '$base/groups/$selected/settlements/${s['id']}/reject',
+                                        {'version': s['version']},
+                                      ),
+                              ),
+                            ],
+                          )
+                        : null,
                   ),
-                  subtitle: Text('${s['status']} · ${s['note'] ?? ''}'),
-                  trailing:
-                      s['status'] == 'PENDING' &&
-                          s['initiatorId'] != userId &&
-                          (s['debtorId'] == userId || s['creditorId'] == userId)
-                      ? Wrap(
-                          children: [
-                            IconButton(
-                              tooltip: 'Xác nhận',
-                              icon: const Icon(Icons.check),
-                              onPressed: busy
-                                  ? null
-                                  : () async {
-                                      if (await confirm(
-                                        'Xác nhận',
-                                        'Bạn xác nhận khoản tiền đã thực sự được trả hoặc nhận?',
-                                      ))
-                                        await mutate(
-                                          '$base/groups/$selected/settlements/${s['id']}/confirm',
-                                          {'version': s['version']},
-                                        );
-                                    },
-                            ),
-                            IconButton(
-                              tooltip: 'Từ chối',
-                              icon: const Icon(Icons.close),
-                              onPressed: busy
-                                  ? null
-                                  : () => mutate(
-                                      '$base/groups/$selected/settlements/${s['id']}/reject',
-                                      {'version': s['version']},
-                                    ),
-                            ),
-                          ],
-                        )
-                      : null,
                 ),
               ),
-            ),
-            pager(settlementPage, settlementPages, (p) {
-              setState(() => settlementPage = p);
-              load();
-            }),
+            if (!pendingSections.contains('settlements') &&
+                !sectionErrors.containsKey('settlements'))
+              pager(settlementPage, settlementPages, (p) {
+                setState(() => settlementPage = p);
+                load();
+              }),
             Text(
               'Nhật ký kiểm toán',
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            ...audit.map(
-              (a) => ListTile(
-                title: Text('${a['action']}'),
-                subtitle: Text(
-                  '${memberName(a['actorId'])} · ${a['createdAt']}',
+            sectionStatus('audit', 'nhật ký kiểm toán'),
+            if (!pendingSections.contains('audit') &&
+                !sectionErrors.containsKey('audit'))
+              ...audit.map(
+                (a) => ListTile(
+                  title: Text('${a['action']}'),
+                  subtitle: Text(
+                    '${memberName(a['actorId'])} · ${a['createdAt']}',
+                  ),
                 ),
               ),
-            ),
-            pager(auditPage, auditPages, (p) {
-              setState(() => auditPage = p);
-              load();
-            }),
+            if (!pendingSections.contains('audit') &&
+                !sectionErrors.containsKey('audit'))
+              pager(auditPage, auditPages, (p) {
+                setState(() => auditPage = p);
+                load();
+              }),
           ],
         ],
       ),

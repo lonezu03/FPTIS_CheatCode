@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import 'package:fittrack_mobile/core/network/api_client.dart';
 import 'package:fittrack_mobile/features/auth/auth_session.dart';
@@ -10,6 +11,7 @@ import 'package:fittrack_mobile/core/notifications/notification_center.dart';
 import 'package:fittrack_mobile/features/catalog/catalog_screen.dart';
 import 'package:fittrack_mobile/features/catalog/catalog_exercise_picker.dart';
 import 'package:fittrack_mobile/features/personal_tracking/personal_tracking_screen.dart';
+import 'package:fittrack_mobile/features/planner/focus_screen.dart';
 
 class _MenuApi extends ApiClient {
   List<Map<String, dynamic>> rows = mobileModuleLabels.keys
@@ -21,7 +23,12 @@ class _MenuApi extends ApiClient {
   Future<dynamic> get(
     String path, {
     Map<String, dynamic>? queryParameters,
-  }) async => path == '/workouts/goals'
+    CancelToken? cancelToken,
+  }) async => path == '/todos/focus/active'
+      ? null
+      : path == '/todos/focus' || path == '/todos/page'
+      ? {'content': <dynamic>[], 'totalPages': 0}
+      : path == '/workouts/goals'
       ? {'content': [], 'totalPages': 0}
       : {'version': version, 'modules': rows};
   @override
@@ -52,6 +59,53 @@ AuthUser _user(String role, {bool fitness = true, bool health = true}) =>
     );
 
 void main() {
+  for (final label in [
+    'So sánh luyện tập',
+    'Thói quen',
+    'Mục tiêu tiết kiệm',
+    'Chi tiêu chung',
+  ]) {
+    testWidgets('$label opens with exactly one header', (tester) async {
+      final api = _MenuApi();
+      final session = AuthSession(api)..user = _user('ADMIN');
+      final menu = MobileMenuController(api)
+        ..accept({'version': 0, 'modules': api.rows});
+      final notifications = NotificationCenter(api)..permissionGranted = true;
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ApiClient>.value(value: api),
+            ChangeNotifierProvider<AuthSession>.value(value: session),
+            ChangeNotifierProvider<NotificationCenter>.value(
+              value: notifications,
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: MoreScreen(user: session.user!, menu: menu),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text(label),
+        350,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text(label));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      menu.dispose();
+      notifications.dispose();
+      session.dispose();
+      api.activity.dispose();
+    });
+  }
   testWidgets('workout goal entry opens its own screen instead of fitness', (
     tester,
   ) async {
@@ -82,14 +136,76 @@ void main() {
       350,
       scrollable: find.byType(Scrollable).first,
     );
-      await tester.ensureVisible(find.text('Mục tiêu luyện tập'));
-      await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Mục tiêu luyện tập'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Mục tiêu luyện tập'));
     await tester.pumpAndSettle();
     final screen = tester.widget<PersonalTrackingScreen>(
       find.byType(PersonalTrackingScreen),
     );
     expect(screen.kind, 'WORKOUT');
+    expect(find.byType(AppBar), findsOneWidget);
+    menu.accept({
+      'version': 1,
+      'modules': api.rows
+          .map((e) => {...e, if (e['key'] == 'fitness') 'visible': false})
+          .toList(),
+    });
+    await tester.pumpAndSettle();
+    expect(find.byType(PersonalTrackingScreen), findsNothing);
+    expect(find.byType(AppBar), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    menu.dispose();
+    notifications.dispose();
+    session.dispose();
+    api.activity.dispose();
+  });
+  testWidgets('focus without its own scaffold gets a single navigation bar', (
+    tester,
+  ) async {
+    final api = _MenuApi();
+    final session = AuthSession(api)..user = _user('ADMIN');
+    final menu = MobileMenuController(api)
+      ..accept({'version': 0, 'modules': api.rows});
+    final notifications = NotificationCenter(api)..permissionGranted = true;
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<ApiClient>.value(value: api),
+          ChangeNotifierProvider<AuthSession>.value(value: session),
+          ChangeNotifierProvider<NotificationCenter>.value(
+            value: notifications,
+          ),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: MoreScreen(user: session.user!, menu: menu),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Chế độ tập trung'),
+      350,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.text('Chế độ tập trung'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chế độ tập trung'));
+    await tester.pumpAndSettle();
+    expect(find.byType(FocusScreen), findsOneWidget);
+    expect(find.byType(AppBar), findsOneWidget);
+    menu.accept({
+      'version': 1,
+      'modules': api.rows
+          .map((e) => {...e, if (e['key'] == 'planner') 'visible': false})
+          .toList(),
+    });
+    await tester.pumpAndSettle();
+    expect(find.byType(FocusScreen), findsNothing);
+    expect(find.byType(AppBar), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
     menu.dispose();

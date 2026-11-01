@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:fittrack_mobile/core/network/api_client.dart';
@@ -13,6 +14,7 @@ class FakeCatalogApi extends ApiClient {
   Future<dynamic> get(
     String path, {
     Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
   }) async {
     if (path.endsWith('/facets')) {
       return {

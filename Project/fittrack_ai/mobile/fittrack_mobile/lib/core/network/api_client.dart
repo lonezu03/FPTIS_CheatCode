@@ -60,7 +60,16 @@ class ApiClient {
             return;
           }
 
-          final refreshed = await _refreshAfterUnauthorized();
+          final cancellation = error.requestOptions.cancelToken;
+          final refreshed = await Future.any<bool?>([
+            _refreshAfterUnauthorized(),
+            if (cancellation != null) cancellation.whenCancel.then((_) => null),
+          ]);
+          if (refreshed == null || cancellation?.isCancelled == true) {
+            _finishTracking(error.requestOptions);
+            handler.next(cancellation!.cancelError!);
+            return;
+          }
           if (!refreshed) {
             _finishTracking(error.requestOptions);
             onUnauthorized?.call();
@@ -244,9 +253,14 @@ class ApiClient {
   Future<dynamic> get(
     String path, {
     Map<String, dynamic>? queryParameters,
+    CancelToken? cancelToken,
   }) async {
     try {
-      return (await dio.get(path, queryParameters: queryParameters)).data;
+      return (await dio.get(
+        path,
+        queryParameters: queryParameters,
+        cancelToken: cancelToken,
+      )).data;
     } on DioException catch (error) {
       throw ApiException.fromDio(error);
     }

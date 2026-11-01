@@ -1,6 +1,80 @@
 # FitTrack Current Project State
 
-Last updated: 2026-10-29
+## Separate local rental-management project (2026-11-01)
+
+Latest rental work: added local OWNER/STAFF/TENANT accounts, cookie sessions,
+per-property staff grants and owner/tenant API scoping. The first owner claims
+unowned legacy records at bootstrap. Added invoice-linked payment requests, QR
+settings, transactionally approved/rejected payments, per-component payments
+(except discounted invoices), per-recipient in-app notifications and hourly
+deduplicated reminders while the server runs. React includes role-specific UI.
+Payment amounts with no component remain unallocated. Node tests include auth,
+business flows, cross-owner/detail access, staff/tenant permissions, CSRF and
+push sender; Vite build passed. A separate Flutter tenant app and optional FCM
+client/server integration were added; Firebase credentials and physical-device
+delivery remain unverified. Flutter analyze and its single test passed. Chromium
+mobile checks covered bootstrap, tenant component payment, owner approval and
+staff navigation with setup data partly seeded via API. Proof uploads, complete financial audit/void/refunds
+and production deployment/security remain unfinished. `npm audit` reports six
+moderate transitive Firebase vulnerabilities despite `npm audit fix`. Rate
+limiting is per-process; no hosting or migration to PostgreSQL performed.
+See rental-management/README.md for local setup and further limitations.
+
+User requested a new rental-management project and delegated agent work. It lives
+under `rental-management/`, separate from the existing FitTrack applications.
+React and Vite provide the Vietnamese UI; Node 23 and built-in SQLite provide the
+API for properties, rooms, tenants, contracts, readings, invoices and payments.
+Run `npm install` then `npm start` from that directory; the database is ignored
+under `data/`. Vite development uses `npm run dev:api` and `npm run dev` in
+separate terminals. The API requires readings
+before invoicing, protects payment history, and rejects overlapping rental periods.
+`npm test` and `npm run build` passed after migration to React. Independent
+Chromium testing at 390x844 completed the property-to-partial-payment flow with
+temporary data, including missing-reading validation. Desktop and edit/delete
+flows were not checked in the browser.
+The app binds to localhost and lacks complete audit and payment reversal; it is
+not ready for shared or internet deployment.
+See its README and `docs/YEU_CAU_THIET_KE.md`; next confirm business assumptions,
+confirm other screen sizes and complete the security review and financial audit before use
+by multiple users. Preserve all unrelated FitTrack changes in the dirty worktree.
+
+Last updated: 2026-10-31
+
+## Latest verification: duplicate mobile headers
+
+The existing uncommitted MoreScreen fix already removes the duplicate outer header
+for the self-contained extension screens, including comparison, habits, savings
+and shared expenses. Added separate widget coverage for each of these four screens;
+mobile_menu_test.dart passed 15/15 on 2026-10-31. No app source or backend changes
+were needed in this verification. The release APK built 2026-10-29 22:49 already
+contains the fix and retains version 1.2.5+11; no new APK was built in this session.
+Device installation and display were not verified.
+
+## Current handoff: mobile focus loading and duplicate headers
+
+User supplied five screenshots in E:/Dowload/app (ZIP contains the same images):
+Focus and Shared Expenses were loading; comparison, habits, savings and shared
+expenses showed duplicate app bars. Screenshots contain no request ID or backend
+stack trace, so the precise production API/DB cause remains unconfirmed.
+
+Mobile changes: Focus loads active session, history and Todos independently and
+coalesces reads; only confirmed active state permits a new session. Successful
+mutations immediately use the server response; uncertain timeout/HTTP 408/5xx
+retains the same operation ID, blocks unrelated writes and offers retry. Shared
+Expenses loads sections independently, cancels stale/timed-out requests, clears
+previous group data and disables group actions if the new detail fails. ApiClient
+GET accepts an optional cancellation token, including safe cancellation while a
+shared auth refresh is in progress. MoreScreen avoids nested app bars on screens
+that own their Scaffold and retains live menu/permission guards.
+
+Tests cover slow/failed optional reads, uncertain retries, stale group detail,
+cancel during auth refresh and mobile navigation. Full Flutter suite passed 62
+tests; scoped Dart analysis returned no errors/warnings, with informational lints.
+Release APK built successfully 2026-10-29 22:49, 72,719,329 bytes at
+mobile/fittrack_mobile/build/app/outputs/flutter-apk/app-release.apk; build script
+verified the notification icon. Physical-device testing was not performed. No
+backend/deployment/database change. If timeout persists after installing the new
+APK, collect exact endpoint, X-Request-Id, time and Render logs rather than guessing.
 
 ## Current task: mobile parity for eight web features and Android build
 

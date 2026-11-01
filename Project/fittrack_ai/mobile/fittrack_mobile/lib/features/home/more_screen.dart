@@ -457,6 +457,19 @@ class MoreScreen extends StatelessWidget {
               final visible =
                   (moduleKey == null || menu.allows(moduleKey, current)) &&
                   (additionalAccess?.call(current) ?? true);
+              if (visible &&
+                  (page is PersonalTrackingScreen ||
+                      page is TrainingComparisonScreen ||
+                      page is MealPlanningScreen ||
+                      page is PantryScreen ||
+                      page is PurchasePricesScreen ||
+                      page is SavingsGoalsScreen ||
+                      page is SharedExpensesScreen ||
+                      page is TemplateSharingScreen)) {
+                // These destinations own their Scaffold and AppBar. Wrapping
+                // them creates a second title bar and back button.
+                return page;
+              }
               return Scaffold(
                 appBar: AppBar(title: Text(title)),
                 body: !visible

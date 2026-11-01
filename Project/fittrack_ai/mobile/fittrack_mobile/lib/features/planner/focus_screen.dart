@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/notifications/native_notification_service.dart';
 import '../../core/widgets/common_widgets.dart';
 
@@ -23,7 +24,13 @@ class _FocusScreenState extends State<FocusScreen> {
   List<Map<String, dynamic>> history = [], todos = [];
   String mode = 'FOCUS', todoId = '', pendingFingerprint = '', pendingId = '';
   Object? error;
+  Object? activeError, historyError, todosError;
   bool loading = true, busy = false;
+  bool activeKnown = false, historyLoaded = false;
+  bool uncertainWrite = false;
+  String? uncertainPath;
+  Map<String, dynamic>? uncertainBody;
+  final Map<String, Future<void>> requests = {};
   bool notifyWhenDone = false;
   final Set<String> notifiedSessions = {};
   int loadGeneration = 0;
@@ -56,56 +63,113 @@ class _FocusScreenState extends State<FocusScreen> {
   String get today =>
       DateFormat('yyyy-MM-dd')
           .format(DateTime.now().toUtc().add(const Duration(hours: 7)));
-  Future<void> load({bool silent = false}) async {
-    if (silent && (loading || busy)) return;
-    final generation = ++loadGeneration;
-    if (!silent && mounted)
-      setState(() {
-        loading = true;
-        error = null;
-      });
+  Future<void> runRequest(
+    String key,
+    Future<void> Function() work, {
+    bool force = false,
+  }) async {
+    final previous = requests[key];
+    if (previous != null) {
+      await previous;
+      if (!force || !mounted) return;
+    }
+    final operation = work();
+    requests[key] = operation;
     try {
-      final api = context.read<ApiClient>();
-      final values = await Future.wait([
-        api.get('/todos/focus/active'),
-        api.get(
-          '/todos/focus',
-          queryParameters: {
-            'from': '${today.substring(0, 7)}-01',
-            'to': today,
-            'page': 0,
-            'size': 15,
-          },
-        ),
-        api.get('/todos/page', queryParameters: {'page': 0, 'size': 50}),
-      ]);
-      if (!mounted || generation != loadGeneration) return;
-      setState(() {
-        active = values[0] is Map
-            ? Map<String, dynamic>.from(values[0] as Map)
-            : null;
-        fetchedAt = DateTime.now();
-        history = ((values[1] as Map)['content'] as List)
-            .map((e) => Map<String, dynamic>.from(e as Map))
-            .toList();
-        todos = ((values[2] as Map)['content'] as List)
-            .map((e) => Map<String, dynamic>.from(e as Map))
-            .where((e) => e['status'] == 'OPEN' || e['status'] == 'IN_PROGRESS')
-            .toList();
-        if (todoId.isNotEmpty &&
-            !todos.any((todo) => todo['id'].toString() == todoId)) {
-          todoId = '';
-        }
-        error = null;
-      });
-    } catch (e) {
-      if (mounted && !silent && generation == loadGeneration)
-        setState(() => error = e);
+      await operation;
     } finally {
-      if (mounted && !silent && generation == loadGeneration)
-        setState(() => loading = false);
+      if (identical(requests[key], operation)) requests.remove(key);
     }
   }
+
+  Future<void> load({bool silent = false}) async {
+    if (silent && busy) return;
+    await Future.wait([refreshActive(), refreshHistory(), refreshTodos()]);
+  }
+
+  Future<void> refreshActive({bool force = false}) =>
+      runRequest('active', () async {
+        final generation = loadGeneration;
+        if (!activeKnown && mounted)
+          setState(() {
+            loading = true;
+            activeError = null;
+          });
+        try {
+          final value = await context.read<ApiClient>().get(
+            '/todos/focus/active',
+          );
+          if (!mounted || generation != loadGeneration) return;
+          setState(() {
+            active = value is Map ? Map<String, dynamic>.from(value) : null;
+            fetchedAt = DateTime.now();
+            activeKnown = true;
+            activeError = null;
+            loading = false;
+          });
+        } catch (e) {
+          if (!mounted || generation != loadGeneration) return;
+          setState(() {
+            // A stale empty result must not permit starting another session.
+            activeKnown = false;
+            activeError = e;
+            loading = false;
+          });
+        }
+      }, force: force);
+
+  Future<void> refreshHistory({bool force = false}) =>
+      runRequest('history', () async {
+        try {
+          final value = await context.read<ApiClient>().get(
+            '/todos/focus',
+            queryParameters: {
+              'from': '${today.substring(0, 7)}-01',
+              'to': today,
+              'page': 0,
+              'size': 15,
+            },
+          );
+          final items = ((value as Map)['content'] as List)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+          if (!mounted) return;
+          setState(() {
+            history = items;
+            historyLoaded = true;
+            historyError = null;
+          });
+        } catch (e) {
+          if (mounted) setState(() => historyError = e);
+        }
+      }, force: force);
+
+  Future<void> refreshTodos() => runRequest('todos', () async {
+    try {
+      final value = await context.read<ApiClient>().get(
+        '/todos/page',
+        queryParameters: {'page': 0, 'size': 50},
+      );
+      final items = ((value as Map)['content'] as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .where((e) => e['status'] == 'OPEN' || e['status'] == 'IN_PROGRESS')
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        todos = items;
+        todosError = null;
+        if (todoId.isNotEmpty &&
+            !todos.any((todo) => todo['id'].toString() == todoId))
+          todoId = '';
+      });
+    } catch (e) {
+      if (mounted)
+        setState(() {
+          todosError = e;
+          todoId = '';
+        });
+    }
+  });
 
   String newId() {
     final r = Random.secure();
@@ -117,8 +181,9 @@ class _FocusScreenState extends State<FocusScreen> {
 
   Future<void> submit(String path, Map<String, dynamic> body) async {
     if (busy) return;
-    loadGeneration++;
     final fingerprint = '$path:${jsonEncode(body)}';
+    if (uncertainWrite && fingerprint != pendingFingerprint) return;
+    loadGeneration++;
     if (fingerprint != pendingFingerprint) {
       pendingFingerprint = fingerprint;
       pendingId = newId();
@@ -128,15 +193,56 @@ class _FocusScreenState extends State<FocusScreen> {
       error = null;
     });
     try {
-      await context.read<ApiClient>().post(
+      final response = await context.read<ApiClient>().post(
         path,
         data: {...body, 'operationId': pendingId},
       );
       pendingFingerprint = '';
       pendingId = '';
-      await load();
+      loadGeneration++;
+      if (!mounted) return;
+      final value = response is Map
+          ? Map<String, dynamic>.from(response)
+          : null;
+      final state = value?['state'];
+      final running =
+          (state == 'RUNNING' || state == 'PAUSED') &&
+          value?['id'] != null &&
+          value?['elapsedSeconds'] is num &&
+          value?['plannedSeconds'] is num &&
+          value?['version'] != null;
+      final ended = state == 'COMPLETED' || state == 'CANCELLED';
+      setState(() {
+        uncertainWrite = false;
+        uncertainPath = null;
+        uncertainBody = null;
+        activeKnown = running || ended;
+        loading = !activeKnown;
+        if (running) active = value;
+        if (ended) active = null;
+        if (running || ended) {
+          fetchedAt = DateTime.now();
+          activeError = null;
+        }
+      });
+      unawaited(refreshHistory(force: true));
+      unawaited(refreshActive(force: true));
     } catch (e) {
-      if (mounted) setState(() => error = e);
+      if (mounted)
+        setState(() {
+          error = e;
+          final status = e is ApiException ? e.statusCode : null;
+        uncertainWrite = status == null || status == 408 || status >= 500;
+          if (uncertainWrite) {
+            uncertainPath = path;
+            uncertainBody = Map<String, dynamic>.from(body);
+          } else {
+            pendingFingerprint = '';
+            pendingId = '';
+            uncertainPath = null;
+            uncertainBody = null;
+          }
+        });
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -197,6 +303,37 @@ class _FocusScreenState extends State<FocusScreen> {
               displayError(error!),
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
+          if (uncertainWrite)
+            ListTile(
+              title: const Text('Chưa xác nhận được thao tác tập trung'),
+              subtitle: const Text(
+                'Thử lại cùng yêu cầu để tránh tạo phiên trùng.',
+              ),
+              trailing: TextButton(
+                onPressed: busy
+                    ? null
+                    : () => submit(uncertainPath!, uncertainBody!),
+                child: const Text('Thử lại thao tác'),
+              ),
+            ),
+          if (activeError != null)
+            ListTile(
+              title: const Text('Không kiểm tra được phiên tập trung'),
+              subtitle: Text(displayError(activeError!)),
+              trailing: TextButton(
+                onPressed: busy ? null : () => refreshActive(),
+                child: const Text('Thử lại'),
+              ),
+            ),
+          if (todosError != null)
+            ListTile(
+              title: const Text('Không tải được danh sách công việc'),
+              subtitle: const Text('Bạn vẫn có thể nhập tên phiên riêng.'),
+              trailing: TextButton(
+                onPressed: busy ? null : () => refreshTodos(),
+                child: const Text('Thử lại'),
+              ),
+            ),
           if (a != null)
             Card(
               child: Padding(
@@ -224,7 +361,11 @@ class _FocusScreenState extends State<FocusScreen> {
                       spacing: 8,
                       children: [
                         OutlinedButton(
-                          onPressed: busy || a['reviewRequired'] == true
+                          onPressed:
+                              busy ||
+                                  uncertainWrite ||
+                                  !activeKnown ||
+                                  a['reviewRequired'] == true
                               ? null
                               : () =>
                                     submit('/todos/focus/${a['id']}/actions', {
@@ -238,11 +379,15 @@ class _FocusScreenState extends State<FocusScreen> {
                           ),
                         ),
                         FilledButton(
-                          onPressed: busy ? null : () => confirm(a, 'FINISH'),
+                          onPressed: busy || uncertainWrite || !activeKnown
+                              ? null
+                              : () => confirm(a, 'FINISH'),
                           child: const Text('Kết thúc'),
                         ),
                         TextButton(
-                          onPressed: busy ? null : () => confirm(a, 'CANCEL'),
+                          onPressed: busy || uncertainWrite || !activeKnown
+                              ? null
+                              : () => confirm(a, 'CANCEL'),
                           child: const Text('Hủy phiên'),
                         ),
                       ],
@@ -251,7 +396,7 @@ class _FocusScreenState extends State<FocusScreen> {
                 ),
               ),
             )
-          else if (!loading && error == null)
+          else if (!loading && activeKnown)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -310,7 +455,7 @@ class _FocusScreenState extends State<FocusScreen> {
                       ),
                     ),
                     FilledButton(
-                      onPressed: busy
+                      onPressed: busy || uncertainWrite
                           ? null
                           : () {
                               final n = int.tryParse(minutes.text);
@@ -348,7 +493,19 @@ class _FocusScreenState extends State<FocusScreen> {
             'Lịch sử tháng này',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          if (history.isEmpty) const Text('Chưa có phiên trong khoảng này.'),
+          if (historyError != null)
+            ListTile(
+              title: const Text('Không tải được lịch sử phiên'),
+              subtitle: Text(displayError(historyError!)),
+              trailing: TextButton(
+                onPressed: busy ? null : () => refreshHistory(),
+                child: const Text('Thử lại'),
+              ),
+            )
+          else if (!historyLoaded)
+            const Text('Đang tải lịch sử...')
+          else if (history.isEmpty)
+            const Text('Chưa có phiên trong khoảng này.'),
           ...history.map(
             (s) => ListTile(
               title: Text('${s['title']}'),
