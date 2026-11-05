@@ -1,20 +1,21 @@
 package com.fittrack.auth.service;
 
 import com.fittrack.common.exception.TooManyRequestsException;
+import com.fittrack.common.ratelimit.RateLimitStore;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.HexFormat;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@RequiredArgsConstructor
 public class AuthRateLimitService {
 
-    private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
+    private final RateLimitStore store;
 
     public void check(
             String operation,
@@ -23,22 +24,12 @@ public class AuthRateLimitService {
             int limit,
             Duration duration
     ) {
-        String key = operation + ':' + digest(clientAddress + '|' + identity);
-        Instant now = Instant.now();
-        Window window = windows.compute(key, (ignored, current) -> {
-            if (current == null || !current.endsAt().isAfter(now)) {
-                return new Window(1, now.plus(duration));
-            }
-            return new Window(current.count() + 1, current.endsAt());
-        });
-        if (windows.size() > 10_000) {
-            windows.entrySet().removeIf(entry -> !entry.getValue().endsAt().isAfter(now));
-        }
-        if (window.count() > limit) {
-            long retryAfter = Math.max(1, Duration.between(now, window.endsAt()).toSeconds());
+        String key = "auth:" + operation + ':' + digest(clientAddress + '|' + identity);
+        RateLimitStore.Hit hit = store.hit(key, duration);
+        if (hit.count() > limit) {
             throw new TooManyRequestsException(
                     "Bạn thao tác quá nhanh. Vui lòng thử lại sau.",
-                    retryAfter
+                    Math.max(1, hit.retryAfter().toSeconds())
             );
         }
     }
@@ -51,8 +42,5 @@ public class AuthRateLimitService {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 is unavailable", exception);
         }
-    }
-
-    private record Window(int count, Instant endsAt) {
     }
 }

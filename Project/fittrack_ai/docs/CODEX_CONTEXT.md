@@ -1,6 +1,29 @@
 # FitTrack Current Project State
 
+## Latest handoff: persistent rate limiting (2026-11-05)
+
+Auth (register/login/refresh/OTP) and assistant/AI-image limits previously used
+per-process `ConcurrentHashMap`s, so Render sleep/restart reset brute-force
+counters and multiple instances did not share them. New
+`common/ratelimit/RateLimitStore` keeps fixed-window counters in PostgreSQL table
+`rate_limit_buckets` (Flyway V46). Each hit commits in its own REQUIRES_NEW
+transaction, so failed logins still count; concurrent first hits retry on the
+duplicate key. Expired rows are deleted every 200 new buckets per process (no
+scheduler dependency). Keys are namespaced `auth:` / `assistant:`. Behaviour
+change: assistant limit is now a fixed 1-minute window instead of a sliding log,
+allowing at most 2x the per-minute limit across a window boundary. A database
+outage now fails these endpoints closed. Postgres migration tests now expect V46.
+
+Verification: full backend suite 219 tests, 0 failures, 2 PostgreSQL skips
+(Docker unavailable locally; compiled/ran with JDK 25 targeting release 21).
+Next: confirm CI PostgreSQL gates pass for V46, then deploy backend; no web or
+mobile change needed.
+
 ## Separate local rental-management project (2026-11-01)
+
+Moved out of this repository on 2026-11-05 to
+`D:\work\code\FPTIS_CheatCode_ngoai_repo\rental-management` so the repo holds
+only FitTrack; relative paths below refer to that folder.
 
 Latest rental work: added local OWNER/STAFF/TENANT accounts, cookie sessions,
 per-property staff grants and owner/tenant API scoping. The first owner claims
