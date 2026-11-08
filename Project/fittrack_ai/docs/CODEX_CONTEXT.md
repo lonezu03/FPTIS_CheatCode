@@ -1,5 +1,29 @@
 # FitTrack Current Project State
 
+## Latest handoff: web navigation UX (2026-11-08)
+
+The web sidebar listed ~35 modules flat in 4 groups. Navigation config moved to
+`src/lib/navigation.ts` (9 groups: Hằng ngày, Công việc & thời gian, Luyện tập,
+Dinh dưỡng, Sức khỏe & cơ thể, Tài chính, Tinh thần, Cá nhân, Quản trị; distinct
+icons; search keywords). Visibility rules are unchanged (feature flags, admin,
+purchase prices = health+finance, monthly report / template sharing special
+rules) and remain UI-only; backend authorization is untouched.
+New `components/layout/`: `SidebarNav` (accent-insensitive filter, Enter opens
+first match; collapsible groups where only the current module auto-expands;
+up to 8 pins), `CommandPalette` (Ctrl/⌘+K, also header search button) and
+`ModuleTabs` (sibling pages above content for grouped modules). Pins and opened
+groups are browser-only per account (`fittrack:nav:<userId>`), never synced or
+used for access. Header title is now a breadcrumb `<p>` so each page has one h1.
+Pages Personal tracking, Savings, Shared expenses, Template sharing, Training
+comparison, Focus and Monthly report no longer nest `<main>` or add extra padding,
+and use `PageHeader`. `index.css` styles only class-less `button/select/input/
+textarea` inside `main` with the shared control look.
+No API, mobile or backend change. Verification: lint clean, vitest 29 files/76
+tests (new `lib/navigation.test.ts`), build OK; headless Edge against `vite
+preview` with mocked `/api` checked search, Enter, pins persisting, palette,
+module tabs, mobile sheet close and no horizontal scroll at 390px. Pages needing
+richer API data were not visually reviewed with realistic data.
+
 ## Latest handoff: persistent rate limiting (2026-11-05)
 
 Auth (register/login/refresh/OTP) and assistant/AI-image limits previously used

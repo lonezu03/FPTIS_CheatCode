@@ -1,115 +1,23 @@
-import { useMemo, useState, type ElementType } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AppErrorBoundary from "./common/AppErrorBoundary";
 import { getProfile } from "../api/user.api";
 import { useAuthStore } from "../store/auth.store";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import {
-  Activity,
-  Apple,
-  BellRing,
-  CalendarDays,
-  CircleHelp,
-  ChevronRight,
-  Dumbbell,
-  FileBarChart,
-  HeartPulse,
-  LayoutDashboard,
-  ListPlus,
-  WalletCards,
-  LogOut,
-  Menu,
-  Quote as QuoteIcon,
-  BookHeart,
-  ShieldCheck,
-  Soup,
- 
-  Trophy,
-  User,
-  UsersRound,
-  Utensils,
-} from "lucide-react";
- 
+import { ChevronRight, CircleHelp, LogOut, Menu, Search, Soup } from "lucide-react";
+
 import NotificationBell from "@/components/notifications/NotificationBell";
 import AssistantChat from "@/components/assistant/AssistantChat";
-import { canUseFeature, type FeaturePermission } from "@/lib/feature-access";
+import { canUseFeature } from "@/lib/feature-access";
 import { logoutApi } from "@/api/auth.api";
 import { UserGuideDialog } from "@/components/help/UserGuideDialog";
-
-type NavItem = {
-  to: string;
-  label: string;
-  description?: string;
-  icon: ElementType;
-  adminOnly?: boolean;
-  highlight?: boolean;
-  feature?: FeaturePermission;
-};
-
-type NavGroup = {
-  label: string;
-  items: NavItem[];
-};
-
-const navGroups: NavGroup[] = [
-  {
-    label: "Không gian của bạn",
-    items: [
-      { to: "/dashboard", label: "Tổng quan", description: "Hôm nay", icon: LayoutDashboard },
-      { to: "/lunch", label: "Đặt cơm", description: "Menu hằng ngày", icon: Soup, highlight: true, feature: "lunchEnabled" },
-      { to: "/todos", label: "Việc cần làm", description: "Task cá nhân", icon: ListPlus, feature: "todoEnabled" },
-      { to: "/habits", label: "Thói quen", icon: ListPlus, feature: "todoEnabled" },
-      { to: "/focus", label: "Tập trung", icon: ListPlus, feature: "todoEnabled" },
-      { to: "/schedule", label: "Thời khóa biểu", description: "Lịch & nhắc việc", icon: CalendarDays, feature: "scheduleEnabled" },
-      { to: "/quotes", label: "Câu nói", description: "Kho câu yêu thích", icon: QuoteIcon, feature: "quoteEnabled" },
-      { to: "/finance", label: "Tài chính", description: "Thu chi & ngân sách", icon: WalletCards, feature: "financeEnabled" },
-      { to: "/finance/savings", label: "Mục tiêu tiết kiệm", icon: WalletCards, feature: "financeEnabled" },
-      { to: "/finance/shared", label: "Chi tiêu chung", icon: UsersRound, feature: "financeEnabled" },
-      { to: "/journal", label: "Nhật ký", description: "Một phút cho bản thân", icon: BookHeart, feature: "journalEnabled" },
-    ],
-  },
-  {
-    label: "Luyện tập",
-    items: [
-      { to: "/workouts", label: "Buổi tập", icon: Dumbbell, feature: "fitnessEnabled" },
-      { to: "/workout-plans", label: "Giáo án", icon: CalendarDays, feature: "fitnessEnabled" },
-      { to: "/training-goals", label: "Mục tiêu luyện tập", icon: Dumbbell, feature: "fitnessEnabled" },
-      { to: "/training-comparison", label: "So sánh luyện tập", icon: FileBarChart, feature: "fitnessEnabled" },
-      { to: "/exercises", label: "Kho bài tập", icon: ListPlus, feature: "fitnessEnabled" },
-    ],
-  },
-  {
-    label: "Dinh dưỡng & tiến độ",
-    items: [
-      { to: "/nutrition", label: "Nhật ký ăn uống", icon: Apple, feature: "healthEnabled" },
-      { to: "/meal-planning", label: "Thực đơn & danh sách mua", icon: Apple, feature: "healthEnabled" },
-      { to: "/pantry", label: "Tủ thực phẩm cá nhân", icon: Utensils, feature: "healthEnabled" },
-      { to: "/purchase-prices", label: "Giá mua & chi phí thực đơn", icon: WalletCards, feature: "healthEnabled" },
-      { to: "/foods", label: "Kho thực phẩm", icon: Utensils, feature: "healthEnabled" },
-      { to: "/body", label: "Chỉ số cơ thể", icon: Activity, feature: "healthEnabled" },
-      { to: "/personal-goals", label: "Mục tiêu sức khỏe", icon: Activity, feature: "healthEnabled" },
-      { to: "/recovery", label: "Giấc ngủ & phục hồi", icon: HeartPulse, feature: "healthEnabled" },
-      { to: "/health", label: "Sức khỏe toàn diện", icon: HeartPulse, feature: "healthEnabled" },
-      { to: "/reports/weekly", label: "Báo cáo tuần", icon: FileBarChart, feature: "healthEnabled" },
-      { to: "/achievements", label: "Thành tích", icon: Trophy, feature: "fitnessEnabled" },
-    ],
-  },
-  {
-    label: "Hệ thống",
-    items: [
-      { to: "/profile", label: "Hồ sơ cá nhân", icon: User },
-      { to: "/template-sharing", label: "Chia sẻ bản mẫu", icon: UsersRound },
-      { to: "/reports/monthly", label: "Báo cáo tháng", icon: FileBarChart },
-      { to: "/admin/lunch", label: "Điều phối cơm", icon: ShieldCheck, adminOnly: true },
-      { to: "/admin/users", label: "Quản lý tài khoản", icon: UsersRound, adminOnly: true },
-      { to: "/admin/notifications", label: "Gửi thông báo", icon: BellRing, adminOnly: true },
-      { to: "/admin/notification-playbooks", label: "Kịch bản notification", icon: BellRing, adminOnly: true },
-      { to: "/admin/journal-prompts", label: "Câu hỏi nhật ký", icon: BookHeart, adminOnly: true },
-    ],
-  },
-];
+import { findActive, visibleNavGroups } from "@/lib/navigation";
+import { useNavPrefs } from "@/lib/navigation-prefs";
+import SidebarNav from "@/components/layout/SidebarNav";
+import CommandPalette from "@/components/layout/CommandPalette";
+import ModuleTabs from "@/components/layout/ModuleTabs";
 
 export default function AppLayout() {
   const queryClient = useQueryClient();
@@ -119,6 +27,7 @@ export default function AppLayout() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const profileQuery = useQuery({
     queryKey: ["profile"],
@@ -169,29 +78,34 @@ export default function AppLayout() {
       passwordChangeRequired: profile.passwordChangeRequired,
     };
   }, [authUser, profileQuery.data]);
-  const visibleGroups = useMemo(
-    () =>
-      navGroups
-        .map((group) => ({
-          ...group,
-          items: group.items.filter(
-            (item) =>
-              (!item.adminOnly || isAdmin) &&
-              (item.to !== '/template-sharing' || canUseFeature(authUser,'fitnessEnabled') || canUseFeature(authUser,'healthEnabled')) &&
-              (item.to !== '/purchase-prices' || canUseFeature(authUser,'financeEnabled')) &&
-              (item.to !== '/reports/monthly' || (['fitnessEnabled','healthEnabled','todoEnabled','financeEnabled'] as const).some(flag=>canUseFeature(authUser,flag))) &&
-              (!item.feature || canUseFeature(authUser, item.feature)),
-          ),
-        }))
-        .filter((group) => group.items.length > 0),
-    [authUser, isAdmin],
-  );
-  const allItems = visibleGroups.flatMap((group) => group.items);
-  const currentPage =
-    [...allItems]
-      .sort((a, b) => b.to.length - a.to.length)
-      .find((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`))?.label ??
-    "FitTrack";
+  const visibleGroups = useMemo(() => visibleNavGroups(authUser, isAdmin), [authUser, isAdmin]);
+  const active = findActive(visibleGroups, location.pathname);
+  const currentPage = active?.item.label ?? "FitTrack";
+  const { prefs, isOpen, hasExtraOpen, togglePin, toggleGroup, collapseAll } = useNavPrefs(authUser?.userId, active?.group.id ?? null);
+
+  // Ctrl/⌘ + K opens the quick switcher from any page.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setMobileOpen(false);
+        setPaletteOpen((value) => !value);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const navProps = {
+    groups: visibleGroups,
+    activeGroupId: active?.group.id ?? null,
+    prefs,
+    isOpen,
+    hasExtraOpen,
+    onTogglePin: togglePin,
+    onToggleGroup: toggleGroup,
+    onCollapseAll: collapseAll,
+  };
   const displayName = profileQuery.data?.fullName || authUser?.fullName || "Thành viên FitTrack";
   const displayEmail = profileQuery.data?.email || authUser?.email || "";
   const initials = getInitials(displayName);
@@ -220,20 +134,7 @@ export default function AppLayout() {
           <Brand />
         </div>
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-4" aria-label="Điều hướng chính">
-          {visibleGroups.map((group) => (
-            <div key={group.label} className="mb-5">
-              <p className="mb-1.5 px-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-emerald-50/35">
-                {group.label}
-              </p>
-              <div className="space-y-1">
-                {group.items.map((item) => (
-                  <SidebarLink key={item.to} item={item} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </nav>
+        <SidebarNav {...navProps} label="Điều hướng chính" />
 
         <div className="space-y-2 border-t border-white/8 p-3">
           <button
@@ -274,26 +175,15 @@ export default function AppLayout() {
                     <Menu className="size-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-[19rem] max-w-[calc(100vw-2rem)] border-none bg-[#0c2821] p-0 text-white">
+                <SheetContent side="left" className="flex w-[19rem] max-w-[calc(100vw-2rem)] flex-col gap-0 border-none bg-[#0c2821] p-0 text-white">
                   <SheetHeader className="border-b border-white/8 px-5 py-5 text-left">
                     <SheetTitle>
                       <Brand />
                     </SheetTitle>
                   </SheetHeader>
-                  <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4" aria-label="Điều hướng di động">
-                    {visibleGroups.map((group) => (
-                      <div key={group.label} className="mb-5">
-                        <p className="mb-1.5 px-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-emerald-50/35">
-                          {group.label}
-                        </p>
-                        <div className="space-y-1">
-                          {group.items.map((item) => (
-                            <SidebarLink key={item.to} item={item} onClick={() => setMobileOpen(false)} />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </nav>
+                  <div className="flex min-h-0 flex-1 flex-col pt-3">
+                    <SidebarNav {...navProps} label="Điều hướng di động" onNavigate={() => setMobileOpen(false)} />
+                  </div>
                   <div className="border-t border-white/8 p-4">
                     <Button
                       variant="ghost"
@@ -322,16 +212,28 @@ export default function AppLayout() {
               </Sheet>
 
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="hidden capitalize sm:inline">{todayLabel}</span>
-                  <span className="hidden sm:inline">·</span>
-                  <span>FitTrack</span>
+                <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="hidden capitalize xl:inline">{todayLabel}</span>
+                  <span className="hidden xl:inline">·</span>
+                  <span className="truncate">{active?.group.label ?? "FitTrack"}</span>
                 </div>
-                <h1 className="truncate text-base font-semibold tracking-tight sm:text-lg">{currentPage}</h1>
+                <p className="truncate text-base font-semibold tracking-tight sm:text-lg">{currentPage}</p>
               </div>
             </div>
 
             <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => setPaletteOpen(true)}
+                className="hidden h-10 w-56 items-center gap-2 rounded-xl border border-input bg-background px-3 text-sm text-muted-foreground transition hover:border-ring/50 hover:text-foreground md:flex xl:w-72"
+              >
+                <Search className="size-4" aria-hidden="true" />
+                <span className="flex-1 text-left">Tìm chức năng…</span>
+                <kbd className="rounded-md border bg-muted px-1.5 py-0.5 text-[0.65rem] font-medium">Ctrl K</kbd>
+              </button>
+              <Button type="button" variant="outline" size="icon" className="md:hidden" onClick={() => setPaletteOpen(true)} aria-label="Tìm chức năng">
+                <Search className="size-4" />
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -368,10 +270,12 @@ export default function AppLayout() {
         </header>
 
         <main className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
+          {active && <ModuleTabs group={active.group} />}
           <AppErrorBoundary key={location.pathname} contained><Outlet /></AppErrorBoundary>
         </main>
       </div>
       {canUseFeature(authUser, "chatbotEnabled") && <AssistantChat />}
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} groups={visibleGroups} pinned={prefs.pinned} />
       <UserGuideDialog
         open={guideOpen}
         onOpenChange={setGuideOpen}
@@ -395,47 +299,6 @@ function Brand() {
         <p className="text-[0.68rem] font-medium tracking-wide text-emerald-100/45">WELLNESS WORKSPACE</p>
       </div>
     </Link>
-  );
-}
-
-function SidebarLink({ item, onClick }: { item: NavItem; onClick?: () => void }) {
-  const Icon = item.icon;
-
-  return (
-    <NavLink
-      to={item.to}
-      end
-      onClick={onClick}
-      className={({ isActive }) =>
-        [
-          "group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
-          isActive
-            ? "bg-white text-[#0c2821] shadow-sm"
-            : item.highlight
-              ? "bg-emerald-400/12 text-emerald-100 hover:bg-emerald-400/20 hover:text-white"
-              : "text-emerald-50/62 hover:bg-white/[0.07] hover:text-white",
-        ].join(" ")
-      }
-    >
-      {({ isActive }) => (
-        <>
-          <span
-            className={[
-              "grid size-8 shrink-0 place-items-center rounded-lg transition-colors",
-              isActive
-                ? "bg-emerald-100 text-emerald-800"
-                : item.highlight
-                  ? "bg-emerald-400/15 text-emerald-300"
-                  : "bg-white/[0.05] text-emerald-50/65 group-hover:text-white",
-            ].join(" ")}
-          >
-            <Icon className="size-4" />
-          </span>
-          <span className="min-w-0 flex-1 truncate">{item.label}</span>
-          {item.highlight && !isActive && <span className="size-1.5 rounded-full bg-amber-300" />}
-        </>
-      )}
-    </NavLink>
   );
 }
 

@@ -1,3 +1,4 @@
+import PageHeader from '@/components/PageHeader';
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getApiErrorMessage } from '@/lib/format';
@@ -36,7 +37,7 @@ export default function PersonalTrackingPage({ section = 'goals', kind = 'BODY' 
     catch (e) {
         if(generation===historyGeneration.current)fail(e);
     } };
-    return <main className="space-y-5 p-4 sm:p-6"><h1 className="text-2xl font-bold">{title}</h1><p className="text-sm text-slate-600">{section === 'habits' ? 'Ghi nhận theo ngày Việt Nam, độc lập với việc cần làm. Không tự tạo công việc quá hạn.' : section === 'recovery' ? 'Nhập tay, hỗ trợ giấc ngủ qua nửa đêm. Bỏ trống đánh giá nếu chưa biết; không phải chẩn đoán y khoa.' : 'Theo dõi mốc mục tiêu; không tự thay đổi calo hồ sơ. Dữ liệu chưa ghi nhận không được xem là số 0.'}</p>
+    return <div className="min-w-0 space-y-5"><PageHeader title={title} description={section === 'habits' ? 'Ghi nhận theo ngày Việt Nam, độc lập với việc cần làm. Không tự tạo công việc quá hạn.' : section === 'recovery' ? 'Nhập tay, hỗ trợ giấc ngủ qua nửa đêm. Bỏ trống đánh giá nếu chưa biết; không phải chẩn đoán y khoa.' : 'Theo dõi mốc mục tiêu; không tự thay đổi calo hồ sơ. Dữ liệu chưa ghi nhận không được xem là số 0.'}/>
  {(error||listing.error) && <p role="alert" className="rounded-xl bg-red-50 p-3 text-red-700">{error||getApiErrorMessage(listing.error,'Không tải được dữ liệu. Vui lòng thử lại.')} <button onClick={()=>void listing.refetch()}>Thử lại</button></p>}
  {listing.isFetching&&<p role="status">Đang tải dữ liệu…</p>}
  <div className="flex flex-wrap items-center gap-3"><button disabled={busy} className="rounded-xl bg-emerald-800 px-4 py-2 text-white" onClick={() => setDraft({ title: '', startDate: today(), weekdays: [], phases: [], archived: false })}>Thêm {title.toLowerCase()}</button><label><input type="checkbox" checked={archived} onChange={e => { setArchived(e.target.checked); setPage(0); }}/> Xem đã lưu trữ</label>{busy && <span role="status">Đang xử lý…</span>}</div>
@@ -55,5 +56,5 @@ export default function PersonalTrackingPage({ section = 'goals', kind = 'BODY' 
  {section === 'goals' && history.length > 0 && (() => { const current = history[history.length - 1].value; const denominator = (selected.target ?? 0) - (selected.baseline ?? 0); const percent = current === undefined || !denominator ? 0 : Math.max(0, Math.min(100, ((current - (selected.baseline ?? 0)) / denominator) * 100)); return <div><p>Tiến độ theo số đo gần nhất: {percent.toFixed(0)}%</p><progress className="w-full" max={100} value={percent}/></div>; })()}
  {section==='habits'&&<HabitHeatmap id={selected.id} from={from} to={to} revision={history.map(h=>`${h.id}:${h.status}`).join('|')}/>}
  <ul className="space-y-2">{history.map(h => <li key={h.id} className="border-b py-2">{h.day} · {h.status === 'DONE' ? 'Đã thực hiện' : h.status === 'SKIPPED' ? 'Bỏ qua' : `${h.value} ${selected.unit}`} {h.note} {h.evidence && `· Minh chứng: ${h.evidence}`}</li>)}</ul>{!history.length && <p>Chưa ghi nhận trong khoảng này, không xem là số 0.</p>}</section>}
- </main>;
+ </div>;
 }

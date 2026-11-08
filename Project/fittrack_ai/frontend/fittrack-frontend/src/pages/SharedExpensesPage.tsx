@@ -1,3 +1,4 @@
+import PageHeader from '@/components/PageHeader';
 import {useRef,useState} from 'react';
 import {useQuery,useQueryClient} from '@tanstack/react-query';
 import {useAuthStore} from '@/store/auth.store';
@@ -39,8 +40,8 @@ export default function SharedExpensesPage(){
  const startExpense=(e?:SharedExpense)=>{if(!g)return;setPreview(null);setExpenseDraft(e?{...e,splitMode:'CUSTOM'}:{version:g.version,title:'',amount:0,payerId:userId??'',spentOn:vietnamDay(),splitMode:'EQUAL',splits:members.filter(m=>m.status==='ACTIVE').map(m=>({userId:m.userId,amount:0}))});};
  const doPreview=async()=>{if(!expenseDraft||busyRef.current)return;busyRef.current=true;setBusy(true);setError('');try{setPreview(await api.preview(groupId,expenseDraft));}catch(e){setError(getApiErrorMessage(e,'Không thể chia khoản này.'));}finally{busyRef.current=false;setBusy(false);}};
 
- return <main className="min-w-0 space-y-5 p-4 sm:p-6" aria-busy={busy}>
-  <header><h1 className="text-2xl font-bold">Chi tiêu chung</h1><p className="mt-2 text-slate-600">Chia khoản chi, minh bạch công nợ và xác nhận đã trả. Đây là sổ đối soát nhóm độc lập, không chuyển tiền thật, không tự trừ ví cá nhân hoặc quỹ cơm.</p></header>
+ return <div className="min-w-0 space-y-5" aria-busy={busy}>
+  <PageHeader title="Chi tiêu chung" description="Chia khoản chi, minh bạch công nợ và xác nhận đã trả. Đây là sổ đối soát nhóm độc lập, không chuyển tiền thật, không tự trừ ví cá nhân hoặc quỹ cơm."/>
   <p className="rounded-xl bg-amber-50 p-3 text-sm">Trước khi chấp nhận lời mời: thành viên được xem toàn bộ lịch sử và công nợ của nhóm, kể cả sau khi rời nhóm để tiếp tục đối soát. Thành viên đã rời không được ghi khoản chi mới.</p>
   {visibleError&&<div role="alert" className="rounded-xl bg-red-50 p-4 text-red-800">{visibleError}<button className={button+' ml-3'} onClick={()=>void client.invalidateQueries({queryKey:['shared']})}>Tải lại dữ liệu</button></div>}
   {success&&<p role="status" className="rounded-xl bg-emerald-50 p-3">{success}</p>}
@@ -57,6 +58,6 @@ export default function SharedExpensesPage(){
     <section className="rounded-2xl border bg-white p-4"><h2 className="text-lg font-bold">Nhật ký kiểm toán — chỉ đọc</h2>{audits.data?.content.map(a=><article key={a.id} className="border-b py-3"><strong>{actionNames[a.action]??'Thay đổi nhóm'}</strong><p>{memberName(a.actorId)} · {a.createdAt.replace('T',' ')}</p><AuditDetail value={a.detail}/></article>)}<Pager page={auditPage} pages={audits.data?.totalPages??0} onChange={setAuditPage}/></section>
    </>}
   </fieldset>
- </main>;
+ </div>;
 }
 function AuditDetail({value}:{value:string}){let d:Record<string,unknown>;try{d=JSON.parse(value) as Record<string,unknown>;}catch{return null;}return <div className="break-words text-sm text-slate-600">{typeof d.title==='string'&&<p>Nội dung: {d.title}</p>}{typeof d.amount==='number'&&<p>Số tiền: {formatCurrency(d.amount)}</p>}{typeof d.reason==='string'&&<p>Lý do: {d.reason}</p>}{typeof d.action==='string'&&<p>Thành viên: {({INVITE:'Mời tham gia',ACCEPT:'Chấp nhận',DECLINE:'Từ chối',REMOVE:'Gỡ thành viên'} as Record<string,string>)[d.action]??d.action}</p>}</div>;}

@@ -106,6 +106,26 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /*
+   * Some newer screens render plain <button>/<select>/<input> without classes.
+   * Give exactly those (no class attribute) the shared control look so they
+   * match the design system; anything with its own classes is untouched.
+   */
+  main button:not([class]) {
+    @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground shadow-[0_1px_2px_rgba(15,43,35,0.04)] transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:ring-3 focus-visible:ring-ring/20 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-card;
+  }
+
+  main select:not([class]),
+  main textarea:not([class]),
+  main input:not([class]):not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]) {
+    @apply min-h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground transition-[border-color,box-shadow] outline-none hover:border-ring/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/15 disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-65;
+  }
+
+  main input[type="checkbox"]:not([class]),
+  main input[type="radio"]:not([class]) {
+    @apply size-4 accent-emerald-700;
+  }
+
   ::selection {
     background: rgb(110 231 183 / 0.45);
     color: rgb(6 78 59);
