@@ -73,7 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const PageIntro(
-                  title: 'Bắt đầu cùng FitTrack',
+                  title: 'Bắt đầu cùng AnCai',
                   subtitle: 'Tài khoản mới được dùng các module cá nhân; Đặt cơm cần admin cấp quyền riêng.',
                 ),
                 const SizedBox(height: 24),

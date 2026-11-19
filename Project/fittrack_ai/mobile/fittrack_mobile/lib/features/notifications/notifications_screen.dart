@@ -210,7 +210,7 @@ class NotificationsScreen extends StatelessWidget {
                 leading: const Icon(Icons.notifications_active_outlined),
                 title: const Text('Thông báo điện thoại đang bật'),
                 subtitle: const Text(
-                  'Gửi thử để kiểm tra FitTrack có xuất hiện trên thanh thông báo như tin nhắn hay không.',
+                  'Gửi thử để kiểm tra AnCai có xuất hiện trên thanh thông báo như tin nhắn hay không.',
                 ),
                 trailing: OutlinedButton(
                   onPressed: () => _testSystemNotification(context),

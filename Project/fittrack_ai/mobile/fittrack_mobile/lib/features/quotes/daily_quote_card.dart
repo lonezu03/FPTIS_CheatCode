@@ -80,7 +80,7 @@ class _DailyQuoteCardState extends State<DailyQuoteCard> {
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     SizedBox(height: 4),
-                    Text('Lưu một câu để FitTrack gợi lại mỗi ngày.'),
+                    Text('Lưu một câu để AnCai gợi lại mỗi ngày.'),
                   ],
                 ),
               ),

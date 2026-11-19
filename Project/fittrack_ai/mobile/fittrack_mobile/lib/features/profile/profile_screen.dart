@@ -159,7 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (auth.chatbotEnabled || auth.isAdmin)
                       const Chip(
                         avatar: Icon(Icons.smart_toy_outlined, size: 18),
-                        label: Text('FitTrack PT'),
+                        label: Text('AnCai PT'),
                       ),
                     if (auth.isAdmin)
                       const Chip(
@@ -201,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             secondary: const Icon(Icons.email_outlined),
             title: const Text('Nhận email notification'),
             subtitle: const Text(
-              'Cho phép FitTrack gửi email menu, broadcast và kịch bản nhắc nhở. OTP đặt lại mật khẩu vẫn hoạt động độc lập.',
+              'Cho phép AnCai gửi email menu, broadcast và kịch bản nhắc nhở. OTP đặt lại mật khẩu vẫn hoạt động độc lập.',
             ),
           ),
         ),

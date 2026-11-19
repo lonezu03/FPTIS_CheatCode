@@ -244,7 +244,7 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
                       onChanged: (v) => _toggle(user, 'financeEnabled', v),
                     ),
                     SwitchListTile(
-                      title: const Text('Trợ lý FitTrack PT'),
+                      title: const Text('Trợ lý AnCai PT'),
                       value: user['chatbotEnabled'] == true,
                       onChanged: (v) => _toggle(user, 'chatbotEnabled', v),
                     ),

@@ -326,7 +326,7 @@ class _JournalScreenState extends State<JournalScreen> {
       ),
       const SizedBox(height: 8),
       const Text(
-        'Nhập PIN đã đặt trên FitTrack. Mã mở khóa được lưu an toàn trong thiết bị trong tối đa 12 giờ.',
+        'Nhập PIN đã đặt trên AnCai. Mã mở khóa được lưu an toàn trong thiết bị trong tối đa 12 giờ.',
         textAlign: TextAlign.center,
       ),
       const SizedBox(height: 24),
@@ -1103,7 +1103,7 @@ class _JournalSettingsSheetState extends State<_JournalSettingsSheet> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Cá nhân hóa từ hoạt động FitTrack'),
+            title: const Text('Cá nhân hóa từ hoạt động AnCai'),
             subtitle: const Text('Chỉ hoạt động khi bạn đã đồng ý dùng AI.'),
             value: personalized,
             onChanged: (value) => setState(() => personalized = value),

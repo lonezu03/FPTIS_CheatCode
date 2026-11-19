@@ -227,7 +227,7 @@ class MoreScreen extends StatelessWidget {
                     leading: Icon(Icons.folder_open_outlined),
                     title: Text('Tệp trên thiết bị'),
                     subtitle: Text(
-                      'FitTrack chỉ đọc tệp bạn chủ động chọn bằng trình chọn tệp của hệ thống, không xem toàn bộ bộ nhớ.',
+                      'AnCai chỉ đọc tệp bạn chủ động chọn bằng trình chọn tệp của hệ thống, không xem toàn bộ bộ nhớ.',
                     ),
                   ),
                 ],

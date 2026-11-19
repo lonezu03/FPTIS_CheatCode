@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 18),
                         Text(
-                          'Chào mừng đến FitTrack',
+                          'Chào mừng đến AnCai',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(fontWeight: FontWeight.w800),

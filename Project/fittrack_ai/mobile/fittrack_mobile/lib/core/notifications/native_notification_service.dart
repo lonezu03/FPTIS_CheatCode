@@ -10,14 +10,14 @@ class NativeNotificationService {
 
   static const _generalChannel = AndroidNotificationChannel(
     'fittrack_updates_v2',
-    'Thông báo FitTrack',
+    'Thông báo AnCai',
     description: 'Nhắc việc, lịch, sức khỏe, tài chính và thông báo hệ thống',
     importance: Importance.high,
     playSound: true,
   );
   static const _reminderChannel = AndroidNotificationChannel(
     'fittrack_reminders_v1',
-    'Lời nhắc FitTrack',
+    'Lời nhắc AnCai',
     description: 'Lời nhắc công việc, lịch trình, sức khỏe và nhật ký',
     importance: Importance.max,
     playSound: true,
@@ -116,7 +116,7 @@ class NativeNotificationService {
     );
     await _plugin.show(
       id: id,
-      title: notification['title']?.toString() ?? 'FitTrack',
+      title: notification['title']?.toString() ?? 'AnCai',
       body: notification['message']?.toString() ?? 'Bạn có thông báo mới.',
       payload: notification['id']?.toString(),
       notificationDetails: _detailsFor(notification['type']?.toString()),
@@ -128,7 +128,7 @@ class NativeNotificationService {
     await show(const {
       'id': 'fittrack-notification-permission-enabled',
       'type': 'SYSTEM',
-      'title': 'Đã bật thông báo FitTrack',
+      'title': 'Đã bật thông báo AnCai',
       'message': 'Lời nhắc mới sẽ xuất hiện trực tiếp trên thanh thông báo điện thoại.',
     });
   }
@@ -137,7 +137,7 @@ class NativeNotificationService {
     return show({
       'id': 'fittrack-native-test-${DateTime.now().millisecondsSinceEpoch}',
       'type': 'SYSTEM',
-      'title': 'Thông báo thử từ FitTrack',
+      'title': 'Thông báo thử từ AnCai',
       'message': 'Thông báo hệ thống đang hoạt động. Bạn có thể đưa app xuống nền để tiếp tục sử dụng.',
     });
   }
@@ -187,7 +187,7 @@ class NativeNotificationService {
       'JOURNAL_REMINDER' => const NotificationDetails(
         android: AndroidNotificationDetails(
           'fittrack_reminders_v1',
-          'Lời nhắc FitTrack',
+          'Lời nhắc AnCai',
           channelDescription:
               'Lời nhắc công việc, lịch trình, sức khỏe và nhật ký',
           importance: Importance.max,
@@ -206,7 +206,7 @@ class NativeNotificationService {
       _ => const NotificationDetails(
         android: AndroidNotificationDetails(
           'fittrack_updates_v2',
-          'Thông báo FitTrack',
+          'Thông báo AnCai',
           channelDescription:
               'Nhắc việc, lịch, sức khỏe, tài chính và thông báo hệ thống',
           importance: Importance.high,

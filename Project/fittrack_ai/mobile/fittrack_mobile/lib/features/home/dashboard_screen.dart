@@ -64,7 +64,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: ListTile(
                 leading: const Icon(Icons.tips_and_updates_outlined),
                 title: const Text(
-                  'FitTrack Coach hôm nay',
+                  'AnCai Coach hôm nay',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
                 subtitle: Text(data!['coachInsight'].toString()),

@@ -17,7 +17,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   final messages = <_ChatMessage>[
     const _ChatMessage(
       role: 'assistant',
-      content: 'Chào bạn, tôi là FitTrack PT. Tôi có thể tư vấn và chuẩn bị buổi tập, bữa ăn hoặc đơn cơm để bạn xác nhận.',
+      content: 'Chào bạn, tôi là AnCai PT. Tôi có thể tư vấn và chuẩn bị buổi tập, bữa ăn hoặc đơn cơm để bạn xác nhận.',
     ),
   ];
   Map<String, dynamic>? privacy;
@@ -199,7 +199,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
             children: [
               const Expanded(
                 child: PageIntro(
-                  title: 'FitTrack PT',
+                  title: 'AnCai PT',
                   subtitle: 'Trợ lý chỉ thao tác dữ liệu sau khi bạn xác nhận.',
                 ),
               ),
@@ -232,7 +232,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                        'FitTrack chỉ gửi dữ liệu cần thiết cho câu hỏi hiện tại tới Gemini; không gửi email hoặc tên của bạn.',
+                        'AnCai chỉ gửi dữ liệu cần thiết cho câu hỏi hiện tại tới Gemini; không gửi email hoặc tên của bạn.',
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),

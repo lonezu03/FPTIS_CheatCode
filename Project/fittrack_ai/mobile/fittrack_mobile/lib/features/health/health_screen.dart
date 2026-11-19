@@ -367,7 +367,7 @@ class _WeeklyCoachCardState extends State<_WeeklyCoachCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'FitTrack Coach · Check-in tuần',
+            'AnCai Coach · Check-in tuần',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),

@@ -15,7 +15,7 @@ const mobileModuleLabels = <String, String>{
   'quotes': 'Câu nói',
   'finance': 'Tài chính',
   'journal': 'Nhật ký',
-  'assistant': 'FitTrack PT',
+  'assistant': 'AnCai PT',
   'workoutPlans': 'Giáo án',
   'exercises': 'Kho bài tập',
   'foods': 'Kho thực phẩm',

@@ -7,18 +7,18 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>FitTrack</string>
+	<string>AnCai</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
-	<string>FitTrack dùng Face ID để mở Nhật ký riêng tư của bạn.</string>
+	<string>AnCai dùng Face ID để mở Nhật ký riêng tư của bạn.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>FitTrack dùng camera để chụp món ăn và hóa đơn khi bạn yêu cầu phân tích ảnh.</string>
+	<string>AnCai dùng camera để chụp món ăn và hóa đơn khi bạn yêu cầu phân tích ảnh.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>FitTrack cho phép bạn chọn ảnh món ăn và hóa đơn để tạo bản nháp.</string>
+	<string>AnCai cho phép bạn chọn ảnh món ăn và hóa đơn để tạo bản nháp.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

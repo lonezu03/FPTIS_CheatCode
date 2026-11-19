@@ -180,7 +180,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       ),
     if (user.chatbotEnabled || user.isAdmin)
       const _Destination(
-        'FitTrack PT',
+        'AnCai PT',
         Icons.smart_toy_outlined,
         Icons.smart_toy,
         AssistantScreen(),
@@ -244,7 +244,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     'Câu nói': 'quotes',
     'Nhật ký': 'journal',
     'Tài chính': 'finance',
-    'FitTrack PT': 'assistant',
+    'AnCai PT': 'assistant',
     'Giáo án': 'workoutPlans',
     'Kho bài tập': 'exercises',
     'Kho thực phẩm': 'foods',
@@ -300,7 +300,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.notifications_active_outlined, size: 42),
-        title: const Text('Bật thông báo FitTrack?'),
+        title: const Text('Bật thông báo AnCai?'),
         content: const Text(
           'Nhận menu cơm mới, thông báo chốt đơn, thanh toán và lời nhắc sức khỏe ngay trên điện thoại.',
         ),
@@ -367,7 +367,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'FitTrack',
+                    'AnCai',
                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
                   ),
                   Text(

@@ -271,7 +271,7 @@ class _FocusScreenState extends State<FocusScreen> {
         'title': session['mode'] == 'FOCUS'
             ? 'Đã hết giờ tập trung'
             : 'Đã hết giờ nghỉ',
-        'message': 'Mở FitTrack để xác nhận kết thúc phiên. Công việc chưa tự hoàn thành.',
+        'message': 'Mở AnCai để xác nhận kết thúc phiên. Công việc chưa tự hoàn thành.',
       }).catchError((_) => false),
     );
   }

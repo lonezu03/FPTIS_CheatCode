@@ -74,7 +74,7 @@ class _UserGuideSheetState extends State<UserGuideSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Hướng dẫn sử dụng FitTrack',
+                        'Hướng dẫn sử dụng AnCai',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -654,7 +654,7 @@ const _guideModules = <_GuideModule>[
   ),
   _GuideModule(
     id: 'assistant',
-    title: 'FitTrack PT',
+    title: 'AnCai PT',
     icon: Icons.smart_toy_outlined,
     permission: _GuidePermission.assistant,
     steps: [

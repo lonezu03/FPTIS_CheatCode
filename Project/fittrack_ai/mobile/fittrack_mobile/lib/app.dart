@@ -65,7 +65,7 @@ class _FitTrackBootstrapState extends State<FitTrackBootstrap> {
     ],
     child: MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'FitTrack',
+      title: 'AnCai',
       theme: AppTheme.light,
       builder: (context, child) =>
           ApiActivityOverlay(child: child ?? const SizedBox.shrink()),
