@@ -83,6 +83,8 @@ class AuthSession extends ChangeNotifier {
     : _storage = storage ?? const FlutterSecureStorage() {
     api.onUnauthorized = _handleUnauthorized;
     api.onSessionRefreshed = _persistRefreshedSession;
+    api.readStoredRefreshToken = () =>
+        _storage.read(key: AuthStorageKeys.refreshToken);
   }
 
   final ApiClient api;
@@ -106,12 +108,10 @@ class AuthSession extends ChangeNotifier {
         user = AuthUser.fromJson(jsonDecode(rawUser) as Map<String, dynamic>);
         try {
           await api.refreshSession();
-        } on ApiException catch (error) {
-          if (error.statusCode != null &&
-              error.statusCode! >= 400 &&
-              error.statusCode! < 500) {
-            await _clear();
-          }
+        } on SessionRefreshException catch (error) {
+          // Lỗi tạm thời (máy chủ đang khởi động, 5xx, 429, mất mạng): giữ phiên
+          // đã lưu, request sau sẽ tự gia hạn lại.
+          if (error.sessionInvalid) await _clear();
         }
       }
     } catch (_) {

@@ -45,6 +45,23 @@ class ApiException implements Exception {
   }
 }
 
+/// Lỗi khi gia hạn phiên đăng nhập. [sessionInvalid] = `true` nghĩa là máy chủ
+/// đã từ chối phiên (400/401/403) và phải đăng nhập lại; `false` là lỗi tạm
+/// thời (mất mạng, 5xx, 429...) nên vẫn giữ phiên.
+class SessionRefreshException extends ApiException {
+  const SessionRefreshException(
+    super.message, {
+    super.statusCode,
+    super.requestId,
+    required this.sessionInvalid,
+  });
+
+  final bool sessionInvalid;
+}
+
+bool isInvalidSessionStatus(int? statusCode) =>
+    statusCode == 400 || statusCode == 401 || statusCode == 403;
+
 /// Converts all errors shown by the app into a concise user-facing message.
 /// Never expose a Dio response dump, request headers or an exception stack.
 String friendlyErrorMessage(Object error) {

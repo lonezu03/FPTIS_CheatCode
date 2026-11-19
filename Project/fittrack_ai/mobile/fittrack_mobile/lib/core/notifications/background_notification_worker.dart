@@ -64,6 +64,9 @@ void notificationCallbackDispatcher() {
     final api = ApiClient();
     api.accessToken = await storage.read(key: AuthStorageKeys.accessToken);
     api.refreshToken = refreshToken;
+    // App ở nền trước có thể đã xoay token sau khi tác vụ này đọc storage.
+    api.readStoredRefreshToken = () =>
+        storage.read(key: AuthStorageKeys.refreshToken);
     api.onSessionRefreshed = (session) async {
       await storage.write(
         key: AuthStorageKeys.accessToken,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/notifications/notification_center.dart';
@@ -84,8 +85,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    menu = MobileMenuController(context.read<ApiClient>())
-      ..addListener(_menuChanged);
+    const storage = FlutterSecureStorage();
+    menu = MobileMenuController(
+      context.read<ApiClient>(),
+      readCache: () => storage.read(key: mobileMenuCacheKey),
+      writeCache: (value) => storage.write(key: mobileMenuCacheKey, value: value),
+    )..addListener(_menuChanged);
     unawaited(menu.load());
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _offerNotifications());

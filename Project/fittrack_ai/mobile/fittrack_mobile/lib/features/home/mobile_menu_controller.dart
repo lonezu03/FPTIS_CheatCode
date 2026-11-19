@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../auth/auth_session.dart';
 
 const mobileModuleLabels = <String, String>{
@@ -19,9 +22,23 @@ const mobileModuleLabels = <String, String>{
   'nutrition': 'Nhật ký ăn uống',
 };
 
+const mobileMenuCacheKey = 'fittrack_mobile_menu';
+
 class MobileMenuController extends ChangeNotifier {
-  MobileMenuController(this.api);
+  MobileMenuController(
+    this.api, {
+    this.readCache,
+    this.writeCache,
+    this.retryDelays = const [Duration(seconds: 2), Duration(seconds: 5)],
+  });
   final ApiClient api;
+
+  /// Đọc/ghi cấu hình menu tải thành công gần nhất. Khi máy chủ chưa phản hồi
+  /// (khởi động lại, mất mạng) app vẫn hiện menu cũ thay vì thanh điều hướng
+  /// trống.
+  final Future<String?> Function()? readCache;
+  final Future<void> Function(String value)? writeCache;
+  final List<Duration> retryDelays;
   List<Map<String, dynamic>> modules = [];
   int version = 0;
   bool loading = false, loaded = false;
@@ -43,6 +60,33 @@ class MobileMenuController extends ChangeNotifier {
     loaded = true;
     error = null;
     notifyListeners();
+    final write = writeCache;
+    if (write != null) {
+      write(
+        jsonEncode({'version': nextVersion, 'modules': parsed}),
+      ).catchError((Object _) {});
+    }
+  }
+
+  Future<void> _restoreCached() async {
+    final read = readCache;
+    if (read == null || loaded) return;
+    try {
+      final raw = await read();
+      if (raw == null || raw.isEmpty || loaded || _disposed) return;
+      final cached = jsonDecode(raw);
+      modules = parseMenu(cached);
+      version = (cached['version'] as num).toInt();
+      // `loaded` vẫn là false để bản mới từ máy chủ luôn được nhận.
+    } catch (_) {
+      // Bộ nhớ đệm hỏng hoặc không đọc được: bỏ qua, chờ máy chủ.
+    }
+  }
+
+  static bool _isTransient(Object error) {
+    if (error is! ApiException) return false;
+    final status = error.statusCode;
+    return status == null || status == 408 || status == 429 || status >= 500;
   }
 
   Future<void> _load() async {
@@ -50,10 +94,22 @@ class MobileMenuController extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      final raw = await api.get('/mobile-menu');
-      accept(raw);
-    } catch (e) {
-      if (!_disposed) error = e;
+      await _restoreCached();
+      if (!_disposed && modules.isNotEmpty) notifyListeners();
+      for (var attempt = 0; ; attempt++) {
+        try {
+          accept(await api.get('/mobile-menu'));
+          break;
+        } catch (e) {
+          if (_disposed) return;
+          if (attempt >= retryDelays.length || !_isTransient(e)) {
+            error = e;
+            break;
+          }
+          await Future<void>.delayed(retryDelays[attempt]);
+          if (_disposed) return;
+        }
+      }
     } finally {
       if (!_disposed) {
         loading = false;

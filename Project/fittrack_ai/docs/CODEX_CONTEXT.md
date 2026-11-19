@@ -1,5 +1,24 @@
 # FitTrack Current Project State
 
+## Latest handoff: Android session/menu loss (2026-11-19)
+
+Same symptom on the Flutter app: `ApiClient` called `onUnauthorized` (logout) on
+ANY refresh failure, and `restore()` cleared the session on 429. Worse, the
+WorkManager notification task (separate isolate, every 15 min) rotates the
+single-use refresh token in secure storage while the foreground app keeps the old
+one in memory, so the next foreground refresh got 401 and logged out.
+`ApiClient.refreshSession()` now: shares one in-flight refresh, adopts a newer
+refresh token from storage before calling (`readStoredRefreshToken`, set by
+`AuthSession` and the background worker) and once more after a 401, retries
+transient failures twice (1 s, 3 s; Retry-After for 429 capped 10 s) and throws
+`SessionRefreshException(sessionInvalid)`. Only 400/401/403 log out; transient
+failures surface on the current request and keep the session. A 401 whose token
+was already replaced by a concurrent refresh is retried without refreshing.
+`MobileMenuController` retries `/mobile-menu` on transient errors (2 s, 5 s) and
+caches the last good menu in secure storage (`fittrack_mobile_menu`), so the
+bottom bar no longer collapses to "Cá nhân/Thêm" when the server is cold.
+Tests: `test/session_refresh_test.dart`. Backend unchanged.
+
 ## Latest handoff: web menu/session lost intermittently (2026-11-18)
 
 Symptom: opening a module sometimes blanked the menu and bounced to /login.
