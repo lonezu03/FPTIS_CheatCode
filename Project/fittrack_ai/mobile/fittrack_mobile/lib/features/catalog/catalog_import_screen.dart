@@ -248,7 +248,7 @@ class _CatalogImportScreenState extends State<CatalogImportScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             const Text(
-              'Tối đa 500 dòng, 2 MB; CSV UTF-8, XLSX hoặc bảng dán. Chỉ worksheet đầu; không dùng công thức, macro hay liên kết ngoài. Bản xem trước hết hạn sau 24 giờ.',
+              'Dùng file CSV, XLSX hoặc dán bảng.',
             ),
             Wrap(
               spacing: 8,
@@ -336,7 +336,6 @@ class _CatalogImportScreenState extends State<CatalogImportScreen> {
             ),
             ExpansionTile(
               title: const Text('Ánh xạ tên cột tùy chỉnh'),
-              subtitle: const Text('Dùng đúng mẫu thì để trống'),
               children: [
                 ...mappingFields.entries.map(
                   (entry) => Padding(
@@ -365,10 +364,10 @@ class _CatalogImportScreenState extends State<CatalogImportScreen> {
             const SizedBox(height: 12),
             if (food)
               const Text(
-                'basis: PER_SERVING = một khẩu phần; PER_100G = theo 100 g và cần servingSizeGrams. Vi chất chưa biết để trống. Không quy đổi g ↔ ml. Đơn vị vi chất được ghi trong ánh xạ.',
+                'Cột basis: PER_SERVING (một khẩu phần) hoặc PER_100G (100 g).',
               ),
             const Text(
-              'Thêm: ID trống. Sửa: ID thật từ file xuất. Ô trống khi sửa GIỮ giá trị cũ; chọn xóa rõ ràng nếu muốn xóa trường tùy chọn. Xuất kho không kèm ảnh, nhập lại ô ảnh trống giữ ảnh cũ.',
+              'Để trống ID để thêm mới; giữ ID từ file xuất để sửa.',
             ),
             FilledButton(
               onPressed: busy || (file == null && text.text.trim().isEmpty)
@@ -415,7 +414,7 @@ class _CatalogImportScreenState extends State<CatalogImportScreen> {
                 ),
               if (committed)
                 const Text(
-                  'Lô đã hoàn tất. Xem kết quả từng dòng và tải lại kho để kiểm tra.',
+                  'Đã nhập xong.',
                 ),
               FilledButton(
                 onPressed: busy || !confirmed || selected == 0 || committed

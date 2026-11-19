@@ -225,7 +225,7 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
                   ),
                   const SizedBox(height: 5),
                   const Text(
-                    'Chỉ xác nhận đầy đủ sau khi đã ghi toàn bộ đồ ăn và thức uống có năng lượng.',
+                    'Chỉ xác nhận khi bạn đã ghi hết các bữa.',
                     style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                   const SizedBox(height: 10),
@@ -421,7 +421,7 @@ class _StatusBanner extends StatelessWidget {
       'PARTIAL' => (
         'Ghi chưa đầy đủ',
         Colors.orange,
-        'Không dùng để kết luận bạn ăn quá ít.',
+        'Ghi thêm để số liệu chính xác hơn.',
       ),
       'FASTING' => (
         'Ngày nhịn ăn',
@@ -647,7 +647,7 @@ class _MealGroup extends StatelessWidget {
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
                                 const Text(
-                                  'Thông tin đã lưu tại thời điểm ghi bữa, không phải giá trị hiện tại trong kho.',
+                                  'Số liệu tại thời điểm ghi bữa.',
                                 ),
                                 Text(
                                   'Khẩu phần gốc: ${item['foodUnit'] ?? 'Chưa có dữ liệu lịch sử'}',
@@ -1059,7 +1059,7 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Chọn món tương ứng trong kho. Có thể bỏ qua món không chắc chắn.',
+                      'Chọn món tương ứng trong kho.',
                     ),
                     const SizedBox(height: 10),
                     for (final match in matches) ...[
@@ -1105,7 +1105,7 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                       style: TextStyle(fontSize: 12, color: Colors.black54),
                     ),
                     const Text(
-                      'Ảnh ước tính gram, không đổi sang ml. Đồ uống theo ml dùng 1 khẩu phần; hãy chỉnh lại trước khi lưu.',
+                      'Bạn kiểm tra lại khẩu phần trước khi lưu nhé.',
                     ),
                   ],
                 ),
@@ -1215,7 +1215,7 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
             const Padding(
               padding: EdgeInsets.only(bottom: 12),
               child: Text(
-                'Bữa cũ giữ nguyên dữ liệu lịch sử. Khi sửa hoặc sao chép, dinh dưỡng sẽ tính lại theo kho hiện tại.',
+                'Lưu lại sẽ tính dinh dưỡng theo kho hiện tại.',
                 style: TextStyle(color: Colors.orange),
               ),
             ),

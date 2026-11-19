@@ -39,7 +39,7 @@ export default function BalanceReconciliationDialog({ account, onClose }: { acco
 
   return <Dialog open onOpenChange={open => { if (!open && !save.isPending) onClose(); }}>
     <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
-      <DialogHeader><DialogTitle>Đối soát số dư · {account.name}</DialogTitle><DialogDescription>Nhập số tiền thực tế đang có trong ví hoặc ngân hàng. Khoản chênh lệch được ghi riêng, không tính thành thu nhập hay chi tiêu.</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>Đối soát số dư · {account.name}</DialogTitle><DialogDescription>Nhập số tiền thực tế đang có. Phần chênh lệch không tính là thu hay chi.</DialogDescription></DialogHeader>
       {current.isLoading ? <p>Đang lấy số dư mới nhất...</p> : current.isError || !current.data ? <div><p>Không thể lấy thông tin ví.</p><Button variant="outline" onClick={() => void current.refetch()}>Thử lại</Button></div> : <form onSubmit={submit} className="space-y-4">
         <p className="rounded-xl bg-muted p-3 text-sm">Số dư trên ứng dụng: <strong>{money.format(balance!)}</strong></p>
         {!current.data.active ? <p className="text-sm text-muted-foreground">Ví đã lưu trữ. Bạn có thể xem lịch sử đối soát bên dưới.</p> : <>

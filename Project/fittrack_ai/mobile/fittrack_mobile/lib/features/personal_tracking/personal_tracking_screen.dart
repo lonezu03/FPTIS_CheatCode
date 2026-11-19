@@ -193,9 +193,6 @@ class _PersonalTrackingScreenState extends State<PersonalTrackingScreen> {
                           number: true,
                         ),
                         field('targetDate', 'Ngày đích (yyyy-MM-dd)'),
-                        const Text(
-                          'Giai đoạn theo thứ tự ngày; không thay đổi mục tiêu calo của hồ sơ.',
-                        ),
                         ...phases.asMap().entries.map(
                           (e) => Card(
                             child: Padding(
@@ -275,7 +272,7 @@ class _PersonalTrackingScreenState extends State<PersonalTrackingScreen> {
                       ],
                       if (widget.section == 'recovery') ...[
                         const Text(
-                          'Nhập giờ Việt Nam, ví dụ 2026-10-27T22:30. Có thể qua nửa đêm; tối đa 24 giờ. Bỏ trống đánh giá nếu chưa biết.',
+                          'Nhập giờ dạng 2026-10-27T22:30.',
                         ),
                         field(
                           'sleepStart',
@@ -534,7 +531,7 @@ class _PersonalTrackingScreenState extends State<PersonalTrackingScreen> {
                       Text(message!, style: const TextStyle(color: Colors.red)),
                     if (rows.isEmpty)
                       const Text(
-                        'Chưa tải / chưa có dữ liệu; không phải số 0.',
+                        'Chưa có dữ liệu.',
                       ),
                     if (widget.section == 'goals' &&
                         rows.isNotEmpty &&
@@ -626,13 +623,8 @@ class _PersonalTrackingScreenState extends State<PersonalTrackingScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            widget.section == 'recovery'
-                ? 'Nhập tay, không đồng bộ thiết bị. Thông tin tham khảo, không chẩn đoán bệnh.'
-                : widget.section == 'habits'
-                ? 'Ngày Việt Nam · độc lập với công việc · không tạo quá hạn.'
-                : 'Mục tiêu riêng tư · không tự thay đổi calo hồ sơ.',
-          ),
+          if (widget.section == 'recovery')
+            const Text('Thông tin chỉ để tham khảo.'),
           SwitchListTile(
             title: const Text('Xem đã lưu trữ'),
             value: archived,

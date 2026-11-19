@@ -39,8 +39,6 @@ class _AdminScreenState extends State<AdminScreen>
           children: [
             const PageIntro(
               title: 'Quản trị hệ thống',
-              subtitle:
-                  'Quản lý quyền người dùng, menu trưa và thông báo công ty.',
             ),
             const SizedBox(height: 14),
             TabBar(
@@ -175,11 +173,6 @@ class _UsersAdminTabState extends State<_UsersAdminTab> {
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          const Text(
-            'App mobile quản lý 6 quyền nghiệp vụ: Đặt cơm, Fitness, Sức khỏe, Todo, Schedule và Câu nói. Quyền chatbot được để lại cho giai đoạn sau.',
-            style: TextStyle(color: Colors.black54),
-          ),
-          const SizedBox(height: 12),
           ...users.map(
             (user) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -966,8 +959,6 @@ class _FundAdminTabState extends State<_FundAdminTab> {
         children: [
           const PageIntro(
             title: 'Quỹ & công nợ',
-            subtitle:
-                'Cộng, trừ quỹ hoặc điều chỉnh công nợ với lý do rõ ràng.',
           ),
           const SizedBox(height: 14),
           Card(
@@ -1336,9 +1327,7 @@ class _MenuImportTabState extends State<_MenuImportTab> {
         icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
         title: const Text('Xóa thực đơn?'),
         content: Text(
-          'Thực đơn ngày $date chỉ xóa được khi chưa từng phát sinh đơn nào. '
-          'Nếu đã có đơn hoặc đã chốt, hệ thống sẽ từ chối để bảo vệ lịch sử. '
-          'Sau khi xóa, bạn có thể dùng nội dung trong form để import lại.',
+          'Chỉ xóa được thực đơn ngày $date khi chưa có đơn nào.',
         ),
         actions: [
           TextButton(
@@ -1508,7 +1497,7 @@ class _MenuImportTabState extends State<_MenuImportTab> {
                   SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Đã có lịch sử đơn hoặc đã chốt; không thể sửa/xóa để bảo toàn dữ liệu.',
+                      'Đã có đơn, không sửa hoặc xóa được.',
                       style: TextStyle(color: Colors.black54),
                     ),
                   ),
@@ -1579,13 +1568,12 @@ class _MenuImportTabState extends State<_MenuImportTab> {
                 if (editingMenuId != null) ...[
                   const SizedBox(height: 4),
                   const Text(
-                    'Chỉ có thể thay danh sách món khi thực đơn chưa phát sinh đơn nào. '
-                    'Nếu đã có đơn, hãy giữ menu để bảo toàn lịch sử đặt cơm.',
+                    'Đã có đơn thì không đổi được danh sách món.',
                     style: TextStyle(color: Colors.black54),
                   ),
                 ] else
                   const Text(
-                    'Dán nội dung quán gửi hoặc chọn TXT/CSV. Món trước dấu + là nhóm cơm chọn 2 món; sau dấu + là món đơn. Thêm @DRINKS rồi nhập Trà đào | 45000 hoặc Trà vải 50000 để lưu món có giá riêng.',
+                    'Dán menu quán gửi hoặc chọn tệp TXT/CSV.',
                     style: TextStyle(color: Colors.black54),
                   ),
                 const SizedBox(height: 14),
@@ -1643,7 +1631,7 @@ class _MenuImportTabState extends State<_MenuImportTab> {
                   maxLines: 18,
                   decoration: const InputDecoration(
                     labelText: 'Danh sách món',
-                    helperText: 'Dùng dấu + để ngăn món cơm/món đơn; dùng @DRINKS hoặc @EXTRAS cho đồ uống có giá riêng.',
+                    helperText: 'Dấu + ngăn món cơm và món đơn; @DRINKS, @EXTRAS cho món có giá riêng.',
                     hintText: 'Lòng gà roty\nTôm ram\nSườn ram\n+\nPhở bò',
                   ),
                 ),
@@ -1686,7 +1674,7 @@ class _MenuImportTabState extends State<_MenuImportTab> {
         ),
         const SizedBox(height: 4),
         const Text(
-          'Chọn một thực đơn để nạp lại dữ liệu vào form bên trên. Kéo xuống để làm mới danh sách.',
+          'Chạm một thực đơn để sửa lại.',
           style: TextStyle(color: Colors.black54),
         ),
         const SizedBox(height: 8),
@@ -1788,7 +1776,7 @@ class _BroadcastTabState extends State<_BroadcastTab> {
     padding: const EdgeInsets.all(18),
     children: [
       const Text(
-        'Thông báo được lưu trong app và gửi email tới toàn bộ tài khoản đang hoạt động.',
+        'Gửi trong app và qua email tới mọi người.',
         style: TextStyle(color: Colors.black54),
       ),
       const SizedBox(height: 14),

@@ -206,10 +206,6 @@ class _PantryScreenState extends State<PantryScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Theo dõi từng lô; thay đổi tồn không tự ghi bữa ăn hay chi tiêu.',
-          ),
-          const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: busy ? null : () => edit(),
             icon: const Icon(Icons.add),
@@ -316,7 +312,7 @@ class _PantryScreenState extends State<PantryScreen> {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const Text(
-            'Chỉ đối chiếu thực phẩm và đơn vị chính xác; luôn tự kiểm tra chất lượng thực phẩm.',
+            'Bạn nhớ kiểm tra chất lượng thực phẩm trước khi dùng.',
           ),
           if (suggestionError != null)
             TextButton(

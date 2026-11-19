@@ -81,7 +81,7 @@ class _UserGuideSheetState extends State<UserGuideSheet> {
                         ),
                       ),
                       Text(
-                        'Nội dung được lọc theo quyền tài khoản của bạn.',
+                        'Theo các mục bạn đang dùng.',
                         style: TextStyle(fontSize: 12),
                       ),
                     ],
@@ -420,14 +420,14 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Chọn chức năng từ thanh điều hướng',
-        description: 'Thanh dưới chỉ hiển thị các module tài khoản đã được cấp. Các mục ít dùng nằm trong “Thêm”. Nếu thiếu quyền, hãy liên hệ quản trị viên.',
+        description: 'Thanh dưới hiện các mục bạn hay dùng; phần còn lại nằm trong “Thêm”.',
         action: 'Nhấn biểu tượng module; dùng “Thêm” để mở phần còn lại.',
         visual: _GuideVisual.navigation,
         focusLabel: 'Thanh chức năng',
       ),
       _GuideStep(
         title: 'Tổng quan được cá nhân hóa theo quyền',
-        description: 'Màn Tổng quan chỉ tổng hợp dữ liệu bạn được phép dùng. Thẻ trống sẽ chỉ rõ dữ liệu nào cần bổ sung thay vì tính thành số 0.',
+        description: 'Tổng quan gom dữ liệu từ các mục bạn đang dùng.',
         action: 'Nhấn thẻ hoặc gợi ý để mở chức năng liên quan.',
         visual: _GuideVisual.health,
         focusLabel: 'Thẻ tổng quan',
@@ -456,7 +456,7 @@ const _guideModules = <_GuideModule>[
       ),
       _GuideStep(
         title: 'Kiểm tra giỏ trước khi đặt',
-        description: 'Bạn có thể đặt nhiều phần cùng lúc. Thiếu quỹ không chặn đặt món; quỹ còn lại được dùng trước, phần thiếu ghi vào công nợ người nhận.',
+        description: 'Bạn đặt được nhiều phần cùng lúc. Quỹ được trừ trước, thiếu thì ghi nợ người nhận.',
         action: 'Đọc lại người nhận, món, món thêm và tổng tiền.',
         visual: _GuideVisual.lunchCart,
         focusLabel: 'Giỏ đặt cơm',
@@ -492,7 +492,7 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Phân biệt bắt đầu, hạn chót và nhắc nhở',
-        description: 'Ba mốc này độc lập. Điền đúng giúp ứng dụng phân loại Hôm nay, Sắp tới và Quá hạn chính xác.',
+        description: 'Điền đủ các mốc để việc hiện đúng ở Hôm nay, Sắp tới hay Quá hạn.',
         action: 'Nhập nội dung, các mốc thời gian, danh mục rồi lưu.',
         visual: _GuideVisual.todo,
         focusLabel: 'Mốc thời gian',
@@ -521,7 +521,7 @@ const _guideModules = <_GuideModule>[
       ),
       _GuideStep(
         title: 'Chỉ tạo lịch hẹn ở Thời khóa biểu',
-        description: 'Todo có giờ sẽ tự xuất hiện trên lịch. Không cần tạo trùng Todo thành một sự kiện mới.',
+        description: 'Việc có giờ đã tự hiện trên lịch, bạn không cần tạo thêm.',
         action: 'Tạo sự kiện, đặt giờ bắt đầu/kết thúc và nhắc trước.',
         visual: _GuideVisual.schedule,
         focusLabel: 'Sự kiện',
@@ -536,7 +536,7 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Xem kỹ bài tập trước khi dùng',
-        description: 'Kho bài tập có nhóm cơ, dụng cụ, mô tả và ảnh. Bài do người dùng thêm cần admin duyệt trước khi dùng chung.',
+        description: 'Xem nhóm cơ, dụng cụ, mô tả và ảnh trước khi chọn bài.',
         action: 'Mở bài tập để xem ảnh và hướng dẫn kỹ thuật.',
         visual: _GuideVisual.fitness,
         focusLabel: 'Chi tiết bài tập',
@@ -550,7 +550,7 @@ const _guideModules = <_GuideModule>[
       ),
       _GuideStep(
         title: 'Ghi dữ liệu tập thực tế',
-        description: 'Hãy lưu từng hiệp thực hiện để lịch sử, thành tích và báo cáo phản ánh đúng tiến độ thay vì chỉ dựa vào giáo án.',
+        description: 'Ghi từng hiệp để lịch sử và báo cáo đúng với buổi tập thật.',
         action: 'Bắt đầu buổi tập, ghi từng hiệp rồi hoàn thành.',
         visual: _GuideVisual.fitness,
         focusLabel: 'Hiệp đang tập',
@@ -565,21 +565,21 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Ghi đúng lượng thực phẩm',
-        description: 'Chọn khẩu phần, gram hoặc ml. Gram/ml cần thông tin khối lượng khẩu phần để quy đổi chính xác.',
+        description: 'Chọn khẩu phần, gram hoặc ml cho từng món.',
         action: 'Thêm món đúng bữa, nhập lượng và kiểm tra dinh dưỡng.',
         visual: _GuideVisual.health,
         focusLabel: 'Bữa ăn & số lượng',
       ),
       _GuideStep(
         title: 'Xác nhận trạng thái cuối ngày',
-        description: 'Ngày mới ghi một phần chưa được dùng cho điểm sức khỏe. Chỉ ngày Hoàn tất hoặc Nhịn ăn mới tham gia thống kê tin cậy.',
+        description: 'Chỉ ngày đã ghi đủ hoặc nhịn ăn mới được tính vào thống kê.',
         action: 'Rà soát nhật ký rồi xác nhận trạng thái ngày.',
         visual: _GuideVisual.health,
         focusLabel: 'Trạng thái ngày',
       ),
       _GuideStep(
         title: 'Theo dõi xu hướng dài hạn',
-        description: 'Cập nhật chỉ số cơ thể đều đặn và chú ý mức độ tin cậy của báo cáo. Dữ liệu thiếu không bị hiểu là bằng 0.',
+        description: 'Cập nhật chỉ số đều đặn để xu hướng chính xác hơn.',
         action: 'Đọc biểu đồ xu hướng thay vì kết luận từ một lần đo.',
         visual: _GuideVisual.health,
         focusLabel: 'Biểu đồ xu hướng',
@@ -601,7 +601,7 @@ const _guideModules = <_GuideModule>[
       ),
       _GuideStep(
         title: 'Xem câu nói ngẫu nhiên hằng ngày',
-        description: 'Dashboard chỉ hiển thị Câu nói hôm nay khi tài khoản được cấp quyền. Các câu được luân phiên và không lặp lại trước khi hết danh sách.',
+        description: 'Mỗi ngày một câu, xoay vòng qua các câu bạn đã bật.',
         action: 'Bật hiển thị hằng ngày cho những câu bạn muốn luân phiên.',
         visual: _GuideVisual.navigation,
         focusLabel: 'Câu nói hôm nay',
@@ -616,14 +616,14 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Bắt đầu từ một câu hỏi',
-        description: 'Câu hỏi hôm nay giữ nguyên trong ngày. Bạn có thể đổi câu, chọn câu nhẹ hơn hoặc sâu hơn mà không lặp lại trong cùng chu kỳ.',
+        description: 'Câu hỏi giữ nguyên trong ngày; bạn có thể đổi sang câu nhẹ hơn hoặc sâu hơn.',
         action: 'Mở Nhật ký → Hôm nay, viết vài dòng rồi nhấn Lưu.',
         visual: _GuideVisual.navigation,
         focusLabel: 'Câu hỏi hôm nay',
       ),
       _GuideStep(
         title: 'Giữ nội dung riêng tư',
-        description: 'Admin chỉ cấp quyền module, không thể đọc hoặc xuất bài viết của bạn. Có thể bật PIN và dùng sinh trắc học trên thiết bị để mở lại.',
+        description: 'Chỉ bạn đọc được Nhật ký. Bạn có thể khóa bằng PIN hoặc vân tay.',
         action: 'Nhấn biểu tượng Cài đặt trong Nhật ký để đặt giờ nhắc và khóa PIN.',
         visual: _GuideVisual.profile,
         focusLabel: 'Khóa Nhật ký',
@@ -638,14 +638,14 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Ghi nhận thu chi đúng tài khoản',
-        description: 'Chọn loại giao dịch, tài khoản, danh mục và số tiền. Chuyển khoản chỉ di chuyển số dư và không tính vào thu chi.',
+        description: 'Chọn loại, tài khoản, danh mục và số tiền. Chuyển khoản không tính vào thu chi.',
         action: 'Mở Tài chính → Giao dịch → Thêm giao dịch.',
         visual: _GuideVisual.profile,
         focusLabel: 'Thêm giao dịch',
       ),
       _GuideStep(
         title: 'Theo dõi ngân sách và khoản định kỳ',
-        description: 'Ngân sách cảnh báo theo mức sử dụng. Khoản định kỳ chỉ tạo giao dịch sau khi chính bạn xác nhận.',
+        description: 'Ngân sách sẽ nhắc khi gần hết. Khoản định kỳ chờ bạn xác nhận.',
         action: 'Mở tab Kế hoạch để kiểm tra và xác nhận.',
         visual: _GuideVisual.navigation,
         focusLabel: 'Kế hoạch tài chính',
@@ -660,14 +660,14 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Đồng ý trước khi dùng AI',
-        description: 'Trợ lý chỉ gửi dữ liệu cần thiết cho câu hỏi hiện tại khi bạn đã đồng ý quyền riêng tư.',
+        description: 'Trợ lý chỉ dùng dữ liệu cần cho câu hỏi, sau khi bạn đồng ý.',
         action: 'Đọc nội dung quyền riêng tư rồi nhấn Tôi đồng ý.',
         visual: _GuideVisual.profile,
         focusLabel: 'Quyền riêng tư AI',
       ),
       _GuideStep(
         title: 'Xác nhận mọi thao tác',
-        description: 'Đề xuất tạo buổi tập, bữa ăn hoặc đơn cơm không tự chạy. Dữ liệu chỉ thay đổi sau khi bạn xác nhận.',
+        description: 'Mọi thay đổi chỉ thực hiện khi bạn xác nhận.',
         action: 'Kiểm tra tóm tắt rồi nhấn Xác nhận thực hiện.',
         visual: _GuideVisual.navigation,
         focusLabel: 'Thao tác đề xuất',
@@ -681,7 +681,7 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Theo dõi tin chưa đọc',
-        description: 'Thông báo có thể liên quan đến menu, chốt đơn, thanh toán, lời nhắc hoặc yêu cầu quyền. Huy hiệu cho biết số tin chưa đọc.',
+        description: 'Số trên biểu tượng là tin chưa đọc.',
         action: 'Mở Thông báo và nhấn nội dung cần xử lý.',
         visual: _GuideVisual.notifications,
         focusLabel: 'Tin chưa đọc',
@@ -702,7 +702,7 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Kiểm tra hồ sơ và quyền module',
-        description: 'Hồ sơ hiển thị các module tài khoản đang được dùng. Liên hệ quản trị viên nếu quyền chưa đúng với nhu cầu công việc.',
+        description: 'Hồ sơ hiện các mục bạn được dùng. Cần thêm thì nhờ admin.',
         action: 'Mở Cá nhân để kiểm tra thông tin và đăng xuất an toàn.',
         visual: _GuideVisual.profile,
         focusLabel: 'Danh sách quyền',
@@ -717,7 +717,7 @@ const _guideModules = <_GuideModule>[
     steps: [
       _GuideStep(
         title: 'Cấp đúng quyền cho tài khoản',
-        description: 'Tài khoản mới có các module cá nhân, riêng Đặt cơm mặc định tắt. Admin có thể thay đổi quyền từng module, trạng thái và vai trò.',
+        description: 'Tài khoản mới chưa bật Đặt cơm. Bạn chỉnh quyền, trạng thái và vai trò từng người.',
         action: 'Tìm đúng người dùng rồi bật các quyền được phê duyệt.',
         visual: _GuideVisual.admin,
         focusLabel: 'Công tắc quyền',
@@ -731,7 +731,7 @@ const _guideModules = <_GuideModule>[
       ),
       _GuideStep(
         title: 'Gửi thông báo đúng người',
-        description: 'Nội dung cá nhân hoặc nhạy cảm nên chọn người nhận cụ thể. Chỉ gửi toàn bộ khi áp dụng cho mọi tài khoản active.',
+        description: 'Nội dung riêng nên gửi cho người cụ thể.',
         action: 'Xem lại đối tượng, nội dung và thời điểm trước khi gửi.',
         visual: _GuideVisual.admin,
         focusLabel: 'Nhóm nhận tin',

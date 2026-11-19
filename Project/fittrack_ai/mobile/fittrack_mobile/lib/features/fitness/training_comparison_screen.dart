@@ -114,7 +114,7 @@ class _TrainingComparisonScreenState extends State<TrainingComparisonScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         const Text(
-          'Chọn hai khoảng cùng số ngày. Lọc giáo án chỉ tính buổi có liên kết lịch tập; không suy đoán lịch sử cũ.',
+          'Chọn hai khoảng có cùng số ngày.',
         ),
         if (plansError != null)
           TextButton(
@@ -208,7 +208,7 @@ class _TrainingComparisonScreenState extends State<TrainingComparisonScreen> {
           ),
           if (data['completedSessions'] == 0)
             const Text(
-              'Chưa có buổi đủ dữ liệu. Không kết luận hiệu quả bằng 0.',
+              'Chưa có buổi tập đủ dữ liệu.',
             )
           else
             Text(

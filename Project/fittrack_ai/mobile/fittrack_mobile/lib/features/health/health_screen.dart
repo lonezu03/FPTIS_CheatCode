@@ -104,7 +104,6 @@ class _HealthScreenState extends State<HealthScreen>
             children: [
               const PageIntro(
                 title: 'Sức khỏe toàn diện',
-                subtitle: 'Tổng hợp dinh dưỡng, vận động, chỉ số cơ thể và lời nhắc trong 30 ngày.',
               ),
               const SizedBox(height: 14),
               TabBar(
@@ -319,7 +318,7 @@ class _SummaryTab extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           data['disclaimer']?.toString() ??
-              'Dữ liệu chỉ mang tính tham khảo và không thay thế tư vấn y tế.',
+              'Chỉ để tham khảo, không thay tư vấn y tế.',
           style: const TextStyle(color: Colors.black54, fontSize: 12),
         ),
       ],
@@ -456,7 +455,7 @@ class _HealthConnectCardState extends State<_HealthConnectCard> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Chỉ đọc bước chân, cân nặng, nhịp tim và buổi tập sau khi bạn đồng ý.',
+            'Chỉ đọc dữ liệu khi bạn đồng ý.',
             style: TextStyle(fontSize: 12, color: Colors.black54),
           ),
           const SizedBox(height: 10),
@@ -890,7 +889,7 @@ class _AddBodySheetState extends State<_AddBodySheet> {
             ),
             const SizedBox(height: 6),
             const Text(
-              'Đo cùng thời điểm trong ngày để dữ liệu dễ so sánh.',
+              'Nên đo vào cùng một giờ mỗi ngày.',
               style: TextStyle(color: Colors.black54),
             ),
             const SizedBox(height: 16),

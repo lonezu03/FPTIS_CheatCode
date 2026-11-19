@@ -338,7 +338,6 @@ function WorkoutPlanWorkspace({ owner }: { owner: string }) {
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title="Giáo án"
-        description="Tạo giáo án dùng lại và khởi tạo nhanh các buổi tập."
       />
       <details className="rounded-2xl border bg-card p-4"><summary className="cursor-pointer font-semibold">Chu kỳ 4–12 tuần và lịch tập giáo án</summary><div className="mt-4"><TrainingPrograms plans={plans} /></div></details>
 

@@ -57,7 +57,6 @@ class MoreScreen extends StatelessWidget {
         children: [
           const PageIntro(
             title: 'Thêm',
-            subtitle: 'Thông báo, quản trị, hồ sơ và quyền của ứng dụng.',
           ),
           const SizedBox(height: 16),
           if (menu.loading) const LinearProgressIndicator(),
@@ -108,9 +107,6 @@ class MoreScreen extends StatelessWidget {
                     child: Icon(Icons.help_outline_rounded),
                   ),
                   title: const Text('Hướng dẫn sử dụng'),
-                  subtitle: const Text(
-                    'Xem từng bước theo các module bạn được cấp quyền',
-                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
                     final session = context.read<AuthSession>();
@@ -132,9 +128,7 @@ class MoreScreen extends StatelessWidget {
                       child: Icon(Icons.dashboard_customize_outlined),
                     ),
                     title: const Text('Sắp xếp menu app'),
-                    subtitle: const Text(
-                      'Ẩn/hiện và sắp xếp cho mọi người, kể cả admin',
-                    ),
+                    subtitle: const Text('Áp dụng cho mọi tài khoản'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.push(
                       context,
@@ -149,9 +143,6 @@ class MoreScreen extends StatelessWidget {
                       child: Icon(Icons.admin_panel_settings_outlined),
                     ),
                     title: const Text('Quản trị'),
-                    subtitle: const Text(
-                      'Tài khoản, menu và thông báo công ty',
-                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _open(
                       context,
@@ -166,7 +157,6 @@ class MoreScreen extends StatelessWidget {
                     child: Icon(Icons.person_outline),
                   ),
                   title: const Text('Cá nhân'),
-                  subtitle: const Text('Hồ sơ, quyền truy cập và đăng xuất'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _open(
                     context,
@@ -203,8 +193,8 @@ class MoreScreen extends StatelessWidget {
                     title: const Text('Thông báo'),
                     subtitle: Text(
                       permissionGranted
-                          ? 'Đã được phép gửi thông báo và phát âm thanh.'
-                          : 'Chưa được cấp quyền thông báo.',
+                          ? 'Đã bật'
+                          : 'Chưa bật',
                     ),
                     trailing: TextButton(
                       onPressed: () async {
@@ -227,7 +217,7 @@ class MoreScreen extends StatelessWidget {
                     leading: Icon(Icons.folder_open_outlined),
                     title: Text('Tệp trên thiết bị'),
                     subtitle: Text(
-                      'AnCai chỉ đọc tệp bạn chủ động chọn bằng trình chọn tệp của hệ thống, không xem toàn bộ bộ nhớ.',
+                      'Chỉ đọc tệp bạn tự chọn.',
                     ),
                   ),
                 ],

@@ -219,7 +219,7 @@ class _JournalScreenState extends State<JournalScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Lưu trữ trang này?'),
         content: const Text(
-          'Trang sẽ không còn xuất hiện trong lịch sử, nhưng hệ thống vẫn giữ dấu vết an toàn.',
+          'Trang sẽ được ẩn khỏi lịch sử.',
         ),
         actions: [
           TextButton(
@@ -258,8 +258,7 @@ class _JournalScreenState extends State<JournalScreen> {
               const Expanded(
                 child: PageIntro(
                   title: 'Nhật ký',
-                  subtitle:
-                      'Không gian riêng chỉ tài khoản của bạn có thể đọc.',
+                  subtitle: 'Chỉ bạn đọc được.',
                 ),
               ),
               IconButton(
@@ -326,7 +325,7 @@ class _JournalScreenState extends State<JournalScreen> {
       ),
       const SizedBox(height: 8),
       const Text(
-        'Nhập PIN đã đặt trên AnCai. Mã mở khóa được lưu an toàn trong thiết bị trong tối đa 12 giờ.',
+        'Nhập PIN Nhật ký của bạn.',
         textAlign: TextAlign.center,
       ),
       const SizedBox(height: 24),
@@ -550,10 +549,6 @@ class _JournalScreenState extends State<JournalScreen> {
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          const Text(
-            'Ưu tiên bộ bạn thích để câu hỏi hằng ngày gần với mình hơn.',
-          ),
-          const SizedBox(height: 12),
           ..._packs.map(
             (pack) => Card(
               child: ListTile(
@@ -1104,7 +1099,7 @@ class _JournalSettingsSheetState extends State<_JournalSettingsSheet> {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Cá nhân hóa từ hoạt động AnCai'),
-            subtitle: const Text('Chỉ hoạt động khi bạn đã đồng ý dùng AI.'),
+            subtitle: const Text('Cần bật trợ lý AI.'),
             value: personalized,
             onChanged: (value) => setState(() => personalized = value),
           ),

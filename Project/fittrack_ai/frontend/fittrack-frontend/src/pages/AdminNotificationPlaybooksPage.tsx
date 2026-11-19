@@ -137,7 +137,7 @@ export default function AdminNotificationPlaybooksPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Kịch bản notification" description="Thiết lập lời chúc, nhắc nhở và thông điệp theo giờ, điều kiện và nhóm người nhận." />
+      <PageHeader title="Kịch bản notification" />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_28rem]">
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><BellRing className="size-5 text-emerald-700" /> Kịch bản đang có</CardTitle></CardHeader>

@@ -216,7 +216,7 @@ class _TemplateSharingScreenState extends State<TemplateSharingScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               const Text(
-                'Chỉ chia sẻ bản mẫu được chọn tới một tài khoản có quyền. Không gửi lịch sử tập, nhật ký đã ăn, số đo hoặc tài chính. Thu hồi không xóa bản người nhận đã sao chép.',
+                'Chỉ gửi bản mẫu bạn chọn.',
               ),
               const SizedBox(height: 16),
               Card(
@@ -515,12 +515,9 @@ class _TemplateSharingScreenState extends State<TemplateSharingScreen> {
                           ),
                         if ((preview!['unavailableItems'] as List).isNotEmpty)
                           const Text(
-                            'Có món / bài tập không còn khả dụng. Nhờ người gửi cập nhật và chia sẻ lại.',
+                            'Có món hoặc bài tập không còn dùng được.',
                           ),
                         if (inbox) ...[
-                          const Text(
-                            'Sao chép không ghi lịch sử tập hoặc nhật ký đã ăn.',
-                          ),
                           if (preview!['share']['kind'] == 'MEAL_WEEK')
                             OutlinedButton(
                               onPressed: () => pickWeek(true),

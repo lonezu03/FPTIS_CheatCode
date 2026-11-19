@@ -164,9 +164,6 @@ class _TrainingProgramsState extends State<TrainingProgramsScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const Text(
-                  'Kế hoạch không ghi hoàn thành. Mức tải do bạn xác nhận; hệ thống không tự tăng tạ.',
-                ),
                 FilledButton.icon(
                   onPressed: busy ? null : () => edit(),
                   icon: const Icon(Icons.add),
@@ -214,7 +211,7 @@ class _TrainingProgramsState extends State<TrainingProgramsScreen> {
                                     : () async {
                                         if (await confirm(
                                           'Xóa chu kỳ?',
-                                          'Snapshot lịch tập và lịch sử thực tế được giữ.',
+                                          'Lịch sử tập vẫn được giữ.',
                                         )) {
                                           action(
                                             () => context.read<ApiClient>().delete(
@@ -562,11 +559,8 @@ class _ScheduleTrainingFormState extends State<_ScheduleTrainingForm> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Lên lịch snapshot giáo án',
+            'Lên lịch theo giáo án',
             style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const Text(
-            'Thay giáo án sau này không tự thay lịch. Chỉ lưu buổi tập thực tế mới đánh hoàn thành.',
           ),
           DropdownButtonFormField<String>(
             isExpanded: true,

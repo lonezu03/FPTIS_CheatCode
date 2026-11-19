@@ -379,7 +379,7 @@ export default function AdminLunchPage() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <PageHeader title="Điều phối cơm" description="Nhập menu, chốt đơn, đối soát quỹ và xuất danh sách gửi quán." />
+        <PageHeader title="Điều phối cơm" />
         <Button
           type="button"
           variant="outline"

@@ -142,9 +142,6 @@ class _PurchasePricesScreenState extends State<PurchasePricesScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Lưu giá tham khảo bằng VND. Không tự tạo chi tiêu hoặc thay đổi tồn kho.',
-          ),
           FilledButton.icon(
             onPressed: busy ? null : () => edit(),
             icon: const Icon(Icons.add),
@@ -282,7 +279,7 @@ class _PurchasePricesScreenState extends State<PurchasePricesScreen> {
             child: Text('Chọn giá tại ngày: ${pantryDate(reference)}'),
           ),
           const Text(
-            'Giá gần nhất cùng đơn vị, tại hoặc trước ngày đã chọn. Chi phí chưa biết không được tính là 0.',
+            'Dùng giá gần nhất tính đến ngày đã chọn.',
           ),
           if (costError != null)
             TextButton(

@@ -305,11 +305,8 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
     <div className="space-y-5">
       <PageHeader
         title="Buổi tập"
-        description="Bắt đầu workout, ghi từng set và xem thành tích lần tập trước ngay trong lúc tập."
       />
       {recoverable && !liveSeed && <Card><CardContent className="space-y-3 p-4"><p className="font-semibold">Bạn có buổi tập chưa lưu</p><p className="text-sm text-muted-foreground">{recoverable.title}. Bản nháp giữ trên thiết bị này tối đa 7 ngày và chưa được ghi vào lịch sử.</p><div className="flex flex-wrap gap-2"><Button onClick={() => setLiveSeed(recoverable)}>Tiếp tục buổi tập</Button><Button variant="outline" onClick={() => { clearSessionDraft(owner, "workout"); setRecoverable(null); }}>Bỏ bản nháp</Button></div></CardContent></Card>}
-
-      <p className="text-sm text-muted-foreground">Thống kê của trang lịch sử đang xem; khối lượng chỉ tính hiệp chính đã hoàn thành, không gồm khởi động.</p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon={Activity} label="Buổi gần đây" value={sessions.length.toString()} tone="emerald" />
         <StatCard icon={Dumbbell} label="Tổng set" value={totalSets.toString()} />
@@ -665,7 +662,6 @@ function LiveWorkoutDialog({
           </DialogTitle>
         </DialogHeader>
         {seed.sessionId && <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Ngày tập<Input type="date" value={sessionDate} onChange={event => setSessionDate(event.target.value)} /></label><label className="text-sm">Thời lượng (phút)<Input type="number" min={1} max={600} value={durationMinutes} onChange={event => setDurationMinutes(Number(event.target.value))} /></label></div>}
-        <p className="text-xs text-muted-foreground">Tự giữ bản nháp trên thiết bị này khi đóng hoặc tải lại trang (tối đa 7 ngày; xóa khi đăng xuất). Chỉ lưu lịch sử khi bạn hoàn thành buổi tập; hủy buổi sẽ xóa nháp.</p>
 
         {restRunning && (
           <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-950 p-4 text-white shadow-lg">
@@ -738,7 +734,7 @@ function LiveWorkoutDialog({
                       giây
                     </label>
                   </div>
-                  {seed.sessionId && new Set(group.sets.map(set => set.restSeconds ?? group.restSeconds)).size > 1 && <p className="text-xs text-muted-foreground">Các hiệp có thời gian nghỉ khác nhau, giữ nguyên khi lưu. Đổi ô Nghỉ sẽ áp dụng cho tất cả hiệp của bài này.</p>}
+                  {seed.sessionId && new Set(group.sets.map(set => set.restSeconds ?? group.restSeconds)).size > 1 && <p className="text-xs text-muted-foreground">Đổi ô Nghỉ sẽ áp dụng cho mọi hiệp của bài này.</p>}
                   <WorkoutGroupFields value={group} onChange={fields=>updateGroup(group.key,item=>({...item,...fields}))}/>
                   <details className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-3">
                     <summary className="cursor-pointer text-sm font-semibold text-emerald-900">Gợi ý mức tạ, mức ưu tiên và bài thay thế</summary>
@@ -798,7 +794,7 @@ function LiveWorkoutDialog({
                   {alternativesOpened && alternativeState !== null && (
                     <div className="rounded-2xl border bg-slate-50 p-3">
                       <label className="mb-3 block text-sm">Lọc dụng cụ<select className="mt-1 w-full rounded-xl border p-2" value={alternativeEquipment} onChange={e=>{setAlternativeEquipment(e.target.value);void loadAlternatives(group,e.target.value);}}><option value="">Tất cả dụng cụ</option>{[...new Set(exercises.filter(x=>x.muscleGroup===exercise?.muscleGroup).map(x=>x.equipment))].sort().map(value=><option key={value} value={value}>{value}</option>)}</select></label>
-                      <p className="mb-3 text-sm text-amber-800">Chỉ thay hiệp chưa làm. Bài mới bắt đầu 0 kg; cần tự chọn lại mức tạ phù hợp.</p>
+                      <p className="mb-3 text-sm text-amber-800">Bài mới bắt đầu từ 0 kg, nhớ chọn lại mức tạ.</p>
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Cùng nhóm cơ {exercise?.muscleGroup ?? ""}
                       </p>

@@ -75,7 +75,7 @@ export default function HealthPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeader title="Sức khỏe toàn diện" description="Tổng hợp dinh dưỡng, vận động, cơ thể và nhắc nhở cá nhân." />
+        <PageHeader title="Sức khỏe toàn diện" />
         <select
           value={period}
           onChange={(event) => setPeriod(Number(event.target.value))}

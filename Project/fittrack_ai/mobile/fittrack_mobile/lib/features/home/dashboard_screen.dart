@@ -54,7 +54,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           PageIntro(
             title: 'Xin chào, ${user.fullName}',
-            subtitle: 'Đây là tổng quan hoạt động của bạn hôm nay.',
           ),
           const SizedBox(height: 20),
           if (data!['coachInsight'] != null &&
@@ -130,7 +129,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   subtitle: Text(
-                    'Admin có thể cấp thêm quyền Fitness và Sức khỏe trong màn hình quản trị.',
+                    'Nhờ admin mở thêm Luyện tập và Sức khỏe nếu bạn cần.',
                   ),
                 ),
               ),

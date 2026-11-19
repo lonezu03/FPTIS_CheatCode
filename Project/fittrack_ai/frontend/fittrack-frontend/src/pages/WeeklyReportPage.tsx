@@ -62,7 +62,6 @@ export default function WeeklyReportPage() {
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title="Báo cáo tuần"
-        description="Đánh giá dinh dưỡng, mức độ luyện tập đều đặn và tiến độ cơ thể."
       />
 
       <Card>

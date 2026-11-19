@@ -200,7 +200,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
               const Expanded(
                 child: PageIntro(
                   title: 'AnCai PT',
-                  subtitle: 'Trợ lý chỉ thao tác dữ liệu sau khi bạn xác nhận.',
                 ),
               ),
               IconButton(

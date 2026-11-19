@@ -38,7 +38,7 @@ const greeting: UiMessage = {
   id: "assistant-greeting",
   role: "assistant",
   content:
-    "Chào bạn, tôi là AnCai PT. Tôi có thể tư vấn theo hồ sơ, món ăn và bài tập hiện có; đồng thời chuẩn bị buổi tập, bữa ăn hoặc đơn cơm để bạn xác nhận.",
+    "Chào bạn, mình là AnCai PT. Bạn cần gợi ý tập luyện, ăn uống hay đặt cơm?",
 };
 
 export default function AssistantChat() {

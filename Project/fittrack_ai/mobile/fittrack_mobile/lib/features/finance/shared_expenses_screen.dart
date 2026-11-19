@@ -668,7 +668,7 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Bên còn lại phải xác nhận. Số tiền chờ xác nhận chưa làm giảm công nợ.',
+                  'Công nợ chỉ giảm khi bên kia xác nhận.',
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: debtor,
@@ -778,14 +778,6 @@ class _SharedExpensesScreenState extends State<SharedExpensesScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Sổ đối soát nhóm độc lập. Không tự chuyển tiền hay thay đổi ví cá nhân.',
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Khi chấp nhận lời mời, các thành viên được xem lịch sử và công nợ nhóm, kể cả sau khi rời nhóm.',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
           if (loading) const LinearProgressIndicator(),
           const SizedBox(height: 12),
           Text('Lời mời', style: Theme.of(context).textTheme.titleLarge),

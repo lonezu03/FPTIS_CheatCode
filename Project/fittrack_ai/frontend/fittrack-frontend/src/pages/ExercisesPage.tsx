@@ -206,7 +206,7 @@ function ExercisesWorkspace() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <PageHeader title="Kho bài tập" description="Tạo và quản lý bài tập dùng trong buổi tập và giáo án." />
+      <PageHeader title="Kho bài tập" />
       {isAdmin && <><Button variant="outline" onClick={() => setImportOpen(true)}>Nhập hàng loạt</Button><CatalogImportDialog kind="EXERCISE" open={importOpen} onOpenChange={setImportOpen} onImported={() => { setImportOpen(false); void queryClient.invalidateQueries({ queryKey: ['exercises-management'] }); void queryClient.invalidateQueries({ queryKey: ['exercises'] }); void queryClient.invalidateQueries({ queryKey: ['exercise-catalog-facets'] }); }} /></>}
       <datalist id="catalog-muscles">{(facets.data?.muscleGroups ?? []).map(value => <option key={value} value={value} />)}</datalist>
       <datalist id="catalog-equipment">{(facets.data?.equipment ?? []).map(value => <option key={value} value={value} />)}</datalist>

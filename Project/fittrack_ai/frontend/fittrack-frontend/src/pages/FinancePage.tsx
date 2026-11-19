@@ -237,7 +237,6 @@ export default function FinancePage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <PageHeader
           title="Tài chính cá nhân"
-          description="Theo dõi tiền, chuẩn bị nghĩa vụ và biết phần còn có thể sử dụng. AnCai không giữ hoặc chuyển tiền thật."
         />
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setTab('settings')}>Đối soát số dư ví</Button>
@@ -682,7 +681,7 @@ export default function FinancePage() {
                 <CardTitle>Tài khoản tiền</CardTitle>
                 <Button size="sm" onClick={() => setAccountDialog("new")}><Plus className="size-4" /> Thêm</Button>
               </div>
-              <p className="text-sm text-muted-foreground">Số dư bị lệch sau thời gian không ghi chép? Chọn “Đối soát” để nhập số tiền thực tế, kể cả 0. Lịch sử thu chi vẫn được giữ.</p>
+              <p className="text-sm text-muted-foreground">Số dư lệch với thực tế? Dùng “Đối soát” để chỉnh lại.</p>
             </CardHeader>
             <CardContent className="space-y-2">
               {accountList.length === 0 ? <Empty text="Chưa có tài khoản tiền." /> : accountList.map((account) => (
@@ -908,7 +907,7 @@ function TransactionDialog({
         categoryId: "",
         accountId: "",
       }));
-      setReceiptWarning(draft.warning ?? "Kiểm tra số tiền, ngày, danh mục và chọn tài khoản trước khi lưu. Ảnh không được lưu lại.");
+      setReceiptWarning(draft.warning ?? "Kiểm tra lại thông tin trước khi lưu.");
     },
     onError: (error) => toast.error(getApiErrorMessage(error, "Không thể đọc ảnh hóa đơn.")),
   });
@@ -967,15 +966,14 @@ function TransactionDialog({
         <DialogHeader>
           <DialogTitle>{initial ? "Sửa giao dịch" : "Ghi giao dịch nhanh"}</DialogTitle>
           <DialogDescription>Số tiền luôn là số dương; chọn đúng loại để báo cáo không bị sai.</DialogDescription>
-          {!initial && <p className="text-xs text-muted-foreground">Bản nháp lưu trên thiết bị tối đa 7 ngày và bị xóa khi đăng xuất. Chỉ bấm Lưu giao dịch mới ghi nhận vào tài khoản.</p>}
         </DialogHeader>
         {recovery && <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm"><p>Có giao dịch đang nhập trên thiết bị. Chưa có khoản nào được ghi nhận.</p><div className="mt-2 flex flex-wrap gap-2"><Button size="sm" onClick={() => { formRevision.current += 1; setForm(recovery); setRecovery(null); }}>Khôi phục bản nháp</Button><Button size="sm" variant="outline" onClick={() => { writeConvenience(draftKey, null); setRecovery(null); }}>Bỏ bản nháp cũ</Button></div></div>}
-        {!initial && templates.length > 0 && <details className="rounded-xl border p-3"><summary className="cursor-pointer text-sm font-medium">Dùng lại giao dịch gần đây</summary><p className="my-2 text-xs text-muted-foreground">Sao chép vào biểu mẫu với thời điểm hiện tại. Kiểm tra rồi bấm lưu để ghi giao dịch mới.</p><div className="flex flex-wrap gap-2">{templates.map(template => <Button key={template.id} type="button" size="sm" variant="outline" disabled={Boolean(recovery) || receiptMutation.isPending} onClick={() => { formRevision.current += 1; setForm({ type: template.type, amount: String(template.amount), accountId: accounts.some(account => account.active && account.id === template.accountId) ? template.accountId : "", destinationAccountId: template.destinationAccountId ?? "", categoryId: template.categoryId ?? "", expenseNature: template.expenseNature ?? "ESSENTIAL_VARIABLE", occurredAt: localDateTime(), merchant: template.merchant ?? "", note: template.note ?? "" }); }}>{template.categoryName ?? transactionTypeLabel(template.type)} · {money.format(template.amount)}</Button>)}</div></details>}
+        {!initial && templates.length > 0 && <details className="rounded-xl border p-3"><summary className="cursor-pointer text-sm font-medium">Dùng lại giao dịch gần đây</summary><div className="flex flex-wrap gap-2">{templates.map(template => <Button key={template.id} type="button" size="sm" variant="outline" disabled={Boolean(recovery) || receiptMutation.isPending} onClick={() => { formRevision.current += 1; setForm({ type: template.type, amount: String(template.amount), accountId: accounts.some(account => account.active && account.id === template.accountId) ? template.accountId : "", destinationAccountId: template.destinationAccountId ?? "", categoryId: template.categoryId ?? "", expenseNature: template.expenseNature ?? "ESSENTIAL_VARIABLE", occurredAt: localDateTime(), merchant: template.merchant ?? "", note: template.note ?? "" }); }}>{template.categoryName ?? transactionTypeLabel(template.type)} · {money.format(template.amount)}</Button>)}</div></details>}
         <form id="finance-transaction" className="grid gap-4 sm:grid-cols-2" onChange={() => { formRevision.current += 1; }} onSubmit={(event) => { event.preventDefault(); if (!receiptMutation.isPending && !mutation.isPending && valid) mutation.mutate(); }}>
           {!initial && <div className="sm:col-span-2 rounded-xl border p-3 space-y-2">
             <label className="text-sm font-medium" htmlFor="finance-receipt">Chụp hoặc tải ảnh hóa đơn để điền nhanh</label>
             <input id="finance-receipt" className="block w-full text-sm" type="file" accept="image/png,image/jpeg,image/webp,image/avif,image/gif" capture="environment" disabled={receiptMutation.isPending} onChange={(event) => { onReceiptSelected(event.target.files?.[0]); event.target.value = ""; }} />
-            <p className="text-xs text-muted-foreground">{receiptMutation.isPending ? "Đang đọc hóa đơn..." : receiptWarning ?? "Chỉ tạo bản nháp; bạn kiểm tra rồi mới bấm Lưu giao dịch. Không lưu ảnh."}</p>
+            <p className="text-xs text-muted-foreground">{receiptMutation.isPending ? "Đang đọc hóa đơn..." : receiptWarning ?? "Tạo bản nháp để bạn kiểm tra trước khi lưu."}</p>
           </div>}
           <Field label="Số tiền (VND)" required className="sm:col-span-2">
             <Input autoFocus inputMode="decimal" min="0.01" step="0.01" type="number" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
@@ -1081,7 +1079,7 @@ function AccountDialog({ initial, onOpenChange, onSaved }: {
     <SimpleDialog
       formId="finance-account"
       title={initial ? "Sửa tài khoản tiền" : "Thêm tài khoản tiền"}
-      description="Số dư đầu chỉ là điểm bắt đầu, không được tính là thu nhập."
+      description="Không tính là thu nhập."
       submit={initial ? "Cập nhật" : "Tạo tài khoản"}
       pending={mutation.isPending}
       disabled={!name.trim() || balance === ""}
@@ -1095,7 +1093,7 @@ function AccountDialog({ initial, onOpenChange, onSaved }: {
         </select>
       </Field>
       <Field label="Số dư ban đầu (VND)" required><Input type="number" value={balance} onChange={(event) => setBalance(event.target.value)} /></Field>
-      {initial && <Hint>Đây là số tiền tại thời điểm bắt đầu theo dõi, không phải số tiền hiện có. Muốn sửa số dư hiện tại theo tiền thực tế, hãy dùng “Đối soát” tại danh sách ví.</Hint>}
+      {initial && <Hint>Số tiền lúc bắt đầu theo dõi. Muốn chỉnh số dư hiện tại, dùng “Đối soát”.</Hint>}
     </SimpleDialog>
   );
 }
@@ -1127,7 +1125,6 @@ function CategoryDialog({ initial, categories, onOpenChange, onSaved }: {
     <SimpleDialog
       formId="finance-category"
       title={initial ? "Sửa danh mục" : "Thêm danh mục"}
-      description="Danh mục cho biết tiền đi đâu; tính chất cho biết khoản chi quan trọng đến mức nào."
       submit={initial ? "Cập nhật" : "Tạo danh mục"}
       pending={mutation.isPending}
       disabled={!name.trim()}
@@ -1176,7 +1173,7 @@ function BudgetDialog({ initial, month, categories, onOpenChange, onSaved }: {
     <SimpleDialog
       formId="finance-budget"
       title={initial ? "Sửa ngân sách tháng" : "Đặt ngân sách tháng"}
-      description="AnCai cảnh báo một lần ở mức 80% và 100%, đồng thời dự báo khả năng vượt."
+      description="Nhắc bạn khi chạm 80% và 100% ngân sách."
       submit="Lưu ngân sách"
       pending={mutation.isPending}
       disabled={!categoryId || Number(amount) <= 0}
@@ -1244,7 +1241,7 @@ function RecurringDialog({ initial, accounts, categories, onOpenChange, onSaved 
     <SimpleDialog
       formId="finance-recurring"
       title={initial ? "Sửa khoản định kỳ" : "Thêm khoản định kỳ"}
-      description="AnCai chỉ nhắc; giao dịch thật chỉ được tạo khi bạn xác nhận đã thanh toán hoặc đã nhận."
+      description="Chỉ ghi giao dịch khi bạn xác nhận."
       submit={initial ? "Cập nhật" : "Tạo khoản định kỳ"}
       pending={mutation.isPending}
       disabled={!valid}
@@ -1323,7 +1320,7 @@ function SimpleDialog({
 }: {
   formId: string;
   title: string;
-  description: string;
+  description?: string;
   submit: string;
   pending: boolean;
   disabled: boolean;
@@ -1335,7 +1332,7 @@ function SimpleDialog({
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className={`max-h-[90vh] overflow-y-auto ${wide ? "sm:max-w-2xl" : "sm:max-w-xl"}`}>
-        <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{title}</DialogTitle>{description ? <DialogDescription>{description}</DialogDescription> : <DialogDescription className="sr-only">{title}</DialogDescription>}</DialogHeader>
         <form id={formId} className="space-y-4" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>{children}</form>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Hủy</Button>

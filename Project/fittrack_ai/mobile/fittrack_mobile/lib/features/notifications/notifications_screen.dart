@@ -123,7 +123,6 @@ class NotificationsScreen extends StatelessWidget {
               const Expanded(
                 child: PageIntro(
                   title: 'Thông báo',
-                  subtitle: 'App kiểm tra cập nhật khi đang mở và định kỳ ở chế độ nền.',
                 ),
               ),
               IconButton(
@@ -185,7 +184,7 @@ class NotificationsScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           const Text(
-                            'Cho phép để nhận trực tiếp lời nhắc công việc, lịch trình, sức khỏe và thông báo mới.',
+                            'Bật để nhận lời nhắc và tin mới.',
                           ),
                           const SizedBox(height: 10),
                           FilledButton.icon(
@@ -209,9 +208,6 @@ class NotificationsScreen extends StatelessWidget {
               child: ListTile(
                 leading: const Icon(Icons.notifications_active_outlined),
                 title: const Text('Thông báo điện thoại đang bật'),
-                subtitle: const Text(
-                  'Gửi thử để kiểm tra AnCai có xuất hiện trên thanh thông báo như tin nhắn hay không.',
-                ),
                 trailing: OutlinedButton(
                   onPressed: () => _testSystemNotification(context),
                   child: const Text('Gửi thử'),
@@ -229,7 +225,7 @@ class NotificationsScreen extends StatelessWidget {
               subtitle: center.error == null
                   ? center.lastSyncedAt == null
                         ? 'Đang kết nối máy chủ...'
-                        : 'Đã đồng bộ lúc ${DateFormat('HH:mm').format(center.lastSyncedAt!)}. Thông báo mới sẽ xuất hiện tại đây.'
+                        : 'Đã đồng bộ lúc ${DateFormat('HH:mm').format(center.lastSyncedAt!)}.'
                   : 'Chạm Tải lại để thử kết nối máy chủ.',
             )
           else

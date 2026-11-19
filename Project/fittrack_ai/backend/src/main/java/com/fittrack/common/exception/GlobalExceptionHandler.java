@@ -9,7 +9,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -100,6 +104,26 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException ex
     ) {
         return buildError(HttpStatus.BAD_REQUEST, "Nội dung yêu cầu không hợp lệ");
+    }
+
+    // Lỗi phía client (thiếu/sai tham số, sai đường dẫn, sai method) không được
+    // trả 500: client sẽ hiểu nhầm là máy chủ lỗi tạm thời và thử lại.
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ErrorResponse> handleBadParameter(Exception ex) {
+        return buildError(HttpStatus.BAD_REQUEST, "Tham số yêu cầu không hợp lệ");
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException ex) {
+        return buildError(HttpStatus.NOT_FOUND, "Không tìm thấy đường dẫn yêu cầu");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        return buildError(HttpStatus.METHOD_NOT_ALLOWED, "Phương thức không được hỗ trợ");
     }
 
     @ExceptionHandler(Exception.class)

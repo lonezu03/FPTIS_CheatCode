@@ -15,19 +15,15 @@ class ApiActivityOverlay extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         child,
-        if (activity.isBusy)
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: LinearProgressIndicator(minHeight: 3),
-          ),
+        // Không hiện thanh tải chung cho request đọc: các lần tự làm mới chạy
+        // ngầm (thông báo, phiên tập trung) làm thanh này chạy gần như liên tục.
+        // Mỗi màn đã có trạng thái tải riêng.
         if (activity.isMutating) ...[
           const ModalBarrier(dismissible: false, color: Color(0x330F172A)),
           Center(
             child: Semantics(
               liveRegion: true,
-              label: 'Đang xử lý yêu cầu. Vui lòng chờ API phản hồi.',
+              label: 'Đang xử lý yêu cầu',
               child: Card(
                 margin: const EdgeInsets.all(24),
                 elevation: 12,
@@ -54,7 +50,7 @@ class ApiActivityOverlay extends StatelessWidget {
                               ),
                               SizedBox(height: 3),
                               Text(
-                                'Vui lòng chờ API phản hồi và không gửi lại thao tác.',
+                                'Đợ 1 chúc',
                                 style: TextStyle(fontSize: 13),
                               ),
                             ],

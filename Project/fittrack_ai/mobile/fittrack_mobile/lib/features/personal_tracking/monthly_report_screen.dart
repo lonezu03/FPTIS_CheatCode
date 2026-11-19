@@ -141,9 +141,6 @@ class _MonthlyReportScreenState extends State<MonthlyReportScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
-          'Chọn nội dung để xem dữ liệu cá nhân. Nhật ký riêng không được đưa vào báo cáo.',
-        ),
         TextField(
           controller: month,
           enabled: !loading && !exporting,

@@ -5,6 +5,7 @@ import com.fittrack.achievement.dto.AchievementSummaryResponse;
 import com.fittrack.bodytracking.entity.BodyMeasurement;
 import com.fittrack.bodytracking.repository.BodyMeasurementRepository;
 import com.fittrack.nutrition.entity.MealLog;
+import com.fittrack.nutrition.entity.NutritionDayStatus;
 import com.fittrack.nutrition.repository.MealLogRepository;
 import com.fittrack.nutrition.service.NutritionDayQualityService;
 import com.fittrack.user.entity.User;
@@ -16,6 +17,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -108,41 +112,55 @@ public class AchievementService {
                 .build();
     }
 
+    /** Số ngày nạp mỗi lần khi tính chuỗi, tránh một truy vấn cho từng ngày. */
+    private static final int STREAK_WINDOW_DAYS = 60;
+
     private int calculateMealLoggingStreak(User user, LocalDate today) {
         int streak = 0;
-        LocalDate cursor = today;
+        LocalDate windowEnd = today;
 
         while (true) {
-            List<MealLog> logs = mealLogRepository.findByUserAndLogDate(user, cursor);
+            LocalDate windowStart = windowEnd.minusDays(STREAK_WINDOW_DAYS - 1);
+            Map<LocalDate, List<MealLog>> meals = mealsByDate(user, windowStart, windowEnd);
+            Map<LocalDate, NutritionDayStatus> explicit =
+                    dayQualityService.statuses(user, windowStart, windowEnd);
 
-            if (!dayQualityService.isComplete(dayQualityService.resolve(user, cursor, logs))) {
-                break;
+            for (LocalDate cursor = windowEnd; !cursor.isBefore(windowStart); cursor = cursor.minusDays(1)) {
+                if (!dayQualityService.isComplete(dayQualityService.resolve(cursor, explicit, meals))) {
+                    return streak;
+                }
+                streak++;
             }
-
-            streak++;
-            cursor = cursor.minusDays(1);
+            windowEnd = windowStart.minusDays(1);
         }
-
-        return streak;
     }
 
     private int calculateWorkoutStreak(User user, LocalDate today) {
         int streak = 0;
-        LocalDate cursor = today;
+        LocalDate windowEnd = today;
 
         while (true) {
-            List<WorkoutSession> sessions =
-                    workoutSessionRepository.findByUserAndSessionDateOrderByCreatedAtDesc(user, cursor);
+            LocalDate windowStart = windowEnd.minusDays(STREAK_WINDOW_DAYS - 1);
+            Set<LocalDate> workoutDates = workoutSessionRepository
+                    .findByUserAndSessionDateBetweenOrderBySessionDateAsc(user, windowStart, windowEnd)
+                    .stream()
+                    .map(WorkoutSession::getSessionDate)
+                    .collect(Collectors.toSet());
 
-            if (sessions.isEmpty()) {
-                break;
+            for (LocalDate cursor = windowEnd; !cursor.isBefore(windowStart); cursor = cursor.minusDays(1)) {
+                if (!workoutDates.contains(cursor)) {
+                    return streak;
+                }
+                streak++;
             }
-
-            streak++;
-            cursor = cursor.minusDays(1);
+            windowEnd = windowStart.minusDays(1);
         }
+    }
 
-        return streak;
+    private Map<LocalDate, List<MealLog>> mealsByDate(User user, LocalDate from, LocalDate to) {
+        return mealLogRepository.findByUserAndLogDateBetweenOrderByLogDateAsc(user, from, to)
+                .stream()
+                .collect(Collectors.groupingBy(MealLog::getLogDate));
     }
 
     private int calculateWorkoutDays(User user, LocalDate fromDate, LocalDate toDate) {
@@ -176,26 +194,22 @@ public class AchievementService {
     private int calculateProteinHitDays(User user, LocalDate fromDate, LocalDate toDate) {
         double proteinTarget = goalCalculatorService.calculateProtein(user);
 
+        Map<LocalDate, List<MealLog>> meals = mealsByDate(user, fromDate, toDate);
+        Map<LocalDate, NutritionDayStatus> explicit = dayQualityService.statuses(user, fromDate, toDate);
+
         int hitDays = 0;
-        LocalDate cursor = fromDate;
-
-        while (!cursor.isAfter(toDate)) {
-            List<MealLog> logs = mealLogRepository.findByUserAndLogDate(user, cursor);
-
-            if (!dayQualityService.isComplete(dayQualityService.resolve(user, cursor, logs))) {
-                cursor = cursor.plusDays(1);
+        for (LocalDate cursor = fromDate; !cursor.isAfter(toDate); cursor = cursor.plusDays(1)) {
+            if (!dayQualityService.isComplete(dayQualityService.resolve(cursor, explicit, meals))) {
                 continue;
             }
 
-            double protein = logs.stream()
+            double protein = meals.getOrDefault(cursor, List.of()).stream()
                     .mapToDouble(log -> log.getTotalProtein() == null ? 0 : log.getTotalProtein())
                     .sum();
 
             if (protein >= proteinTarget) {
                 hitDays++;
             }
-
-            cursor = cursor.plusDays(1);
         }
 
         return hitDays;

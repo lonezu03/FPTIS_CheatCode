@@ -302,7 +302,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         icon: const Icon(Icons.notifications_active_outlined, size: 42),
         title: const Text('Bật thông báo AnCai?'),
         content: const Text(
-          'Nhận menu cơm mới, thông báo chốt đơn, thanh toán và lời nhắc sức khỏe ngay trên điện thoại.',
+          'Nhận menu cơm, lời nhắc và tin mới ngay trên điện thoại.',
         ),
         actions: [
           TextButton(

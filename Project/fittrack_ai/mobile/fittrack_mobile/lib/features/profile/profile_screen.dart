@@ -82,7 +82,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         const PageIntro(
           title: 'Hồ sơ cá nhân',
-          subtitle: 'Thông tin tài khoản và quyền truy cập hiện tại.',
         ),
         const SizedBox(height: 20),
         Card(
@@ -201,7 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             secondary: const Icon(Icons.email_outlined),
             title: const Text('Nhận email notification'),
             subtitle: const Text(
-              'Cho phép AnCai gửi email menu, broadcast và kịch bản nhắc nhở. OTP đặt lại mật khẩu vẫn hoạt động độc lập.',
+              'Menu, thông báo chung và lời nhắc.',
             ),
           ),
         ),

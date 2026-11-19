@@ -469,7 +469,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       builder: (c) => AlertDialog(
         title: const Text('Đổi bài tập?'),
         content: const Text(
-          'Các hiệp đã hoàn thành được giữ nguyên. Hiệp còn lại chuyển sang bài mới với mức tạ 0 kg; hãy kiểm tra và nhập lại mức tạ.',
+          'Hiệp đã xong được giữ; bạn nhớ nhập lại mức tạ.',
         ),
         actions: [
           TextButton(
@@ -813,7 +813,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
                   const EmptyView(
                     icon: Icons.fitness_center,
                     title: 'Kho bài tập đang trống',
-                    subtitle: 'Cần ít nhất một bài đã được duyệt để bắt đầu.',
+                    subtitle: 'Cần ít nhất một bài tập để bắt đầu.',
                   )
                 else
                   ...draft.asMap().entries.map(

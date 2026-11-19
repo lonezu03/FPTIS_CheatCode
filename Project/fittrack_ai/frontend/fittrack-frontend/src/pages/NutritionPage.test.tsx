@@ -81,7 +81,7 @@ describe("NutritionPage", () => {
     await waitFor(() => expect(addMatches).toBeEnabled());
     fireEvent.click(addMatches);
     const dialog = within(screen.getByRole('dialog'));
-    expect(dialog.getByText(/Ảnh chỉ ước tính gram, không quy đổi thành ml/)).toBeInTheDocument();
+    expect(dialog.getByText(/Ảnh chỉ ước tính, hãy chỉnh lại số lượng/)).toBeInTheDocument();
     expect(dialog.getByRole('spinbutton')).toHaveValue(1);
     const save = dialog.getByRole('button', { name: 'Lưu 1 món' });
     await waitFor(() => expect(save).toBeEnabled());

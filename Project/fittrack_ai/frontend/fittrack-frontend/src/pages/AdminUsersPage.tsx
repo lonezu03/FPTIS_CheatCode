@@ -130,7 +130,6 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Quản lý tài khoản"
-        description="Cấp quyền admin, khóa hoặc mở tài khoản và đặt lại mật khẩu. Chỉ quản trị viên truy cập được khu vực này."
       />
 
       <div className="grid gap-3 sm:grid-cols-3">

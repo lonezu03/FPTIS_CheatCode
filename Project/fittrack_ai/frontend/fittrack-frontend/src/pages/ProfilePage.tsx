@@ -61,7 +61,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <PageHeader title="Hồ sơ cá nhân" description="Cập nhật thông tin cá nhân và mục tiêu dinh dưỡng." />
+      <PageHeader title="Hồ sơ cá nhân" />
 
       <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4">
         {metrics.map((item) => {

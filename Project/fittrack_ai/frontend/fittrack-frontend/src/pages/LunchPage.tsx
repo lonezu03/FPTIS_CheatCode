@@ -355,7 +355,7 @@ export default function LunchPage() {
   if (todayQuery.isError || !today) {
     return (
       <div className="space-y-4 md:space-y-6">
-        <PageHeader title="Đặt cơm" description="Chọn món, theo dõi quỹ và lịch sử đặt cơm." />
+        <PageHeader title="Đặt cơm" />
         <QueryError
           title="Không tải được thông tin đặt cơm"
           message={getApiErrorMessage(todayQuery.error, "Vui lòng kiểm tra kết nối rồi thử lại.")}
@@ -368,7 +368,7 @@ export default function LunchPage() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <PageHeader title="Đặt cơm" description="Chọn món hôm nay, đặt hộ đồng nghiệp và theo dõi quỹ cơm." />
+        <PageHeader title="Đặt cơm" />
         <Button
           type="button"
           variant="outline"
@@ -819,7 +819,6 @@ export default function LunchPage() {
           <SectionHeading
             icon={History}
             title="Lịch sử đặt cơm"
-            description="Xem lại món, người nhận và trạng thái thanh toán của từng phần."
           />
           {historyQuery.isLoading ? (
             <ListSkeleton />
@@ -848,7 +847,6 @@ export default function LunchPage() {
           <SectionHeading
             icon={Wallet}
             title="Sổ quỹ cơm"
-            description="Mỗi lần nạp, trừ quỹ hoặc điều chỉnh đều được lưu lại để dễ đối soát."
           />
 
           <Card className="border-emerald-200 bg-emerald-50/60">
@@ -1003,7 +1001,7 @@ function SectionHeading({
 }: {
   icon: typeof History;
   title: string;
-  description: string;
+  description?: string;
 }) {
   return (
     <div className="flex items-start gap-3">
@@ -1012,7 +1010,7 @@ function SectionHeading({
       </div>
       <div>
         <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
     </div>
   );

@@ -355,7 +355,6 @@ class _PlannerScreenState extends State<PlannerScreen>
             children: [
               const PageIntro(
                 title: 'Lịch & việc',
-                subtitle: 'Lập kế hoạch với deadline, lời nhắc, lặp lại và checklist.',
               ),
               const SizedBox(height: 14),
               TabBar(
@@ -532,8 +531,7 @@ class _TodoList extends StatelessWidget {
             return const EmptyView(
               icon: Icons.checklist_outlined,
               title: 'Chưa có việc trong chế độ này',
-              subtitle:
-                  'Tạo một việc mới hoặc đổi bộ lọc để xem kế hoạch khác.',
+              subtitle: 'Tạo việc mới hoặc đổi bộ lọc.',
             );
           final todo = items[index - 3];
           return _TodoCard(

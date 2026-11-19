@@ -77,9 +77,6 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Chỉ ghi nhận tiến độ, không khóa tiền hay thay đổi số dư ví.',
-                    ),
                     TextFormField(
                       controller: title,
                       maxLength: 160,
@@ -231,9 +228,6 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Không chuyển tiền thật; không ảnh hưởng thu/chi hay số dư ví.',
-                    ),
                     if (g['archived'] != true) ...[
                       DropdownButtonFormField<String>(
                         initialValue: type,
@@ -419,14 +413,6 @@ class _SavingsGoalsScreenState extends State<SavingsGoalsScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Sổ tiến độ riêng, KHÔNG khóa tiền, KHÔNG trừ ví và KHÔNG tạo giao dịch thu/chi.',
-              ),
-            ),
-          ),
           SwitchListTile(
             title: const Text('Đã lưu trữ'),
             value: archived,

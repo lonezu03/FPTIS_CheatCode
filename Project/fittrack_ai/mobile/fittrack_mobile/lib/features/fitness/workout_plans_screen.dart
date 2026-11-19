@@ -82,7 +82,6 @@ class _WorkoutPlansScreenState extends State<WorkoutPlansScreen> {
         children: [
           const PageIntro(
             title: 'Giáo án',
-            subtitle: 'Thiết lập ngày tập, chọn nhiều bài và bắt đầu tập mà chưa ghi vào lịch sử.',
           ),
           FilledButton.icon(
             onPressed: () => edit(),
@@ -606,7 +605,7 @@ class _PlanEditorState extends State<_PlanEditor> {
                       label: const Text('Thêm ngày tập'),
                     ),
                     const Text(
-                      'RIR: số lần còn có thể lặp. Nghỉ giữa hiệp tính bằng giây. Giáo án chỉ là mục tiêu, chưa phải buổi đã hoàn thành.',
+                      'RIR: số lần bạn còn lặp thêm được.',
                     ),
                   ],
                 ),

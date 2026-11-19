@@ -48,7 +48,7 @@ class _MobileMenuSettingsScreenState extends State<MobileMenuSettingsScreen> {
       builder: (c) => AlertDialog(
         title: const Text('Áp dụng menu cho toàn bộ app?'),
         content: const Text(
-          'Áp dụng cho mọi tài khoản, kể cả admin. Ẩn menu không thu hồi quyền truy cập API. Mỗi người chỉ thấy các module được phân quyền.',
+          'Thay đổi sẽ áp dụng cho mọi tài khoản, kể cả admin.',
         ),
         actions: [
           TextButton(
@@ -75,7 +75,7 @@ class _MobileMenuSettingsScreenState extends State<MobileMenuSettingsScreen> {
       version = widget.menu.version;
       showMessage(
         context,
-        'Đã cập nhật menu app. Các máy khác nhận cấu hình khi mở lại hoặc làm mới app.',
+        'Đã cập nhật menu app.',
       );
     } catch (e) {
       if (mounted) {
@@ -113,7 +113,7 @@ class _MobileMenuSettingsScreenState extends State<MobileMenuSettingsScreen> {
           const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
-              'Kéo để sắp xếp; tắt để ẩn với tất cả tài khoản, kể cả admin. Không thay đổi phân quyền. Thêm, Thông báo, Cá nhân và Quản trị luôn có lối vào.',
+              'Kéo để sắp xếp, tắt để ẩn với mọi người.',
             ),
           ),
           if (busy) const LinearProgressIndicator(),

@@ -260,7 +260,7 @@ export default function FoodsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <PageHeader title="Kho thực phẩm" description="Tạo và quản lý dữ liệu thực phẩm dùng trong nhật ký dinh dưỡng." />
+      <PageHeader title="Kho thực phẩm" />
 
       {(
         <Card>
@@ -301,7 +301,7 @@ export default function FoodsPage() {
 
             <div className="md:col-span-3">
               <h3 className="font-semibold">Vi chất và thành phần mở rộng</h3>
-              <p className="text-xs text-muted-foreground">Để trống nếu chưa biết; chỉ nhập 0 khi nguồn dữ liệu xác nhận thực sự bằng 0.</p>
+              <p className="text-xs text-muted-foreground">Chưa biết thì để trống, đừng nhập 0.</p>
             </div>
 
             {([
@@ -329,7 +329,7 @@ export default function FoodsPage() {
             {isAdmin && (
               <label className="md:col-span-3 flex items-start gap-3 rounded-xl border bg-emerald-50/60 p-4 text-sm">
                 <input type="checkbox" className="mt-1" checked={draft.verified} onChange={(event) => setDraft({ ...draft, verified: event.target.checked })} />
-                <span><strong>Đã xác minh dữ liệu</strong><br /><span className="text-muted-foreground">Chỉ bật sau khi đã đối chiếu khẩu phần và các chỉ số với nguồn đáng tin cậy.</span></span>
+                <span><strong>Đã xác minh dữ liệu</strong><br /><span className="text-muted-foreground">Chỉ bật khi đã đối chiếu với nguồn tin cậy.</span></span>
               </label>
             )}
 

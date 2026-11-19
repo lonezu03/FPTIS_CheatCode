@@ -310,7 +310,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                     ),
                   ),
                   const Text(
-                    'Ảnh chỉ dùng để gợi ý bản nháp. Kiểm tra lại số tiền, ngày và chọn tài khoản, danh mục trước khi lưu.',
+                    'Bạn kiểm tra lại số tiền và ngày trước khi lưu nhé.',
                   ),
                   if (receiptWarning?.isNotEmpty == true) Text(receiptWarning!),
                   const SizedBox(height: 10),
@@ -1069,7 +1069,7 @@ class _FinanceScreenState extends State<FinanceScreen>
           const Padding(
             padding: EdgeInsets.all(18),
             child: Text(
-              'Chưa có khoản định kỳ. Bạn có thể tạo và chỉnh chi tiết trên web; app hỗ trợ xác nhận, nhắc lại và lưu trữ.',
+              'Chưa có khoản định kỳ.',
             ),
           ),
         ...recurring.map(

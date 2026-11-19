@@ -73,7 +73,7 @@ class WorkoutGroupEditor extends StatelessWidget {
             onChanged: (v) => value[entry.key] = int.tryParse(v),
           ),
         const Text(
-          'Các bài cùng mã cần cùng loại/vòng/nghỉ. Đánh dấu từng hiệp thực tế; không tự ghi hoàn thành.',
+          'Các bài cùng nhóm cần cùng loại, số vòng và thời gian nghỉ.',
           style: TextStyle(fontSize: 12),
         ),
       ],

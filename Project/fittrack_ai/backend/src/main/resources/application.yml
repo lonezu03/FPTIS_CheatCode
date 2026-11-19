@@ -29,6 +29,7 @@ spring:
     properties:
       hibernate:
         format_sql: false
+        default_batch_fetch_size: ${JPA_BATCH_FETCH_SIZE:64}
     open-in-view: false
 
   flyway:

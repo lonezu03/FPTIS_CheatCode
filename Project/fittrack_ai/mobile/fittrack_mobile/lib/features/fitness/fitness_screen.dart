@@ -115,7 +115,6 @@ class _FitnessScreenState extends State<FitnessScreen>
             children: [
               const PageIntro(
                 title: 'Luyện tập & dinh dưỡng',
-                subtitle: 'Ghi lại buổi tập và bữa ăn bằng dữ liệu rõ ràng, có đơn vị.',
               ),
               const SizedBox(height: 14),
               if (widget.showNutrition)
@@ -292,9 +291,6 @@ class _WorkoutList extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          const Text(
-            'Thống kê trang hiện tại · volume chỉ gồm hiệp chính đã hoàn thành',
-          ),
           Card(
             color: const Color(0xFFE9F8F0),
             child: Padding(
@@ -570,7 +566,7 @@ class _MealList extends StatelessWidget {
           const EmptyView(
             icon: Icons.restaurant_outlined,
             title: 'Chưa có bữa ăn',
-            subtitle: 'Các món cơm đã đặt sẽ tự động liên kết với nhật ký dinh dưỡng.',
+            subtitle: 'Món cơm bạn đặt sẽ tự hiện ở đây.',
           )
         else
           ...items.map(
@@ -709,7 +705,6 @@ class _AddWorkoutSheetState extends State<_AddWorkoutSheet> {
             initialValue: exerciseId,
             decoration: const InputDecoration(
               labelText: 'Bài tập',
-              helperText: 'Chọn bài trong kho đã được admin duyệt',
             ),
             items: exercises
                 .map(
@@ -875,7 +870,6 @@ class _AddMealSheetState extends State<_AddMealSheet> {
             initialValue: foodId,
             decoration: const InputDecoration(
               labelText: 'Thực phẩm',
-              helperText: 'Chỉ hiển thị món đã được duyệt',
             ),
             items: foods
                 .map(
@@ -893,7 +887,7 @@ class _AddMealSheetState extends State<_AddMealSheet> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: 'Số lượng khẩu phần',
-              helperText: 'Ví dụ: 1 hoặc 1.5 khẩu phần theo đơn vị của món',
+              helperText: 'Ví dụ: 1 hoặc 1.5',
             ),
           ),
           const SizedBox(height: 18),

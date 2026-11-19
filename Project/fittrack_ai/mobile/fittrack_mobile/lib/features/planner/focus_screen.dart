@@ -271,7 +271,7 @@ class _FocusScreenState extends State<FocusScreen> {
         'title': session['mode'] == 'FOCUS'
             ? 'Đã hết giờ tập trung'
             : 'Đã hết giờ nghỉ',
-        'message': 'Mở AnCai để xác nhận kết thúc phiên. Công việc chưa tự hoàn thành.',
+        'message': 'Mở AnCai để kết thúc phiên.',
       }).catchError((_) => false),
     );
   }
@@ -294,9 +294,6 @@ class _FocusScreenState extends State<FocusScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Phiên tập trung được lưu trên máy chủ. Kết thúc phiên không tự hoàn thành công việc.',
-          ),
           if (loading) const LinearProgressIndicator(),
           if (error != null)
             Text(
@@ -514,13 +511,10 @@ class _FocusScreenState extends State<FocusScreen> {
               ),
             ),
           ),
-          const Text(
-            'Đồng hồ tối đa 8 giờ; thời gian không chứng minh mức độ tập trung.',
-          ),
           SwitchListTile(
             title: const Text('Nhắc khi hết giờ'),
             subtitle: const Text(
-              'Chỉ theo dõi khi màn hình này đang mở; không đảm bảo khi app bị dừng.',
+              'Chỉ nhắc khi màn hình này đang mở.',
             ),
             value: notifyWhenDone,
             onChanged: (enabled) async {

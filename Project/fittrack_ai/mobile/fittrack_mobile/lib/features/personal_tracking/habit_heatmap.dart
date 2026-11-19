@@ -133,7 +133,7 @@ class _HabitHeatmapState extends State<HabitHeatmap> {
                     .toList(),
           ),
           const Text(
-            'Ngày nghỉ không ngắt chuỗi. Hôm nay chưa xong chưa tính thất bại.',
+            'Ngày nghỉ không ngắt chuỗi.',
           ),
         ],
       );

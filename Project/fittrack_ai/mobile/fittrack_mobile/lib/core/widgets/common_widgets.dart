@@ -3,27 +3,32 @@ import 'package:flutter/material.dart';
 import '../network/api_exception.dart';
 
 class PageIntro extends StatelessWidget {
-  const PageIntro({super.key, required this.title, required this.subtitle});
+  const PageIntro({super.key, required this.title, this.subtitle});
   final String title;
-  final String subtitle;
+  final String? subtitle;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        title,
-        style: Theme.of(context).textTheme.headlineSmall
-            ?.copyWith(fontWeight: FontWeight.w800),
-      ),
-      const SizedBox(height: 6),
-      Text(
-        subtitle,
-        style: Theme.of(context).textTheme.bodyMedium
-            ?.copyWith(color: Colors.black54),
-      ),
-    ],
-  );
+  Widget build(BuildContext context) {
+    final text = subtitle;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        if (text != null && text.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: Colors.black54),
+          ),
+        ],
+      ],
+    );
+  }
 }
 
 class LoadingView extends StatelessWidget {

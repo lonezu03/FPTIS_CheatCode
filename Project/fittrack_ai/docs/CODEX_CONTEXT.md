@@ -1,5 +1,25 @@
 # FitTrack Current Project State
 
+## Latest handoff: API query performance (2026-11-19)
+
+Slow modules were N+1 queries: lazy collections (todo subtasks/reminders, journal
+tags/images, quote tags, meal-log items, workout sets) loaded one row at a time,
+and achievements walked streaks day by day (1–2 queries per day). Every query is
+a round trip to the remote PostgreSQL, so lists got slower as data grew.
+Fixes: `hibernate.default_batch_fetch_size` = 64 (env `JPA_BATCH_FETCH_SIZE`) in
+application.yml; `AchievementService` loads 60-day windows instead of per-day
+queries. `GlobalExceptionHandler` now returns 400 for missing/invalid request
+params, 404 for unknown paths and 405 for wrong methods (were 500, which the new
+mobile client would retry as transient).
+Probe: `src/test/java/com/fittrack/perf/ApiQueryProbeTest.java` (disabled unless
+`-Dperf.probe=true`) seeds data twice and records SQL count per GET endpoint to
+`target/api-query-probe.tsv`. Before → after (H2, statements per request):
+/api/todos 82→4, /api/journal/entries 44→6, /api/todos/page 38→10, /api/quotes
+23→4, meal-logs 23→3–4, achievements 21→8, workout sessions/history 18→4. Max
+across ~100 GET endpoints is now 10 and no endpoint grows with data size.
+Backend suite: 220 tests, 0 failures, 3 skipped. Not verified on PostgreSQL or
+production; Render cold start is unaffected.
+
 ## Latest handoff: Android session/menu loss (2026-11-19)
 
 Same symptom on the Flutter app: `ApiClient` called `onUnauthorized` (logout) on

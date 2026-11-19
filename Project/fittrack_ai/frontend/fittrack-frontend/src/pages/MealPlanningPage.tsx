@@ -51,7 +51,7 @@ export default function MealPlanningPage() {
     run(async () => { await savePlannedMeal({ ...form, items: items.map(({ foodId, servingAmount, servingUnit }) => ({ foodId, servingAmount, servingUnit })) }, editing?.id); setOpen(false); toast.success('Đã lưu bữa ăn dự kiến, chưa ghi vào nhật ký'); });
   };
   return <div className="space-y-5">
-    <PageHeader title="Thực đơn tuần & mua thực phẩm" description="Lên kế hoạch trước khi ăn. Chỉ ghi nhật ký khi bạn xác nhận đã ăn; không tự xác nhận ngày đầy đủ." />
+    <PageHeader title="Thực đơn tuần & mua thực phẩm" />
     <div className="flex flex-wrap items-end gap-3 rounded-2xl border bg-card p-4">
       <label className="space-y-1">Tuần bắt đầu (thứ Hai)<Input aria-label="Tuần bắt đầu" type="date" value={week} onChange={e => { setWeek(mondayOf(e.target.value || dateText(new Date()))); setPage(0); }} /></label>
       <Button onClick={() => start()}>Thêm bữa dự kiến</Button>
@@ -78,7 +78,6 @@ export default function MealPlanningPage() {
     {meals.data?.totalElements === 0 && <p className="rounded-2xl border border-dashed p-6">Chưa có bữa dự kiến trong tuần. Thêm thực phẩm hoặc lấy từ bữa ăn/công thức đã lưu.</p>}
     <div className="flex gap-3 items-center"><Button variant="outline" disabled={!page || meals.isFetching} onClick={() => setPage(p => p - 1)}>Trước</Button><span>Trang {page + 1}/{Math.max(1, meals.data?.totalPages ?? 1)}</span><Button variant="outline" disabled={meals.isFetching || !meals.data || meals.data.last} onClick={() => setPage(p => p + 1)}>Sau</Button></div>
     <section className="space-y-3 rounded-2xl border bg-card p-4"><h2 className="text-xl font-semibold">Danh sách mua thực phẩm</h2>
-      <p className="text-sm text-muted-foreground">Cộng gộp cùng thực phẩm và đơn vị. Không tự suy nguyên liệu món chế biến sẵn; không đổi gram thành ml. Tạo lại giữ mục tự thêm và trạng thái đã mua.</p>
       {groceries.isError ? <p role="alert">{message(groceries.error)} <Button onClick={() => void groceries.refetch()}>Thử lại</Button></p> : <>
         <Button variant="outline" disabled={busy || groceries.isPending} onClick={() => run(() => regenerateGroceries(week, version))}>Tạo lại từ thực đơn cả tuần</Button>
         <div className="max-h-96 overflow-y-auto space-y-2">{groceries.data?.items.map(item => <div key={item.id} className="flex gap-3 items-center rounded-xl border p-3">
@@ -94,7 +93,7 @@ export default function MealPlanningPage() {
         </form>
       </>}
     </section>
-    <Dialog open={open} onOpenChange={v => { if (!busy) setOpen(v); }}><DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"><DialogHeader><DialogTitle>{editing ? 'Sửa bữa dự kiến' : 'Thêm bữa dự kiến'}</DialogTitle><DialogDescription>Lưu snapshot dự kiến, không ghi nhận là đã ăn. Sửa sẽ tính lại dinh dưỡng từ kho hiện tại.</DialogDescription></DialogHeader>
+    <Dialog open={open} onOpenChange={v => { if (!busy) setOpen(v); }}><DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"><DialogHeader><DialogTitle>{editing ? 'Sửa bữa dự kiến' : 'Thêm bữa dự kiến'}</DialogTitle><DialogDescription>Chỉ là dự kiến, chưa tính là đã ăn.</DialogDescription></DialogHeader>
       <form onSubmit={save} className="space-y-4"><div className="grid gap-3 sm:grid-cols-2">
         <label>Ngày dự kiến<Input required type="date" min="2000-01-01" max="2100-12-31" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></label>
         <label>Loại bữa<select className="h-10 w-full rounded-xl border px-3" value={form.mealType} onChange={e => setForm({ ...form, mealType: e.target.value })}>{Object.entries(types).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label>
@@ -109,7 +108,6 @@ export default function MealPlanningPage() {
         <div className="grid max-h-40 grid-cols-1 overflow-y-auto gap-2 sm:grid-cols-2">{foods.data?.content.map(f => <Button type="button" key={f.id} variant="outline" className="h-auto whitespace-normal justify-start py-2" disabled={items.length >= 100} onClick={() => setItems(current => [...current, { foodId: f.id, foodName: f.name, servingAmount: 1, servingUnit: 'SERVING' }])}>+ {f.name} · {f.unit}</Button>)}</div>
         <div className="flex gap-2"><Button type="button" size="sm" variant="outline" disabled={!searchPage || foods.isFetching} onClick={() => setSearchPage(p => p - 1)}>Trang trước</Button><Button type="button" size="sm" variant="outline" disabled={foods.isFetching || !foods.data || foods.data.last} onClick={() => setSearchPage(p => p + 1)}>Trang sau</Button></div>
         <div className="space-y-3">{items.map((item, index) => <div key={index} className="grid grid-cols-2 gap-2 rounded-xl border p-3 sm:grid-cols-4"><p className="col-span-2 font-medium sm:col-span-1">{item.foodName}</p><label>Số lượng<Input required aria-label={`Số lượng ${item.foodName}`} type="number" step="any" min="0.001" max="100000" value={item.servingAmount} onChange={e => setItems(current => current.map((v, i) => i === index ? { ...v, servingAmount: Number(e.target.value) } : v))} /></label><label>Đơn vị<select className="h-10 w-full rounded-xl border" value={item.servingUnit} onChange={e => setItems(current => current.map((v, i) => i === index ? { ...v, servingUnit: e.target.value as ServingUnit } : v))}>{Object.entries(units).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><Button type="button" variant="destructive" className="self-end" onClick={() => setItems(current => current.filter((_, i) => i !== index))}>Bỏ món</Button></div>)}</div>
-        <p className="text-xs text-muted-foreground">Gram/ml chỉ dùng khi kho đã khai báo khẩu phần đúng loại. Máy chủ sẽ từ chối đổi gram sang ml.</p>
       </>}
       <Button disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu kế hoạch'}</Button></form>
     </DialogContent></Dialog>

@@ -45,7 +45,7 @@ export default function AdminNotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Gửi thông báo" description="Gửi thông báo tới toàn bộ hệ thống hoặc các thành viên được chọn." />
+      <PageHeader title="Gửi thông báo" />
       <Card className="max-w-3xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

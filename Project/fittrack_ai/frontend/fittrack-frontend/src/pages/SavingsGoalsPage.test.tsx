@@ -10,7 +10,7 @@ afterEach(cleanup);
 beforeEach(()=>{vi.clearAllMocks();vi.mocked(api.list).mockResolvedValue({content:[goal],page:0,totalPages:1,totalElements:1});vi.mocked(api.history).mockResolvedValue({content:[],page:0,totalPages:0,totalElements:0});});
 describe('virtual savings',()=>{
  it('shows virtual-only warning and safe amount maximum',async()=>{
-  show();await screen.findByText('Du lịch');expect(screen.getByText(/KHÔNG khóa tiền/)).toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'+ Tạo mục tiêu'}));expect(screen.getByLabelText('Số tiền đích')).toHaveAttribute('max','1000000000000');expect(api.save).not.toHaveBeenCalled();
+  show();await screen.findByText('Du lịch');expect(screen.getByText(/không trừ tiền trong ví/)).toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'+ Tạo mục tiêu'}));expect(screen.getByLabelText('Số tiền đích')).toHaveAttribute('max','1000000000000');expect(api.save).not.toHaveBeenCalled();
  });
  it('retains operation id and form values after uncertain network failure',async()=>{
   vi.mocked(api.record).mockRejectedValueOnce({isAxiosError:true,response:{data:{message:'Máy chủ chưa phản hồi'}}}).mockResolvedValueOnce({id:'o',operationId:'result',type:'ADD',amount:10,currencyCode:'VND',createdAt:'2026-10-27T12:00:00'});

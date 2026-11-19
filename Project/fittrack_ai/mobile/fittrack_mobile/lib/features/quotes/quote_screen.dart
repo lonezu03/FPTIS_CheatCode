@@ -307,7 +307,6 @@ class _QuoteScreenState extends State<QuoteScreen> {
               const Expanded(
                 child: PageIntro(
                   title: 'Kho câu nói',
-                  subtitle: 'Lưu lại và đọc lại những điều đáng nhớ.',
                 ),
               ),
               IconButton(
@@ -779,7 +778,6 @@ class _QuoteFormSheetState extends State<QuoteFormSheet> {
                       decoration: const InputDecoration(
                         labelText: 'Nhãn',
                         hintText: 'triết-lý, công-việc, kỷ-luật',
-                        helperText: 'Ngăn cách các nhãn bằng dấu phẩy.',
                       ),
                     ),
                   ],
@@ -790,9 +788,6 @@ class _QuoteFormSheetState extends State<QuoteFormSheet> {
                     onChanged: (value) =>
                         setState(() => includeInDaily = value),
                     title: const Text('Đưa vào Câu nói hôm nay'),
-                    subtitle: const Text(
-                      'Tham gia vòng quay hằng ngày không lặp.',
-                    ),
                   ),
                   const SizedBox(height: 18),
                   FilledButton.icon(

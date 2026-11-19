@@ -274,7 +274,6 @@ class _MealPlanningScreenState extends State<MealPlanningScreen> {
             children: [
               const PageIntro(
                 title: 'Thực đơn & danh sách mua',
-                subtitle: 'Kế hoạch chưa phải nhật ký. Chỉ ghi nhận khi xác nhận thực sự đã ăn; không tự đánh dấu ngày đầy đủ.',
               ),
               const SizedBox(height: 16),
               Wrap(
@@ -315,7 +314,7 @@ class _MealPlanningScreenState extends State<MealPlanningScreen> {
                           '${summary!['plannedMealCount']} bữa · ${_number(summary!['totals']['calories'])} kcal · ${_number(summary!['totals']['protein'])} g đạm · ${_number(summary!['totals']['carbs'])} g tinh bột · ${_number(summary!['totals']['fat'])} g béo',
                         ),
                         Text(
-                          'Vi chất có dữ liệu ${summary!['totals']['knownMicronutrientValues']}/${summary!['totals']['possibleMicronutrientValues']}. Bao gồm mọi trang của tuần, không phải lượng đã ăn hoặc trung bình nhật ký.',
+                          'Vi chất có dữ liệu ${summary!['totals']['knownMicronutrientValues']}/${summary!['totals']['possibleMicronutrientValues']}',
                         ),
                       ],
                     ),
@@ -351,7 +350,7 @@ class _MealPlanningScreenState extends State<MealPlanningScreen> {
                           'Dự kiến: ${_number(meal['totals']['calories'])} kcal · ${_number(meal['totals']['protein'])} g đạm · ${_number(meal['totals']['carbs'])} g tinh bột · ${_number(meal['totals']['fat'])} g béo',
                         ),
                         Text(
-                          'Snapshot lúc lập/sửa · Vi chất có dữ liệu ${meal['totals']['knownMicronutrientValues']}/${meal['totals']['possibleMicronutrientValues']}. Thiếu dữ liệu không phải bằng 0.',
+                          'Vi chất có dữ liệu ${meal['totals']['knownMicronutrientValues']}/${meal['totals']['possibleMicronutrientValues']}',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         if (meal['loggedMealId'] != null)
@@ -438,7 +437,7 @@ class _MealPlanningScreenState extends State<MealPlanningScreen> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const Text(
-                'Cộng gộp cùng thực phẩm + đơn vị; không suy nguyên liệu món chế biến sẵn hoặc đổi gram thành ml. Tạo lại giữ mục tự thêm và đã mua.',
+                'Gộp theo thực phẩm và đơn vị.',
               ),
               Wrap(
                 spacing: 8,
@@ -643,10 +642,6 @@ class _PlannedMealEditorState extends State<_PlannedMealEditor> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              'Lưu kế hoạch không ghi nhận đã ăn. Sửa sẽ tính lại snapshot từ kho hiện tại.',
-            ),
-            const SizedBox(height: 12),
             TextFormField(
               controller: name,
               maxLength: 160,
@@ -778,9 +773,6 @@ class _PlannedMealEditorState extends State<_PlannedMealEditor> {
                 onPressed: items.length >= 100 ? null : addFood,
                 icon: const Icon(Icons.add),
                 label: const Text('Thêm thực phẩm'),
-              ),
-              const Text(
-                'Gram/ml chỉ hợp lệ khi khẩu phần của thực phẩm đúng loại; không tự đổi gram thành ml.',
               ),
             ],
             if (error != null)

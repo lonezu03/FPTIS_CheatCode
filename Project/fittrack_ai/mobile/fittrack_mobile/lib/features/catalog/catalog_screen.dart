@@ -205,9 +205,6 @@ class _CatalogBrowserState extends State<CatalogBrowser> {
                     item['verified'] == true ? 'Đã xác minh' : 'Chưa xác minh',
                   ),
                   Text(catalogCoverage(item)),
-                  const Text(
-                    'Giá trị trống là chưa biết, không phải bằng 0. Không tự quy đổi g ↔ ml.',
-                  ),
                   const Divider(),
                   ...catalogNutrients.map(
                     (key) => Padding(
@@ -667,7 +664,7 @@ class _CatalogEditorState extends State<_CatalogEditor> {
             const Padding(
               padding: EdgeInsets.only(bottom: 12),
               child: Text(
-                'Nhập dinh dưỡng theo MỘT khẩu phần. Vi chất chưa biết để trống; không thay bằng 0. Kích thước khẩu phần theo g hoặc ml đúng đơn vị, không quy đổi giữa hai loại.',
+                'Nhập theo một khẩu phần; chưa biết thì để trống.',
               ),
             ),
           ...fields.entries.map((entry) {

@@ -298,8 +298,8 @@ class _LunchScreenState extends State<LunchScreen> {
         title: Text('Đặt $portionCount phần ăn?'),
         content: Text(
           _cart.any((portion) => portion.beneficiaryUserId != null)
-              ? 'Tổng giá trị ${_formatCurrency(total)}. Mỗi phần sẽ dùng quỹ của đúng người nhận; phần thiếu được ghi vào công nợ của người đó. Bạn vẫn có thể hủy trước giờ chốt.'
-              : 'Hệ thống sẽ dùng quỹ của bạn và ghi phần thiếu trong ${_formatCurrency(total)} vào công nợ. Bạn vẫn có thể hủy từng phần trước giờ chốt.',
+              ? 'Tổng ${_formatCurrency(total)}. Mỗi phần trừ quỹ người nhận, thiếu thì ghi nợ.'
+              : 'Tổng ${_formatCurrency(total)}, trừ vào quỹ của bạn, thiếu thì ghi nợ.',
         ),
         actions: [
           TextButton(
@@ -334,7 +334,7 @@ class _LunchScreenState extends State<LunchScreen> {
       if (mounted) {
         showMessage(
           context,
-          'Đã đặt $portionCount phần ăn. Quỹ và công nợ của từng người nhận đã được cập nhật.',
+          'Đã đặt $portionCount phần ăn.',
         );
       }
     } catch (error) {
@@ -401,7 +401,7 @@ class _LunchScreenState extends State<LunchScreen> {
         children: [
           const PageIntro(
             title: 'Đặt cơm hôm nay',
-            subtitle: 'Mỗi phần cơm chọn 2 món phía trên dấu +; món đơn chọn 1 món phía dưới.',
+            subtitle: 'Mỗi phần cơm chọn 2 món, món đơn chọn 1.',
           ),
           const SizedBox(height: 16),
           Row(
@@ -455,11 +455,6 @@ class _LunchScreenState extends State<LunchScreen> {
                             const Text(
                               'Chọn bộ menu / điều phối viên',
                               style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Chọn quán hoặc admin điều phối trước khi tạo phần ăn.',
-                              style: TextStyle(color: Colors.black54),
                             ),
                             const SizedBox(height: 10),
                             ..._menus.map(
@@ -534,11 +529,6 @@ class _LunchScreenState extends State<LunchScreen> {
                     _cart.isEmpty ? 'Tạo phần ăn mới' : 'Thêm một phần khác',
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Bạn có thể thêm nhiều phần với các lựa chọn khác nhau, hoặc chọn cùng một món 2 lần cho một phần cơm.',
-                    style: TextStyle(color: Colors.black54),
-                  ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     key: ValueKey(_selectedBeneficiaryId ?? ''),
@@ -547,7 +537,7 @@ class _LunchScreenState extends State<LunchScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Người nhận phần ăn',
                       prefixIcon: Icon(Icons.person_outline),
-                      helperText: 'Đặt hộ không dùng quỹ của bạn. Chi phí thuộc về người nhận.',
+                      helperText: 'Đặt hộ thì người nhận trả tiền.',
                     ),
                     items: [
                       const DropdownMenuItem(
@@ -635,7 +625,7 @@ class _LunchScreenState extends State<LunchScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Có thể chọn nhiều chai/cốc; giá cộng vào phần này.',
+                      'Chọn được nhiều, giá cộng vào phần này.',
                       style: TextStyle(color: Colors.black54, fontSize: 12),
                     ),
                     const SizedBox(height: 8),
@@ -1098,7 +1088,7 @@ class _PlacedOrderCard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
                     child: Text(
-                      'Người nhận: $beneficiaryName • Chi phí tính cho người nhận',
+                      'Người nhận: $beneficiaryName',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.primary,
                         fontSize: 12,

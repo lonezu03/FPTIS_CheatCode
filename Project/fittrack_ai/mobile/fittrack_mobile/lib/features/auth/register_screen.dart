@@ -74,14 +74,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 const PageIntro(
                   title: 'Bắt đầu cùng AnCai',
-                  subtitle: 'Tài khoản mới được dùng các module cá nhân; Đặt cơm cần admin cấp quyền riêng.',
                 ),
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _name,
                   decoration: const InputDecoration(
                     labelText: 'Họ và tên',
-                    helperText: 'Tên hiển thị trong danh sách đặt cơm',
                   ),
                   validator: (v) => v == null || v.trim().length < 2
                       ? 'Nhập họ và tên'
@@ -93,7 +91,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     labelText: 'Email',
-                    helperText: 'Email dùng để đăng nhập và khôi phục mật khẩu',
                   ),
                   validator: (v) => v == null || !v.contains('@')
                       ? 'Nhập email hợp lệ'

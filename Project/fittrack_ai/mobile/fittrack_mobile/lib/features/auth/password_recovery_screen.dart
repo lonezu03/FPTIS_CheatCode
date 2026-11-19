@@ -85,7 +85,7 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
       children: [
         const PageIntro(
           title: 'Quên mật khẩu',
-          subtitle: 'OTP chỉ được gửi tới đúng email đã đăng ký, không thể dùng username của người khác.',
+          subtitle: 'Nhận mã OTP qua email đã đăng ký.',
         ),
         const SizedBox(height: 24),
         TextField(
@@ -101,7 +101,6 @@ class _PasswordRecoveryScreenState extends State<PasswordRecoveryScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: 'Mã OTP',
-              helperText: 'Nhập mã nhận được trong email',
             ),
           ),
           const SizedBox(height: 14),

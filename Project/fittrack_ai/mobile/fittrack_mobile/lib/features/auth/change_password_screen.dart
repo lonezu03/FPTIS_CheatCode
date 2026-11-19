@@ -56,7 +56,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       children: [
         const PageIntro(
           title: 'Bảo vệ tài khoản',
-          subtitle: 'Bạn cần đổi mật khẩu tạm trước khi dùng ứng dụng. Backend sẽ trả token mới sau khi đổi thành công.',
+          subtitle: 'Đổi mật khẩu tạm để tiếp tục.',
         ),
         const SizedBox(height: 24),
         TextField(
