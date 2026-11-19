@@ -1,5 +1,24 @@
 # FitTrack Current Project State
 
+## Latest handoff: web menu/session lost intermittently (2026-11-18)
+
+Symptom: opening a module sometimes blanked the menu and bounced to /login.
+Cause (reproduced with mocked API): access JWT lives 15 min; the first request
+after expiry triggers `/auth/refresh`, and ANY refresh failure (Render cold-start
+5xx, network, 429 from the 30/5 min per-IP refresh limit, or two tabs racing the
+single-use rotated cookie) called `logout()`. New `src/api/session-refresh.ts`
+is the only refresh path (bootstrap + 401 interceptor): Web Locks serialise
+refreshes across tabs, one in-flight refresh per tab, 2 retries (1 s, 3 s,
+Retry-After for 429 capped 10 s), and only 400/401/403 end the session. Transient
+failures keep the session and show a toast; at startup with a stored user a
+"Chưa kết nối được máy chủ" screen offers retry or re-login. Backend unchanged;
+the refresh rate limit (30 per 5 min per client IP) may still be tight for one
+office NAT. The "Đợ 1 chúc" text in ApiActivityOverlay is intentional (owner's
+personal mark) — do not change it.
+Verification: lint, vitest 30 files/83 tests (new session-refresh.test.ts), build;
+headless Edge: 503/429 refresh keeps /todos with menu, real 401 goes to /login,
+two tabs refresh serially and both stay signed in, startup retry screen works.
+
 ## Latest handoff: web navigation UX (2026-11-08)
 
 The web sidebar listed ~35 modules flat in 4 groups. Navigation config moved to

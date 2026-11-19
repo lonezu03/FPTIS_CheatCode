@@ -1,4 +1,4 @@
-import api from "./axios";
+import api, { refreshSession } from "./axios";
 
 export type AuthResponse = {
   token: string;
@@ -65,10 +65,8 @@ export const resetPasswordApi = async (
   await api.post("/auth/reset-password", { email, otp, newPassword });
 };
 
-export const refreshSessionApi = async (): Promise<AuthResponse> => {
-  const response = await api.post("/auth/refresh", {});
-  return response.data;
-};
+/** Retries transient failures and serialises refreshes across tabs; see session-refresh.ts. */
+export const refreshSessionApi = async (): Promise<AuthResponse> => (await refreshSession()) as AuthResponse;
 
 export const logoutApi = async (): Promise<void> => {
   await api.post("/auth/logout", {});

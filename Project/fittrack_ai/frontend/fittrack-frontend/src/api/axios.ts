@@ -7,6 +7,8 @@ import {
   MutationRequestGuard,
 } from "../lib/api-activity";
 import { useAuthStore, type AuthUser } from "../store/auth.store";
+import { createSessionRefresher, SessionRefreshError } from "./session-refresh";
+import { toast } from "sonner";
 
 // Mirrors the backend's local default: SERVER_PORT falls back to 8081.
 const DEFAULT_API_URL = "http://localhost:8082/api";
@@ -119,7 +121,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-let refreshPromise: Promise<string> | null = null;
+type RefreshedSession = AuthUser & { token: string };
+
+/** Single entry point for refreshing the session (startup and 401 retries). */
+export const refreshSession = createSessionRefresher<RefreshedSession>({
+  post: async () => {
+    const response = await axios.post<RefreshedSession>(
+      `${baseURL}/auth/refresh`,
+      {},
+      { withCredentials: true, headers: { "X-Requested-With": "XMLHttpRequest" } },
+    );
+    useAuthStore.getState().setSession(response.data.token, response.data);
+    return response.data;
+  },
+});
 
 api.interceptors.response.use(
   (response) => {
@@ -136,27 +151,18 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && original && !original._retried && !isAuthRequest) {
       original._retried = true;
-      refreshPromise ??= axios
-        .post(
-          `${baseURL}/auth/refresh`,
-          {},
-          { withCredentials: true, headers: { "X-Requested-With": "XMLHttpRequest" } },
-        )
-        .then((response) => {
-          const data = response.data as AuthUser & { token: string };
-          useAuthStore.getState().setSession(data.token, data);
-          return data.token;
-        })
-        .finally(() => {
-          refreshPromise = null;
-        });
-
-      return refreshPromise
-        .then((token) => {
-          original.headers.Authorization = `Bearer ${token}`;
+      return refreshSession()
+        .then((session) => {
+          original.headers.Authorization = `Bearer ${session.token}`;
           return api(original);
         })
         .catch((refreshError) => {
+          // Only a rejected/expired refresh cookie ends the session. A temporary
+          // failure keeps the user, menu and unsaved form state on screen.
+          if (refreshError instanceof SessionRefreshError && !refreshError.sessionInvalid) {
+            toast.error(refreshError.message, { id: "session-refresh" });
+            return Promise.reject(refreshError);
+          }
           useAuthStore.getState().logout();
           if (window.location.pathname !== "/login") window.location.href = "/login";
           return Promise.reject(refreshError);
