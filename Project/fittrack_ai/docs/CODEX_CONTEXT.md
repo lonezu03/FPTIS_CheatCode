@@ -1,5 +1,16 @@
 # FitTrack Current Project State
 
+## Branch integration handoff (2026-11-19)
+
+Fetched origin and fast-forwarded local main from 030c28fd to 7b4e8ede, including
+origin/fix/web-session-refresh. HOME was already an ancestor. Fixed a cascade
+syntax error in mobile test/session_refresh_test.dart discovered after the merge.
+Web lint, build and 83 tests passed; backend Maven tests passed 220 with 3 skips
+(PostgreSQL/Docker and optional probe not fully verified); Flutter 77 tests passed.
+Flutter analyze found 94 info-level notices and exits 1 with default settings;
+`flutter analyze --no-fatal-infos` passes. No APK build, push or deployment.
+Local main is ahead of origin/main; preserve the untracked rental-management folder.
+
 ## Latest handoff: API query performance (2026-11-19)
 
 Slow modules were N+1 queries: lazy collections (todo subtasks/reminders, journal

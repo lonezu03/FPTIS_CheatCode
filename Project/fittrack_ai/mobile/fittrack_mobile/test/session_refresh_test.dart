@@ -61,7 +61,9 @@ ResponseBody _session(String refreshToken) =>
         ..accessToken = 'old'
         ..refreshToken = 'refresh-old'
         ..readStoredRefreshToken = stored
-        ..sleep = (delay) async => sleeps.add(delay)
+        ..sleep = (delay) async {
+          sleeps.add(delay);
+        }
         ..onUnauthorized = () => unauthorized.add(true);
   return (api: api, sleeps: sleeps, unauthorized: unauthorized);
 }
