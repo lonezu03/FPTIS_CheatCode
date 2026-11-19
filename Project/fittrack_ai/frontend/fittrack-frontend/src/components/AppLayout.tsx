@@ -80,7 +80,7 @@ export default function AppLayout() {
   }, [authUser, profileQuery.data]);
   const visibleGroups = useMemo(() => visibleNavGroups(authUser, isAdmin), [authUser, isAdmin]);
   const active = findActive(visibleGroups, location.pathname);
-  const currentPage = active?.item.label ?? "FitTrack";
+  const currentPage = active?.item.label ?? "AnCai";
   const { prefs, isOpen, hasExtraOpen, togglePin, toggleGroup, collapseAll } = useNavPrefs(authUser?.userId, active?.group.id ?? null);
 
   // Ctrl/⌘ + K opens the quick switcher from any page.
@@ -106,7 +106,7 @@ export default function AppLayout() {
     onToggleGroup: toggleGroup,
     onCollapseAll: collapseAll,
   };
-  const displayName = profileQuery.data?.fullName || authUser?.fullName || "Thành viên FitTrack";
+  const displayName = profileQuery.data?.fullName || authUser?.fullName || "Thành viên AnCai";
   const displayEmail = profileQuery.data?.email || authUser?.email || "";
   const initials = getInitials(displayName);
   const todayLabel = new Intl.DateTimeFormat("vi-VN", {
@@ -215,7 +215,7 @@ export default function AppLayout() {
                 <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                   <span className="hidden capitalize xl:inline">{todayLabel}</span>
                   <span className="hidden xl:inline">·</span>
-                  <span className="truncate">{active?.group.label ?? "FitTrack"}</span>
+                  <span className="truncate">{active?.group.label ?? "AnCai"}</span>
                 </div>
                 <p className="truncate text-base font-semibold tracking-tight sm:text-lg">{currentPage}</p>
               </div>
@@ -288,14 +288,14 @@ export default function AppLayout() {
 
 function Brand() {
   return (
-    <Link to="/dashboard" className="flex items-center gap-3" aria-label="FitTrack - Tổng quan">
+    <Link to="/dashboard" className="flex items-center gap-3" aria-label="AnCai - Tổng quan">
       <img
         src="/branding/fittrack-logo.png"
-        alt="Logo FitTrack"
+        alt="Logo AnCai"
         className="size-11 rounded-2xl object-cover shadow-lg shadow-black/15"
       />
       <div>
-        <p className="text-lg font-bold tracking-[-0.03em] text-white">FitTrack</p>
+        <p className="text-lg font-bold tracking-[-0.03em] text-white">AnCai</p>
         <p className="text-[0.68rem] font-medium tracking-wide text-emerald-100/45">WELLNESS WORKSPACE</p>
       </div>
     </Link>

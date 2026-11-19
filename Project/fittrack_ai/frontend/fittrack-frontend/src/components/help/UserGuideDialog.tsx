@@ -71,7 +71,7 @@ type GuideModule = {
 const guideModules: GuideModule[] = [
   {
     id: "overview",
-    title: "Bắt đầu với FitTrack",
+    title: "Bắt đầu với AnCai",
     summary: "Nhận biết menu, quyền và màn hình tổng quan.",
     icon: LayoutDashboard,
     steps: [
@@ -374,7 +374,7 @@ const guideModules: GuideModule[] = [
   },
   {
     id: "assistant",
-    title: "Trợ lý FitTrack PT",
+    title: "Trợ lý AnCai PT",
     summary: "Hỏi đáp và yêu cầu hỗ trợ trong phạm vi được cấp.",
     icon: Bot,
     feature: "chatbotEnabled",
@@ -382,8 +382,8 @@ const guideModules: GuideModule[] = [
       {
         title: "Mô tả mục tiêu đủ rõ",
         description:
-          "Nêu mục tiêu, thời gian, hạn chế và dữ liệu liên quan. Trợ lý dùng thông tin FitTrack để gợi ý nhưng không thay thế bác sĩ hoặc chuyên gia dinh dưỡng.",
-        action: "Mở FitTrack PT ở góc màn hình và gửi một yêu cầu cụ thể.",
+          "Nêu mục tiêu, thời gian, hạn chế và dữ liệu liên quan. Trợ lý dùng thông tin AnCai để gợi ý nhưng không thay thế bác sĩ hoặc chuyên gia dinh dưỡng.",
+        action: "Mở AnCai PT ở góc màn hình và gửi một yêu cầu cụ thể.",
         visual: "assistant",
         focusLabel: "Nội dung trao đổi",
       },
@@ -526,7 +526,7 @@ export function UserGuideDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[min(92vh,820px)] gap-0 overflow-hidden p-0 sm:max-w-[min(1100px,calc(100vw-2rem))] sm:p-0">
         <DialogHeader className="border-b bg-gradient-to-r from-emerald-50 via-white to-teal-50 px-5 py-5 pr-14 sm:px-7">
-          <DialogTitle className="text-xl font-bold text-[#0c2821]">Hướng dẫn sử dụng FitTrack</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-[#0c2821]">Hướng dẫn sử dụng AnCai</DialogTitle>
           <DialogDescription>
             Nội dung bên dưới được cá nhân hóa theo quyền hiện có của tài khoản.
           </DialogDescription>

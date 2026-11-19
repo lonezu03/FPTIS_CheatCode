@@ -237,7 +237,7 @@ export default function FinancePage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <PageHeader
           title="Tài chính cá nhân"
-          description="Theo dõi tiền, chuẩn bị nghĩa vụ và biết phần còn có thể sử dụng. FitTrack không giữ hoặc chuyển tiền thật."
+          description="Theo dõi tiền, chuẩn bị nghĩa vụ và biết phần còn có thể sử dụng. AnCai không giữ hoặc chuyển tiền thật."
         />
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setTab('settings')}>Đối soát số dư ví</Button>
@@ -1176,7 +1176,7 @@ function BudgetDialog({ initial, month, categories, onOpenChange, onSaved }: {
     <SimpleDialog
       formId="finance-budget"
       title={initial ? "Sửa ngân sách tháng" : "Đặt ngân sách tháng"}
-      description="FitTrack cảnh báo một lần ở mức 80% và 100%, đồng thời dự báo khả năng vượt."
+      description="AnCai cảnh báo một lần ở mức 80% và 100%, đồng thời dự báo khả năng vượt."
       submit="Lưu ngân sách"
       pending={mutation.isPending}
       disabled={!categoryId || Number(amount) <= 0}
@@ -1244,7 +1244,7 @@ function RecurringDialog({ initial, accounts, categories, onOpenChange, onSaved 
     <SimpleDialog
       formId="finance-recurring"
       title={initial ? "Sửa khoản định kỳ" : "Thêm khoản định kỳ"}
-      description="FitTrack chỉ nhắc; giao dịch thật chỉ được tạo khi bạn xác nhận đã thanh toán hoặc đã nhận."
+      description="AnCai chỉ nhắc; giao dịch thật chỉ được tạo khi bạn xác nhận đã thanh toán hoặc đã nhận."
       submit={initial ? "Cập nhật" : "Tạo khoản định kỳ"}
       pending={mutation.isPending}
       disabled={!valid}

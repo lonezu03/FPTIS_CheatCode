@@ -109,7 +109,7 @@ export default function ProfilePage() {
               <option value="FEMALE">Nữ</option>
             </select>
           </FormField>
-          <FormField label="Mục tiêu" htmlFor="profile-goal" hint="FitTrack sẽ điều chỉnh mục tiêu năng lượng theo lựa chọn này.">
+          <FormField label="Mục tiêu" htmlFor="profile-goal" hint="AnCai sẽ điều chỉnh mục tiêu năng lượng theo lựa chọn này.">
             <select id="profile-goal" className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={profile.goal ?? "LEAN_BULK"} onChange={(event) => setDraft({ ...profile, goal: event.target.value })}>
               <option value="CUT">Giảm mỡ</option>
               <option value="MAINTAIN">Duy trì cân nặng</option>

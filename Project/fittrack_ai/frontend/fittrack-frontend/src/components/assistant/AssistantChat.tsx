@@ -38,7 +38,7 @@ const greeting: UiMessage = {
   id: "assistant-greeting",
   role: "assistant",
   content:
-    "Chào bạn, tôi là FitTrack PT. Tôi có thể tư vấn theo hồ sơ, món ăn và bài tập hiện có; đồng thời chuẩn bị buổi tập, bữa ăn hoặc đơn cơm để bạn xác nhận.",
+    "Chào bạn, tôi là AnCai PT. Tôi có thể tư vấn theo hồ sơ, món ăn và bài tập hiện có; đồng thời chuẩn bị buổi tập, bữa ăn hoặc đơn cơm để bạn xác nhận.",
 };
 
 export default function AssistantChat() {
@@ -197,7 +197,7 @@ export default function AssistantChat() {
     <>
       {open && (
         <section
-          aria-label="FitTrack PT"
+          aria-label="AnCai PT"
           className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-50 flex h-[min(680px,calc(100dvh-8rem-env(safe-area-inset-bottom)))] w-[min(420px,calc(100vw-2rem))] flex-col overflow-hidden rounded-3xl border border-emerald-900/10 bg-background shadow-2xl shadow-emerald-950/20"
         >
           <header className="flex items-center gap-3 bg-[#0c2821] px-4 py-3.5 text-white">
@@ -205,7 +205,7 @@ export default function AssistantChat() {
               <Bot className="size-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="font-semibold">FitTrack PT</h2>
+              <h2 className="font-semibold">AnCai PT</h2>
               <p className="text-xs text-emerald-100/60">Tư vấn và thao tác có xác nhận</p>
             </div>
             <Button
@@ -239,7 +239,7 @@ export default function AssistantChat() {
                   Quyền riêng tư và dữ liệu AI
                 </div>
                 <p className="mt-2 leading-5">
-                  FitTrack chỉ gửi dữ liệu cần thiết cho câu hỏi hiện tại tới Gemini. Không gửi email
+                  AnCai chỉ gửi dữ liệu cần thiết cho câu hỏi hiện tại tới Gemini. Không gửi email
                   hoặc tên của bạn.
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
@@ -367,10 +367,10 @@ export default function AssistantChat() {
         onClick={() => setOpen((value) => !value)}
         className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] right-4 z-50 h-14 rounded-2xl bg-[#0c2821] px-4 text-white shadow-xl shadow-emerald-950/25 hover:bg-[#123a30]"
         aria-expanded={open}
-        aria-label={open ? "Đóng FitTrack PT" : "Mở FitTrack PT"}
+        aria-label={open ? "Đóng AnCai PT" : "Mở AnCai PT"}
       >
         {open ? <X /> : <Sparkles />}
-        <span className="hidden sm:inline">FitTrack PT</span>
+        <span className="hidden sm:inline">AnCai PT</span>
       </Button>
     </>
   );

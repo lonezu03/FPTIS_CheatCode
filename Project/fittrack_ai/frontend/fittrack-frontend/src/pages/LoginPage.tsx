@@ -119,11 +119,11 @@ export default function LoginPage() {
           <div className="relative flex items-center gap-3">
             <img
               src="/branding/fittrack-logo.png"
-              alt="Logo FitTrack"
+              alt="Logo AnCai"
               className="size-12 rounded-2xl object-cover shadow-lg shadow-emerald-950/30"
             />
             <div>
-              <p className="text-xl font-bold tracking-tight">FitTrack</p>
+              <p className="text-xl font-bold tracking-tight">AnCai</p>
               <p className="text-xs text-emerald-100/70">Wellness workspace</p>
             </div>
           </div>
@@ -150,7 +150,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <p className="relative text-xs text-emerald-100/45">FitTrack · Chăm sóc bản thân, cùng nhau</p>
+          <p className="relative text-xs text-emerald-100/45">AnCai · Chăm sóc bản thân, cùng nhau</p>
         </section>
 
         <section className="flex items-center justify-center px-5 py-10 sm:px-10 lg:px-14 xl:px-20">
@@ -158,18 +158,18 @@ export default function LoginPage() {
             <div className="mb-9 flex items-center gap-3 lg:hidden">
               <img
                 src="/branding/fittrack-logo.png"
-                alt="Logo FitTrack"
+                alt="Logo AnCai"
                 className="size-11 rounded-xl object-cover"
               />
               <div>
-                <p className="font-bold tracking-tight text-[#0d2b24]">FitTrack</p>
+                <p className="font-bold tracking-tight text-[#0d2b24]">AnCai</p>
                 <p className="text-xs text-muted-foreground">Wellness workspace</p>
               </div>
             </div>
 
             <div className="mb-8">
               <p className="mb-2 text-sm font-semibold text-emerald-700">
-                {mode === "login" ? "Chào mừng trở lại" : "Bắt đầu cùng FitTrack"}
+                {mode === "login" ? "Chào mừng trở lại" : "Bắt đầu cùng AnCai"}
               </p>
               <h2 className="text-3xl font-semibold tracking-[-0.035em] text-[#102a24] sm:text-4xl">
                 {mode === "login" ? "Đăng nhập tài khoản" : "Tạo tài khoản mới"}

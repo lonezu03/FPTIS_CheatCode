@@ -8,7 +8,7 @@ export default function PageHeader({ title, description }: PageHeaderProps) {
     <div className="space-y-1.5">
       <div className="mb-2 flex items-center gap-2 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-emerald-700">
         <span className="h-px w-5 bg-emerald-500" />
-        FitTrack workspace
+        AnCai workspace
       </div>
       <h1 className="text-2xl font-semibold tracking-[-0.035em] text-foreground md:text-[2rem]">{title}</h1>
 

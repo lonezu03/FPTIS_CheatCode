@@ -82,7 +82,7 @@ export default function DashboardPage() {
           Một ngày tốt bắt đầu từ một bước nhỏ.
         </h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-emerald-50/65">
-          Theo dõi điều quan trọng, hoàn thành đúng nhịp và để FitTrack nhắc bạn khi cần.
+          Theo dõi điều quan trọng, hoàn thành đúng nhịp và để AnCai nhắc bạn khi cần.
         </p>
         {lunchOnly && (
           <p className="mt-3 max-w-2xl text-sm leading-6 text-emerald-100/80">
@@ -143,7 +143,7 @@ export default function DashboardPage() {
     {today.coachInsight && (healthEnabled || fitnessEnabled) && (
       <Card className="border-emerald-200 bg-emerald-50/60">
         <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div><p className="text-sm font-bold text-emerald-900">FitTrack Coach hôm nay</p><p className="mt-1 text-sm text-emerald-950/75">{today.coachInsight}</p></div>
+          <div><p className="text-sm font-bold text-emerald-900">AnCai Coach hôm nay</p><p className="mt-1 text-sm text-emerald-950/75">{today.coachInsight}</p></div>
           {today.coachActionPath && <Button asChild size="sm"><Link to={today.coachActionPath}>Thực hiện ngay <ArrowRight className="size-4" /></Link></Button>}
         </CardContent>
       </Card>

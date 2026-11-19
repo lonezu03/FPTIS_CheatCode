@@ -68,7 +68,7 @@ export default function AuthRecoveryPage() {
       if (!otpRequested) {
         await forgotPasswordApi(email.trim());
         setOtpRequested(true);
-        setInfo("Nếu email tồn tại, FitTrack đã gửi mã OTP gồm 6 chữ số. Mã có hiệu lực trong 10 phút.");
+        setInfo("Nếu email tồn tại, AnCai đã gửi mã OTP gồm 6 chữ số. Mã có hiệu lực trong 10 phút.");
       } else {
         await resetPasswordApi(email.trim(), otp, password);
         setMessage("Đã đặt lại mật khẩu. Bạn có thể đăng nhập bằng mật khẩu mới.");
@@ -96,7 +96,7 @@ export default function AuthRecoveryPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           {mode === "verify"
-            ? "FitTrack đang kiểm tra liên kết xác thực của bạn."
+            ? "AnCai đang kiểm tra liên kết xác thực của bạn."
             : otpRequested
               ? "Nhập đúng email đăng ký và mã OTP đã nhận để tạo mật khẩu mới."
               : "Nhập email đã đăng ký để nhận mã OTP đặt lại mật khẩu."}
