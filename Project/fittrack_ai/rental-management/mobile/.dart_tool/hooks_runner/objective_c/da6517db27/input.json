@@ -1,0 +1,29 @@
+{
+  "assets": {},
+  "config": {
+    "build_asset_types": [
+      "code_assets/code"
+    ],
+    "extensions": {
+      "code_assets": {
+        "android": {
+          "target_ndk_api": 24
+        },
+        "c_compiler": {
+          "ar": "E:\\WORK\\Code\\FPTIS_CheatCode\\Project\\fittrack_ai\\mobile\\fittrack_mobile\\.local-android-sdk\\ndk\\28.2.13676358\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\llvm-ar.exe",
+          "cc": "E:\\WORK\\Code\\FPTIS_CheatCode\\Project\\fittrack_ai\\mobile\\fittrack_mobile\\.local-android-sdk\\ndk\\28.2.13676358\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang.exe",
+          "ld": "E:\\WORK\\Code\\FPTIS_CheatCode\\Project\\fittrack_ai\\mobile\\fittrack_mobile\\.local-android-sdk\\ndk\\28.2.13676358\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\ld.lld.exe"
+        },
+        "link_mode_preference": "dynamic",
+        "target_architecture": "x64",
+        "target_os": "android"
+      }
+    },
+    "linking_enabled": false
+  },
+  "out_dir_shared": "E:\\WORK\\Code\\FPTIS_CheatCode\\Project\\fittrack_ai\\rental-management\\mobile\\.dart_tool\\hooks_runner\\shared\\objective_c\\build\\",
+  "out_file": "E:\\WORK\\Code\\FPTIS_CheatCode\\Project\\fittrack_ai\\rental-management\\mobile\\.dart_tool\\hooks_runner\\objective_c\\da6517db27\\output.json",
+  "package_name": "objective_c",
+  "package_root": "C:\\Users\\anime\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\objective_c-9.5.0\\",
+  "user_defines": {}
+}
