@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Clock3, QrCode, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { formatCurrency, formatDateTime, getApiErrorMessage } from "@/lib/format";
 
 export default function AdminPaymentPanel() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [settingsDraft, setSettingsDraft] = useState<LunchPaymentSettings | null>(null);
   const settingsQuery = useQuery({
@@ -178,8 +180,13 @@ export default function AdminPaymentPanel() {
                       <div className="flex shrink-0 gap-2">
                         <Button
                           size="sm"
-                          onClick={() => {
-                            if (window.confirm(`Đã nhận ${formatCurrency(request.amount)} từ ${request.user.fullName}?`)) {
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Phê duyệt thanh toán?",
+                              description: `Xác nhận đã nhận ${formatCurrency(request.amount)} từ ${request.user.fullName}. Số dư của người này sẽ được cập nhật.`,
+                              confirmText: "Phê duyệt",
+                            });
+                            if (ok) {
                               approveMutation.mutate(request.id);
                             }
                           }}

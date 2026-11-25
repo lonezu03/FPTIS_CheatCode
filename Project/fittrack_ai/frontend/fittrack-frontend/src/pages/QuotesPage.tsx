@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -69,6 +70,7 @@ const SOURCE_LABELS: Record<QuoteSourceType, string> = {
 type PendingSave = { payload: QuotePayload; id?: string };
 
 export default function QuotesPage() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const pager = useServerPagination(20);
   const [searchInput, setSearchInput] = useState("");
@@ -298,8 +300,14 @@ export default function QuotesPage() {
                 onArchive={() => stateMutation.mutate({ id: quote.id, action: "archive" })}
                 onRestore={() => stateMutation.mutate({ id: quote.id, action: "restore" })}
                 onToggleDaily={() => dailyMutation.mutate(quote)}
-                onDelete={() => {
-                  if (window.confirm("Xóa vĩnh viễn câu nói này và lịch sử xuất hiện của nó?")) {
+                onDelete={async () => {
+                  const ok = await confirm({
+                    title: "Xóa vĩnh viễn câu nói?",
+                    description: `“${quote.content.length > 80 ? `${quote.content.slice(0, 80)}…` : quote.content}” và lịch sử xuất hiện của nó sẽ bị xóa, không khôi phục được.`,
+                    confirmText: "Xóa",
+                    destructive: true,
+                  });
+                  if (ok) {
                     deleteMutation.mutate(quote.id);
                   }
                 }}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import axios from "axios";
 import { createBodyMeasurement, deleteBodyMeasurement, getBodyMeasurementsPage, updateBodyMeasurement } from "../api/body.api";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ import { createProgressPhoto, deleteProgressPhoto, getProgressPhotos } from "../
 import { Camera, Trash2 } from "lucide-react";
 
 export default function BodyTrackingPage() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const today = toLocalDateInput();
 
@@ -137,8 +139,14 @@ export default function BodyTrackingPage() {
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (!window.confirm("Bạn có chắc muốn xóa chỉ số này?")) {
+  const handleDelete = async (id: string, recordDate: string) => {
+    const ok = await confirm({
+      title: "Xóa chỉ số cơ thể?",
+      description: `Chỉ số đo ngày ${recordDate} sẽ bị xóa và không khôi phục được.`,
+      confirmText: "Xóa",
+      destructive: true,
+    });
+    if (!ok) {
       return;
     }
 
@@ -221,7 +229,7 @@ export default function BodyTrackingPage() {
 
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Camera className="size-5 text-emerald-700" /> Ảnh tiến độ</CardTitle></CardHeader>
-        <CardContent className="space-y-4"><p className="text-sm text-muted-foreground">Chụp cùng góc và ánh sáng để dễ so sánh. Chỉ bạn xem được ảnh.</p><div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.target.files?.[0]; if (file) setPhotoData(await fileToDataUri(file)); }} /><select className="h-10 rounded-md border bg-background px-3 text-sm" value={photoPose} onChange={event => setPhotoPose(event.target.value)}><option value="FRONT">Chính diện</option><option value="SIDE">Nghiêng</option><option value="BACK">Phía sau</option><option value="OTHER">Góc khác</option></select><Button disabled={!photoData || photoMutation.isPending} onClick={() => photoMutation.mutate()}>{photoMutation.isPending ? "Đang tải..." : "Lưu ảnh"}</Button></div>{photosQuery.data && photosQuery.data.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{photosQuery.data.map(photo => <div key={photo.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20"><img className="aspect-[3/4] w-full object-cover" src={photo.imageUrl} alt={`Tiến độ ${photo.takenDate}`} /><div className="flex items-center justify-between p-3"><div><p className="text-sm font-semibold">{photo.takenDate}</p><p className="text-xs text-muted-foreground">{photo.weight ? `${photo.weight} kg · ` : ""}{photo.pose}</p></div><Button size="icon" variant="ghost" disabled={deletePhotoMutation.isPending} onClick={() => { if (window.confirm("Xóa ảnh tiến độ này?")) deletePhotoMutation.mutate(photo.id); }}><Trash2 className="size-4 text-red-600" /></Button></div></div>)}</div> : <EmptyState kind="progress" title="Chưa có ảnh tiến độ" description="Thêm ảnh đầu tiên để theo dõi thay đổi cơ thể theo thời gian." />}</CardContent>
+        <CardContent className="space-y-4"><p className="text-sm text-muted-foreground">Chụp cùng góc và ánh sáng để dễ so sánh. Chỉ bạn xem được ảnh.</p><div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.target.files?.[0]; if (file) setPhotoData(await fileToDataUri(file)); }} /><select className="h-10 rounded-md border bg-background px-3 text-sm" value={photoPose} onChange={event => setPhotoPose(event.target.value)}><option value="FRONT">Chính diện</option><option value="SIDE">Nghiêng</option><option value="BACK">Phía sau</option><option value="OTHER">Góc khác</option></select><Button disabled={!photoData || photoMutation.isPending} onClick={() => photoMutation.mutate()}>{photoMutation.isPending ? "Đang tải..." : "Lưu ảnh"}</Button></div>{photosQuery.data && photosQuery.data.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{photosQuery.data.map(photo => <div key={photo.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20"><img className="aspect-[3/4] w-full object-cover" src={photo.imageUrl} alt={`Tiến độ ${photo.takenDate}`} /><div className="flex items-center justify-between p-3"><div><p className="text-sm font-semibold">{photo.takenDate}</p><p className="text-xs text-muted-foreground">{photo.weight ? `${photo.weight} kg · ` : ""}{photo.pose}</p></div><Button size="icon" variant="ghost" disabled={deletePhotoMutation.isPending} onClick={async () => { if (await confirm({ title: "Xóa ảnh tiến độ?", description: `Ảnh ngày ${photo.takenDate} sẽ bị xóa vĩnh viễn.`, confirmText: "Xóa", destructive: true })) deletePhotoMutation.mutate(photo.id); }}><Trash2 className="size-4 text-red-600" /></Button></div></div>)}</div> : <EmptyState kind="progress" title="Chưa có ảnh tiến độ" description="Thêm ảnh đầu tiên để theo dõi thay đổi cơ thể theo thời gian." />}</CardContent>
       </Card>
 
       <Card>
@@ -252,10 +260,10 @@ export default function BodyTrackingPage() {
                   <TableRow key={item.id}>
                     <TableCell>{item.recordDate}</TableCell>
                     <TableCell>{item.weight}kg</TableCell>
-                    <TableCell>{item.waist}cm</TableCell>
-                    <TableCell>{item.chest}cm</TableCell>
-                    <TableCell>{item.arm}cm</TableCell>
-                    <TableCell>{item.thigh}cm</TableCell>
+                    <TableCell>{item.waist == null ? "—" : `${item.waist} cm`}</TableCell>
+                    <TableCell>{item.chest == null ? "—" : `${item.chest} cm`}</TableCell>
+                    <TableCell>{item.arm == null ? "—" : `${item.arm} cm`}</TableCell>
+                    <TableCell>{item.thigh == null ? "—" : `${item.thigh} cm`}</TableCell>
                     <TableCell className="space-x-2">
                       <Button
                         variant="outline"
@@ -277,7 +285,7 @@ export default function BodyTrackingPage() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => void handleDelete(item.id, item.recordDate)}
                         disabled={deleteMutation.isPending}
                       >
                         Xóa
@@ -322,16 +330,16 @@ export default function BodyTrackingPage() {
                 <Input id="edit-body-weight" type="number" step={0.1} value={editingBody.weight} onChange={(event) => setEditingBody({ ...editingBody, weight: Number(event.target.value) })} />
               </FormField>
               <FormField label="Vòng eo" htmlFor="edit-body-waist" unit="cm" required>
-                <Input id="edit-body-waist" type="number" step={0.1} value={editingBody.waist} onChange={(event) => setEditingBody({ ...editingBody, waist: Number(event.target.value) })} />
+                <Input id="edit-body-waist" type="number" step={0.1} value={editingBody.waist ?? ""} onChange={(event) => setEditingBody({ ...editingBody, waist: Number(event.target.value) })} />
               </FormField>
               <FormField label="Vòng ngực" htmlFor="edit-body-chest" unit="cm">
-                <Input id="edit-body-chest" type="number" step={0.1} value={editingBody.chest} onChange={(event) => setEditingBody({ ...editingBody, chest: Number(event.target.value) })} />
+                <Input id="edit-body-chest" type="number" step={0.1} value={editingBody.chest ?? ""} onChange={(event) => setEditingBody({ ...editingBody, chest: Number(event.target.value) })} />
               </FormField>
               <FormField label="Vòng bắp tay" htmlFor="edit-body-arm" unit="cm">
-                <Input id="edit-body-arm" type="number" step={0.1} value={editingBody.arm} onChange={(event) => setEditingBody({ ...editingBody, arm: Number(event.target.value) })} />
+                <Input id="edit-body-arm" type="number" step={0.1} value={editingBody.arm ?? ""} onChange={(event) => setEditingBody({ ...editingBody, arm: Number(event.target.value) })} />
               </FormField>
               <FormField label="Vòng đùi" htmlFor="edit-body-thigh" unit="cm">
-                <Input id="edit-body-thigh" type="number" step={0.1} value={editingBody.thigh} onChange={(event) => setEditingBody({ ...editingBody, thigh: Number(event.target.value) })} />
+                <Input id="edit-body-thigh" type="number" step={0.1} value={editingBody.thigh ?? ""} onChange={(event) => setEditingBody({ ...editingBody, thigh: Number(event.target.value) })} />
               </FormField>
 
               <Button className="w-full sm:col-span-2" onClick={() => updateMutation.mutate(editingBody)} disabled={updateMutation.isPending}>

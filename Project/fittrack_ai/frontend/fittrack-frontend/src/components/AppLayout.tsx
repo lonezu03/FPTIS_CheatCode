@@ -6,7 +6,7 @@ import { getProfile } from "../api/user.api";
 import { useAuthStore } from "../store/auth.store";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { ChevronRight, CircleHelp, LogOut, Menu, Search, Soup } from "lucide-react";
+import { ChevronRight, CircleHelp, Menu, Search, Soup } from "lucide-react";
 
 import NotificationBell from "@/components/notifications/NotificationBell";
 import AssistantChat from "@/components/assistant/AssistantChat";
@@ -15,7 +15,8 @@ import { logoutApi } from "@/api/auth.api";
 import { UserGuideDialog } from "@/components/help/UserGuideDialog";
 import { findActive, visibleNavGroups } from "@/lib/navigation";
 import { useNavPrefs } from "@/lib/navigation-prefs";
-import SidebarNav from "@/components/layout/SidebarNav";
+import TwoPaneNav from "@/components/layout/TwoPaneNav";
+import { QuickAddButton } from "@/components/quickadd";
 import CommandPalette from "@/components/layout/CommandPalette";
 import ModuleTabs from "@/components/layout/ModuleTabs";
 
@@ -81,7 +82,7 @@ export default function AppLayout() {
   const visibleGroups = useMemo(() => visibleNavGroups(authUser, isAdmin), [authUser, isAdmin]);
   const active = findActive(visibleGroups, location.pathname);
   const currentPage = active?.item.label ?? "AnCai";
-  const { prefs, isOpen, hasExtraOpen, togglePin, toggleGroup, collapseAll } = useNavPrefs(authUser?.userId, active?.group.id ?? null);
+  const { prefs, togglePin } = useNavPrefs(authUser?.userId, active?.group.id ?? null);
 
   // Ctrl/⌘ + K opens the quick switcher from any page.
   useEffect(() => {
@@ -96,18 +97,7 @@ export default function AppLayout() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const navProps = {
-    groups: visibleGroups,
-    activeGroupId: active?.group.id ?? null,
-    prefs,
-    isOpen,
-    hasExtraOpen,
-    onTogglePin: togglePin,
-    onToggleGroup: toggleGroup,
-    onCollapseAll: collapseAll,
-  };
   const displayName = profileQuery.data?.fullName || authUser?.fullName || "Thành viên AnCai";
-  const displayEmail = profileQuery.data?.email || authUser?.email || "";
   const initials = getInitials(displayName);
   const todayLabel = new Intl.DateTimeFormat("vi-VN", {
     weekday: "long",
@@ -127,45 +117,24 @@ export default function AppLayout() {
     navigate("/login", { replace: true });
   };
 
+  const navProps = {
+    groups: visibleGroups,
+    activeGroupId: active?.group.id ?? null,
+    pinned: prefs.pinned,
+    onTogglePin: togglePin,
+    displayName,
+    initials,
+    onHelp: () => setGuideOpen(true),
+    onLogout: handleLogout,
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-[17.5rem] border-r border-white/8 bg-[#0c2821] text-white lg:flex lg:flex-col">
-        <div className="px-5 pb-4 pt-5">
-          <Brand />
-        </div>
-
-        <SidebarNav {...navProps} label="Điều hướng chính" />
-
-        <div className="space-y-2 border-t border-white/8 p-3">
-          <button
-            type="button"
-            onClick={() => setGuideOpen(true)}
-            className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-emerald-50/70 transition hover:bg-white/[0.07] hover:text-white"
-          >
-            <CircleHelp className="size-4" />
-            Hướng dẫn sử dụng
-          </button>
-          <div className="flex items-center gap-3 rounded-2xl bg-white/[0.06] p-2.5">
-            <Avatar initials={initials} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-              <p className="truncate text-[0.7rem] text-emerald-50/45">
-                {isAdmin ? "Quản trị viên" : displayEmail}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              aria-label="Đăng xuất"
-              className="grid size-9 shrink-0 place-items-center rounded-xl text-emerald-50/55 transition hover:bg-white/10 hover:text-white"
-            >
-              <LogOut className="size-4" />
-            </button>
-          </div>
-        </div>
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-[20.5rem] border-r border-border/70 bg-card lg:block">
+        <TwoPaneNav {...navProps} label="Điều hướng chính" />
       </aside>
 
-      <div className="lg:pl-[17.5rem]">
+      <div className="lg:pl-[20.5rem]">
         <header className="sticky top-0 z-40 border-b border-border/70 bg-background/88 backdrop-blur-xl">
           <div className="mx-auto flex h-[4.25rem] max-w-[1600px] items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
@@ -175,39 +144,23 @@ export default function AppLayout() {
                     <Menu className="size-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="flex w-[19rem] max-w-[calc(100vw-2rem)] flex-col gap-0 border-none bg-[#0c2821] p-0 text-white">
-                  <SheetHeader className="border-b border-white/8 px-5 py-5 text-left">
-                    <SheetTitle>
-                      <Brand />
-                    </SheetTitle>
+                <SheetContent side="left" className="w-[22rem] max-w-[calc(100vw-1.5rem)] gap-0 border-none bg-card p-0 [&>button:last-child]:hidden">
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>Menu AnCai</SheetTitle>
                   </SheetHeader>
-                  <div className="flex min-h-0 flex-1 flex-col pt-3">
-                    <SidebarNav {...navProps} label="Điều hướng di động" onNavigate={() => setMobileOpen(false)} />
-                  </div>
-                  <div className="border-t border-white/8 p-4">
-                    <Button
-                      variant="ghost"
-                      className="mb-1 w-full justify-start text-emerald-50/70 hover:bg-white/10 hover:text-white"
-                      onClick={() => {
-                        setMobileOpen(false);
-                        setGuideOpen(true);
-                      }}
-                    >
-                      <CircleHelp className="mr-2 size-4" />
-                      Hướng dẫn sử dụng
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-emerald-50/70 hover:bg-white/10 hover:text-white"
-                      onClick={() => {
-                        setMobileOpen(false);
-                        handleLogout();
-                      }}
-                    >
-                      <LogOut className="mr-2 size-4" />
-                      Đăng xuất
-                    </Button>
-                  </div>
+                  <TwoPaneNav
+                    {...navProps}
+                    label="Điều hướng di động"
+                    onNavigate={() => setMobileOpen(false)}
+                    onHelp={() => {
+                      setMobileOpen(false);
+                      setGuideOpen(true);
+                    }}
+                    onLogout={() => {
+                      setMobileOpen(false);
+                      handleLogout();
+                    }}
+                  />
                 </SheetContent>
               </Sheet>
 
@@ -222,6 +175,7 @@ export default function AppLayout() {
             </div>
 
             <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+              <QuickAddButton />
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
@@ -270,7 +224,8 @@ export default function AppLayout() {
         </header>
 
         <main className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
-          {active && <ModuleTabs group={active.group} />}
+          {/* On desktop the nav panel already lists sibling pages; tabs help on small screens. */}
+          {active && <div className="lg:hidden"><ModuleTabs group={active.group} /></div>}
           <AppErrorBoundary key={location.pathname} contained><Outlet /></AppErrorBoundary>
         </main>
       </div>
@@ -283,22 +238,6 @@ export default function AppLayout() {
         isAdmin={isAdmin}
       />
     </div>
-  );
-}
-
-function Brand() {
-  return (
-    <Link to="/dashboard" className="flex items-center gap-3" aria-label="AnCai - Tổng quan">
-      <img
-        src="/branding/fittrack-logo.png"
-        alt="Logo AnCai"
-        className="size-11 rounded-2xl object-cover shadow-lg shadow-black/15"
-      />
-      <div>
-        <p className="text-lg font-bold tracking-[-0.03em] text-white">AnCai</p>
-        <p className="text-[0.68rem] font-medium tracking-wide text-emerald-100/45">WELLNESS WORKSPACE</p>
-      </div>
-    </Link>
   );
 }
 

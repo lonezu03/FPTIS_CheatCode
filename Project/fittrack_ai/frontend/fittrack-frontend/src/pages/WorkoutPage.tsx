@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import axios from "axios";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -154,6 +155,7 @@ export default function WorkoutPage() {
 }
 
 function WorkoutWorkspace({ owner }: { owner: string }) {
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const [recoverable, setRecoverable] = useState(() => readWorkoutDraft(owner));
   const queryClient = useQueryClient();
@@ -245,8 +247,8 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
     onError: () => toast.error("Không thể xóa buổi tập"),
   });
 
-  const startFreeWorkout = () => {
-    if (recoverable && !window.confirm("Bắt đầu buổi mới sẽ thay thế bản nháp cũ trong tab này. Tiếp tục?")) return;
+  const startFreeWorkout = async () => {
+    if (recoverable && !(await confirm({ title: "Bắt đầu buổi tập mới?", description: "Bản nháp buổi tập cũ trong tab này sẽ bị thay thế.", confirmText: "Thay bản nháp", destructive: true }))) return;
     if (!exercises[0]) {
       toast.error("Kho bài tập chưa có bài đã được duyệt");
       return;
@@ -254,8 +256,8 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
     setLiveSeed({ title: "Buổi tập tự do", exercises: [makeExercise(exercises[0].id)] });
   };
 
-  const startPlanWorkout = () => {
-    if (recoverable && !window.confirm("Bắt đầu theo giáo án sẽ thay thế bản nháp cũ trong tab này. Tiếp tục?")) return;
+  const startPlanWorkout = async () => {
+    if (recoverable && !(await confirm({ title: "Bắt đầu theo giáo án?", description: "Bản nháp buổi tập cũ trong tab này sẽ bị thay thế.", confirmText: "Thay bản nháp", destructive: true }))) return;
     const selected = planDays.find(({ plan, day }) => `${plan.id}:${day.id}` === selectedPlanDay);
     if (!selected) {
       toast.error("Hãy chọn một ngày trong giáo án");
@@ -325,8 +327,8 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
             <Button className="mt-5 bg-white text-emerald-950 hover:bg-emerald-50" onClick={startFreeWorkout}>
               <Play /> Bắt đầu buổi tập tự do
             </Button>
-            {workoutPager.page === 1 && !!sessions[0] && <Button className="mt-3 sm:ml-2" variant="secondary" onClick={() => {
-              if (recoverable && !window.confirm("Dùng lại buổi gần đây sẽ thay thế bản nháp cũ trong tab này. Tiếp tục?")) return;
+            {workoutPager.page === 1 && !!sessions[0] && <Button className="mt-3 sm:ml-2" variant="secondary" onClick={async () => {
+              if (recoverable && !(await confirm({ title: "Dùng lại buổi gần đây?", description: "Bản nháp buổi tập cũ trong tab này sẽ bị thay thế.", confirmText: "Thay bản nháp", destructive: true }))) return;
               const latest = sessions[0];
               const ids = [...new Set(latest.sets.map((set) => set.exerciseId))].filter((id) => exercises.some((exercise) => exercise.id === id));
               setLiveSeed({ title: "Tập lại buổi gần đây", exercises: ids.map((id) => makeExercise(id, { sets: latest.sets.filter((set) => set.exerciseId === id).map((set) => makeSet({ setType: set.setType, weight: set.weight, reps: set.reps, rir: set.rir })), restSeconds: latest.sets.find((set) => set.exerciseId === id)?.restSeconds ?? 90 })) });
@@ -373,13 +375,19 @@ function WorkoutWorkspace({ owner }: { owner: string }) {
               <SessionHistoryCard
                 key={session.id}
                 session={session}
-                onEdit={() => {
-                  if (recoverable && !window.confirm('Mở chỉnh sửa sẽ thay thế nháp buổi tập hiện tại. Tiếp tục?')) return;
+                onEdit={async () => {
+                  if (recoverable && !(await confirm({ title: "Sửa buổi tập này?", description: "Bản nháp buổi tập cũ trong tab này sẽ bị thay thế.", confirmText: "Thay bản nháp", destructive: true }))) return;
                   const orders = [...new Set(session.sets.map(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}`))];
 setLiveSeed({ title: session.note ?? '', sessionId: session.id, sessionDate: session.sessionDate, durationMinutes: session.durationMinutes, exercises: orders.map(order => { const sets = session.sets.filter(set => `${set.exerciseOrder ?? 1}:${set.exerciseId}` === order); return makeExercise(sets[0].exerciseId, { originalExerciseId:sets[0].originalExerciseId??undefined,replacementKind:sets[0].replacementKind,groupKey:sets[0].groupKey,groupType:sets[0].groupType,groupRounds:sets[0].groupRounds,betweenExerciseRestSeconds:sets[0].betweenExerciseRestSeconds,betweenRoundRestSeconds:sets[0].betweenRoundRestSeconds, historicalExerciseName: sets[0].exerciseName, restSeconds: sets[0].restSeconds ?? 90, sets: sets.map(set => makeSet(set)) }); }) });
                 }}
-                onDelete={() => {
-                  if (window.confirm("Bạn có chắc muốn xóa toàn bộ buổi tập này?")) {
+                onDelete={async () => {
+                  const ok = await confirm({
+                    title: "Xóa buổi tập?",
+                    description: `Buổi tập ngày ${session.sessionDate} và toàn bộ hiệp đã ghi sẽ bị xóa.`,
+                    confirmText: "Xóa",
+                    destructive: true,
+                  });
+                  if (ok) {
                     deleteMutation.mutate(session.id);
                   }
                 }}
@@ -434,6 +442,17 @@ function LiveWorkoutDialog({
   onClose: () => void;
   onFinish: (payload: Parameters<typeof createWorkoutSession>[0]) => Promise<void>;
 }) {
+  const confirm = useConfirm();
+  const confirmDiscard = async () => {
+    const ok = await confirm({
+      title: "Hủy buổi tập?",
+      description: "Buổi tập đang thực hiện sẽ đóng; dữ liệu chưa lưu sẽ mất.",
+      confirmText: "Hủy buổi tập",
+      cancelText: "Tập tiếp",
+      destructive: true,
+    });
+    if (ok) onClose();
+  };
   const [title, setTitle] = useState(seed.title);
   const [note, setNote] = useState(seed.note ?? "");
   const [sessionDate, setSessionDate] = useState(seed.sessionDate ?? toLocalDateInput());
@@ -649,7 +668,7 @@ function LiveWorkoutDialog({
 
   return (
     <Dialog open onOpenChange={(open) => {
-      if (!open && window.confirm("Hủy buổi tập đang thực hiện? Dữ liệu chưa hoàn thành sẽ mất.")) onClose();
+      if (!open) void confirmDiscard();
     }}>
       <DialogContent className="flex max-h-[96dvh] w-[calc(100vw-1rem)] max-w-6xl flex-col gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)]">
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pt-5 pb-4 sm:px-6 sm:pt-6">
@@ -715,9 +734,9 @@ function LiveWorkoutDialog({
                       exercises={exercises}
                       value={group.exerciseId}
                       missingValueLabel={group.historicalExerciseName}
-                      onChange={(exerciseId) => {
+                      onChange={async (exerciseId) => {
                         if(!seed.sessionId){
-                          if(!window.confirm('Chỉ đổi các hiệp chưa làm; hiệp đã xong giữ nguyên. Mức tạ bài mới đặt về 0 kg, hãy kiểm tra lại trước khi tập.'))return;
+                          if(!(await confirm({ title: "Đổi bài tập?", description: "Chỉ đổi các hiệp chưa làm; hiệp đã xong giữ nguyên. Mức tạ bài mới đặt về 0 kg, hãy kiểm tra lại trước khi tập.", confirmText: "Đổi bài" })))return;
                           setGroups(current=>substituteUnfinished(current,group.key,exerciseId,draftKey,false));return;
                         }
                         updateGroup(group.key, (item) => ({ ...item, exerciseId, historicalExerciseName: undefined }));
@@ -805,8 +824,8 @@ function LiveWorkoutDialog({
                               type="button"
                               key={item.exercise.id}
                               className="rounded-xl border bg-white p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50"
-                              onClick={() => {
-                                if(!window.confirm(`Thay hiệp chưa làm bằng ${item.exercise.name}? Giữ hiệp cũ đã xong và đặt tạ bài mới về 0 kg.`))return;
+                              onClick={async () => {
+                                if(!(await confirm({ title: `Thay bằng ${item.exercise.name}?`, description: "Chỉ thay các hiệp chưa làm; hiệp đã xong giữ nguyên. Mức tạ bài mới đặt về 0 kg.", confirmText: "Thay bài" })))return;
                                 setGroups(current=>substituteUnfinished(current,group.key,item.exercise.id,draftKey));
                                 setAlternatives((current) => {
                                   const next = { ...current };
@@ -865,7 +884,7 @@ function LiveWorkoutDialog({
         </Button>
         </div>
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-white p-4 sm:flex-row sm:justify-end sm:px-6">
-          <Button variant="destructive" onClick={() => { if (window.confirm("Hủy buổi tập? Dữ liệu chưa lưu sẽ mất.")) onClose(); }}><X />Hủy buổi tập</Button>
+          <Button variant="destructive" onClick={() => void confirmDiscard()}><X />Hủy buổi tập</Button>
           <Button onClick={finish} disabled={saving}><CheckCircle2 />{saving ? "Đang lưu..." : seed.sessionId ? "Lưu thay đổi" : "Hoàn thành buổi tập"}</Button>
         </div>
       </DialogContent>

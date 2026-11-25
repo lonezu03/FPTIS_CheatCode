@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ElementType, type ReactNode } from "react";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import { useSearchParams } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { readConvenience, writeConvenience } from "@/lib/convenience-storage";
@@ -130,19 +131,23 @@ function isTransactionDraft(value: unknown): value is TransactionForm {
 }
 
 export default function FinancePage() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const userId = useAuthStore(state => state.user?.userId);
   const [searchParams] = useSearchParams();
   const [preferenceOwner] = useState(userId);
   const preferenceKey = userId && preferenceOwner === userId ? `fittrack:finance-view:${userId}` : null;
   const [preferences] = useState(() => readConvenience(preferenceKey, isFinanceView));
-  const [month, setMonth] = useState(preferences?.month ?? monthNow);
+  // A link from quick search (?q=…&month=…) opens the matching transactions directly.
+  const linkedSearch = searchParams.get("q");
+  const linkedMonth = searchParams.get("month");
+  const [month, setMonth] = useState(linkedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(linkedMonth) ? linkedMonth : preferences?.month ?? monthNow);
   const [page, setPage] = useState(0);
-  const [search, setSearch] = useState(preferences?.search ?? "");
-  const [typeFilter, setTypeFilter] = useState(preferences?.type ?? "");
-  const [accountFilter, setAccountFilter] = useState(preferences?.account ?? "");
-  const [categoryFilter, setCategoryFilter] = useState(preferences?.category ?? "");
-  const [tab, setTab] = useState(preferences?.tab ?? "overview");
+  const [search, setSearch] = useState(linkedSearch ?? preferences?.search ?? "");
+  const [typeFilter, setTypeFilter] = useState(linkedSearch ? "" : preferences?.type ?? "");
+  const [accountFilter, setAccountFilter] = useState(linkedSearch ? "" : preferences?.account ?? "");
+  const [categoryFilter, setCategoryFilter] = useState(linkedSearch ? "" : preferences?.category ?? "");
+  const [tab, setTab] = useState(linkedSearch ? "transactions" : preferences?.tab ?? "overview");
   const [transactionDialog, setTransactionDialog] = useState<FinanceTransaction | "new" | null>(() => searchParams.get("action") === "new" ? "new" : null);
   useEffect(() => { writeConvenience(preferenceKey, { month, search, type: typeFilter, account: accountFilter, category: categoryFilter, tab }); }, [preferenceKey, month, search, typeFilter, accountFilter, categoryFilter, tab]);
   const [accountDialog, setAccountDialog] = useState<FinanceAccount | "new" | null>(null);
@@ -529,8 +534,15 @@ export default function FinancePage() {
                       key={transaction.id}
                       transaction={transaction}
                       onEdit={() => setTransactionDialog(transaction)}
-                      onVoid={() => {
-                        if (window.confirm("Đưa giao dịch này vào trạng thái đã hủy?")) {
+                      onVoid={async () => {
+                        const ok = await confirm({
+                          title: "Hủy giao dịch?",
+                          description: "Giao dịch chuyển sang Đã hủy: vẫn lưu để đối soát nhưng không tính vào số dư và báo cáo.",
+                          confirmText: "Hủy giao dịch",
+                          cancelText: "Giữ lại",
+                          destructive: true,
+                        });
+                        if (ok) {
                           voidMutation.mutate(transaction.id);
                         }
                       }}
@@ -597,7 +609,7 @@ export default function FinancePage() {
                           size="icon-sm"
                           variant="ghost"
                           aria-label="Xóa ngân sách"
-                          onClick={() => window.confirm("Xóa ngân sách tháng này?") && deleteBudgetMutation.mutate(budget.id)}
+                          onClick={async () => { if (await confirm({ title: "Xóa ngân sách?", description: `Ngân sách ${budget.categoryName} của tháng này sẽ bị xóa.`, confirmText: "Xóa", destructive: true })) deleteBudgetMutation.mutate(budget.id); }}
                         >
                           <Trash2 className="size-4 text-rose-600" />
                         </Button>
@@ -662,7 +674,7 @@ export default function FinancePage() {
                         </Button>
                         <Button
                           variant="outline"
-                          onClick={() => window.confirm("Ngừng nhắc khoản định kỳ này?") && archiveRecurringMutation.mutate(item.id)}
+                          onClick={async () => { if (await confirm({ title: "Ngừng nhắc khoản định kỳ?", description: `"${item.name}" sẽ không còn được nhắc.`, confirmText: "Ngừng nhắc" })) archiveRecurringMutation.mutate(item.id); }}
                         >
                           Ngừng
                         </Button>
@@ -704,7 +716,7 @@ export default function FinancePage() {
                         size="icon-sm"
                         variant="ghost"
                         aria-label="Lưu trữ tài khoản"
-                        onClick={() => window.confirm("Lưu trữ tài khoản này? Lịch sử vẫn được giữ lại.") && archiveAccountMutation.mutate(account.id)}
+                        onClick={async () => { if (await confirm({ title: "Lưu trữ tài khoản?", description: `Tài khoản "${account.name}" sẽ được lưu trữ. Lịch sử vẫn được giữ lại.`, confirmText: "Lưu trữ" })) archiveAccountMutation.mutate(account.id); }}
                       >
                         <Trash2 className="size-4 text-rose-600" />
                       </Button>
@@ -741,7 +753,7 @@ export default function FinancePage() {
                         size="icon-sm"
                         variant="ghost"
                         aria-label="Lưu trữ danh mục"
-                        onClick={() => window.confirm("Lưu trữ danh mục này? Dữ liệu cũ vẫn được giữ lại.") && archiveCategoryMutation.mutate(category.id)}
+                        onClick={async () => { if (await confirm({ title: "Lưu trữ danh mục?", description: `Danh mục "${category.name}" sẽ được lưu trữ. Dữ liệu cũ vẫn được giữ lại.`, confirmText: "Lưu trữ" })) archiveCategoryMutation.mutate(category.id); }}
                       >
                         <Trash2 className="size-4 text-rose-600" />
                       </Button>

@@ -10,6 +10,36 @@ Web lint, build and 83 tests passed; backend Maven tests passed 220 with 3 skips
 Flutter analyze found 94 info-level notices and exits 1 with default settings;
 `flutter analyze --no-fatal-infos` passes. No APK build, push or deployment.
 Local main is ahead of origin/main; preserve the untracked rental-management folder.
+## Latest handoff: web navigation + UX batch (2026-11-25)
+
+- Navigation: `components/layout/TwoPaneNav.tsx` replaces `SidebarNav` (deleted): a
+  light icon rail of module groups (avatar, help, logout) plus a panel with the
+  group title, settings link, search and the group's pages (pins kept). Picking a
+  rail group only switches the panel. Same component inside the mobile sheet.
+  ModuleTabs now only show below `lg`.
+- Ctrl+K (`CommandPalette.tsx`) also searches records the user can open:
+  transactions (`q`), journal entries (`q`), foods and exercises (`keyword`);
+  results link to `/finance?q=&month=`, `/journal?q=`, `/foods?q=`,
+  `/exercises?q=` and those pages now read `?q=` on mount.
+- `ConfirmDialog.tsx` (`ConfirmProvider` in main.tsx, `useConfirm()`) replaced
+  every `window.confirm`; Todo "done" toast has Hoàn tác (checks `updatedAt`;
+  not offered for recurring todos because the backend already created the next one).
+- Dashboard is now "Hôm nay": independent sections (todos, habits, meals,
+  workout, spending) in `components/dashboard/*`, each wrapped in
+  `SectionBoundary` so one bad response cannot blank the page.
+- Global "Ghi nhanh" (`components/quickadd`, Alt+N) in the header: todo, meal,
+  transaction, weight, journal.
+- Removed the global top loading bar for reads; the save overlay (incl. the
+  owner's "Đợ 1 chúc" text) is unchanged.
+- PWA: `public/manifest.webmanifest`, `public/pwa/*` icons, `public/sw.js`
+  (never touches `/api`, network-first navigation, caches only `/assets/*`),
+  registered in production builds via `src/pwa/register-sw.ts`.
+- Smoke e2e: `npx playwright test --config playwright.smoke.config.ts`
+  (builds to %TEMP%, mocked API, Edge fallback).
+Verification: tsc, eslint, vitest 32 files/100 tests, smoke e2e 6/6. Not done
+yet: dark mode, skeleton/empty-state sweep of other pages, repeat-last actions,
+unified goals, CSV export, splitting large pages, TanStack Query migration,
+accessibility sweep. Not committed.
 
 ## Latest handoff: API query performance (2026-11-19)
 

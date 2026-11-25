@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { clearSessionDraft, readSessionDraft, writeSessionDraft } from "@/lib/sessionDraft";
@@ -59,6 +60,7 @@ export default function WorkoutPlansPage() {
 }
 
 function WorkoutPlanWorkspace({ owner }: { owner: string }) {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
 
   const navigate = useNavigate();
@@ -299,8 +301,8 @@ function WorkoutPlanWorkspace({ owner }: { owner: string }) {
     setDraftDays([{ name: "Ngày tập đẩy", dayOrder: 1, exercises: [{ exerciseId: defaultExerciseId, exerciseOrder: 1, targetSets: 3, targetReps: 10, targetWeight: 0, targetRir: 2 }] }]);
   };
 
-  const startEditing = (plan: WorkoutPlan) => {
-    if (dirty && !window.confirm("Bỏ thay đổi đang nhập để mở giáo án này?")) return false;
+  const startEditing = async (plan: WorkoutPlan) => {
+    if (dirty && !(await confirm({ title: "Bỏ thay đổi đang nhập?", description: `Phần đang nhập chưa lưu sẽ mất để mở giáo án "${plan.name}".`, confirmText: "Bỏ thay đổi", cancelText: "Ở lại", destructive: true }))) return false;
     setFingerprint(JSON.stringify(plan)); setDirty(false);
     setEditingPlanId(plan.id);
     setName(plan.name);
@@ -539,10 +541,16 @@ function WorkoutPlanWorkspace({ owner }: { owner: string }) {
                 plan={plan}
                 isDeleting={deleteMutation.isPending}
                 isGenerating={false}
-                onEdit={() => startEditing(plan)}
-                onDuplicate={() => { if (!startEditing(plan)) return; setEditingPlanId(null); setFingerprint(null); setName(`${plan.name} (bản sao)`); setDirty(true); }}
-                onDelete={() => {
-                  if (!window.confirm("Bạn có chắc muốn xóa giáo án này?")) {
+                onEdit={() => void startEditing(plan)}
+                onDuplicate={async () => { if (!(await startEditing(plan))) return; setEditingPlanId(null); setFingerprint(null); setName(`${plan.name} (bản sao)`); setDirty(true); }}
+                onDelete={async () => {
+                  const ok = await confirm({
+                    title: "Xóa giáo án?",
+                    description: `Giáo án "${plan.name}" sẽ bị xóa.`,
+                    confirmText: "Xóa",
+                    destructive: true,
+                  });
+                  if (!ok) {
                     return;
                   }
 
