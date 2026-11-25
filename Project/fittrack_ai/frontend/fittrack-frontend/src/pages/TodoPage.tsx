@@ -133,9 +133,28 @@ function TodoWorkspace() {
     onError: (error: unknown) => toast.error(getApiErrorMessage(error, 'Không thể cập nhật công việc')),
   });
   const toggleMutation = useMutation({
-    mutationFn: ({ todo, nextStatus }: { todo: Todo; nextStatus: Todo['status'] }) => nextStatus === 'DONE' ? completeTodo(todo.id) : updateTodo(todo.id, todoPayload(todo, nextStatus)),
-    onSuccess: (updated, { todo, nextStatus }) => { refresh(); if (nextStatus === 'DONE' && todo.recurrenceRule === 'NONE') toast.success('Đã hoàn thành công việc', { action: { label: 'Hoàn tác', onClick: () => { void getTodo(todo.id).then(current => { if (current.status !== 'DONE' || current.updatedAt !== (updated as Todo).updatedAt) { toast.info('Công việc đã thay đổi; hãy kiểm tra lại.'); return; } toggleMutation.mutate({ todo: current, nextStatus: todo.status }); }).catch(error => toast.error(getApiErrorMessage(error, 'Không thể hoàn tác'))); } } }); },
-    onError: (error: unknown) => toast.error(getApiErrorMessage(error, 'Không thể cập nhật trạng thái')),
+    mutationFn: ({ todo, nextStatus }: { todo: Todo; nextStatus: Todo['status']; undo?: boolean }) => nextStatus === 'DONE' ? completeTodo(todo.id) : updateTodo(todo.id, todoPayload(todo, nextStatus)),
+    onSuccess: (updated, { todo, nextStatus, undo }) => {
+      refresh();
+      if (undo) { toast.success('Đã hoàn tác', { description: todo.title }); return; }
+      if (nextStatus !== 'DONE') return;
+      // Việc lặp lại đã sinh lần kế tiếp khi hoàn thành nên không hoàn tác tại đây.
+      if (todo.recurrenceRule !== 'NONE') { toast.success('Đã hoàn thành lần này', { description: todo.title }); return; }
+      toast.success('Đã hoàn thành công việc', {
+        description: todo.title,
+        action: {
+          label: 'Hoàn tác',
+          // Trả về trạng thái trước khi hoàn thành, chỉ khi công việc chưa bị đổi ở nơi khác.
+          onClick: () => {
+            void getTodo(todo.id).then(current => {
+              if (current.status !== 'DONE' || current.updatedAt !== updated.updatedAt) { toast.info('Công việc đã thay đổi; hãy kiểm tra lại.'); return; }
+              toggleMutation.mutate({ todo: current, nextStatus: todo.status, undo: true });
+            }).catch(error => toast.error(getApiErrorMessage(error, 'Không thể hoàn tác')));
+          },
+        },
+      });
+    },
+    onError: (error: unknown, { undo }) => toast.error(getApiErrorMessage(error, undo ? 'Không thể hoàn tác' : 'Không thể cập nhật trạng thái')),
   });
   const skipMutation = useMutation({
     mutationFn: (todo: Todo) => skipTodo(todo.id),

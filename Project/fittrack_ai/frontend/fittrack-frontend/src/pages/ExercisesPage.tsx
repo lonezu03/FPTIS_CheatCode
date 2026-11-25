@@ -1,5 +1,7 @@
 import { type ChangeEvent, useEffect, useState } from "react";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { resolveApiAssetUrl } from "@/api/axios";
@@ -56,6 +58,7 @@ export default function ExercisesPage() {
 }
 
 function ExercisesWorkspace() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const isAdmin = useAuthStore((state) => state.user?.role === "ADMIN");
   const ownerId = useAuthStore(state => state.user?.userId);
@@ -63,8 +66,9 @@ function ExercisesWorkspace() {
   const [preferences] = useState(() => {
     try { const raw = localStorage.getItem(storageKey); const parsed = raw ? JSON.parse(raw) : null; return { keyword: typeof parsed?.keyword === 'string' ? parsed.keyword : '', includeInactive: typeof parsed?.includeInactive === 'boolean' ? parsed.includeInactive : isAdmin }; } catch { return { keyword: '', includeInactive: isAdmin }; }
   });
-  const [keyword, setKeyword] = useState(preferences.keyword);
-  const [searchKeyword, setSearchKeyword] = useState(preferences.keyword);
+  const [searchParams] = useSearchParams();
+  const [keyword, setKeyword] = useState(() => searchParams.get("q") ?? preferences.keyword);
+  const [searchKeyword, setSearchKeyword] = useState(() => searchParams.get("q") ?? preferences.keyword);
   const [includeInactive, setIncludeInactive] = useState(preferences.includeInactive);
   const [importOpen, setImportOpen] = useState(false);
   const [muscleFilter, setMuscleFilter] = useState("");
@@ -192,8 +196,13 @@ function ExercisesWorkspace() {
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (!window.confirm("Bạn có chắc muốn lưu trữ bài tập này?")) {
+  const handleDelete = async (id: string, name: string) => {
+    const ok = await confirm({
+      title: "Lưu trữ bài tập?",
+      description: `Bài "${name}" sẽ chuyển vào lưu trữ.`,
+      confirmText: "Lưu trữ",
+    });
+    if (!ok) {
       return;
     }
 
@@ -350,7 +359,7 @@ function ExercisesWorkspace() {
                             <Button
                               variant="destructive"
                               size="sm"
-                              onClick={() => handleDelete(exercise.id)}
+                              onClick={() => void handleDelete(exercise.id, exercise.name)}
                               disabled={deleteMutation.isPending}
                             >
                               Lưu trữ

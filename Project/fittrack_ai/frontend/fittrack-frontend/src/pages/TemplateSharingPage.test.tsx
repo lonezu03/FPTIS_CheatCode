@@ -1,5 +1,6 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
-import {cleanup,fireEvent,render,screen,waitFor} from '@testing-library/react';
+import {cleanup,fireEvent,render,screen,waitFor,within} from '@testing-library/react';
+import {ConfirmProvider} from '@/components/common/ConfirmDialog';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {useAuthStore} from '../store/auth.store';
 import TemplateSharingPage from './TemplateSharingPage';
@@ -21,10 +22,10 @@ beforeEach(()=>{
 });
 function show(flags={fitnessEnabled:true,healthEnabled:false}){
  useAuthStore.setState({user:{userId:'u',email:'u@example.test',fullName:'User',role:'USER',lunchEnabled:false,chatbotEnabled:false,todoEnabled:false,scheduleEnabled:false,quoteEnabled:false,financeEnabled:false,journalEnabled:false,passwordChangeRequired:false,...flags}});
- render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><TemplateSharingPage/></QueryClientProvider>);
+ render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><ConfirmProvider><TemplateSharingPage/></ConfirmProvider></QueryClientProvider>);
 }
 describe('explicit private share-copy',()=>{
  it('does not expose sharing without either permission',()=>{show({fitnessEnabled:false,healthEnabled:false});expect(screen.getByText(/chưa có quyền chia sẻ/)).toBeInTheDocument();expect(screen.queryByRole('button',{name:'Gửi bản mẫu'})).not.toBeInTheDocument();});
- it('preview displays exercise names and never copies without confirmation',async()=>{show();fireEvent.click(await screen.findByRole('button',{name:'Xem mẫu'}));expect(await screen.findByText(/Đẩy ngực · 3 hiệp/)).toBeInTheDocument();expect(acceptTemplateShare).not.toHaveBeenCalled();vi.spyOn(window,'confirm').mockReturnValue(false);fireEvent.click(screen.getByRole('button',{name:'Sao chép vào tài khoản của tôi'}));expect(acceptTemplateShare).not.toHaveBeenCalled();});
- it('requires explicit selected recipient and send confirmation',async()=>{show();await screen.findByRole('option',{name:'Mẫu tập'});fireEvent.change(screen.getByLabelText('Bản mẫu của bạn'),{target:{value:'plan'}});fireEvent.change(screen.getByLabelText('Email tài khoản người nhận'),{target:{value:'a@example.test'}});vi.spyOn(window,'confirm').mockReturnValue(true);fireEvent.click(screen.getByRole('button',{name:'Gửi bản mẫu'}));await waitFor(()=>expect(createTemplateShare).toHaveBeenCalledWith(expect.objectContaining({kind:'WORKOUT_PLAN',sourceId:'plan',recipientEmail:'a@example.test',operationId:expect.any(String)})));});
+ it('preview displays exercise names and never copies without confirmation',async()=>{show();fireEvent.click(await screen.findByRole('button',{name:'Xem mẫu'}));expect(await screen.findByText(/Đẩy ngực · 3 hiệp/)).toBeInTheDocument();expect(acceptTemplateShare).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Sao chép vào tài khoản của tôi'}));const dialog=await screen.findByRole('alertdialog');fireEvent.click(within(dialog).getByRole('button',{name:'Hủy'}));await waitFor(()=>expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());expect(acceptTemplateShare).not.toHaveBeenCalled();});
+ it('requires explicit selected recipient and send confirmation',async()=>{show();await screen.findByRole('option',{name:'Mẫu tập'});fireEvent.change(screen.getByLabelText('Bản mẫu của bạn'),{target:{value:'plan'}});fireEvent.change(screen.getByLabelText('Email tài khoản người nhận'),{target:{value:'a@example.test'}});fireEvent.click(screen.getByRole('button',{name:'Gửi bản mẫu'}));const dialog=await screen.findByRole('alertdialog');expect(dialog).toHaveTextContent('a@example.test');expect(createTemplateShare).not.toHaveBeenCalled();fireEvent.click(within(dialog).getByRole('button',{name:'Gửi'}));await waitFor(()=>expect(createTemplateShare).toHaveBeenCalledWith(expect.objectContaining({kind:'WORKOUT_PLAN',sourceId:'plan',recipientEmail:'a@example.test',operationId:expect.any(String)})));});
 });

@@ -10,17 +10,12 @@ export default function ApiActivityOverlay() {
     apiActivityStore.getSnapshot,
   );
 
-  if (activity.pendingRequests === 0) return null;
+  // Reads (including silent background refreshes) show no global indicator; each page
+  // has its own loading state. Only saves block the screen.
+  if (activity.pendingMutations === 0) return null;
 
   return (
     <>
-      <div
-        className="pointer-events-none fixed inset-x-0 top-0 z-[120] h-1 overflow-hidden bg-emerald-100"
-        aria-hidden="true"
-      >
-        <div className="h-full w-2/3 animate-pulse rounded-r-full bg-emerald-600" />
-      </div>
-
       {activity.pendingMutations > 0 ? (
         <div
           className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/20 px-4 backdrop-blur-[1px]"

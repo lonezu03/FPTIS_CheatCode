@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import MealPlanningPage from './MealPlanningPage';
 import { mondayOf } from '@/lib/meal-planning-dates';
+import { ConfirmProvider } from '@/components/common/ConfirmDialog';
 import { consumePlannedMeal, listPlannedMeals, savePlannedMeal } from '@/api/meal-planning.api';
 
 vi.mock('@/api/meal-planning.api', () => ({
@@ -15,7 +16,7 @@ vi.mock('@/api/nutrition.api', () => ({
   getNutritionConvenience: vi.fn().mockResolvedValue({ savedMeals: [], recipes: [] }),
   searchNutritionFoods: vi.fn().mockResolvedValue({ content: [{ id: 'rice', name: 'Cơm', unit: 'bát' }], last: true }),
 }));
-function mount() { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return render(<QueryClientProvider client={client}><MealPlanningPage /></QueryClientProvider>); }
+function mount() { const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }); return render(<QueryClientProvider client={client}><ConfirmProvider><MealPlanningPage /></ConfirmProvider></QueryClientProvider>); }
 
 describe('Weekly meals', () => {
   afterEach(() => { cleanup(); vi.clearAllMocks(); });
@@ -23,16 +24,20 @@ describe('Weekly meals', () => {
   it('viewing plan and canceling consumption never writes diary', async () => {
     mount(); expect(await screen.findByText('Bữa thử')).toBeInTheDocument();
     expect(await screen.findByText(/31 bữa · 6200 kcal/)).toBeInTheDocument();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     fireEvent.click(screen.getByRole('button', { name: 'Đã ăn → ghi nhật ký' }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
     expect(consumePlannedMeal).not.toHaveBeenCalled();
-    expect(savePlannedMeal).not.toHaveBeenCalled(); expect(listPlannedMeals).toHaveBeenCalled(); confirm.mockRestore();
+    expect(savePlannedMeal).not.toHaveBeenCalled(); expect(listPlannedMeals).toHaveBeenCalled();
   });
   it('consumption requires confirmation and sends the exact plan/version', async () => {
     mount(); await screen.findByText('Bữa thử');
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     fireEvent.click(screen.getByRole('button', { name: 'Đã ăn → ghi nhật ký' }));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog).toHaveTextContent('tính lại');
+    expect(consumePlannedMeal).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Đã ăn, ghi nhật ký' }));
     await waitFor(() => expect(consumePlannedMeal).toHaveBeenCalledWith(expect.objectContaining({ id: 'plan', version: 3 })));
-    expect(confirm.mock.calls[0][0]).toContain('tính lại'); confirm.mockRestore();
   });
 });

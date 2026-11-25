@@ -1,0 +1,21 @@
+{
+  "id": "/dashboard",
+  "name": "AnCai",
+  "short_name": "AnCai",
+  "description": "AnCai — theo dõi sức khỏe, dinh dưỡng, luyện tập và đặt bữa trưa cho đội ngũ.",
+  "lang": "vi",
+  "dir": "ltr",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0c2821",
+  "background_color": "#f4f5f0",
+  "categories": ["health", "lifestyle", "productivity"],
+  "icons": [
+    { "src": "/pwa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/pwa/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

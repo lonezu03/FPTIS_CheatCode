@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { useConfirm } from '@/components/common/ConfirmDialog';
 import axios from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ function message(error: unknown) { return axios.isAxiosError(error) ? error.resp
 type DraftItem = { foodId: string; foodName: string; servingAmount: number; servingUnit: ServingUnit };
 
 export default function MealPlanningPage() {
+  const confirm = useConfirm();
   const client = useQueryClient();
   const [week, setWeek] = useState(() => mondayOf(dateText(new Date())));
   const [page, setPage] = useState(0);
@@ -56,7 +58,7 @@ export default function MealPlanningPage() {
       <label className="space-y-1">Tuần bắt đầu (thứ Hai)<Input aria-label="Tuần bắt đầu" type="date" value={week} onChange={e => { setWeek(mondayOf(e.target.value || dateText(new Date()))); setPage(0); }} /></label>
       <Button onClick={() => start()}>Thêm bữa dự kiến</Button>
       <label>Tuần đích<Input type="date" value={target} onChange={e => setTarget(e.target.value ? mondayOf(e.target.value) : '')} /></label>
-      <Button variant="outline" disabled={busy || !target || target === week} onClick={() => { if (!window.confirm('Sao chép mẫu ăn sang tuần đích? Không ghi nhật ký và không thay các bữa đã có.')) return; const key = `${week}/${target}`; copyIds.current[key] ??= crypto.randomUUID(); run(async () => { await copyMealWeek(week, target, copyIds.current[key]); toast.success('Đã sao chép mẫu tuần'); }); }}>Sao chép tuần</Button>
+      <Button variant="outline" disabled={busy || !target || target === week} onClick={async () => { if (!(await confirm({ title: 'Sao chép mẫu ăn sang tuần đích?', description: `Từ tuần ${week} sang tuần ${target}. Không ghi nhật ký và không thay các bữa đã có.`, confirmText: 'Sao chép' }))) return; const key = `${week}/${target}`; copyIds.current[key] ??= crypto.randomUUID(); run(async () => { await copyMealWeek(week, target, copyIds.current[key]); toast.success('Đã sao chép mẫu tuần'); }); }}>Sao chép tuần</Button>
     </div>
     <section className="space-y-2 rounded-2xl border bg-emerald-50 p-4"><h2 className="font-semibold">Tổng dinh dưỡng dự kiến cả tuần</h2>
       {summary.data ? <><p>{summary.data.plannedMealCount} bữa · {summary.data.totals.calories.toFixed(0)} kcal · {summary.data.totals.protein.toFixed(1)} g đạm · {summary.data.totals.carbs.toFixed(1)} g tinh bột · {summary.data.totals.fat.toFixed(1)} g béo</p><p className="text-sm">Vi chất có dữ liệu: {summary.data.totals.knownMicronutrientValues}/{summary.data.totals.possibleMicronutrientValues}. Bao gồm mọi trang của tuần, không phải lượng đã ăn hoặc trung bình nhật ký.</p></> : summary.isError ? <p role="alert">{message(summary.error)} <Button variant="outline" onClick={() => void summary.refetch()}>Tải lại tổng tuần</Button></p> : <p>Đang tổng hợp kế hoạch…</p>}
@@ -70,9 +72,9 @@ export default function MealPlanningPage() {
       <p className="text-sm">Dự kiến: {meal.totals.calories.toFixed(0)} kcal · {meal.totals.protein.toFixed(1)} g đạm · {meal.totals.carbs.toFixed(1)} g tinh bột · {meal.totals.fat.toFixed(1)} g béo</p>
       <p className="text-xs text-muted-foreground">Snapshot khi lập/sửa kế hoạch · Vi chất có dữ liệu: {meal.totals.knownMicronutrientValues}/{meal.totals.possibleMicronutrientValues}. Thiếu thông tin không phải bằng 0.</p>
       {meal.loggedMealId ? <p className="font-medium text-primary">Đã ghi nhật ký (không tự đánh dấu ngày đầy đủ)</p> : <div className="flex flex-wrap gap-2">
-        <Button size="sm" disabled={busy || meal.date > dateText(new Date())} onClick={() => { if (window.confirm('Xác nhận thực sự đã ăn toàn bộ bữa này? Nhật ký sẽ tính lại theo kho thực phẩm hiện tại, có thể khác snapshot dự kiến. Chỉ ghi một lần.')) run(() => consumePlannedMeal(meal)); }}>Đã ăn → ghi nhật ký</Button>
+        <Button size="sm" disabled={busy || meal.date > dateText(new Date())} onClick={async () => { if (await confirm({ title: 'Ghi bữa này vào nhật ký?', description: `Chỉ xác nhận khi đã ăn toàn bộ "${meal.name}". Nhật ký sẽ tính lại theo kho thực phẩm hiện tại, có thể khác snapshot dự kiến. Chỉ ghi một lần.`, confirmText: 'Đã ăn, ghi nhật ký' })) run(() => consumePlannedMeal(meal)); }}>Đã ăn → ghi nhật ký</Button>
         <Button size="sm" variant="outline" disabled={busy} onClick={() => start(meal)}>Sửa</Button>
-        <Button size="sm" variant="destructive" disabled={busy} onClick={() => { if (window.confirm('Xóa bữa dự kiến?')) run(() => removePlannedMeal(meal)); }}>Xóa</Button>
+        <Button size="sm" variant="destructive" disabled={busy} onClick={async () => { if (await confirm({ title: 'Xóa bữa dự kiến?', description: `Bữa "${meal.name}" ngày ${meal.date} sẽ bị xóa khỏi kế hoạch.`, confirmText: 'Xóa', destructive: true })) run(() => removePlannedMeal(meal)); }}>Xóa</Button>
       </div>}
     </article>)}</div>
     {meals.data?.totalElements === 0 && <p className="rounded-2xl border border-dashed p-6">Chưa có bữa dự kiến trong tuần. Thêm thực phẩm hoặc lấy từ bữa ăn/công thức đã lưu.</p>}

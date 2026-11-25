@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, KeyRound, Search, ShieldCheck, Trash2, UserCog, UsersRound } from "lucide-react";
 import { toast } from "sonner";
@@ -55,6 +56,7 @@ type UserAccessPayload = {
 };
 
 export default function AdminUsersPage() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const currentUserId = useAuthStore((state) => state.user?.userId);
   const [searchInput, setSearchInput] = useState("");
@@ -110,9 +112,15 @@ export default function AdminUsersPage() {
     },
   });
 
-  const handleDeleteLockedUser = (user: AdminUser) => {
+  const handleDeleteLockedUser = async (user: AdminUser) => {
     if (user.active) return;
-    if (!window.confirm(`Xóa vĩnh viễn tài khoản ${user.email}? Dữ liệu liên quan sẽ không thể khôi phục.`)) return;
+    const ok = await confirm({
+      title: "Xóa vĩnh viễn tài khoản?",
+      description: `Tài khoản ${user.email} sẽ bị xóa. Dữ liệu liên quan không thể khôi phục.`,
+      confirmText: "Xóa tài khoản",
+      destructive: true,
+    });
+    if (!ok) return;
     deleteMutation.mutate(user.id);
   };
 

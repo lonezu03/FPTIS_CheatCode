@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import { useSearchParams } from "react-router-dom";
 import { useAuthStore } from "@/store/auth.store";
 import { readConvenience, writeConvenience } from "@/lib/convenience-storage";
@@ -66,6 +67,7 @@ const statusMeta: Record<NutritionDayStatus, { label: string; className: string;
 };
 
 export default function NutritionPage() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [date, setDate] = useState(toLocalDateInput());
@@ -176,8 +178,14 @@ export default function NutritionPage() {
             logs={diary.meals.filter((meal) => meal.mealType === mealType)}
             onAdd={() => setEditor({ mealType })}
             onEdit={(log) => setEditor({ mealType, log })}
-            onDelete={(log) => {
-              if (window.confirm("Bạn có chắc muốn xóa bữa ăn này?")) deleteMutation.mutate(log.id);
+            onDelete={async (log) => {
+              const ok = await confirm({
+                title: "Xóa bữa ăn?",
+                description: `${mealLabels[log.mealType] ?? "Bữa ăn"} ngày ${log.logDate} (${log.items.length} món) sẽ bị xóa khỏi nhật ký.`,
+                confirmText: "Xóa",
+                destructive: true,
+              });
+              if (ok) deleteMutation.mutate(log.id);
             }}
           />
         ))}

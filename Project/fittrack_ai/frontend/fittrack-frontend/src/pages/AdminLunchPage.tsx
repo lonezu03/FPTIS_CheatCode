@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useConfirm } from "@/components/common/ConfirmDialog";
 import type { ElementType } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -86,6 +87,7 @@ type MenuAction = {
 const DEFAULT_PRICE = 35_000;
 
 export default function AdminLunchPage() {
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
@@ -636,9 +638,14 @@ export default function AdminLunchPage() {
             onReopen={() => activeMenu && setMenuAction({ menu: activeMenu, action: "reopen" })}
             onEdit={() => activeMenu && startEditingMenu(activeMenu)}
             onDelete={() => activeMenu && setDeleteMenuTarget(activeMenu)}
-            onNotify={() => {
+            onNotify={async () => {
               if (!activeMenu) return;
-              if (window.confirm("Gửi thông báo trong ứng dụng và email menu này tới toàn bộ tài khoản đang hoạt động?")) {
+              const ok = await confirm({
+                title: "Gửi thông báo menu?",
+                description: `Menu ${activeMenu.vendorName} ngày ${activeMenu.menuDate} sẽ được gửi qua thông báo trong ứng dụng và email tới toàn bộ tài khoản đang hoạt động.`,
+                confirmText: "Gửi",
+              });
+              if (ok) {
                 notifyMenuMutation.mutate(activeMenu.id);
               }
             }}

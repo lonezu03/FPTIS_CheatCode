@@ -1,5 +1,6 @@
 import { type ChangeEvent, useState } from "react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { resolveApiAssetUrl } from "@/api/axios";
@@ -90,8 +91,9 @@ export default function FoodsPage() {
   const queryClient = useQueryClient();
   const isAdmin = useAuthStore((state) => state.user?.role === "ADMIN");
 
-  const [keyword, setKeyword] = useState("");
-  const [searchKeyword, setSearchKeyword] = useState("");
+  const [searchParams] = useSearchParams();
+  const [keyword, setKeyword] = useState(() => searchParams.get("q") ?? "");
+  const [searchKeyword, setSearchKeyword] = useState(() => searchParams.get("q") ?? "");
   const [includeInactive, setIncludeInactive] = useState(isAdmin);
 
   const [draft, setDraft] = useState<FoodDraft>({
