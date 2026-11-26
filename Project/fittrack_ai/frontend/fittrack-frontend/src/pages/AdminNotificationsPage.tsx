@@ -56,7 +56,7 @@ export default function AdminNotificationsPage() {
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm">
             <p className={mailStatusQuery.data?.configured ? "font-medium text-emerald-700" : "font-medium text-amber-700"}>
-              {mailStatusQuery.isLoading ? "Đang kiểm tra cấu hình..." : mailStatusQuery.data?.message || "Không đọc được cấu hình email"}
+              {mailStatusQuery.isLoading ? <span role="status" aria-label="Đang kiểm tra cấu hình" className="inline-block h-4 w-56 animate-pulse rounded-md bg-muted align-middle" /> : mailStatusQuery.data?.message || "Không đọc được cấu hình email"}
             </p>
             {mailStatusQuery.data && (
               <p className="mt-1 text-xs text-muted-foreground">

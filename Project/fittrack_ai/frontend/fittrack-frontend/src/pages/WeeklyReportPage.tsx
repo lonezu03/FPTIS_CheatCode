@@ -13,6 +13,7 @@ import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import FormField from "../components/common/FormField";
 import PageLoading from "../components/common/PageLoading";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,7 +96,7 @@ export default function WeeklyReportPage() {
       {reportQuery.isLoading && <PageLoading />}
 
       {reportQuery.isError && (
-        <ErrorState title="Không thể tải báo cáo tuần" message="Vui lòng kiểm tra kết nối hoặc đăng nhập lại." />
+        <ErrorState title="Không thể tải báo cáo tuần" message="Vui lòng kiểm tra kết nối hoặc đăng nhập lại." onRetry={() => void reportQuery.refetch()} retrying={reportQuery.isFetching} />
       )}
 
       {report && <WeeklyReportContent report={report} recommendations={recommendations} />}
@@ -314,7 +315,7 @@ function WeeklyReportContent({
               </>
             )
           ) : (
-            <p className="text-sm text-muted-foreground">Đang tải khuyến nghị...</p>
+            <div className="space-y-3" role="status" aria-label="Đang tải khuyến nghị"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-16 w-full rounded-xl" /><Skeleton className="h-16 w-full rounded-xl" /></div>
           )}
         </CardContent>
       </Card>

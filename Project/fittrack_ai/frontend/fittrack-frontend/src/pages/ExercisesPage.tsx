@@ -210,7 +210,7 @@ function ExercisesWorkspace() {
   };
 
   if (exercisesQuery.isError) {
-    return <ErrorState title="Không thể tải bài tập" message="Vui lòng tải lại trang." />;
+    return <ErrorState title="Không thể tải bài tập" message="Vui lòng thử lại." onRetry={() => void exercisesQuery.refetch()} retrying={exercisesQuery.isFetching} />;
   }
 
   return (
@@ -283,9 +283,9 @@ function ExercisesWorkspace() {
           </div>
 
           {exercisesQuery.isLoading ? (
-            <TableLoading />
+            <TableLoading rows={6} rowClassName="h-16" />
           ) : exercises.length === 0 ? (
-            <EmptyState kind="workout" title="Không tìm thấy bài tập" description="Hãy thêm bài tập hoặc thử từ khóa khác." />
+            <EmptyState kind="workout" title="Không tìm thấy bài tập" description="Hãy thêm bài tập hoặc thử từ khóa khác." actionLabel={searchKeyword || muscleFilter || equipmentFilter ? undefined : isAdmin ? "Tạo bài tập đầu tiên" : "Đề xuất bài tập"} onAction={() => { const field = document.getElementById("exercise-name"); field?.scrollIntoView({ behavior: "smooth", block: "center" }); field?.focus({ preventScroll: true }); }} />
           ) : (
             <div className="w-full overflow-x-auto">
               <Table>

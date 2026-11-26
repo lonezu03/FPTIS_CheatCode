@@ -33,6 +33,7 @@ import PageHeader from "../components/PageHeader";
 import EmptyState from "../components/common/EmptyState";
 import ErrorState from "../components/common/ErrorState";
 import PageLoading from "../components/common/PageLoading";
+import { Skeleton } from "@/components/ui/skeleton";
 import FormField from "../components/common/FormField";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -122,7 +123,7 @@ export default function NutritionPage() {
 
   if (diaryQuery.isLoading || foodsQuery.isLoading) return <PageLoading />;
   if (diaryQuery.isError || foodsQuery.isError || !diaryQuery.data) {
-    return <ErrorState title="Không thể tải nhật ký ăn uống" message="Vui lòng tải lại trang và thử lại." />;
+    return <ErrorState title="Không thể tải nhật ký ăn uống" message="Vui lòng thử lại." onRetry={() => { if (diaryQuery.isError || !diaryQuery.data) void diaryQuery.refetch(); if (foodsQuery.isError) void foodsQuery.refetch(); }} retrying={diaryQuery.isFetching || foodsQuery.isFetching} />;
   }
 
   const diary = diaryQuery.data;
@@ -195,7 +196,7 @@ export default function NutritionPage() {
         <CardHeader><CardTitle>Sao chép bữa từ ngày trước</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">Chọn một bữa ngày {previousDate}. Bạn có thể sửa món và khẩu phần trước khi lưu vào ngày {date}.</p>
-          {previousDiary.isLoading ? <p className="text-sm">Đang tải bữa trước…</p> : previousDiary.isError ? <Button variant="outline" onClick={() => void previousDiary.refetch()}>Thử tải lại bữa trước</Button> : previousDiary.data?.meals.length ? (
+          {previousDiary.isLoading ? <div className="space-y-2" role="status" aria-label="Đang tải bữa trước"><Skeleton className="h-10 w-full rounded-xl" /><Skeleton className="h-10 w-2/3 rounded-xl" /></div> : previousDiary.isError ? <ErrorState title="Không tải được bữa trước" message="Vui lòng thử lại." retryLabel="Thử tải lại bữa trước" onRetry={() => void previousDiary.refetch()} retrying={previousDiary.isFetching} /> : previousDiary.data?.meals.length ? (
             <div className="flex flex-wrap gap-2">{previousDiary.data.meals.map((meal, index) => <Button key={meal.id} variant="outline" onClick={() => {
               const draftItems: MealDraftItem[] = meal.items.map(item => ({ foodId: item.foodId, amount: item.servingAmount ?? item.quantity, unit: item.servingUnit ?? "SERVING" }));
               setEditor({ mealType: meal.mealType, draftItems });
@@ -394,7 +395,7 @@ function MealEditor({ open, mealType, date, log, draftItems, foods: initialFoods
             })}
           </div>
           {foodSearch.isFetching && <p className="mt-2 text-xs text-muted-foreground">Đang tìm thực phẩm…</p>}
-          {foodSearch.isError && <div className="mt-2 text-sm text-red-700">Không thể tải thực phẩm. <Button size="sm" variant="outline" onClick={() => void foodSearch.refetch()}>Thử lại</Button></div>}
+          {foodSearch.isError && <ErrorState className="mt-2" title="Không thể tải thực phẩm." message="Vui lòng thử lại." onRetry={() => void foodSearch.refetch()} retrying={foodSearch.isFetching} />}
           <div className="mt-2 flex items-center justify-between gap-2"><Button size="sm" variant="outline" disabled={searchPage === 0 || foodSearch.isFetching} onClick={() => setSearchPage(value => value - 1)}>Trước</Button><span className="text-xs">Trang {searchPage + 1} · {foodSearch.data?.totalElements ?? 0} món</span><Button size="sm" variant="outline" disabled={foodSearch.isFetching || searchPage + 1 >= (foodSearch.data?.totalPages ?? 1)} onClick={() => setSearchPage(value => value + 1)}>Tiếp</Button></div>
         </div>
 

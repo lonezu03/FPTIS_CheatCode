@@ -1,0 +1,122 @@
+import { Plus } from "lucide-react";
+
+import type { FinanceAccount, FinanceCategory, FinanceTransaction, PageResponse } from "@/api/finance.api";
+import { useConfirm } from "@/components/common/ConfirmDialog";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Empty, InlineError, ListSkeleton } from "./FinanceParts";
+import TransactionRow from "./TransactionRow";
+import type { FinanceViewState } from "./useFinanceView";
+
+/** "Giao dịch" tab: filters, paged history, edit and void. */
+export default function TransactionsTab({ view, transactions, accounts, categories, canCreate, onNew, onEdit, onVoid }: {
+  view: FinanceViewState;
+  transactions: { data?: PageResponse<FinanceTransaction>; isLoading: boolean; isError: boolean; error: unknown };
+  accounts: FinanceAccount[];
+  categories: FinanceCategory[];
+  canCreate: boolean;
+  onNew: () => void;
+  onEdit: (transaction: FinanceTransaction) => void;
+  onVoid: (id: string) => void;
+}) {
+  const confirm = useConfirm();
+  const { page, search, typeFilter, accountFilter, categoryFilter } = view;
+  const totalPages = transactions.data?.totalPages ?? 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>Lịch sử giao dịch</CardTitle>
+            <Button onClick={onNew} disabled={!canCreate}>
+              <Plus className="size-4" /> Ghi giao dịch
+            </Button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <Input
+              placeholder="Tìm nơi chi, ghi chú..."
+              value={search}
+              onChange={(event) => view.changeSearch(event.target.value)}
+            />
+            <select
+              className="field"
+              aria-label="Lọc loại giao dịch"
+              value={typeFilter}
+              onChange={(event) => view.changeType(event.target.value)}
+            >
+              <option value="">Tất cả loại</option>
+              <option value="EXPENSE">Chi tiêu</option>
+              <option value="INCOME">Thu nhập</option>
+              <option value="TRANSFER">Chuyển khoản</option>
+            </select>
+            <select
+              className="field"
+              aria-label="Lọc tài khoản"
+              value={accountFilter}
+              onChange={(event) => view.changeAccount(event.target.value)}
+            >
+              <option value="">Tất cả tài khoản</option>
+              {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+            </select>
+            <select
+              className="field"
+              aria-label="Lọc danh mục"
+              value={categoryFilter}
+              disabled={typeFilter === "TRANSFER"}
+              onChange={(event) => view.changeCategory(event.target.value)}
+            >
+              <option value="">Tất cả danh mục</option>
+              {categories
+                .filter((category) => !typeFilter || category.transactionKind === typeFilter)
+                .map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {transactions.isError ? (
+          <InlineError error={transactions.error} fallback="Không tải được lịch sử giao dịch." />
+        ) : transactions.isLoading ? (
+          <ListSkeleton rows={5} />
+        ) : !transactions.data?.content.length ? (
+          <Empty text="Không có giao dịch phù hợp." />
+        ) : (
+          <div className="space-y-2">
+            {transactions.data.content.map((transaction) => (
+              <TransactionRow
+                key={transaction.id}
+                transaction={transaction}
+                onEdit={() => onEdit(transaction)}
+                onVoid={async () => {
+                  const ok = await confirm({
+                    title: "Hủy giao dịch?",
+                    description: "Giao dịch chuyển sang Đã hủy: vẫn lưu để đối soát nhưng không tính vào số dư và báo cáo.",
+                    confirmText: "Hủy giao dịch",
+                    cancelText: "Giữ lại",
+                    destructive: true,
+                  });
+                  if (ok) {
+                    onVoid(transaction.id);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        )}
+        {totalPages > 1 && (
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <Button variant="outline" disabled={page === 0} onClick={() => view.setPage((value) => value - 1)}>
+              Trước
+            </Button>
+            <span className="text-sm">Trang {page + 1}/{transactions.data?.totalPages}</span>
+            <Button variant="outline" disabled={transactions.data?.last} onClick={() => view.setPage((value) => value + 1)}>
+              Sau
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

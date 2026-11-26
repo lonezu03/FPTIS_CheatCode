@@ -10,6 +10,24 @@ Web lint, build and 83 tests passed; backend Maven tests passed 220 with 3 skips
 Flutter analyze found 94 info-level notices and exits 1 with default settings;
 `flutter analyze --no-fatal-infos` passes. No APK build, push or deployment.
 Local main is ahead of origin/main; preserve the untracked rental-management folder.
+## Latest handoff: web large-page split + loading states (2026-11-26)
+
+- FinancePage (1.454→180 lines) → `src/features/finance/*`; AdminLunchPage
+  (1.484→216) → `src/features/admin-lunch/*`; WorkoutPage (1.024→8) →
+  `src/features/workout/*`; LunchPage (1.113→169) → `src/features/lunch/*`.
+  Routes, query keys, API calls, texts and URL params unchanged; pure helpers in
+  `*-utils.ts` with unit tests. Workout intelligence/preferences now use
+  TanStack Query (new keys `workout-intelligence`, `exercise-preferences`).
+- PersonalTracking and SavingsGoals history moved to TanStack Query; Journal
+  invalidates recent/on-this-day after writes.
+- Every other page got shaped skeletons, ErrorState with retry and EmptyState
+  with a "create first" action (common components extended, backward compatible).
+- Known gap: WeeklyReport recommendations show a skeleton forever if that query
+  fails (no retry yet). AdminLunch confirm dialogs kept as custom dialogs because
+  they stay open while the request runs.
+Verification: tsc, eslint, vitest 39 files/164 tests (one unidentified flaky
+failure on the first run, two clean reruns), smoke e2e 6/6.
+
 ## Latest handoff: web navigation + UX batch (2026-11-25)
 
 - Navigation: `components/layout/TwoPaneNav.tsx` replaces `SidebarNav` (deleted): a

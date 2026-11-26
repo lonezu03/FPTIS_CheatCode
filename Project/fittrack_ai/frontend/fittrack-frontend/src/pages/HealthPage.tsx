@@ -13,6 +13,7 @@ import PageHeader from "@/components/PageHeader";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import PageLoading from "@/components/common/PageLoading";
+import TableLoading from "@/components/common/TableLoading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,7 +69,7 @@ export default function HealthPage() {
 
   if (summaryQuery.isLoading) return <PageLoading />;
   if (summaryQuery.isError || !summaryQuery.data) {
-    return <ErrorState title="Không thể tải báo cáo sức khỏe" message="Vui lòng tải lại trang." />;
+    return <ErrorState title="Không thể tải báo cáo sức khỏe" message="Vui lòng thử lại." onRetry={() => void summaryQuery.refetch()} retrying={summaryQuery.isFetching} />;
   }
   const summary = summaryQuery.data;
 
@@ -189,8 +190,12 @@ export default function HealthPage() {
       <Card>
         <CardHeader><CardTitle>Nhắc nhở của tôi</CardTitle></CardHeader>
         <CardContent>
-          {(remindersQuery.data ?? []).length === 0 ? (
-            <EmptyState kind="notification" title="Chưa có nhắc nhở" description="Tạo nhắc nhở phù hợp với lịch sinh hoạt của bạn." />
+          {remindersQuery.isLoading ? (
+            <TableLoading rows={3} rowClassName="h-24 rounded-2xl" label="Đang tải nhắc nhở" />
+          ) : remindersQuery.isError ? (
+            <ErrorState title="Không tải được nhắc nhở" message="Vui lòng thử lại." onRetry={() => void remindersQuery.refetch()} retrying={remindersQuery.isFetching} />
+          ) : (remindersQuery.data ?? []).length === 0 ? (
+            <EmptyState kind="notification" title="Chưa có nhắc nhở" description="Tạo nhắc nhở phù hợp với lịch sinh hoạt của bạn." actionLabel="Tạo nhắc nhở đầu tiên" onAction={() => { const field = document.getElementById("reminder-title"); field?.scrollIntoView({ behavior: "smooth", block: "center" }); field?.focus({ preventScroll: true }); }} />
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {remindersQuery.data?.map((reminder) => (

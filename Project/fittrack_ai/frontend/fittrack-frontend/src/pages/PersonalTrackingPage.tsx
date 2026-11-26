@@ -1,7 +1,11 @@
 import PageHeader from '@/components/PageHeader';
 import { useConfirm } from '@/components/common/ConfirmDialog';
-import { useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import EmptyState from '@/components/common/EmptyState';
+import ErrorState from '@/components/common/ErrorState';
+import TableLoading from '@/components/common/TableLoading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getApiErrorMessage } from '@/lib/format';
 import { personalTrackingApi as api, trackingPath, type TrackingEntry, type TrackingCheckin, type TrackingSection } from '../api/personaltracking.api';
 import HabitHeatmap from '@/components/HabitHeatmap';
@@ -13,36 +17,36 @@ export default function PersonalTrackingPage({ section = 'goals', kind = 'BODY' 
 }) {
     const path = trackingPath(section, kind);
     const confirm = useConfirm();
-    const [page, setPage] = useState(0), [archived, setArchived] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState(''), [draft, setDraft] = useState<Partial<TrackingEntry> | null>(null), [selected, setSelected] = useState<TrackingEntry | null>(null), [history, setHistory] = useState<TrackingCheckin[]>([]), [day, setDay] = useState(today()), [value, setValue] = useState(''), [note, setNote] = useState(''), [evidence, setEvidence] = useState(''), [from, setFrom] = useState(`${today().slice(0, 7)}-01`), [to, setTo] = useState(today());
+    const client = useQueryClient();
+    const [page, setPage] = useState(0), [archived, setArchived] = useState(false), [error, setError] = useState(''), [draft, setDraft] = useState<Partial<TrackingEntry> | null>(null), [selected, setSelected] = useState<TrackingEntry | null>(null), [day, setDay] = useState(today()), [value, setValue] = useState(''), [note, setNote] = useState(''), [evidence, setEvidence] = useState(''), [from, setFrom] = useState(`${today().slice(0, 7)}-01`), [to, setTo] = useState(today()), [range, setRange] = useState({ from, to });
     const listing = useQuery({queryKey:['personal-tracking',path,page,archived],queryFn:()=>api.list(path,page,archived)});
     const items=listing.data?.content??[], pages=listing.data?.totalPages??0;
-    const historyGeneration=useRef(0);
-    useEffect(()=>()=>{historyGeneration.current++;},[path]);
+    // Khóa gồm mục đang chọn và khoảng ngày: phản hồi muộn của mục trước không ghi đè mục đang xem.
+    const historyQuery = useQuery({queryKey:['personal-tracking',path,'history',selected?.id,range.from,range.to],queryFn:()=>api.history(path,selected!.id,range.from,range.to),enabled:Boolean(selected)});
+    const history: TrackingCheckin[] = historyQuery.data ?? [];
     const title = section === 'habits' ? 'Thói quen' : section === 'recovery' ? 'Giấc ngủ & phục hồi' : kind === 'WORKOUT' ? 'Mục tiêu thành tích tập' : 'Mục tiêu cơ thể';
-    const fail = (e: unknown) => setError(getApiErrorMessage(e,'Không thể xử lý. Vui lòng thử lại.'));
-    const mutate = async (action: () => Promise<unknown>) => { if (busy)
-        return; setBusy(true); try {
-        await action();
-        setError('');
-        await listing.refetch();
-    }
-    catch (e) {
-        fail(e);
-    }
-    finally {
-        setBusy(false);
-    } };
+    const mutation = useMutation({
+        mutationFn: (action: () => Promise<unknown>) => action(),
+        onSuccess: () => {
+            setError('');
+            void client.invalidateQueries({ queryKey: ['personal-tracking'] });
+            void client.invalidateQueries({ queryKey: ['habit-calendar'] });
+        },
+        onError: (e: unknown) => setError(getApiErrorMessage(e,'Không thể xử lý. Vui lòng thử lại.')),
+    });
+    const busy = mutation.isPending;
+    const mutate = (action: () => Promise<unknown>) => { if (!busy) mutation.mutate(action); };
     const update = (key: keyof TrackingEntry, v: unknown) => setDraft(d => ({ ...d, [key]: v }));
-    const showHistory = async (item: TrackingEntry) => { const generation=++historyGeneration.current;setSelected(item);setHistory([]);try {
-        const result=await api.history(path,item.id,from,to);if(generation===historyGeneration.current)setHistory(result);
-    }
-    catch (e) {
-        if(generation===historyGeneration.current)fail(e);
-    } };
+    const startDraft = () => setDraft({ title: '', startDate: today(), weekdays: [], phases: [], archived: false });
+    const showHistory = (item: TrackingEntry) => {
+        const same = selected?.id === item.id && range.from === from && range.to === to;
+        setSelected(item); setRange({ from, to });
+        if (same) void historyQuery.refetch();
+    };
     return <div className="min-w-0 space-y-5"><PageHeader title={title} description={section === 'habits' ? 'Ghi nhận theo ngày Việt Nam, độc lập với việc cần làm. Không tự tạo công việc quá hạn.' : section === 'recovery' ? 'Nhập tay, hỗ trợ giấc ngủ qua nửa đêm. Bỏ trống đánh giá nếu chưa biết; không phải chẩn đoán y khoa.' : 'Theo dõi mốc mục tiêu; không tự thay đổi calo hồ sơ. Dữ liệu chưa ghi nhận không được xem là số 0.'}/>
- {(error||listing.error) && <p role="alert" className="rounded-xl bg-red-50 p-3 text-red-700">{error||getApiErrorMessage(listing.error,'Không tải được dữ liệu. Vui lòng thử lại.')} <button onClick={()=>void listing.refetch()}>Thử lại</button></p>}
- {listing.isFetching&&<p role="status">Đang tải dữ liệu…</p>}
- <div className="flex flex-wrap items-center gap-3"><button disabled={busy} className="rounded-xl bg-emerald-800 px-4 py-2 text-white" onClick={() => setDraft({ title: '', startDate: today(), weekdays: [], phases: [], archived: false })}>Thêm {title.toLowerCase()}</button><label><input type="checkbox" checked={archived} onChange={e => { setArchived(e.target.checked); setPage(0); }}/> Xem đã lưu trữ</label>{busy && <span role="status">Đang xử lý…</span>}</div>
+ {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
+ {listing.isError && <ErrorState title="Không tải được dữ liệu" message={getApiErrorMessage(listing.error,'Không tải được dữ liệu. Vui lòng thử lại.')} onRetry={()=>void listing.refetch()} retrying={listing.isFetching}/>}
+ <div className="flex flex-wrap items-center gap-3"><button disabled={busy} className="rounded-xl bg-emerald-800 px-4 py-2 text-white" onClick={startDraft}>Thêm {title.toLowerCase()}</button><label><input type="checkbox" checked={archived} onChange={e => { setArchived(e.target.checked); setPage(0); }}/> Xem đã lưu trữ</label>{busy && <span role="status">Đang xử lý…</span>}</div>
  {draft && <form className="grid gap-4 rounded-2xl border bg-white p-4 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); void mutate(async () => { await api.save(path, draft); setDraft(null); }); }}>
  <label>Tên<input required maxLength={160} className={fieldClass} value={draft.title ?? ''} onChange={e => update('title', e.target.value)}/></label>
  <label>Ghi chú<textarea className={fieldClass} maxLength={2000} value={draft.note ?? ''} onChange={e => update('note', e.target.value)}/></label>
@@ -51,12 +55,13 @@ export default function PersonalTrackingPage({ section = 'goals', kind = 'BODY' 
  {section === 'habits' && <fieldset className="sm:col-span-2"><legend>Ngày thực hiện (để trống = mỗi ngày)</legend><div className="flex flex-wrap gap-4">{[1, 2, 3, 4, 5, 6, 7].map(d => <label key={d}><input type="checkbox" checked={draft.weekdays?.includes(d) ?? false} onChange={e => update('weekdays', e.target.checked ? [...(draft.weekdays ?? []), d] : draft.weekdays?.filter(x => x !== d))}/>{d === 7 ? 'Chủ nhật' : `Thứ ${d + 1}`}</label>)}</div></fieldset>}
  {section === 'recovery' && <>{(['sleepStart', 'sleepEnd'] as const).map(k => <label key={k}>{k === 'sleepStart' ? 'Bắt đầu ngủ' : 'Thức dậy'}<input required type="datetime-local" className={fieldClass} value={draft[k]?.slice(0, 16) ?? ''} onChange={e => update(k, e.target.value)}/></label>)}{(['quality', 'fatigue', 'soreness'] as const).map(k => <label key={k}>{{ quality: 'Chất lượng ngủ (1 kém → 5 tốt)', fatigue: 'Mệt mỏi (1 ít → 5 nhiều)', soreness: 'Đau cơ (1 ít → 5 nhiều)' }[k]}<input type="number" min={1} max={5} className={fieldClass} value={draft[k] ?? ''} onChange={e => update(k, e.target.value ? Number(e.target.value) : undefined)}/></label>)}</>}
  <div className="flex gap-4 sm:col-span-2"><button disabled={busy} className="rounded-xl bg-emerald-800 px-5 py-2 text-white">Lưu</button><button type="button" onClick={() => setDraft(null)}>Hủy</button></div></form>}
+ {listing.isLoading && <div className="grid gap-4 lg:grid-cols-2" role="status" aria-label="Đang tải dữ liệu">{[0, 1, 2, 3].map(i => <div key={i} className="space-y-3 rounded-2xl border bg-white p-4"><Skeleton className="h-6 w-1/2"/><Skeleton className="h-4 w-3/4"/><Skeleton className="h-4 w-2/3"/><div className="flex gap-3"><Skeleton className="h-8 w-20"/><Skeleton className="h-8 w-20"/></div></div>)}</div>}
  <div className="grid gap-4 lg:grid-cols-2">{items.map(item => <article key={item.id} className="space-y-3 rounded-2xl border bg-white p-4"><h2 className="text-lg font-semibold">{item.title}</h2><p>{item.note}</p>{section === 'goals' && <><p>{item.baseline} → {item.target} {item.unit} · {item.targetDate ?? 'Chưa đặt ngày đích'}</p>{item.phases.map((p, i) => <p key={i}>Giai đoạn {i + 1}: {p.title} · {p.target} {item.unit} · {p.targetDate}</p>)}</>}{section === 'recovery' && <p>{item.sleepStart?.replace('T', ' ')} → {item.sleepEnd?.replace('T', ' ')}<br />Ngủ: {item.quality ?? 'Chưa biết'} · Mệt: {item.fatigue ?? 'Chưa biết'} · Đau cơ: {item.soreness ?? 'Chưa biết'}</p>}{section === 'habits' && <p>{item.weekdays.length ? item.weekdays.map(d => d === 7 ? 'CN' : `T${d + 1}`).join(', ') : 'Mỗi ngày'}</p>}<div className="flex flex-wrap gap-4"><button disabled={busy} onClick={() => setDraft({ ...item })}>Chỉnh sửa</button>{!archived && <button disabled={busy} onClick={async () => { if (await confirm({ title: 'Lưu trữ mục này?', description: `"${item.title}" sẽ chuyển vào lưu trữ. Lịch sử vẫn được giữ.`, confirmText: 'Lưu trữ' }))
-        void mutate(() => api.archive(path, item)); }}>Lưu trữ</button>}{section !== 'recovery' && <button onClick={() => void showHistory(item)}>Ghi nhận / lịch sử</button>}</div></article>)}</div>
- {!items.length && !busy && <p>Chưa có dữ liệu. Thêm mục đầu tiên để bắt đầu.</p>}<div className="flex gap-4"><button disabled={page === 0 || busy} onClick={() => setPage(p => p - 1)}>Trang trước</button><span>{page + 1}/{Math.max(1, pages)}</span><button disabled={page + 1 >= pages || busy} onClick={() => setPage(p => p + 1)}>Trang sau</button></div>
- {selected && <section className="space-y-4 rounded-2xl border bg-white p-4"><div className="flex justify-between"><h2 className="font-bold">{selected.title}: ghi nhận & lịch sử</h2><button onClick={() => setSelected(null)}>Đóng</button></div><form className="flex flex-wrap items-end gap-3" onSubmit={e => { e.preventDefault(); void showHistory(selected); }}><label>Từ<input required type="date" className={fieldClass} value={from} onChange={e => setFrom(e.target.value)}/></label><label>Đến<input required type="date" className={fieldClass} value={to} onChange={e => setTo(e.target.value)}/></label><button>Xem lịch sử</button></form>{!selected.archived && <form className="grid gap-3 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); void mutate(async () => { await api.checkin(path, selected.id, day, { status: 'DONE', value: value ? Number(value) : undefined, note, evidence }); await showHistory(selected); }); }}><label>Ngày ghi nhận<input required type="date" max={today()} className={fieldClass} value={day} onChange={e => setDay(e.target.value)}/></label>{section === 'goals' && <label>Giá trị ({selected.unit})<input required type="number" step="0.001" className={fieldClass} value={value} onChange={e => setValue(e.target.value)}/></label>}<label>Ghi chú<input maxLength={1000} className={fieldClass} value={note} onChange={e => setNote(e.target.value)}/></label>{section === 'goals' && <label>Minh chứng (mã buổi tập / ghi chú số đo)<input maxLength={500} className={fieldClass} value={evidence} onChange={e => setEvidence(e.target.value)}/></label>}<button disabled={busy} className="rounded-xl bg-emerald-800 p-3 text-white">{section === 'habits' ? 'Đã thực hiện' : 'Lưu số đo'}</button>{section === 'habits' && <button type="button" disabled={busy} onClick={() => void mutate(async () => { await api.checkin(path, selected.id, day, { status: 'SKIPPED', note }); await showHistory(selected); })}>Bỏ qua ngày này</button>}</form>}
+        void mutate(() => api.archive(path, item)); }}>Lưu trữ</button>}{section !== 'recovery' && <button onClick={() => showHistory(item)}>Ghi nhận / lịch sử</button>}</div></article>)}</div>
+ {listing.isSuccess && !items.length && !draft && (archived ? <EmptyState compact title="Chưa có mục đã lưu trữ"/> : <EmptyState kind={section === 'habits' ? 'calendar' : 'progress'} title="Chưa có dữ liệu" description="Thêm mục đầu tiên để bắt đầu." actionLabel="Thêm mục đầu tiên" actionDisabled={busy} onAction={startDraft}/>)}<div className="flex gap-4"><button disabled={page === 0 || busy} onClick={() => setPage(p => p - 1)}>Trang trước</button><span>{page + 1}/{Math.max(1, pages)}</span><button disabled={page + 1 >= pages || busy} onClick={() => setPage(p => p + 1)}>Trang sau</button></div>
+ {selected && <section className="space-y-4 rounded-2xl border bg-white p-4"><div className="flex justify-between"><h2 className="font-bold">{selected.title}: ghi nhận & lịch sử</h2><button onClick={() => setSelected(null)}>Đóng</button></div><form className="flex flex-wrap items-end gap-3" onSubmit={e => { e.preventDefault(); showHistory(selected); }}><label>Từ<input required type="date" className={fieldClass} value={from} onChange={e => setFrom(e.target.value)}/></label><label>Đến<input required type="date" className={fieldClass} value={to} onChange={e => setTo(e.target.value)}/></label><button>Xem lịch sử</button></form>{!selected.archived && <form className="grid gap-3 sm:grid-cols-2" onSubmit={e => { e.preventDefault(); void mutate(() => api.checkin(path, selected.id, day, { status: 'DONE', value: value ? Number(value) : undefined, note, evidence })); }}><label>Ngày ghi nhận<input required type="date" max={today()} className={fieldClass} value={day} onChange={e => setDay(e.target.value)}/></label>{section === 'goals' && <label>Giá trị ({selected.unit})<input required type="number" step="0.001" className={fieldClass} value={value} onChange={e => setValue(e.target.value)}/></label>}<label>Ghi chú<input maxLength={1000} className={fieldClass} value={note} onChange={e => setNote(e.target.value)}/></label>{section === 'goals' && <label>Minh chứng (mã buổi tập / ghi chú số đo)<input maxLength={500} className={fieldClass} value={evidence} onChange={e => setEvidence(e.target.value)}/></label>}<button disabled={busy} className="rounded-xl bg-emerald-800 p-3 text-white">{section === 'habits' ? 'Đã thực hiện' : 'Lưu số đo'}</button>{section === 'habits' && <button type="button" disabled={busy} onClick={() => void mutate(() => api.checkin(path, selected.id, day, { status: 'SKIPPED', note }))}>Bỏ qua ngày này</button>}</form>}
  {section === 'goals' && history.length > 0 && (() => { const current = history[history.length - 1].value; const denominator = (selected.target ?? 0) - (selected.baseline ?? 0); const percent = current === undefined || !denominator ? 0 : Math.max(0, Math.min(100, ((current - (selected.baseline ?? 0)) / denominator) * 100)); return <div><p>Tiến độ theo số đo gần nhất: {percent.toFixed(0)}%</p><progress className="w-full" max={100} value={percent}/></div>; })()}
  {section==='habits'&&<HabitHeatmap id={selected.id} from={from} to={to} revision={history.map(h=>`${h.id}:${h.status}`).join('|')}/>}
- <ul className="space-y-2">{history.map(h => <li key={h.id} className="border-b py-2">{h.day} · {h.status === 'DONE' ? 'Đã thực hiện' : h.status === 'SKIPPED' ? 'Bỏ qua' : `${h.value} ${selected.unit}`} {h.note} {h.evidence && `· Minh chứng: ${h.evidence}`}</li>)}</ul>{!history.length && <p>Chưa ghi nhận trong khoảng này, không xem là số 0.</p>}</section>}
+ {historyQuery.isLoading ? <TableLoading rows={3} rowClassName="h-9" label="Đang tải lịch sử"/> : historyQuery.isError ? <ErrorState title="Không tải được lịch sử" message={getApiErrorMessage(historyQuery.error,'Không thể xử lý. Vui lòng thử lại.')} onRetry={()=>void historyQuery.refetch()} retrying={historyQuery.isFetching}/> : <><ul className="space-y-2">{history.map(h => <li key={h.id} className="border-b py-2">{h.day} · {h.status === 'DONE' ? 'Đã thực hiện' : h.status === 'SKIPPED' ? 'Bỏ qua' : `${h.value} ${selected.unit}`} {h.note} {h.evidence && `· Minh chứng: ${h.evidence}`}</li>)}</ul>{!history.length && <p className="text-sm text-muted-foreground">Chưa ghi nhận trong khoảng này, không xem là số 0.</p>}</>}</section>}
  </div>;
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useConfirm } from "@/components/common/ConfirmDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, KeyRound, Search, ShieldCheck, Trash2, UserCog, UsersRound } from "lucide-react";
+import { KeyRound, Search, ShieldCheck, Trash2, UserCog, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import {
   deleteLockedAdminUser,
@@ -15,9 +15,9 @@ import { getApiErrorMessage } from "@/lib/format";
 import PageHeader from "@/components/PageHeader";
 import EmptyState from "@/components/common/EmptyState";
 import TableLoading from "@/components/common/TableLoading";
+import ErrorState from "@/components/common/ErrorState";
 import DataPagination from "@/components/common/DataPagination";
 import { useServerPagination } from "@/hooks/useServerPagination";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -172,15 +172,9 @@ export default function AdminUsersPage() {
         </CardHeader>
         <CardContent>
           {usersQuery.isLoading ? (
-            <TableLoading />
+            <TableLoading rows={6} rowClassName="h-14" />
           ) : usersQuery.isError ? (
-            <Alert variant="destructive">
-              <AlertCircle />
-              <AlertTitle>Không tải được tài khoản</AlertTitle>
-              <AlertDescription>
-                {getApiErrorMessage(usersQuery.error, "Vui lòng thử lại.")}
-              </AlertDescription>
-            </Alert>
+            <ErrorState title="Không tải được tài khoản" message={getApiErrorMessage(usersQuery.error, "Vui lòng thử lại.")} onRetry={() => void usersQuery.refetch()} retrying={usersQuery.isFetching} />
           ) : users.length === 0 ? (
             <EmptyState
               title="Không tìm thấy tài khoản"

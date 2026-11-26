@@ -23,6 +23,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import EmptyState from '@/components/common/EmptyState';
+import ErrorState from '@/components/common/ErrorState';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type CalendarView = 'DAY' | 'WEEK' | 'MONTH' | 'LIST';
 type EventDraft = {
@@ -154,7 +157,7 @@ function ScheduleWorkspace() {
         <div className="flex flex-wrap gap-2">{([['DAY', 'Ngày'], ['WEEK', 'Tuần'], ['MONTH', 'Tháng'], ['LIST', 'Danh sách']] as const).map(([value, label]) => <button key={value} onClick={() => setView(value)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${view === value ? 'border-emerald-700 bg-emerald-700 text-white' : 'bg-background text-muted-foreground'}`}>{label}</button>)}</div>
       </CardHeader>
       <CardContent>
-        {calendarQuery.isLoading ? <p className="py-16 text-center text-sm text-muted-foreground">Đang tải lịch...</p> : calendarQuery.isError ? <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">Không thể tải lịch hợp nhất. Hãy thử lại.</p> : <CalendarBody onCreate={newEvent} view={view} focusDate={focusDate} entries={entries} onEdit={editEvent} onDelete={id => removeMutation.mutate(id)} onComplete={id => completeMutation.mutate(id)} completingId={completeMutation.isPending ? completeMutation.variables : undefined} />}
+        {calendarQuery.isLoading ? <CalendarSkeleton view={view} /> : calendarQuery.isError ? <ErrorState title="Không thể tải lịch hợp nhất." message={getApiErrorMessage(calendarQuery.error, 'Hãy thử lại.')} onRetry={() => void calendarQuery.refetch()} retrying={calendarQuery.isFetching} /> : <CalendarBody onCreate={newEvent} view={view} focusDate={focusDate} entries={entries} onEdit={editEvent} onDelete={id => removeMutation.mutate(id)} onComplete={id => completeMutation.mutate(id)} completingId={completeMutation.isPending ? completeMutation.variables : undefined} />}
       </CardContent>
     </Card>
     <div ref={editorRef} className="scroll-mt-24">{conflicts.length > 0 && <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Khung giờ này trùng {conflicts.length} sự kiện: {conflicts.map(item => item.title).join(', ')}. Bạn vẫn có thể lưu nếu đây là chủ ý.</p>}{conflictQuery.isError && draft.startAt && <p className="mb-3 text-sm text-amber-800">Chưa kiểm tra được lịch trùng. Hãy kiểm tra lịch trước khi lưu.</p>}<EventEditor draft={draft} editing={Boolean(editingId)} pending={saveMutation.isPending} onChange={setDraft} onSave={save} onCancel={() => { setEditingId(null); setDraft(emptyDraft()); }} /></div>
@@ -165,7 +168,13 @@ function CalendarBody({ view, focusDate, entries, onEdit, onDelete, onComplete, 
   if (view === 'MONTH') return <MonthView onCreate={onCreate} focusDate={focusDate} entries={entries} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} completingId={completingId} />;
   if (view === 'WEEK') return <WeekView onCreate={onCreate} focusDate={focusDate} entries={entries} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} completingId={completingId} />;
   const filtered = view === 'DAY' ? entries.filter(item => dateKey(new Date(item.startAt)) === dateKey(focusDate)) : entries;
-  return <EntryList entries={filtered} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} completingId={completingId} empty={view === 'DAY' ? 'Ngày này chưa có công việc hoặc sự kiện.' : 'Chưa có lịch trong khoảng đang xem.'} />;
+  return <EntryList entries={filtered} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} completingId={completingId} onCreateFirst={() => onCreate(focusDate)} empty={view === 'DAY' ? 'Ngày này chưa có công việc hoặc sự kiện.' : 'Chưa có lịch trong khoảng đang xem.'} />;
+}
+
+function CalendarSkeleton({ view }: { view: CalendarView }) {
+  if (view === 'WEEK') return <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-7" role="status" aria-label="Đang tải lịch">{Array.from({ length: 7 }, (_, i) => <div key={i} className="min-h-44 space-y-2 rounded-2xl border p-3"><div className="flex justify-between"><Skeleton className="h-4 w-8" /><Skeleton className="size-7 rounded-full" /></div><Skeleton className="h-12 w-full rounded-lg" /><Skeleton className="h-8 w-full rounded-lg" /></div>)}</div>;
+  if (view === 'MONTH') return <div className="grid grid-cols-7 gap-1" role="status" aria-label="Đang tải lịch">{Array.from({ length: 35 }, (_, i) => <Skeleton key={i} className="min-h-12 rounded-lg sm:min-h-24" />)}</div>;
+  return <div className="space-y-2" role="status" aria-label="Đang tải lịch">{[0, 1, 2, 3].map(i => <div key={i} className="flex gap-3 rounded-2xl border p-4"><Skeleton className="size-11 shrink-0 rounded-xl" /><div className="flex-1 space-y-2"><Skeleton className="h-5 w-1/2" /><Skeleton className="h-4 w-1/3" /></div></div>)}</div>;
 }
 
 function WeekView({ focusDate, entries, onEdit, onDelete, onComplete, completingId, onCreate }: { focusDate: Date; entries: CalendarEntry[]; onEdit: (id: string) => void; onDelete: (id: string) => void; onComplete: (id: string) => void; completingId?: string; onCreate: (day: Date) => void }) {
@@ -200,8 +209,8 @@ function MonthView({ focusDate, entries, onEdit, onDelete, onComplete, completin
     <EntryList entries={entries.filter(item => dateKey(new Date(item.startAt)) === selected)} onEdit={onEdit} onDelete={onDelete} onComplete={onComplete} completingId={completingId} empty={fullDate(new Date(selected + 'T00:00:00')) + ': Chưa có công việc hoặc sự kiện.'} />
   </div>;
 }
-function EntryList({ entries, onEdit, onDelete, onComplete, completingId, empty }: { entries: CalendarEntry[]; onEdit: (id: string) => void; onDelete: (id: string) => void; onComplete: (id: string) => void; completingId?: string; empty: string }) {
-  if (entries.length === 0) return <div className="rounded-2xl border border-dashed p-10 text-center"><CalendarDays className="mx-auto size-8 text-muted-foreground/40" /><p className="mt-3 font-medium">{empty}</p></div>;
+function EntryList({ entries, onEdit, onDelete, onComplete, completingId, empty, onCreateFirst }: { entries: CalendarEntry[]; onEdit: (id: string) => void; onDelete: (id: string) => void; onComplete: (id: string) => void; completingId?: string; empty: string; onCreateFirst?: () => void }) {
+  if (entries.length === 0) return <EmptyState kind="calendar" compact={!onCreateFirst} title={empty} actionLabel={onCreateFirst ? 'Thêm sự kiện đầu tiên' : undefined} onAction={onCreateFirst} />;
   const groups = entries.reduce<Record<string, CalendarEntry[]>>((result, item) => {
     const key = dateKey(new Date(item.startAt));
     (result[key] ??= []).push(item);

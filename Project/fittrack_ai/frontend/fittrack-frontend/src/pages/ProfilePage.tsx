@@ -41,7 +41,7 @@ export default function ProfilePage() {
   });
 
   if (profileQuery.isError) {
-    return <ErrorState title="Không thể tải hồ sơ" message="Vui lòng đăng nhập lại hoặc tải lại trang." />;
+    return <ErrorState title="Không thể tải hồ sơ" message="Vui lòng thử lại hoặc đăng nhập lại." onRetry={() => void profileQuery.refetch()} retrying={profileQuery.isFetching} />;
   }
 
   if (profileQuery.isLoading || !profile) {

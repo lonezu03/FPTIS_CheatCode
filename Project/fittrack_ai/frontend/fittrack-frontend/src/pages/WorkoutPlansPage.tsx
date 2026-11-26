@@ -32,6 +32,7 @@ import WorkoutGroupFields from "@/components/workouts/WorkoutGroupFields";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 type PlanExerciseDraft = {
@@ -329,11 +330,11 @@ function WorkoutPlanWorkspace({ owner }: { owner: string }) {
   };
 
   if (exercisesQuery.isLoading || plansQuery.isLoading) {
-    return <TableLoading />;
+    return <div className="space-y-4 md:space-y-6"><Skeleton className="h-8 w-32" /><Skeleton className="h-14 w-full rounded-2xl" /><Skeleton className="h-72 w-full rounded-2xl" /><TableLoading rows={2} rowClassName="h-40 rounded-2xl" label="Đang tải giáo án" /></div>;
   }
 
   if (exercisesQuery.isError || plansQuery.isError) {
-    return <ErrorState title="Không thể tải giáo án" message="Vui lòng tải lại trang." />;
+    return <ErrorState title="Không thể tải giáo án" message="Vui lòng thử lại." onRetry={() => { if (exercisesQuery.isError) void exercisesQuery.refetch(); if (plansQuery.isError) void plansQuery.refetch(); }} retrying={exercisesQuery.isFetching || plansQuery.isFetching} />;
   }
 
   return (
@@ -531,7 +532,7 @@ function WorkoutPlanWorkspace({ owner }: { owner: string }) {
 
       {bulkDay !== null && <Card><CardContent className="space-y-3 p-4"><p className="font-semibold">Chọn nhiều bài cho ngày {bulkDay + 1}</p><Input placeholder="Tìm tên, nhóm cơ, dụng cụ" value={bulkSearch} onChange={event => setBulkSearch(event.target.value)} /><div className="max-h-72 space-y-2 overflow-y-auto">{exercises.filter(item => `${item.name} ${item.muscleGroup} ${item.equipment}`.toLocaleLowerCase().includes(bulkSearch.toLocaleLowerCase())).map(item => <label className="flex items-center gap-2" key={item.id}><input type="checkbox" checked={bulkSelected.includes(item.id)} onChange={event => setBulkSelected(prev => event.target.checked ? [...prev, item.id] : prev.filter(id => id !== item.id))} />{item.name} · {item.muscleGroup}</label>)}</div><Button disabled={!bulkSelected.length} onClick={() => { setDirty(true); setDraftDays(prev => prev.map((day, index) => index !== bulkDay ? day : { ...day, exercises: [...day.exercises, ...bulkSelected.map(id => ({ exerciseId: id, exerciseOrder: 1, targetSets: 3, targetReps: 10, targetWeight: 0, targetRir: 2 }))] })); setBulkDay(null); }}>Thêm {bulkSelected.length} bài</Button><Button variant="outline" onClick={() => setBulkDay(null)}>Hủy</Button></CardContent></Card>}
       {plans.length === 0 ? (
-        <EmptyState kind="workout" title="Chưa có giáo án" description="Tạo giáo án dùng lại để bắt đầu buổi tập nhanh hơn." />
+        <EmptyState kind="workout" title="Chưa có giáo án" description="Tạo giáo án dùng lại để bắt đầu buổi tập nhanh hơn." actionLabel="Tạo giáo án đầu tiên" onAction={() => { document.getElementById("workout-plan-editor")?.scrollIntoView({ behavior: "smooth", block: "start" }); document.getElementById("plan-name")?.focus({ preventScroll: true }); }} />
       ) : (
         <div className="space-y-4">
           <div className="grid gap-4 md:gap-6 lg:grid-cols-2">

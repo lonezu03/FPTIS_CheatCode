@@ -257,7 +257,7 @@ export default function FoodsPage() {
   };
 
   if (foodsQuery.isError) {
-    return <ErrorState title="Không thể tải thực phẩm" message="Vui lòng tải lại trang." />;
+    return <ErrorState title="Không thể tải thực phẩm" message="Vui lòng thử lại." onRetry={() => void foodsQuery.refetch()} retrying={foodsQuery.isFetching} />;
   }
 
   return (
@@ -378,9 +378,9 @@ export default function FoodsPage() {
           </div>
 
           {foodsQuery.isLoading ? (
-            <TableLoading />
+            <TableLoading rows={6} rowClassName="h-16" />
           ) : foods.length === 0 ? (
-            <EmptyState kind="food" title="Không tìm thấy thực phẩm" description="Hãy thêm thực phẩm hoặc thử từ khóa khác." />
+            <EmptyState kind="food" title="Không tìm thấy thực phẩm" description="Hãy thêm thực phẩm hoặc thử từ khóa khác." actionLabel={searchKeyword ? undefined : isAdmin ? "Tạo thực phẩm đầu tiên" : "Đề xuất thực phẩm"} onAction={() => { const field = document.getElementById("food-name"); field?.scrollIntoView({ behavior: "smooth", block: "center" }); field?.focus({ preventScroll: true }); }} />
           ) : (
             <div className="w-full overflow-x-auto">
               <Table>

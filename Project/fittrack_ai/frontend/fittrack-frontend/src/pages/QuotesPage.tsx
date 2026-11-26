@@ -40,6 +40,9 @@ import {
 import DataPagination from "@/components/common/DataPagination";
 import ErrorState from "@/components/common/ErrorState";
 import PageLoading from "@/components/common/PageLoading";
+import EmptyState from "@/components/common/EmptyState";
+import TableLoading from "@/components/common/TableLoading";
+import { Skeleton } from "@/components/ui/skeleton";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -197,7 +200,7 @@ export default function QuotesPage() {
 
   if (quotesQuery.isLoading) return <PageLoading />;
   if (quotesQuery.isError || !quotesQuery.data) {
-    return <ErrorState title="Không thể tải kho câu nói" message="Vui lòng thử lại sau." />;
+    return <ErrorState title="Không thể tải kho câu nói" message="Vui lòng thử lại." onRetry={() => void quotesQuery.refetch()} retrying={quotesQuery.isFetching} />;
   }
 
   const pageData = quotesQuery.data;
@@ -600,9 +603,9 @@ function QuoteDetailDialog({ id, open, onOpenChange }: { id: string | null; open
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader><DialogTitle>Chi tiết câu nói</DialogTitle><DialogDescription>Nguồn, ngữ cảnh và những lần câu nói đã xuất hiện.</DialogDescription></DialogHeader>
-        {query.isLoading && <PageLoading />}
+        {query.isLoading && <div className="space-y-4" role="status" aria-label="Đang tải chi tiết câu nói"><Skeleton className="h-28 w-full rounded-2xl" /><Skeleton className="h-4 w-1/3" /><Skeleton className="h-4 w-2/3" /></div>}
         {query.data && <QuoteDetailContent quote={query.data.quote} dates={query.data.displayedDates} />}
-        {query.isError && <p className="text-sm text-red-600">Không thể tải chi tiết câu nói.</p>}
+        {query.isError && <ErrorState title="Không thể tải chi tiết câu nói." message="Vui lòng thử lại." onRetry={() => void query.refetch()} retrying={query.isFetching} />}
       </DialogContent>
     </Dialog>
   );
@@ -640,10 +643,10 @@ function QuoteHistoryDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader><DialogTitle>Lịch sử câu nói</DialogTitle><DialogDescription>Các câu từng được hiển thị trên Dashboard của bạn.</DialogDescription></DialogHeader>
         <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
-          {query.isLoading && <PageLoading />}
-          {query.data?.content.length === 0 && <p className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">Chưa có lịch sử hiển thị.</p>}
+          {query.isLoading && <TableLoading rows={4} rowClassName="h-20 rounded-2xl" label="Đang tải lịch sử câu nói" />}
+          {query.data?.content.length === 0 && <EmptyState compact title="Chưa có lịch sử hiển thị." />}
           {query.data?.content.map((item) => <div key={item.id} className="rounded-2xl border p-4"><p className="text-xs font-semibold text-emerald-700">{formatDate(item.displayDate)}</p><p className="mt-2 font-medium leading-6">“{item.quote.content}”</p>{item.quote.author && <p className="mt-2 text-sm text-muted-foreground">— {item.quote.author}</p>}</div>)}
-          {query.isError && <p className="text-sm text-red-600">Không thể tải lịch sử câu nói.</p>}
+          {query.isError && <ErrorState title="Không thể tải lịch sử câu nói." message="Vui lòng thử lại." onRetry={() => void query.refetch()} retrying={query.isFetching} />}
         </div>
       </DialogContent>
     </Dialog>

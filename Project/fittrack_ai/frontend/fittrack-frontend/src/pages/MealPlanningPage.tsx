@@ -7,6 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import PageHeader from '@/components/PageHeader';
+import EmptyState from '@/components/common/EmptyState';
+import ErrorState from '@/components/common/ErrorState';
+import TableLoading from '@/components/common/TableLoading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { mondayOf, planningDateText as dateText, planningPlus as plus } from '@/lib/meal-planning-dates';
 import { getNutritionConvenience, searchNutritionFoods, type ServingUnit } from '@/api/nutrition.api';
 import { addGrocery, checkGrocery, consumePlannedMeal, copyMealWeek, deleteGrocery, getGroceries, getMealWeekSummary, listPlannedMeals, regenerateGroceries, removePlannedMeal, savePlannedMeal, type PlannedMeal, type PlannedMealInput } from '@/api/meal-planning.api';
@@ -61,10 +65,10 @@ export default function MealPlanningPage() {
       <Button variant="outline" disabled={busy || !target || target === week} onClick={async () => { if (!(await confirm({ title: 'Sao chép mẫu ăn sang tuần đích?', description: `Từ tuần ${week} sang tuần ${target}. Không ghi nhật ký và không thay các bữa đã có.`, confirmText: 'Sao chép' }))) return; const key = `${week}/${target}`; copyIds.current[key] ??= crypto.randomUUID(); run(async () => { await copyMealWeek(week, target, copyIds.current[key]); toast.success('Đã sao chép mẫu tuần'); }); }}>Sao chép tuần</Button>
     </div>
     <section className="space-y-2 rounded-2xl border bg-emerald-50 p-4"><h2 className="font-semibold">Tổng dinh dưỡng dự kiến cả tuần</h2>
-      {summary.data ? <><p>{summary.data.plannedMealCount} bữa · {summary.data.totals.calories.toFixed(0)} kcal · {summary.data.totals.protein.toFixed(1)} g đạm · {summary.data.totals.carbs.toFixed(1)} g tinh bột · {summary.data.totals.fat.toFixed(1)} g béo</p><p className="text-sm">Vi chất có dữ liệu: {summary.data.totals.knownMicronutrientValues}/{summary.data.totals.possibleMicronutrientValues}. Bao gồm mọi trang của tuần, không phải lượng đã ăn hoặc trung bình nhật ký.</p></> : summary.isError ? <p role="alert">{message(summary.error)} <Button variant="outline" onClick={() => void summary.refetch()}>Tải lại tổng tuần</Button></p> : <p>Đang tổng hợp kế hoạch…</p>}
+      {summary.data ? <><p>{summary.data.plannedMealCount} bữa · {summary.data.totals.calories.toFixed(0)} kcal · {summary.data.totals.protein.toFixed(1)} g đạm · {summary.data.totals.carbs.toFixed(1)} g tinh bột · {summary.data.totals.fat.toFixed(1)} g béo</p><p className="text-sm">Vi chất có dữ liệu: {summary.data.totals.knownMicronutrientValues}/{summary.data.totals.possibleMicronutrientValues}. Bao gồm mọi trang của tuần, không phải lượng đã ăn hoặc trung bình nhật ký.</p></> : summary.isError ? <ErrorState title="Không tải được tổng tuần" message={message(summary.error)} retryLabel="Tải lại tổng tuần" onRetry={() => void summary.refetch()} retrying={summary.isFetching} /> : <div className="space-y-2" role="status" aria-label="Đang tổng hợp kế hoạch"><Skeleton className="h-5 w-3/4 bg-emerald-100" /><Skeleton className="h-4 w-1/2 bg-emerald-100" /></div>}
     </section>
-    {meals.isPending && <p role="status">Đang tải thực đơn…</p>}
-    {meals.isError && <div role="alert">{message(meals.error)} <Button variant="outline" onClick={() => void meals.refetch()}>Thử lại</Button></div>}
+    {meals.isPending && <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" role="status" aria-label="Đang tải thực đơn">{[0, 1, 2].map(i => <div key={i} className="space-y-3 rounded-2xl border bg-card p-4"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-5 w-2/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6" /><div className="flex gap-2"><Skeleton className="h-8 w-20" /><Skeleton className="h-8 w-14" /></div></div>)}</div>}
+    {meals.isError && <ErrorState title="Không tải được thực đơn" message={message(meals.error)} onRetry={() => void meals.refetch()} retrying={meals.isFetching} />}
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{meals.data?.content.map(meal => <article className="space-y-3 rounded-2xl border bg-card p-4" key={meal.id}>
       <p className="text-sm text-muted-foreground">{meal.date} · {types[meal.mealType]}</p><h2 className="font-semibold">{meal.name}</h2>
       {meal.notes && <p className="text-sm break-words">{meal.notes}</p>}
@@ -77,11 +81,13 @@ export default function MealPlanningPage() {
         <Button size="sm" variant="destructive" disabled={busy} onClick={async () => { if (await confirm({ title: 'Xóa bữa dự kiến?', description: `Bữa "${meal.name}" ngày ${meal.date} sẽ bị xóa khỏi kế hoạch.`, confirmText: 'Xóa', destructive: true })) run(() => removePlannedMeal(meal)); }}>Xóa</Button>
       </div>}
     </article>)}</div>
-    {meals.data?.totalElements === 0 && <p className="rounded-2xl border border-dashed p-6">Chưa có bữa dự kiến trong tuần. Thêm thực phẩm hoặc lấy từ bữa ăn/công thức đã lưu.</p>}
+    {meals.data?.totalElements === 0 && <EmptyState kind="food" title="Chưa có bữa dự kiến trong tuần." description="Thêm thực phẩm hoặc lấy từ bữa ăn/công thức đã lưu." actionLabel="Thêm bữa đầu tiên" actionDisabled={busy} onAction={() => start()} />}
     <div className="flex gap-3 items-center"><Button variant="outline" disabled={!page || meals.isFetching} onClick={() => setPage(p => p - 1)}>Trước</Button><span>Trang {page + 1}/{Math.max(1, meals.data?.totalPages ?? 1)}</span><Button variant="outline" disabled={meals.isFetching || !meals.data || meals.data.last} onClick={() => setPage(p => p + 1)}>Sau</Button></div>
     <section className="space-y-3 rounded-2xl border bg-card p-4"><h2 className="text-xl font-semibold">Danh sách mua thực phẩm</h2>
-      {groceries.isError ? <p role="alert">{message(groceries.error)} <Button onClick={() => void groceries.refetch()}>Thử lại</Button></p> : <>
+      {groceries.isError ? <ErrorState title="Không tải được danh sách mua" message={message(groceries.error)} onRetry={() => void groceries.refetch()} retrying={groceries.isFetching} /> : <>
         <Button variant="outline" disabled={busy || groceries.isPending} onClick={() => run(() => regenerateGroceries(week, version))}>Tạo lại từ thực đơn cả tuần</Button>
+        {groceries.isPending && <TableLoading rows={3} rowClassName="h-14" label="Đang tải danh sách mua" />}
+        {groceries.data?.items.length === 0 && <EmptyState compact kind="food" title="Chưa có mục cần mua." />}
         <div className="max-h-96 overflow-y-auto space-y-2">{groceries.data?.items.map(item => <div key={item.id} className="flex gap-3 items-center rounded-xl border p-3">
           <input type="checkbox" aria-label={`Đã mua ${item.name}`} checked={item.checked} disabled={busy} onChange={e => run(() => checkGrocery(week, version, item, e.target.checked))} />
           <div className="min-w-0 flex-1"><span className={item.checked ? 'line-through' : ''}>{item.name} · {Number(item.amount.toFixed(3))} {units[item.unit] ?? item.unit}</span><p className="text-xs text-muted-foreground">{item.manual ? 'Tự thêm' : item.stale ? 'Đã mua · kế hoạch thay đổi, kiểm tra lại số lượng / nhu cầu' : 'Từ thực đơn'}</p></div>

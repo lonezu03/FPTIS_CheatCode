@@ -1,6 +1,8 @@
 import {useState} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import PageHeader from '@/components/PageHeader';
+import ErrorState from '@/components/common/ErrorState';
+import {Skeleton} from '@/components/ui/skeleton';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
 import {getPersonalMonthlyReport,type ReportSection} from '@/api/personal-report.api';
@@ -21,7 +23,7 @@ export default function PersonalMonthlyReportPage(){
  const data=report.data,valid=data&&data.sections.every(s=>allowed.includes(s)),changed=JSON.stringify({month:`${month}-01`,sections:[...selected].sort()})!==JSON.stringify(request);
  return <div className="min-w-0 space-y-5"><PageHeader title="Báo cáo cá nhân theo tháng" description="Chọn nội dung, xem trước rồi in hoặc lưu PDF."/>
  <form className="flex flex-wrap items-end gap-4 rounded-2xl border bg-white p-4" onSubmit={e=>{e.preventDefault();setRequest({month:`${month}-01`,sections:[...selected].sort()});}}><label>Tháng<Input required type="month" min="2000-01" value={month} onChange={e=>setMonth(e.target.value)}/></label><fieldset className="flex flex-wrap gap-4"><legend>Nội dung được cấp quyền</legend>{allowed.map(s=><label key={s} className="flex items-center gap-2"><input type="checkbox" checked={selected.includes(s)} onChange={e=>setSections(current=>e.target.checked?[...current,s]:current.filter(v=>v!==s))}/>{labels[s]}</label>)}</fieldset><Button disabled={!selected.length||report.isFetching}>Xem báo cáo</Button><Button type="button" variant="outline" disabled={!valid||changed||report.isFetching} onClick={()=>window.print()}>In / lưu PDF</Button></form>
- {report.isFetching&&<p role="status">Đang tổng hợp nội dung đã chọn…</p>}{report.error&&<p role="alert" className="text-red-700">{getApiErrorMessage(report.error,'Không tải được báo cáo.')} <Button variant="outline" onClick={()=>void report.refetch()}>Thử lại</Button></p>}
+ {report.isLoading&&<div role="status" aria-label="Đang tổng hợp nội dung đã chọn" className="space-y-4 rounded-2xl border bg-white p-5"><Skeleton className="h-7 w-1/2"/><Skeleton className="h-4 w-1/3"/>{[0,1,2].map(i=><div key={i} className="space-y-2"><Skeleton className="h-5 w-40"/><Skeleton className="h-4 w-full"/><Skeleton className="h-4 w-5/6"/></div>)}</div>}{report.error&&<ErrorState title="Không tải được báo cáo." message={getApiErrorMessage(report.error,'Vui lòng thử lại.')} onRetry={()=>void report.refetch()} retrying={report.isFetching}/>}
  {!allowed.length&&<p>Bạn chưa có quyền xem các nguồn báo cáo.</p>}{changed&&valid&&<p>Đã đổi lựa chọn. Nhấn “Xem báo cáo” để cập nhật trước khi in.</p>}
  {valid&&<article className="monthly-report space-y-5 rounded-2xl border bg-white p-5"><header><h1 className="text-2xl font-bold">Báo cáo tháng {data.month.slice(0,7)}</h1><p>Qua ngày {data.through} · Múi giờ {data.timezone}</p><p>{data.sections.map(s=>labels[s]).join(' · ')}</p></header>
  {data.training&&<section className="space-y-2 rounded-xl border p-4"><h2 className="text-lg font-semibold">Luyện tập thực tế</h2><p>{data.training.sessions} buổi có hiệp chính hoàn tất · {data.training.trainingDays} ngày luyện tập · {data.training.workingSets} hiệp chính</p><p>Khối lượng: {numeric(data.training.volumeKgReps,' kg × lần')}</p></section>}

@@ -9,6 +9,7 @@ import { toLocalDateInput } from "../lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -154,11 +155,11 @@ export default function BodyTrackingPage() {
   };
 
   if (measurementsQuery.isLoading) {
-    return <TableLoading />;
+    return <div className="space-y-4 md:space-y-6" role="status" aria-label="Đang tải chỉ số cơ thể"><Skeleton className="h-8 w-48" /><Skeleton className="h-64 w-full rounded-2xl" /><Skeleton className="h-72 w-full rounded-2xl" /><TableLoading rows={4} /></div>;
   }
 
   if (measurementsQuery.isError) {
-    return <ErrorState title="Không thể tải chỉ số cơ thể" message="Vui lòng tải lại trang." />;
+    return <ErrorState title="Không thể tải chỉ số cơ thể" message="Vui lòng thử lại." onRetry={() => void measurementsQuery.refetch()} retrying={measurementsQuery.isFetching} />;
   }
 
   const chartData = [...items].reverse();
@@ -229,7 +230,7 @@ export default function BodyTrackingPage() {
 
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Camera className="size-5 text-emerald-700" /> Ảnh tiến độ</CardTitle></CardHeader>
-        <CardContent className="space-y-4"><p className="text-sm text-muted-foreground">Chụp cùng góc và ánh sáng để dễ so sánh. Chỉ bạn xem được ảnh.</p><div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.target.files?.[0]; if (file) setPhotoData(await fileToDataUri(file)); }} /><select className="h-10 rounded-md border bg-background px-3 text-sm" value={photoPose} onChange={event => setPhotoPose(event.target.value)}><option value="FRONT">Chính diện</option><option value="SIDE">Nghiêng</option><option value="BACK">Phía sau</option><option value="OTHER">Góc khác</option></select><Button disabled={!photoData || photoMutation.isPending} onClick={() => photoMutation.mutate()}>{photoMutation.isPending ? "Đang tải..." : "Lưu ảnh"}</Button></div>{photosQuery.data && photosQuery.data.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{photosQuery.data.map(photo => <div key={photo.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20"><img className="aspect-[3/4] w-full object-cover" src={photo.imageUrl} alt={`Tiến độ ${photo.takenDate}`} /><div className="flex items-center justify-between p-3"><div><p className="text-sm font-semibold">{photo.takenDate}</p><p className="text-xs text-muted-foreground">{photo.weight ? `${photo.weight} kg · ` : ""}{photo.pose}</p></div><Button size="icon" variant="ghost" disabled={deletePhotoMutation.isPending} onClick={async () => { if (await confirm({ title: "Xóa ảnh tiến độ?", description: `Ảnh ngày ${photo.takenDate} sẽ bị xóa vĩnh viễn.`, confirmText: "Xóa", destructive: true })) deletePhotoMutation.mutate(photo.id); }}><Trash2 className="size-4 text-red-600" /></Button></div></div>)}</div> : <EmptyState kind="progress" title="Chưa có ảnh tiến độ" description="Thêm ảnh đầu tiên để theo dõi thay đổi cơ thể theo thời gian." />}</CardContent>
+        <CardContent className="space-y-4"><p className="text-sm text-muted-foreground">Chụp cùng góc và ánh sáng để dễ so sánh. Chỉ bạn xem được ảnh.</p><div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.target.files?.[0]; if (file) setPhotoData(await fileToDataUri(file)); }} /><select className="h-10 rounded-md border bg-background px-3 text-sm" value={photoPose} onChange={event => setPhotoPose(event.target.value)}><option value="FRONT">Chính diện</option><option value="SIDE">Nghiêng</option><option value="BACK">Phía sau</option><option value="OTHER">Góc khác</option></select><Button disabled={!photoData || photoMutation.isPending} onClick={() => photoMutation.mutate()}>{photoMutation.isPending ? "Đang tải..." : "Lưu ảnh"}</Button></div>{photosQuery.isLoading ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="status" aria-label="Đang tải ảnh tiến độ">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />)}</div> : photosQuery.isError ? <ErrorState title="Không tải được ảnh tiến độ" message="Vui lòng thử lại." onRetry={() => void photosQuery.refetch()} retrying={photosQuery.isFetching} /> : photosQuery.data && photosQuery.data.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{photosQuery.data.map(photo => <div key={photo.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20"><img className="aspect-[3/4] w-full object-cover" src={photo.imageUrl} alt={`Tiến độ ${photo.takenDate}`} /><div className="flex items-center justify-between p-3"><div><p className="text-sm font-semibold">{photo.takenDate}</p><p className="text-xs text-muted-foreground">{photo.weight ? `${photo.weight} kg · ` : ""}{photo.pose}</p></div><Button size="icon" variant="ghost" disabled={deletePhotoMutation.isPending} onClick={async () => { if (await confirm({ title: "Xóa ảnh tiến độ?", description: `Ảnh ngày ${photo.takenDate} sẽ bị xóa vĩnh viễn.`, confirmText: "Xóa", destructive: true })) deletePhotoMutation.mutate(photo.id); }}><Trash2 className="size-4 text-red-600" /></Button></div></div>)}</div> : <EmptyState kind="progress" title="Chưa có ảnh tiến độ" description="Thêm ảnh đầu tiên để theo dõi thay đổi cơ thể theo thời gian." />}</CardContent>
       </Card>
 
       <Card>
@@ -239,7 +240,7 @@ export default function BodyTrackingPage() {
 
         <CardContent>
           {items.length === 0 ? (
-            <EmptyState kind="progress" title="Chưa có chỉ số" description="Lưu chỉ số đầu tiên để bắt đầu theo dõi." />
+            <EmptyState kind="progress" title="Chưa có chỉ số" description="Lưu chỉ số đầu tiên để bắt đầu theo dõi." actionLabel="Thêm chỉ số đầu tiên" onAction={() => { const field = document.getElementById("body-weight"); field?.scrollIntoView({ behavior: "smooth", block: "center" }); field?.focus({ preventScroll: true }); }} />
           ) : (
             <div className="w-full overflow-x-auto">
             <Table>

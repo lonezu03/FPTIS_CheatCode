@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 export default function AchievementsPage() {
   const query = useQuery({ queryKey: ["achievements"], queryFn: getAchievementSummary });
   if (query.isLoading) return <PageLoading />;
-  if (query.isError || !query.data) return <ErrorState title="Không thể tải thành tích" message="Vui lòng tải lại trang." />;
+  if (query.isError || !query.data) return <ErrorState title="Không thể tải thành tích" message="Vui lòng thử lại." onRetry={() => void query.refetch()} retrying={query.isFetching} />;
   const summary = query.data;
   const stats = [
     { title: "Chuỗi ghi bữa", value: summary.mealLoggingStreak, goal: 7, suffix: "ngày", icon: Utensils, tone: "bg-emerald-50 text-emerald-800" },
