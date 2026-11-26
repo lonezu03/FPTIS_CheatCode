@@ -32,7 +32,7 @@ describe("navigation config", () => {
 
   it("shows only the modules the account may use and hides empty groups", () => {
     const visible = visibleNavGroups(user({ financeEnabled: true }), false);
-    expect(routes(visible)).toEqual(["/dashboard", "/finance", "/finance/savings", "/finance/shared", "/profile", "/reports/monthly"]);
+    expect(routes(visible)).toEqual(["/dashboard", "/finance", "/finance/savings", "/finance/shared", "/music", "/music/guitar", "/music/flute", "/music/tools", "/profile", "/reports/monthly"]);
     expect(visible.map((group) => group.id)).not.toContain("admin");
   });
 
@@ -60,6 +60,19 @@ describe("searchNav", () => {
     expect(searchNav(all, "pomodoro").map((match) => match.item.to)).toEqual(["/focus"]);
     expect(searchNav(all, "giao an")[0].item.to).toBe("/workout-plans");
     expect(searchNav(all, "luyen tap").length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("finds the music pages without accents", () => {
+    const routesFor = (query: string) => searchNav(all, query).map((match) => match.item.to);
+    expect(routesFor("ghi ta")[0]).toBe("/music/guitar");
+    expect(routesFor("guitar")).toContain("/music/guitar");
+    expect(routesFor("sao")[0]).toBe("/music/flute");
+    expect(routesFor("metronome")).toEqual(["/music/tools"]);
+    expect(routesFor("chinh day")).toContain("/music/tools");
+    expect(routesFor("nhac")).toEqual(expect.arrayContaining(["/music", "/music/guitar", "/music/flute", "/music/tools"]));
+    expect(routesFor("dan")).toContain("/music/guitar");
+    // Visible to every account, no module flag needed.
+    expect(routes(visibleNavGroups(user(), false))).toContain("/music");
   });
 
   it("returns nothing for unknown terms", () => {

@@ -163,7 +163,78 @@ const savingsPage = () => ({
   totalElements: 1,
 });
 
+export type MockMusicSession = {
+  id: string;
+  instrument: "GUITAR" | "FLUTE";
+  practicedOn: string;
+  minutes: number;
+  exerciseKey: string;
+  bpm: number | null;
+  note: string | null;
+  createdAt: string;
+};
+
+const dayOffset = (offset: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
+/** Summary computed from the fake sessions, like /api/music/summary. */
+const musicSummary = (sessions: MockMusicSession[]) => {
+  const minutesOn = (date: string, instrument: "GUITAR" | "FLUTE") =>
+    sessions.filter((item) => item.practicedOn === date && item.instrument === instrument).reduce((sum, item) => sum + item.minutes, 0);
+  const weekByDay = Array.from({ length: 7 }, (_, index) => {
+    const date = dayOffset(index - 6);
+    return { date, guitarMinutes: minutesOn(date, "GUITAR"), fluteMinutes: minutesOn(date, "FLUTE") };
+  });
+  const best = new Map<string, { exerciseKey: string; instrument: "GUITAR" | "FLUTE"; bpm: number; practicedOn: string }>();
+  for (const item of sessions) {
+    if (!item.bpm) continue;
+    const key = `${item.exerciseKey}|${item.instrument}`;
+    const current = best.get(key);
+    if (!current || item.bpm > current.bpm) best.set(key, { exerciseKey: item.exerciseKey, instrument: item.instrument, bpm: item.bpm, practicedOn: item.practicedOn });
+  }
+  let streakDays = 0;
+  while (sessions.some((item) => item.practicedOn === dayOffset(-streakDays))) streakDays++;
+  const total = (instrument: "GUITAR" | "FLUTE") => sessions.filter((item) => item.instrument === instrument).reduce((sum, item) => sum + item.minutes, 0);
+  return {
+    streakDays,
+    todayMinutes: weekByDay[6].guitarMinutes + weekByDay[6].fluteMinutes,
+    weekMinutes: weekByDay.reduce((sum, day) => sum + day.guitarMinutes + day.fluteMinutes, 0),
+    weekByDay,
+    totalMinutesByInstrument: { GUITAR: total("GUITAR"), FLUTE: total("FLUTE") },
+    sessionsCount: sessions.length,
+    bestBpmByExercise: [...best.values()],
+  };
+};
+
+const initialMusicSessions = (): MockMusicSession[] => [
+  {
+    id: "m0000000-0000-4000-8000-000000000001",
+    instrument: "GUITAR",
+    practicedOn: dayOffset(-1),
+    minutes: 15,
+    exerciseKey: "guitar-spider",
+    bpm: 64,
+    note: "Ngón 4 còn yếu",
+    createdAt: `${dayOffset(-1)}T20:00:00Z`,
+  },
+  {
+    id: "m0000000-0000-4000-8000-000000000002",
+    instrument: "FLUTE",
+    practicedOn: dayOffset(-2),
+    minutes: 10,
+    exerciseKey: "flute-long-tones",
+    bpm: null,
+    note: null,
+    createdAt: `${dayOffset(-2)}T20:00:00Z`,
+  },
+];
+
 export type MockApiState = {
+  /** Fake /api/music sessions, newest first. */
+  musicSessions: MockMusicSession[];
   /** True while the fake refresh cookie is valid. */
   session: boolean;
   /** Paths (exact) that answer 401 for the current access token. */
@@ -173,7 +244,7 @@ export type MockApiState = {
 };
 
 export async function installApiMock(context: BrowserContext, options: { loggedIn?: boolean } = {}): Promise<MockApiState> {
-  const state: MockApiState = { session: options.loggedIn ?? false, unauthorizedPaths: new Set(), calls: [] };
+  const state: MockApiState = { session: options.loggedIn ?? false, unauthorizedPaths: new Set(), calls: [], musicSessions: initialMusicSessions() };
 
   await context.route(
     (url) => new URL(url).pathname.startsWith("/api/"),
@@ -210,8 +281,28 @@ export async function installApiMock(context: BrowserContext, options: { loggedI
 
       if (state.unauthorizedPaths.has(path)) return unauthorized();
 
+      if (path === "/api/music/sessions" && method === "POST") {
+        const input = body as Omit<MockMusicSession, "id" | "createdAt">;
+        const created: MockMusicSession = { bpm: null, note: null, ...input, id: `m-${state.calls.length}`, createdAt: new Date().toISOString() };
+        state.musicSessions.unshift(created);
+        return json(created, 201);
+      }
+      if (path.startsWith("/api/music/sessions/") && method === "DELETE") {
+        const id = path.split("/").pop();
+        state.musicSessions = state.musicSessions.filter((item) => item.id !== id);
+        return route.fulfill({ status: 204 });
+      }
+
       if (method === "GET") {
         switch (path) {
+          case "/api/music/summary":
+            return json(musicSummary(state.musicSessions));
+          case "/api/music/sessions": {
+            const size = Number(url.searchParams.get("size") ?? 20);
+            const content = state.musicSessions.slice(0, size);
+            const total = state.musicSessions.length;
+            return json({ content, page: 0, size, totalElements: total, totalPages: Math.ceil(total / size), first: true, last: total <= size });
+          }
           case "/api/users/me":
             return json(profile());
           case "/api/notifications":

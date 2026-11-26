@@ -41,6 +41,10 @@ const SharedExpensesPage = lazy(() => import('../pages/SharedExpensesPage'));
 const TrainingComparisonPage = lazy(() => import('../pages/TrainingComparisonPage'));
 const FocusPage = lazy(() => import('../pages/FocusPage'));
 const PersonalMonthlyReportPage = lazy(() => import('../pages/PersonalMonthlyReportPage'));
+const MusicPracticePage = lazy(() => import('../pages/MusicPracticePage'));
+const MusicGuitarPage = lazy(() => import('../pages/MusicGuitarPage'));
+const MusicFlutePage = lazy(() => import('../pages/MusicFlutePage'));
+const MusicToolsPage = lazy(() => import('../pages/MusicToolsPage'));
 
 export default function AppRoutes() {
   return (
@@ -95,6 +99,10 @@ export default function AppRoutes() {
               <Route element={<FeatureRoute feature="todoEnabled" />}><Route path="/todos" element={<TodoPage />} /><Route path="/habits" element={<PersonalTrackingPage section="habits" key="habits-BODY" />} /><Route path="/focus" element={<FocusPage />} /></Route>
               <Route path="/reports/monthly" element={<PersonalMonthlyReportPage />} />
               <Route path="/template-sharing" element={<TemplateSharingPage />} />
+              <Route path="/music" element={<MusicPracticePage />} />
+              <Route path="/music/guitar" element={<MusicGuitarPage />} />
+              <Route path="/music/flute" element={<MusicFlutePage />} />
+              <Route path="/music/tools" element={<MusicToolsPage />} />
               <Route element={<FeatureRoute feature="scheduleEnabled" />}><Route path="/schedule" element={<SchedulePage />} /></Route>
 
               <Route element={<AdminRoute />}>

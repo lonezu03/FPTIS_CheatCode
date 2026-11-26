@@ -10,6 +10,35 @@ Web lint, build and 83 tests passed; backend Maven tests passed 220 with 3 skips
 Flutter analyze found 94 info-level notices and exits 1 with default settings;
 `flutter analyze --no-fatal-infos` passes. No APK build, push or deployment.
 Local main is ahead of origin/main; preserve the untracked rental-management folder.
+## Latest handoff: backend music practice module (2026-11-26)
+
+- New package `com.fittrack.music` (guitar + sáo C5 practice log), open to every
+  authenticated user, owner-scoped, no feature flag. Flyway `V47__music_practice_sessions.sql`.
+- `POST /api/music/sessions` (201), `GET /api/music/sessions?from&to&instrument&page&size`
+  (practicedOn desc, createdAt desc), `DELETE /api/music/sessions/{id}` (204/404),
+  `GET /api/music/summary` (streak, today/week minutes, 7-day weekByDay, totals,
+  sessionsCount, bestBpmByExercise per exerciseKey+instrument) via 4 aggregate queries.
+- Backend tests 227 (3 skipped: PostgreSQL/Docker + probe); V47 not yet run on PostgreSQL.
+## Latest handoff: web module "Âm nhạc" (2026-11-26)
+
+- New nav group `music` (no feature flag): /music (daily 15/20-min routine with
+  per-step timers, quick log, streak, 7-day bars, best BPM, recent sessions with
+  delete), /music/guitar (SVG chord library C G D A E Am Em Dm F-small E7 A7 D7,
+  spider/finger independence, one-minute changes saved as
+  `guitar-one-minute-<a>-<b>`, strumming patterns synced to the metronome, tuner,
+  tips), /music/flute (sáo Đô 6-hole fingering SVG, long tones, scale, note
+  reading checked by mic, easy songs, pitch check), /music/tools.
+- Code: `src/api/music.api.ts`, `src/features/music/*` (pure logic + Vitest:
+  music-theory, pitch-detection (MPM/NSDF), guitar-data, flute-data, routines,
+  metronome-engine (Web Audio lookahead), music-utils), pages `Music*Page.tsx`.
+  Tabs use `?tab=`; metronome/mic stop on unmount and the mic stops when hidden.
+- One-minute counts < 20 are saved with bpm null (API min 20) and the count in note.
+- Long-tone targets are per-browser localStorage (`ancai-music-long-tone-targets`).
+- `Permissions-Policy` now `microphone=(self)` in frontend/vercel.json,
+  frontend/fittrack-frontend/vercel.json and frontend/nginx.conf.
+- Smoke e2e: `e2e/smoke/music.smoke.ts`; mock API has /api/music endpoints.
+Verification: tsc, eslint, vitest 46 files/236 tests, smoke e2e 8/8. Not committed.
+
 ## Latest handoff: web large-page split + loading states (2026-11-26)
 
 - FinancePage (1.454→180 lines) → `src/features/finance/*`; AdminLunchPage
