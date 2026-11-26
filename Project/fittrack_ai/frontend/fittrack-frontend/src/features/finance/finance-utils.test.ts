@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { buildCsv } from "@/lib/csv";
+
 import type { FinanceAccount, FinanceCategory, FinanceTransaction } from "@/api/finance.api";
 import {
   budgetLevel,
@@ -14,6 +16,7 @@ import {
   resolveInitialFinanceView,
   sortAccountsByRecent,
   transactionFormFrom,
+  transactionCsvColumns,
   transactionFormFromTemplate,
   type FinanceView,
   type TransactionForm,
@@ -145,5 +148,24 @@ describe("misc helpers", () => {
   it("matches finance query keys", () => {
     expect(isFinanceQueryKey(["finance-dashboard", "2026-11"])).toBe(true);
     expect(isFinanceQueryKey(["lunch"])).toBe(false);
+  });
+});
+
+const CRLF = String.fromCharCode(13, 10);
+
+describe("xuất CSV và sao chép giao dịch", () => {
+  it("xuất ngày dd/mm/yyyy, số tiền số nguyên, chặn công thức trong ghi chú", () => {
+    const csv = buildCsv([transaction("t1", {
+      amount: 45_000.4, occurredAt: "2026-11-05T12:30:00", categoryName: "Ăn uống", accountName: "Ví", destinationAccountName: null,
+      expenseNature: null, merchant: "Quán; cơm", note: "=1+1",
+    })], transactionCsvColumns);
+    const [header, row] = csv.split(CRLF);
+    expect(header).toBe("Ngày;Giờ;Loại;Danh mục;Tài khoản;Tài khoản nhận;Số tiền (VND);Tính chất chi;Nơi chi / nguồn thu;Ghi chú;Trạng thái");
+    expect(row).toBe('05/11/2026;12:30;Chi tiêu;Ăn uống;Ví;;45000;;"Quán; cơm";\'=1+1;Đã ghi');
+  });
+
+  it("sao chép giữ nội dung, đổi thời điểm sang hiện tại", () => {
+    const result = transactionFormFromTemplate(transaction("t1", { merchant: "Siêu thị", note: "Đi chợ" }), [account("a1")], "2026-11-26T09:15");
+    expect(result).toMatchObject({ amount: "50000", accountId: "a1", categoryId: "c1", merchant: "Siêu thị", note: "Đi chợ", occurredAt: "2026-11-26T09:15" });
   });
 });

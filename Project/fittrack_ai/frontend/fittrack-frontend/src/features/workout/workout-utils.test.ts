@@ -15,7 +15,9 @@ import {
   potentialRecords,
   removeLastSet,
   restAfterSet,
+  missingExerciseCount,
   seedFromLatestSession,
+  seedFromPastSession,
   seedFromSession,
   sessionVolume,
   summarizeSessions,
@@ -54,6 +56,16 @@ describe("tạo buổi tập", () => {
     const seed = seedFromLatestSession(session([set(), set({ exerciseId: "old" })]), [{ id: "bench" } as never]);
     expect(seed.exercises.map(item => item.exerciseId)).toEqual(["bench"]);
     expect(seed.exercises[0].sets[0]).toMatchObject({ weight: 50, reps: 10, completed: false });
+  });
+
+  it("lặp lại buổi cũ tạo buổi mới cùng bài, set chưa hoàn thành", () => {
+    const past = session([set(), set({ setNumber: 2, weight: 55, reps: 8 }), set({ exerciseId: "old" })]);
+    const seed = seedFromPastSession(past, [{ id: "bench" } as never]);
+    expect(seed).toMatchObject({ title: "Lặp lại: Ngực" });
+    expect(seed.sessionId).toBeUndefined();
+    expect(seed.exercises[0].sets.map(item => [item.weight, item.reps, item.completed])).toEqual([[50, 10, false], [55, 8, false]]);
+    expect(missingExerciseCount(past, [{ id: "bench" } as never])).toBe(1);
+    expect(seedFromPastSession(session([set()], { note: undefined }), [{ id: "bench" } as never]).title).toBe("Lặp lại buổi trước");
   });
 
   it("chỉnh sửa buổi giữ tên bài lịch sử và các set đã lưu", () => {

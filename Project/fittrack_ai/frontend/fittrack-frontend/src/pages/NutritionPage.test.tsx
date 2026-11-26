@@ -1,17 +1,15 @@
 import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import NutritionPage from "./NutritionPage";
 import { analyzeFoodPhoto, createMealLog, searchNutritionFoods, getNutritionFood, getNutritionDiary } from "../api/nutrition.api";
 
-vi.mock("../api/nutrition.api", async (importOriginal) => ({
-  ...await importOriginal<typeof import("../api/nutrition.api")>(),
-  createMealLog: vi.fn(),
-  analyzeFoodPhoto: vi.fn(),
-  getNutritionDiary: vi.fn().mockResolvedValue({
+// Dữ liệu mặc định dùng chung; mỗi test được trả về đúng trạng thái này để không phụ thuộc thứ tự chạy.
+const defaults = vi.hoisted(() => ({
+  diary: {
     date: "2026-10-07",
-    status: "UNLOGGED",
+    status: "UNLOGGED" as const,
     statusExplicit: false,
     consumed: { calories: 0, protein: 0, carbs: 0, fat: 0 },
     targets: { calories: 2000, protein: 100, carbs: 250, fat: 60 },
@@ -19,9 +17,17 @@ vi.mock("../api/nutrition.api", async (importOriginal) => ({
     waterMl: 0,
     waterTargetMl: 2100,
     meals: [],
-  }),
+  },
+  search: { content: [], page: 0, size: 20, totalPages: 1, totalElements: 0, first: true, last: true },
+}));
+
+vi.mock("../api/nutrition.api", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../api/nutrition.api")>(),
+  createMealLog: vi.fn(),
+  analyzeFoodPhoto: vi.fn(),
+  getNutritionDiary: vi.fn(),
   getFoods: vi.fn().mockResolvedValue([]),
-  searchNutritionFoods: vi.fn().mockResolvedValue({ content: [], page: 0, size: 20, totalPages: 1, totalElements: 0, first: true, last: true }),
+  searchNutritionFoods: vi.fn(),
   getNutritionFood: vi.fn(),
   getNutritionConvenience: vi.fn().mockResolvedValue({
     recentFoods: [],
@@ -32,6 +38,13 @@ vi.mock("../api/nutrition.api", async (importOriginal) => ({
 }));
 
 describe("NutritionPage", () => {
+  beforeEach(() => {
+    // Test ảnh gọi createMealLog thật sự; nếu không xóa lịch sử gọi, test "không tự ghi nhật ký"
+    // sẽ hỏng khi --sequence.shuffle cho test ảnh chạy trước.
+    vi.clearAllMocks();
+    vi.mocked(getNutritionDiary).mockResolvedValue(defaults.diary);
+    vi.mocked(searchNutritionFoods).mockResolvedValue(defaults.search);
+  });
   afterEach(cleanup);
   it("hiển thị nhật ký khi API tiện ích trả về dữ liệu rỗng đúng hợp đồng backend", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

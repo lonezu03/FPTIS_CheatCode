@@ -159,9 +159,22 @@ export function seedFromPlanDay(plan: WorkoutPlan, day: WorkoutPlanDay): Workout
 
 /** Lặp lại bài và mức tạ của buổi gần nhất; bỏ bài không còn trong kho. */
 export function seedFromLatestSession(latest: WorkoutSession, exercises: Exercise[]): WorkoutSeed {
+  return seedFromPastSession(latest, exercises, "Tập lại buổi gần đây");
+}
+
+/** Số bài của buổi cũ không còn trong kho (sẽ bị bỏ khi lặp lại). */
+export function missingExerciseCount(session: WorkoutSession, exercises: Exercise[]): number {
+  return new Set(session.sets.map((set) => set.exerciseId).filter((id) => !exercises.some((exercise) => exercise.id === id))).size;
+}
+
+/**
+ * Bắt đầu buổi mới giống một buổi trong lịch sử: cùng bài, số set, mức tạ, số lần, RIR và thời gian nghỉ.
+ * Set nào cũng chưa hoàn thành; bài không còn trong kho bị bỏ.
+ */
+export function seedFromPastSession(latest: WorkoutSession, exercises: Exercise[], title = latest.note ? `Lặp lại: ${latest.note}` : "Lặp lại buổi trước"): WorkoutSeed {
   const ids = [...new Set(latest.sets.map((set) => set.exerciseId))].filter((id) => exercises.some((exercise) => exercise.id === id));
   return {
-    title: "Tập lại buổi gần đây",
+    title,
     exercises: ids.map((id) => makeExercise(id, {
       sets: latest.sets.filter((set) => set.exerciseId === id).map((set) => makeSet({ setType: set.setType, weight: set.weight, reps: set.reps, rir: set.rir })),
       restSeconds: latest.sets.find((set) => set.exerciseId === id)?.restSeconds ?? 90,

@@ -127,6 +127,7 @@ export default function LunchReviewDialog({ order, open, onOpenChange, onSaved }
                   value={comment}
                   maxLength={1000}
                   onChange={(event) => setComment(event.target.value)}
+                  aria-label="Nhận xét món ăn"
                   placeholder="Món ăn hôm nay thế nào?"
                   className="min-h-28 w-full resize-y rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />

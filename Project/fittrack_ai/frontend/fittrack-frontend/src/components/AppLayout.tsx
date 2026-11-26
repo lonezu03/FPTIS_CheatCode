@@ -130,7 +130,18 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-[20.5rem] border-r border-border/70 bg-card lg:block">
+      {/* Liên kết đầu tiên khi nhấn Tab: nhảy qua thanh điều hướng tới nội dung trang (WCAG 2.4.1). */}
+      <a
+        href="#main-content"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById("main-content")?.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:rounded-xl focus:bg-primary focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-primary-foreground focus:shadow-lg focus:outline-2 focus:outline-offset-2 focus:outline-ring"
+      >
+        Bỏ qua đến nội dung chính
+      </a>
+      <aside aria-label="Thanh điều hướng" className="fixed inset-y-0 left-0 z-50 hidden w-[20.5rem] border-r border-border/70 bg-card lg:block">
         <TwoPaneNav {...navProps} label="Điều hướng chính" />
       </aside>
 
@@ -179,7 +190,8 @@ export default function AppLayout() {
               <button
                 type="button"
                 onClick={() => setPaletteOpen(true)}
-                className="hidden h-10 w-56 items-center gap-2 rounded-xl border border-input bg-background px-3 text-sm text-muted-foreground transition hover:border-ring/50 hover:text-foreground md:flex xl:w-72"
+                aria-keyshortcuts="Control+K Meta+K"
+                className="hidden h-10 w-56 items-center gap-2 rounded-xl border border-input bg-background px-3 text-sm text-muted-foreground transition outline-none hover:border-ring/50 hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:flex xl:w-72"
               >
                 <Search className="size-4" aria-hidden="true" />
                 <span className="flex-1 text-left">Tìm chức năng…</span>
@@ -210,7 +222,7 @@ export default function AppLayout() {
               <Link
                 to="/profile"
                 className="flex items-center gap-2 rounded-xl p-1.5 transition hover:bg-muted"
-                aria-label="Mở hồ sơ"
+                aria-label={`Mở hồ sơ ${displayName}`}
               >
                 <Avatar initials={initials} compact />
                 <div className="hidden max-w-36 text-left md:block">
@@ -223,14 +235,20 @@ export default function AppLayout() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
+        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1600px] px-4 py-5 outline-none sm:px-6 sm:py-7 lg:px-8 lg:py-8">
           {/* On desktop the nav panel already lists sibling pages; tabs help on small screens. */}
           {active && <div className="lg:hidden"><ModuleTabs group={active.group} /></div>}
           <AppErrorBoundary key={location.pathname} contained><Outlet /></AppErrorBoundary>
         </main>
       </div>
       {canUseFeature(authUser, "chatbotEnabled") && <AssistantChat />}
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} groups={visibleGroups} pinned={prefs.pinned} />
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        groups={visibleGroups}
+        pinned={prefs.pinned}
+        onCommand={{ help: () => setGuideOpen(true), logout: handleLogout }}
+      />
       <UserGuideDialog
         open={guideOpen}
         onOpenChange={setGuideOpen}

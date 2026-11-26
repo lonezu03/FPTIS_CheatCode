@@ -21,6 +21,7 @@ export default function WorkoutHistorySection({
   onPageChange,
   onPageSizeChange,
   onEdit,
+  onRepeat,
   onDelete,
 }: {
   filters: HistoryFilters;
@@ -34,6 +35,7 @@ export default function WorkoutHistorySection({
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
   onEdit: (session: WorkoutSession) => void;
+  onRepeat: (session: WorkoutSession) => void;
   onDelete: (session: WorkoutSession) => void;
 }) {
   return (
@@ -52,7 +54,7 @@ export default function WorkoutHistorySection({
           <EmptyState kind="workout" title="Chưa có buổi tập" description="Bắt đầu workout đầu tiên để theo dõi tiến độ." />
         ) : (
           sessions.map((session) => (
-            <SessionHistoryCard key={session.id} session={session} onEdit={() => onEdit(session)} onDelete={() => onDelete(session)} />
+            <SessionHistoryCard key={session.id} session={session} onEdit={() => onEdit(session)} onRepeat={() => onRepeat(session)} onDelete={() => onDelete(session)} />
           ))
         )}
         <DataPagination

@@ -40,7 +40,8 @@
   --secondary: oklch(0.948 0.02 151);
   --secondary-foreground: oklch(0.31 0.07 157);
   --muted: oklch(0.951 0.009 145);
-  --muted-foreground: oklch(0.515 0.028 157);
+  /* 0.49 (trước 0.515): giữ chữ phụ ≥ 5:1 trên nền muted/secondary/accent, đạt WCAG AA kể cả chữ nhỏ. */
+  --muted-foreground: oklch(0.49 0.028 157);
   --accent: oklch(0.934 0.035 151);
   --accent-foreground: oklch(0.285 0.069 157);
   --destructive: oklch(0.577 0.245 27.325);
@@ -112,7 +113,7 @@
    * match the design system; anything with its own classes is untouched.
    */
   main button:not([class]) {
-    @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground shadow-[0_1px_2px_rgba(15,43,35,0.04)] transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:ring-3 focus-visible:ring-ring/20 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-card;
+    @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground shadow-[0_1px_2px_rgba(15,43,35,0.04)] transition-colors hover:border-emerald-300 hover:bg-emerald-50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-card;
   }
 
   main select:not([class]),
@@ -133,6 +134,15 @@
 
   :focus-visible {
     scroll-margin: 6rem;
+  }
+
+  /*
+   * Vòng focus mặc định cho phần tử tương tác chưa tự khai báo kiểu focus (WCAG 2.4.7).
+   * :where() giữ độ ưu tiên 0, nên lớp tiện ích như outline-none/ring-* của component vẫn thắng.
+   */
+  :where(a[href], button, [role="button"], [role="tab"], [role="option"], [role="menuitem"], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 
   @media (prefers-reduced-motion: reduce) {

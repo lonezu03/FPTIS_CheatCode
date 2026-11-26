@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowLeftRight, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowDownRight, ArrowLeftRight, ArrowUpRight, Copy, Pencil, Trash2 } from "lucide-react";
 
 import type { FinanceTransaction } from "@/api/finance.api";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +8,13 @@ import { money, natureLabels, transactionTone } from "./finance-utils";
 export default function TransactionRow({
   transaction,
   onEdit,
+  onCopy,
   onVoid,
 }: {
   transaction: FinanceTransaction;
   onEdit: () => void;
+  /** Opens a new entry prefilled from this one, dated now. */
+  onCopy?: () => void;
   onVoid: () => void;
 }) {
   const isVoid = transaction.status === "VOID";
@@ -42,6 +45,11 @@ export default function TransactionRow({
         </strong>
         {!isVoid && (
           <div className="flex gap-1">
+            {onCopy && (
+              <Button size="icon-sm" variant="ghost" aria-label="Sao chép giao dịch" title="Sao chép sang hôm nay" onClick={onCopy}>
+                <Copy className="size-4" />
+              </Button>
+            )}
             <Button size="icon-sm" variant="ghost" aria-label="Sửa giao dịch" onClick={onEdit}>
               <Pencil className="size-4" />
             </Button>

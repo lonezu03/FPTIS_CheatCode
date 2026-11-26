@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { BookHeart, Carrot, CornerDownLeft, Dumbbell, LoaderCircle, Pin, ReceiptText, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { searchNav, type NavGroup, type NavMatch } from "@/lib/navigation";
+import { searchAll, type NavCommandId, type NavGroup, type SearchResult } from "@/lib/navigation";
 import { getFinanceTransactions } from "@/api/finance.api";
 import { getJournalEntries } from "@/api/journal.api";
 import { getFoodsManagementPageApi } from "@/api/food.api";
@@ -14,19 +14,21 @@ type CommandPaletteProps = {
   onOpenChange: (open: boolean) => void;
   groups: NavGroup[];
   pinned: string[];
+  /** Handlers for commands that are not pages; commands without a handler are hidden. */
+  onCommand?: Partial<Record<NavCommandId, () => void>>;
 };
 
-type Entry = { key: string; label: string; caption: string; icon: ElementType; to: string; pinned?: boolean };
+type Entry = { key: string; label: string; caption: string; icon: ElementType; to?: string; run?: () => void; pinned?: boolean };
 
 /** Ctrl/⌘ + K: jump to a module, or find records (transactions, journal, foods, exercises) by keyword. */
-export default function CommandPalette({ open, onOpenChange, groups, pinned }: CommandPaletteProps) {
+export default function CommandPalette({ open, onOpenChange, groups, pinned, onCommand }: CommandPaletteProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="top-[12vh] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-xl sm:p-0" showCloseButton={false}>
         <DialogTitle className="sr-only">Tìm nhanh</DialogTitle>
         <DialogDescription className="sr-only">Gõ tên chức năng hoặc nội dung cần tìm, dùng phím mũi tên để chọn và Enter để mở.</DialogDescription>
         {/* Mounted only while open, so the query and selection start fresh every time. */}
-        <PaletteBody groups={groups} pinned={pinned} onClose={() => onOpenChange(false)} />
+        <PaletteBody groups={groups} pinned={pinned} onCommand={onCommand} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
@@ -111,23 +113,33 @@ function useDataSearch(query: string, groups: NavGroup[]) {
   return { entries: active ? (result.data ?? []) : [], loading: active && (result.isFetching || debounced !== query.trim()) };
 }
 
-function PaletteBody({ groups, pinned, onClose }: { groups: NavGroup[]; pinned: string[]; onClose: () => void }) {
+function PaletteBody({ groups, pinned, onCommand, onClose }: { groups: NavGroup[]; pinned: string[]; onCommand?: CommandPaletteProps["onCommand"]; onClose: () => void }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
   const navEntries = useMemo<Entry[]>(() => {
-    const found = searchNav(groups, query);
+    const found = searchAll(groups, query);
+    const isPage = (to: string) => (result: SearchResult) => result.kind === "page" && result.item.to === to;
     const ordered = query.trim()
       ? found
       : [
           // Without a query, pinned shortcuts come first, then everything in menu order.
-          ...pinned.map((to) => found.find((match) => match.item.to === to)).filter((match): match is NavMatch => !!match),
-          ...found.filter((match) => !pinned.includes(match.item.to)),
+          ...pinned.map((to) => found.find(isPage(to))).filter((result): result is SearchResult => !!result),
+          ...found.filter((result) => result.kind !== "page" || !pinned.includes(result.item.to)),
         ];
-    return ordered.map(({ item, group }) => ({ key: item.to, label: item.label, caption: group.label, icon: item.icon, to: item.to, pinned: pinned.includes(item.to) }));
-  }, [groups, pinned, query]);
+    return ordered.flatMap((result): Entry[] => {
+      if (result.kind === "page") {
+        const { item, group } = result;
+        return [{ key: item.to, label: item.label, caption: group.label, icon: item.icon, to: item.to, pinned: pinned.includes(item.to) }];
+      }
+      const { command } = result;
+      const run = onCommand?.[command.id];
+      if (!run && !command.to) return [];
+      return [{ key: `cmd-${command.id}`, label: command.label, caption: "Thao tác", icon: command.icon, to: run ? undefined : command.to, run }];
+    });
+  }, [groups, pinned, query, onCommand]);
 
   const data = useDataSearch(query, groups);
   const entries = [...navEntries, ...data.entries];
@@ -140,7 +152,8 @@ function PaletteBody({ groups, pinned, onClose }: { groups: NavGroup[]; pinned: 
   const go = (entry: Entry | undefined) => {
     if (!entry) return;
     onClose();
-    navigate(entry.to);
+    if (entry.run) entry.run();
+    else if (entry.to) navigate(entry.to);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -166,6 +179,7 @@ function PaletteBody({ groups, pinned, onClose }: { groups: NavGroup[]; pinned: 
         id={`cmd-${index}`}
         data-index={index}
         role="option"
+        tabIndex={-1}
         aria-selected={selected}
         onMouseMove={() => setCursor(index)}
         onClick={() => go(entry)}
@@ -203,7 +217,7 @@ function PaletteBody({ groups, pinned, onClose }: { groups: NavGroup[]; pinned: 
           aria-expanded="true"
           aria-controls="command-palette-list"
           aria-activedescendant={entries[safeCursor] ? `cmd-${safeCursor}` : undefined}
-          className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground/75"
+          className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
         />
         {data.loading && <LoaderCircle className="size-4 shrink-0 animate-spin text-muted-foreground" aria-label="Đang tìm" />}
         <kbd className="hidden rounded-md border bg-muted px-1.5 py-0.5 text-[0.65rem] text-muted-foreground sm:inline">Esc</kbd>
@@ -213,7 +227,11 @@ function PaletteBody({ groups, pinned, onClose }: { groups: NavGroup[]; pinned: 
         {navEntries.map((entry, index) => renderEntry(entry, index))}
         {data.entries.length > 0 && <p className="px-3 pt-3 pb-1 text-[0.7rem] font-medium text-muted-foreground">Dữ liệu</p>}
         {data.entries.map((entry, index) => renderEntry(entry, navEntries.length + index))}
-        {entries.length === 0 && !data.loading && <p className="px-3 py-8 text-center text-sm text-muted-foreground">Không tìm thấy “{query}”.</p>}
+        {entries.length === 0 && !data.loading && (
+          <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+            Không tìm thấy “{query}”. Thử từ khác, ví dụ: chi tiêu, cân nặng, lịch, đặt cơm.
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-4 border-t bg-muted/40 px-4 py-2 text-[0.7rem] text-muted-foreground">
         <span>↑ ↓ chọn</span>

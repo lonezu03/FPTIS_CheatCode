@@ -1,7 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { CircleHelp, LogOut, Pin, PinOff, Search, Settings, X } from "lucide-react";
-import { searchNav, type NavGroup, type NavItem } from "@/lib/navigation";
+import { searchAll, type NavCommand, type NavGroup, type NavItem } from "@/lib/navigation";
 
 type TwoPaneNavProps = {
   groups: NavGroup[];
@@ -73,17 +73,27 @@ export default function TwoPaneNav({ groups, activeGroupId, pinned, onTogglePin,
         </button>
       </nav>
 
-      {selected && <GroupPanel group={selected} groups={groups} pinned={pinned} onTogglePin={onTogglePin} onNavigate={onNavigate} label={label} />}
+      {selected && <GroupPanel group={selected} groups={groups} pinned={pinned} onTogglePin={onTogglePin} onNavigate={onNavigate} onHelp={onHelp} onLogout={onLogout} label={label} />}
     </div>
   );
 }
 
-function GroupPanel({ group, groups, pinned, onTogglePin, onNavigate, label }: { group: NavGroup; groups: NavGroup[]; pinned: string[]; onTogglePin: (to: string) => void; onNavigate?: () => void; label: string }) {
+function GroupPanel({ group, groups, pinned, onTogglePin, onNavigate, onHelp, onLogout, label }: { group: NavGroup; groups: NavGroup[]; pinned: string[]; onTogglePin: (to: string) => void; onNavigate?: () => void; onHelp: () => void; onLogout: () => void; label: string }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const searching = query.trim().length > 0;
-  const matches = searching ? searchNav(groups, query) : [];
+  // Pages and account actions (đăng xuất, đổi mật khẩu, hướng dẫn…) ranked together.
+  const results = searching ? searchAll(groups, query) : [];
+  const runCommand = (command: NavCommand) => {
+    setQuery("");
+    if (command.id === "help") onHelp();
+    else if (command.id === "logout") onLogout();
+    else if (command.to) {
+      navigate(command.to);
+      onNavigate?.();
+    }
+  };
   const allItems = groups.flatMap((entry) => entry.items);
   const pinnedItems = pinned.map((to) => allItems.find((item) => item.to === to)).filter((item): item is NavItem => !!item);
 
@@ -93,10 +103,14 @@ function GroupPanel({ group, groups, pinned, onTogglePin, onNavigate, label }: {
   };
   const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape") setQuery("");
-    else if (event.key === "Enter" && matches[0]) {
+    else if (event.key === "Enter" && results[0]) {
       event.preventDefault();
-      navigate(matches[0].item.to);
-      open();
+      const first = results[0];
+      if (first.kind === "command") runCommand(first.command);
+      else {
+        navigate(first.item.to);
+        open();
+      }
     }
   };
 
@@ -120,7 +134,7 @@ function GroupPanel({ group, groups, pinned, onTogglePin, onNavigate, label }: {
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onSearchKey}
             placeholder="Tìm kiếm"
-            className="h-11 w-full rounded-2xl border border-border bg-card pr-9 pl-10 text-sm outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/20 [&::-webkit-search-cancel-button]:hidden"
+            className="h-11 w-full rounded-2xl border border-border bg-card pr-9 pl-10 text-sm outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/40 [&::-webkit-search-cancel-button]:hidden"
           />
           {searching && (
             <button
@@ -142,14 +156,32 @@ function GroupPanel({ group, groups, pinned, onTogglePin, onNavigate, label }: {
         {searching ? (
           <>
             <p className="px-3 pb-1.5 text-xs text-muted-foreground" aria-live="polite">
-              {matches.length ? `${matches.length} kết quả · Enter để mở` : "Không tìm thấy chức năng"}
+              {results.length ? `${results.length} kết quả · Enter để mở` : "Không tìm thấy chức năng. Thử từ khác hoặc nhấn Ctrl K để tìm cả dữ liệu."}
             </p>
             <ul className="space-y-1">
-              {matches.map(({ item, group: owner }) => (
-                <li key={item.to}>
-                  <PanelLink item={item} caption={owner.label} pinned={pinned.includes(item.to)} onTogglePin={onTogglePin} onClick={open} />
-                </li>
-              ))}
+              {results.map((result) => {
+                if (result.kind === "page") {
+                  const { item, group: owner } = result;
+                  return (
+                    <li key={item.to}>
+                      <PanelLink item={item} caption={owner.label} pinned={pinned.includes(item.to)} onTogglePin={onTogglePin} onClick={open} />
+                    </li>
+                  );
+                }
+                const { command } = result;
+                const Icon = command.icon;
+                return (
+                  <li key={command.id}>
+                    <button type="button" onClick={() => runCommand(command)} className="flex min-h-12 w-full items-center gap-3.5 rounded-2xl pr-10 pl-4 text-left text-[0.95rem] text-foreground/85 transition hover:bg-muted/60 hover:text-foreground">
+                      <Icon className="size-5 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        <span className="line-clamp-2 leading-snug">{command.label}</span>
+                        <span className="block truncate text-xs text-muted-foreground">Thao tác</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </>
         ) : (

@@ -338,6 +338,7 @@ export default function AssistantChat() {
                 }}
                 rows={2}
                 maxLength={4_000}
+                aria-label="Tin nhắn gửi trợ lý"
                 disabled={!privacyQuery.data?.consented}
                 placeholder="Ví dụ: Tạo buổi tập chân 45 phút hôm nay..."
                 className="min-h-12 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"

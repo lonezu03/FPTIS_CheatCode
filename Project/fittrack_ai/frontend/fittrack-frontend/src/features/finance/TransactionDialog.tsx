@@ -45,9 +45,13 @@ import {
 const RECEIPT_TYPES = ["image/png", "image/jpeg", "image/webp", "image/avif", "image/gif"];
 const RECEIPT_MAX_BYTES = 1_500_000;
 
-/** Create or edit a transaction; new entries keep a local draft and can be prefilled from a receipt photo. */
+/**
+ * Create or edit a transaction; new entries keep a local draft and can be prefilled from a receipt photo.
+ * `copyFrom` opens a new entry prefilled from an existing transaction with the current time.
+ */
 export default function TransactionDialog({
   initial,
+  copyFrom = null,
   accounts,
   categories,
   recentCategoryIds,
@@ -56,6 +60,7 @@ export default function TransactionDialog({
   onSaved,
 }: {
   initial: FinanceTransaction | null;
+  copyFrom?: FinanceTransaction | null;
   accounts: FinanceAccount[];
   categories: FinanceCategory[];
   recentCategoryIds: string[];
@@ -65,10 +70,11 @@ export default function TransactionDialog({
 }) {
   const userId = useAuthStore(state => state.user?.userId);
   const [draftOwner] = useState(userId);
-  const draftKey = userId && draftOwner === userId && !initial ? `fittrack:finance-draft:${userId}` : null;
+  // A copy never reads or overwrites the saved draft of a fresh entry.
+  const draftKey = userId && draftOwner === userId && !initial && !copyFrom ? `fittrack:finance-draft:${userId}` : null;
   const [recovery, setRecovery] = useState(() => readConvenience(draftKey, isTransactionDraft));
   const saved = useRef(false);
-  const [form, setForm] = useState<TransactionForm>(() => transactionFormFrom(initial));
+  const [form, setForm] = useState<TransactionForm>(() => copyFrom ? transactionFormFromTemplate(copyFrom, accounts) : transactionFormFrom(initial));
   useEffect(() => { if (!recovery && !saved.current) writeConvenience(draftKey, hasDraftContent(form) ? form : null); }, [draftKey, form, recovery]);
   const [receiptWarning, setReceiptWarning] = useState<string | null>(null);
   // A receipt result is ignored when the user edited the form while it was being read.
@@ -133,7 +139,7 @@ export default function TransactionDialog({
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{initial ? "Sửa giao dịch" : "Ghi giao dịch nhanh"}</DialogTitle>
+          <DialogTitle>{initial ? "Sửa giao dịch" : copyFrom ? "Sao chép giao dịch" : "Ghi giao dịch nhanh"}</DialogTitle>
           <DialogDescription>Số tiền luôn là số dương; chọn đúng loại để báo cáo không bị sai.</DialogDescription>
         </DialogHeader>
         {recovery && (
@@ -145,7 +151,7 @@ export default function TransactionDialog({
             </div>
           </div>
         )}
-        {!initial && templates.length > 0 && (
+        {!initial && !copyFrom && templates.length > 0 && (
           <details className="rounded-xl border p-3">
             <summary className="cursor-pointer text-sm font-medium">Dùng lại giao dịch gần đây</summary>
             <div className="flex flex-wrap gap-2">

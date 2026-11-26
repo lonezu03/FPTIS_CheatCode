@@ -1,12 +1,12 @@
 import { useMemo } from "react";
-import { Trash2 } from "lucide-react";
+import { Repeat2, Trash2 } from "lucide-react";
 
 import type { WorkoutSession } from "@/api/workout.api";
 import { Button } from "@/components/ui/button";
 import { groupSessionSets, sessionVolume, setTypeLabels } from "./workout-utils";
 
 /** Một buổi trong lịch sử, mở ra xem các set theo từng bài. */
-export default function SessionHistoryCard({ session, onDelete, onEdit }: { session: WorkoutSession; onDelete: () => void; onEdit: () => void }) {
+export default function SessionHistoryCard({ session, onDelete, onEdit, onRepeat }: { session: WorkoutSession; onDelete: () => void; onEdit: () => void; onRepeat?: () => void }) {
   const exerciseGroups = useMemo(() => groupSessionSets(session.sets), [session]);
   const volume = sessionVolume(session);
 
@@ -19,6 +19,7 @@ export default function SessionHistoryCard({ session, onDelete, onEdit }: { sess
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">{Math.round(volume).toLocaleString("vi-VN")} kg</span>
+          {onRepeat && <Button variant="outline" size="sm" title="Bắt đầu buổi mới với cùng bài và mức tạ" onClick={event => { event.preventDefault(); onRepeat(); }}><Repeat2 />Lặp lại</Button>}
           <Button variant="outline" size="sm" onClick={event => { event.preventDefault(); onEdit(); }}>Chỉnh sửa</Button>
           <Button variant="destructive" size="sm" onClick={(event) => { event.preventDefault(); onDelete(); }}><Trash2 />Xóa</Button>
         </div>

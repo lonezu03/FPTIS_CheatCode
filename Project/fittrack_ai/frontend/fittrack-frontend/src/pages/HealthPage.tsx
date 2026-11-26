@@ -78,6 +78,7 @@ export default function HealthPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <PageHeader title="Sức khỏe toàn diện" />
         <select
+          aria-label="Khoảng thời gian"
           value={period}
           onChange={(event) => setPeriod(Number(event.target.value))}
           className="h-10 rounded-xl border bg-white px-3 text-sm"

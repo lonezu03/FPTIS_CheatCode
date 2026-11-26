@@ -17,7 +17,7 @@ export default function ImagePreviewDialog({ src, alt, className, imageClassName
 
   if (!src) {
     return (
-      <div className={cn("grid place-items-center rounded-xl bg-slate-100 text-slate-400", className)}>
+      <div className={cn("grid place-items-center rounded-xl bg-slate-100 text-slate-500", className)} role="img" aria-label={`${alt}: chưa có ảnh`}>
         <ImageIcon className="size-5" />
       </div>
     );

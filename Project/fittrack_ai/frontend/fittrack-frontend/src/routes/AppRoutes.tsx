@@ -45,6 +45,7 @@ const MusicPracticePage = lazy(() => import('../pages/MusicPracticePage'));
 const MusicGuitarPage = lazy(() => import('../pages/MusicGuitarPage'));
 const MusicFlutePage = lazy(() => import('../pages/MusicFlutePage'));
 const MusicToolsPage = lazy(() => import('../pages/MusicToolsPage'));
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage'));
 
 export default function AppRoutes() {
   return (
@@ -112,10 +113,11 @@ export default function AppRoutes() {
                 <Route path="/admin/notification-playbooks" element={<AdminNotificationPlaybooksPage />} />
                 <Route path="/admin/journal-prompts" element={<AdminJournalPromptsPage />} />
               </Route>
+
+              {/* Unknown addresses keep the menu and suggest the closest pages instead of a silent redirect. */}
+              <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Route>
-
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

@@ -23,8 +23,10 @@ export default class AppErrorBoundary extends Component<Props, State> {
       return this.props.children;
     }
 
+    // Trong AppLayout đã có <main>; bản "contained" dùng <div> để trang chỉ có một vùng main.
+    const Root = this.props.contained ? 'div' : 'main';
     return (
-      <main className={`grid ${this.props.contained ? 'min-h-[50dvh]' : 'min-h-screen'} place-items-center bg-background p-5`}>
+      <Root role={this.props.contained ? 'alert' : undefined} className={`grid ${this.props.contained ? 'min-h-[50dvh]' : 'min-h-screen'} place-items-center bg-background p-5`}>
         <section className="w-full max-w-md rounded-3xl border bg-card p-7 text-center shadow-xl">
           <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-amber-100 text-amber-700">
             <AlertTriangle className="size-6" />
@@ -38,7 +40,7 @@ export default class AppErrorBoundary extends Component<Props, State> {
             {this.props.contained ? 'Thử lại' : 'Tải lại ứng dụng'}
           </Button>
         </section>
-      </main>
+      </Root>
     );
   }
 }

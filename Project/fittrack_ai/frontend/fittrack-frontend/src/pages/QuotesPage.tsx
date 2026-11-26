@@ -237,6 +237,7 @@ export default function QuotesPage() {
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Tìm trong câu nói, tác giả, nguồn, ghi chú hoặc nhãn..."
+                aria-label="Tìm câu nói"
                 className="pl-9"
               />
             </div>

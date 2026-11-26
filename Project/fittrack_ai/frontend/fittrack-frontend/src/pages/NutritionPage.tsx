@@ -14,6 +14,7 @@ import {
   searchNutritionFoods,
   getNutritionFood,
   getNutritionDiary,
+  getMealLogsPage,
   getNutritionConvenience,
   logNutritionCollection,
   saveNutritionCollection,
@@ -28,6 +29,17 @@ import {
   type ServingUnit,
 } from "../api/nutrition.api";
 import { toLocalDateInput } from "../lib/format";
+import { csvDate, csvFileDate, downloadCsv } from "@/lib/csv";
+import {
+  NUTRITION_EXPORT_PAGE_SIZE,
+  collectMealLogsInRange,
+  copyableMeals,
+  exportRangeError,
+  mealCopyPayloads,
+  mealItemCsvColumns,
+  mealItemRows,
+  type MealLogPayload,
+} from "@/features/nutrition/nutrition-utils";
 
 import PageHeader from "../components/PageHeader";
 import EmptyState from "../components/common/EmptyState";
@@ -40,7 +52,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { BookmarkPlus, Camera, Check, ChevronLeft, ChevronRight, Droplets, Heart, LockKeyhole, Plus, ScanLine, Trash2, Utensils } from "lucide-react";
+import { BookmarkPlus, Camera, Check, ChevronLeft, ChevronRight, Copy, Download, Droplets, Heart, LockKeyhole, Plus, ScanLine, Trash2, Utensils } from "lucide-react";
 
 type MealDraftItem = {
   foodId: string;
@@ -119,6 +131,49 @@ export default function NutritionPage() {
     onError: showMutationError("Không thể xóa bữa ăn"),
   });
   const favoriteMutation = useMutation({ mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) => setFoodFavorite(id, favorite), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["nutrition-convenience"] }), onError: showMutationError("Không thể cập nhật món yêu thích") });
+  const today = toLocalDateInput();
+  const previousLabel = date === today ? "hôm qua" : `ngày ${csvDate(previousDate)}`;
+  const repeatMutation = useMutation({
+    mutationFn: async ({ payloads }: { payloads: MealLogPayload[]; itemCount: number }) => {
+      for (const payload of payloads) await createMealLog(payload);
+    },
+    onSuccess: (_data, { itemCount }) => { toast.success(`Đã ghi ${itemCount} món giống ${previousLabel}`); },
+    onError: showMutationError("Không thể ghi lại bữa. Kiểm tra nhật ký trước khi thử lại."),
+    onSettled: refresh,
+  });
+  const repeatMeal = async (mealType: string) => {
+    const source = copyableMeals(previousDiary.data?.meals ?? [], mealType);
+    if (!source.length) return;
+    const itemCount = source.reduce((sum, meal) => sum + meal.items.length, 0);
+    const existing = diaryQuery.data?.meals.filter((meal) => meal.mealType === mealType).length ?? 0;
+    const names = [...new Set(source.flatMap((meal) => meal.items.map((item) => item.foodName)))];
+    const ok = await confirm({
+      title: `Ghi ${mealLabels[mealType].toLowerCase()} giống ${previousLabel}?`,
+      description: `${itemCount} món sẽ được ghi vào ngày ${csvDate(date)}: ${names.slice(0, 5).join(", ")}${names.length > 5 ? "…" : ""}.${existing ? " Các món đã ghi của bữa này vẫn giữ nguyên." : ""}`,
+      confirmText: `Ghi ${itemCount} món`,
+    });
+    if (ok) repeatMutation.mutate({ payloads: mealCopyPayloads(source, date), itemCount });
+  };
+  const [exportFrom, setExportFrom] = useState(() => shiftDate(toLocalDateInput(), -29));
+  const [exportTo, setExportTo] = useState(() => toLocalDateInput());
+  const [exporting, setExporting] = useState(false);
+  const exportError = exportRangeError(exportFrom, exportTo);
+  const exportDiary = async () => {
+    if (exportError) return;
+    setExporting(true);
+    try {
+      const { logs, truncated } = await collectMealLogsInRange((page) => getMealLogsPage(undefined, page, NUTRITION_EXPORT_PAGE_SIZE), exportFrom, exportTo);
+      const rows = mealItemRows(logs);
+      if (!rows.length) { toast.info("Không có món nào trong khoảng ngày đã chọn."); return; }
+      downloadCsv(`nhat-ky-an-${csvFileDate(exportFrom)}-${csvFileDate(exportTo)}`, rows, mealItemCsvColumns);
+      if (truncated) toast.warning(`Nhật ký quá dài nên chỉ xuất được ${rows.length} món, từ ngày ${csvDate(logs[0]?.logDate)}. Hãy chọn khoảng ngắn hơn để xuất phần trước đó.`);
+      else toast.success(`Đã xuất ${rows.length} món.`);
+    } catch (error) {
+      showMutationError("Không xuất được nhật ký ăn uống.")(error);
+    } finally {
+      setExporting(false);
+    }
+  };
   const logCollectionMutation = useMutation({ mutationFn: (id: string) => logNutritionCollection(id, { mealType: quickMealType, logDate: date, servings: 1 }), onSuccess: async () => { toast.success("Đã thêm cả bữa vào nhật ký"); await refresh(); }, onError: showMutationError("Không thể thêm bữa đã lưu") });
 
   if (diaryQuery.isLoading || foodsQuery.isLoading) return <PageLoading />;
@@ -133,13 +188,13 @@ export default function NutritionPage() {
     <div className="space-y-5">
       <PageHeader title="Nhật ký ăn uống" />
 
-      {convenienceQuery.data && (convenienceQuery.data.recentFoods.length > 0 || convenienceQuery.data.savedMeals.length > 0) && <Card><CardHeader className="flex flex-row items-center justify-between gap-3"><div><CardTitle>Ghi nhanh</CardTitle><p className="mt-1 text-xs text-muted-foreground">Món gần đây, yêu thích và bữa đã lưu của bạn.</p></div><select className="h-10 rounded-md border bg-background px-3 text-sm" value={quickMealType} onChange={(event) => setQuickMealType(event.target.value)}>{mealTypes.map(type => <option key={type} value={type}>{mealLabels[type]}</option>)}</select></CardHeader><CardContent className="space-y-4">{convenienceQuery.data.savedMeals.length > 0 && <div><p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Bữa đã lưu</p><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{convenienceQuery.data.savedMeals.map(collection => <button key={collection.id} disabled={logCollectionMutation.isPending} onClick={() => logCollectionMutation.mutate(collection.id)} className="rounded-xl border p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50"><p className="font-semibold">{collection.name}</p><p className="mt-1 text-xs text-muted-foreground">{Math.round(collection.caloriesPerServing)} kcal · P {Math.round(collection.proteinPerServing)}g · {collection.items.length} món</p><span className="mt-2 inline-flex items-center text-xs font-semibold text-emerald-700"><Plus className="mr-1 size-3" /> Thêm cả bữa</span></button>)}</div></div>}<div><p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Gần đây</p><div className="flex gap-2 overflow-x-auto pb-1">{convenienceQuery.data.recentFoods.map(shortcut => <div key={shortcut.food.id} className="flex min-w-48 items-center gap-2 rounded-xl border px-3 py-2"><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{shortcut.food.name}</p><p className="text-xs text-muted-foreground">Đã dùng {shortcut.useCount} lần</p></div><button aria-label="Yêu thích" onClick={() => favoriteMutation.mutate({ id: shortcut.food.id, favorite: !shortcut.favorite })}><Heart className={`size-4 ${shortcut.favorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`} /></button></div>)}</div></div></CardContent></Card>}
+      {convenienceQuery.data && (convenienceQuery.data.recentFoods.length > 0 || convenienceQuery.data.savedMeals.length > 0) && <Card><CardHeader className="flex flex-row items-center justify-between gap-3"><div><CardTitle>Ghi nhanh</CardTitle><p className="mt-1 text-xs text-muted-foreground">Món gần đây, yêu thích và bữa đã lưu của bạn.</p></div><select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Bữa để ghi nhanh" value={quickMealType} onChange={(event) => setQuickMealType(event.target.value)}>{mealTypes.map(type => <option key={type} value={type}>{mealLabels[type]}</option>)}</select></CardHeader><CardContent className="space-y-4">{convenienceQuery.data.savedMeals.length > 0 && <div><p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Bữa đã lưu</p><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{convenienceQuery.data.savedMeals.map(collection => <button key={collection.id} disabled={logCollectionMutation.isPending} onClick={() => logCollectionMutation.mutate(collection.id)} className="rounded-xl border p-3 text-left transition hover:border-emerald-400 hover:bg-emerald-50"><p className="font-semibold">{collection.name}</p><p className="mt-1 text-xs text-muted-foreground">{Math.round(collection.caloriesPerServing)} kcal · P {Math.round(collection.proteinPerServing)}g · {collection.items.length} món</p><span className="mt-2 inline-flex items-center text-xs font-semibold text-emerald-700"><Plus className="mr-1 size-3" /> Thêm cả bữa</span></button>)}</div></div>}<div><p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">Gần đây</p><div className="flex gap-2 overflow-x-auto pb-1">{convenienceQuery.data.recentFoods.map(shortcut => <div key={shortcut.food.id} className="flex min-w-48 items-center gap-2 rounded-xl border px-3 py-2"><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{shortcut.food.name}</p><p className="text-xs text-muted-foreground">Đã dùng {shortcut.useCount} lần</p></div><button type="button" aria-label={`Yêu thích ${shortcut.food.name}`} aria-pressed={shortcut.favorite} onClick={() => favoriteMutation.mutate({ id: shortcut.food.id, favorite: !shortcut.favorite })}><Heart className={`size-4 ${shortcut.favorite ? "fill-rose-500 text-rose-500" : "text-muted-foreground"}`} /></button></div>)}</div></div></CardContent></Card>}
 
       <Card>
         <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center justify-center gap-2">
             <Button variant="outline" size="icon" aria-label="Ngày trước" onClick={() => setDate(shiftDate(date, -1))}><ChevronLeft /></Button>
-            <Input className="w-40" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            <Input className="w-40" type="date" aria-label="Ngày nhật ký" value={date} onChange={(event) => setDate(event.target.value)} />
             <Button variant="outline" size="icon" aria-label="Ngày sau" onClick={() => setDate(shiftDate(date, 1))}><ChevronRight /></Button>
           </div>
           <div className="text-center sm:text-right">
@@ -165,7 +220,7 @@ export default function NutritionPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {[250, 350, 500].map((amount) => <Button key={amount} variant="outline" onClick={() => waterMutation.mutate(amount)}>+{amount}ml</Button>)}
-            <Input className="w-28" type="number" min={1} max={10000} value={waterAmount} onChange={(event) => setWaterAmount(Number(event.target.value))} />
+            <Input className="w-28" type="number" min={1} max={10000} aria-label="Lượng nước (ml)" value={waterAmount} onChange={(event) => setWaterAmount(Number(event.target.value))} />
             <Button onClick={() => waterMutation.mutate(waterAmount)}>Ghi nước</Button>
           </div>
         </CardContent>
@@ -177,6 +232,9 @@ export default function NutritionPage() {
             key={mealType}
             mealType={mealType}
             logs={diary.meals.filter((meal) => meal.mealType === mealType)}
+            repeatLabel={copyableMeals(previousDiary.data?.meals ?? [], mealType).length ? `Giống ${previousLabel}` : null}
+            repeating={repeatMutation.isPending}
+            onRepeat={() => void repeatMeal(mealType)}
             onAdd={() => setEditor({ mealType })}
             onEdit={(log) => setEditor({ mealType, log })}
             onDelete={async (log) => {
@@ -218,6 +276,19 @@ export default function NutritionPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader><CardTitle>Xuất nhật ký ăn uống</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">File CSV mở được bằng Excel, mỗi món một dòng. Tối đa 366 ngày mỗi lần.</p>
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <FormField label="Từ ngày"><Input type="date" value={exportFrom} max={exportTo || undefined} onChange={(event) => setExportFrom(event.target.value)} /></FormField>
+            <FormField label="Đến ngày"><Input type="date" value={exportTo} min={exportFrom || undefined} onChange={(event) => setExportTo(event.target.value)} /></FormField>
+            <Button variant="outline" disabled={exporting || Boolean(exportError)} onClick={() => void exportDiary()}><Download className="size-4" /> {exporting ? "Đang xuất..." : "Xuất CSV"}</Button>
+          </div>
+          {exportError && <p className="text-xs text-amber-700">{exportError}</p>}
+        </CardContent>
+      </Card>
+
       {editor && (
         <MealEditor
           key={`${editor.log?.id ?? editor.mealType}:${date}`}
@@ -249,17 +320,17 @@ function DiaryMacro({ title, consumed, target, remaining, unit, neutralOverage =
   );
 }
 
-function MealSection({ mealType, logs, onAdd, onEdit, onDelete }: { mealType: string; logs: MealLog[]; onAdd: () => void; onEdit: (log: MealLog) => void; onDelete: (log: MealLog) => void }) {
+function MealSection({ mealType, logs, repeatLabel, repeating, onRepeat, onAdd, onEdit, onDelete }: { mealType: string; logs: MealLog[]; repeatLabel: string | null; repeating: boolean; onRepeat: () => void; onAdd: () => void; onEdit: (log: MealLog) => void; onDelete: (log: MealLog) => void }) {
   const totals = logs.reduce((sum, log) => ({ calories: sum.calories + log.totalCalories, protein: sum.protein + log.totalProtein, carbs: sum.carbs + log.totalCarbs, fat: sum.fat + log.totalFat }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle>{mealLabels[mealType]}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{round(totals.calories)} kcal · P {round(totals.protein)}g · C {round(totals.carbs)}g · F {round(totals.fat)}g</p></div><Button size="sm" variant="outline" onClick={onAdd}><Plus className="size-4" /> Ghi món</Button></CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle>{mealLabels[mealType]}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{round(totals.calories)} kcal · P {round(totals.protein)}g · C {round(totals.carbs)}g · F {round(totals.fat)}g</p></div><div className="flex flex-wrap justify-end gap-2">{repeatLabel && <Button size="sm" variant="ghost" disabled={repeating} title={`Ghi lại các món của ${mealLabels[mealType].toLowerCase()} trước đó`} onClick={onRepeat}><Copy className="size-4" /> {repeatLabel}</Button>}<Button size="sm" variant="outline" onClick={onAdd}><Plus className="size-4" /> Ghi món</Button></div></CardHeader>
       <CardContent className="space-y-3">
         {logs.length === 0 ? <EmptyState kind="food" title={`Chưa có ${mealLabels[mealType].toLowerCase()}`} description="Ghi một hoặc nhiều món trong cùng một lần." /> : logs.map((log) => (
           <div key={log.id} className="rounded-2xl border bg-slate-50/60 p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               {log.sourceType === "LUNCH_ORDER" ? <Badge className="bg-emerald-100 text-emerald-800"><Utensils className="size-3" /> Từ đơn cơm</Badge> : <Badge variant="outline">Nhập thủ công</Badge>}
-              {log.readOnly ? <span className="flex items-center gap-1 text-xs text-muted-foreground"><LockKeyhole className="size-3" /> Đơn hàng giữ nguyên</span> : <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => onEdit(log)}>Sửa</Button><Button size="icon" variant="ghost" onClick={() => onDelete(log)}><Trash2 className="size-4 text-red-600" /></Button></div>}
+              {log.readOnly ? <span className="flex items-center gap-1 text-xs text-muted-foreground"><LockKeyhole className="size-3" /> Đơn hàng giữ nguyên</span> : <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => onEdit(log)}>Sửa</Button><Button size="icon" variant="ghost" aria-label={`Xóa ${mealLabels[mealType].toLowerCase()}`} onClick={() => onDelete(log)}><Trash2 className="size-4 text-red-600" /></Button></div>}
             </div>
             <div className="space-y-2">{log.items.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 text-sm"><span>{item.foodName}</span><span className="text-muted-foreground">{item.servingAmount ?? item.quantity} {unitLabel(item.servingUnit)}</span></div>)}</div>
           </div>
@@ -360,13 +431,14 @@ function MealEditor({ open, mealType, date, log, draftItems, foods: initialFoods
             if (available.length !== recovery.length) toast.info("Một số món không còn dùng được với khẩu phần đã lưu. Hãy chọn lại món và số lượng.");
             setItems(available); setRecovery(null);
           }} disabled={hydrated.some(result => result.isFetching)}>Khôi phục bản nháp</Button><Button size="sm" variant="outline" onClick={() => { writeConvenience(draftKey, null); setRecovery(null); }}>Bỏ bản nháp cũ</Button></div></div>}
-          <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><Input placeholder="Nhập hoặc quét mã vạch" value={barcode} onChange={event => setBarcode(event.target.value)} /><Button variant="outline" disabled={!barcode.trim() || barcodeMutation.isPending} onClick={() => barcodeMutation.mutate()}><ScanLine className="size-4" /> Tra mã</Button><label className={`inline-flex h-10 items-center justify-center gap-2 rounded-md border bg-background px-4 text-sm font-medium ${photoMutation.isPending ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted"}`}><Camera className="size-4" /> Phân tích ảnh<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" capture="environment" disabled={photoMutation.isPending} onChange={event => { void handlePhoto(event.target.files?.[0]); event.target.value = ""; }} /></label></div>
+          <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto_auto]"><Input placeholder="Nhập hoặc quét mã vạch" aria-label="Mã vạch" value={barcode} onChange={event => setBarcode(event.target.value)} /><Button variant="outline" disabled={!barcode.trim() || barcodeMutation.isPending} onClick={() => barcodeMutation.mutate()}><ScanLine className="size-4" /> Tra mã</Button><label className={`inline-flex h-10 items-center justify-center gap-2 rounded-md border bg-background px-4 text-sm font-medium ${photoMutation.isPending ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-muted"}`}><Camera className="size-4" /> Phân tích ảnh<input className="hidden" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" capture="environment" disabled={photoMutation.isPending} onChange={event => { void handlePhoto(event.target.files?.[0]); event.target.value = ""; }} /></label></div>
           {photoMutation.isPending && <p className="mb-3 text-xs text-emerald-700">Gemini đang phân tích ảnh…</p>}
           {photoAnalysis && <div className="mb-3 space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs"><p className="font-semibold">Ước tính từ ảnh — chọn món tương ứng trước khi thêm vào bản nháp</p>{photoMatches.map((item, index) => <div key={`${item.name}-${index}`} className="grid gap-1 sm:grid-cols-2"><span>{item.name}: khoảng {item.estimatedGrams ?? "?"}g, {item.calories ?? "?"} kcal</span><select aria-label={`Món trong kho cho ${item.name}`} className="h-9 min-w-0 rounded-md border bg-background px-2" value={item.foodId} onChange={event => setPhotoMatches(current => current.map((value, position) => position === index ? { ...value, foodId: event.target.value } : value))}><option value="">Chọn món trong kho (hoặc bỏ qua)</option>{foods.map(food => <option key={food.id} value={food.id}>{food.name}</option>)}</select></div>)}<p className="text-muted-foreground">{photoAnalysis.note}</p><Button type="button" size="sm" disabled={!photoMatches.some(item => item.foodId)} onClick={applyPhotoMatches}>Thêm món đã chọn vào bản nháp</Button><p className="text-muted-foreground">Món chưa nhận ra được, hãy tìm hoặc tạo trong kho thực phẩm.</p></div>}
           {photoAnalysis && <p className="mb-3 text-xs text-amber-800">Ảnh chỉ ước tính, hãy chỉnh lại số lượng trước khi lưu.</p>}
           <Input
             autoFocus
             placeholder="Tìm món ăn..."
+            aria-label="Tìm món ăn"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -436,7 +508,7 @@ function MealEditor({ open, mealType, date, log, draftItems, foods: initialFoods
         </div>
 
         <div className="shrink-0 border-t bg-background px-5 py-4 sm:px-6">
-          <div className="mb-3 flex flex-col gap-2 sm:flex-row"><Input placeholder="Tên bữa muốn lưu, ví dụ: Bữa sáng thường ngày" value={collectionName} onChange={event => setCollectionName(event.target.value)} /><Button variant="outline" disabled={Boolean(recovery) || !isMealDraft(items) || !collectionName.trim() || items.length === 0 || collectionMutation.isPending} onClick={() => collectionMutation.mutate()}><BookmarkPlus className="size-4" /> Lưu dùng nhanh</Button></div>
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row"><Input placeholder="Tên bữa muốn lưu, ví dụ: Bữa sáng thường ngày" aria-label="Tên bữa muốn lưu" value={collectionName} onChange={event => setCollectionName(event.target.value)} /><Button variant="outline" disabled={Boolean(recovery) || !isMealDraft(items) || !collectionName.trim() || items.length === 0 || collectionMutation.isPending} onClick={() => collectionMutation.mutate()}><BookmarkPlus className="size-4" /> Lưu dùng nhanh</Button></div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button className="w-full sm:w-auto" variant="outline" onClick={onClose}>Hủy</Button>
           <Button className="w-full sm:w-auto" disabled={mutation.isPending || Boolean(recovery) || unavailable || hydrated.some(result => result.isFetching) || items.length === 0 || !isMealDraft(items)} onClick={() => mutation.mutate()}>

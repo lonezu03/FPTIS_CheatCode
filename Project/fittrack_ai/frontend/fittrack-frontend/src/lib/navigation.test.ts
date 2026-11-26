@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { AuthUser } from "@/store/auth.store";
-import { findActive, navGroups, normalizeSearch, searchNav, visibleNavGroups } from "./navigation";
+import appRoutesSource from "@/routes/AppRoutes.tsx?raw";
+import { findActive, navCommands, navGroups, normalizeSearch, searchAll, searchNav, visibleNavGroups } from "./navigation";
 import { isNavPrefs, navPrefsKey, togglePinned } from "./navigation-prefs";
+import { searchCases } from "./navigation-search-cases";
 
 const user = (overrides: Partial<AuthUser> = {}) =>
   ({
@@ -76,7 +78,55 @@ describe("searchNav", () => {
   });
 
   it("returns nothing for unknown terms", () => {
-    expect(searchNav(all, "khong ton tai xyz")).toEqual([]);
+    expect(searchNav(all, "xyz qwerty")).toEqual([]);
+    expect(searchAll(all, "zzzz")).toEqual([]);
+  });
+
+  it("normalizes đ/Đ, punctuation and extra spaces", () => {
+    expect(normalizeSearch("ĐĂNG   xuất!!")).toBe("dang xuat");
+    expect(normalizeSearch("Thu-chi, ngân_sách")).toBe("thu chi ngan sach");
+  });
+
+  it("tolerates word prefixes, words typed together and small typos", () => {
+    expect(searchNav(all, "pomodor")[0].item.to).toBe("/focus");
+    expect(searchNav(all, "datcom")[0].item.to).toBe("/lunch");
+    expect(searchNav(all, "guiter")[0].item.to).toBe("/music/guitar");
+    // Typo matches are only a fallback: exact words win.
+    expect(searchNav(all, "tien")[0].item.to).toBe("/finance");
+  });
+
+  it.each(searchCases)("finds $expect for “$query”", ({ query, expect: wanted, top = 3 }) => {
+    const found = searchAll(all, query).map((result) => (result.kind === "page" ? result.item.to : `cmd:${result.command.id}`));
+    expect(found.slice(0, top)).toContain(wanted);
+  });
+
+  it("covers at least 80 realistic queries", () => {
+    expect(searchCases.length).toBeGreaterThanOrEqual(80);
+  });
+
+  it("offers account actions only when searching", () => {
+    expect(searchAll(all, "").every((result) => result.kind === "page")).toBe(true);
+    expect(navCommands.map((command) => command.id)).toEqual(expect.arrayContaining(["logout", "help", "change-password"]));
+  });
+});
+
+describe("routes", () => {
+  const registered = new Set([...appRoutesSource.matchAll(/path="([^"]+)"/g)].map((match) => match[1]));
+
+  it("registers every menu page and command route in AppRoutes", () => {
+    const targets = [...navGroups.flatMap((group) => group.items.map((item) => item.to)), ...navCommands.flatMap((command) => (command.to ? [command.to] : []))];
+    expect(targets.filter((to) => !registered.has(to))).toEqual([]);
+  });
+
+  it("lists every user-facing page in the menu", () => {
+    const menu = new Set(navGroups.flatMap((group) => group.items.map((item) => item.to)));
+    // Auth screens and the catch-all live outside the menu on purpose.
+    const outside = new Set(["/login", "/verify-email", "/forgot-password", "/reset-password", "/change-password", "*"]);
+    expect([...registered].filter((path) => !menu.has(path) && !outside.has(path))).toEqual([]);
+  });
+
+  it("shows a not-found page instead of silently redirecting unknown addresses", () => {
+    expect(appRoutesSource).toMatch(/path="\*" element={<NotFoundPage \/>}/);
   });
 });
 

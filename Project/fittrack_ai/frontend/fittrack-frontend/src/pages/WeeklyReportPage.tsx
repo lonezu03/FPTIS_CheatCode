@@ -99,7 +99,15 @@ export default function WeeklyReportPage() {
         <ErrorState title="Không thể tải báo cáo tuần" message="Vui lòng kiểm tra kết nối hoặc đăng nhập lại." onRetry={() => void reportQuery.refetch()} retrying={reportQuery.isFetching} />
       )}
 
-      {report && <WeeklyReportContent report={report} recommendations={recommendations} />}
+      {report && (
+        <WeeklyReportContent
+          report={report}
+          recommendations={recommendations}
+          recommendationsError={recommendationQuery.isError}
+          recommendationsRetrying={recommendationQuery.isFetching}
+          onRetryRecommendations={() => void recommendationQuery.refetch()}
+        />
+      )}
     </div>
   );
 }
@@ -107,9 +115,15 @@ export default function WeeklyReportPage() {
 function WeeklyReportContent({
   report,
   recommendations,
+  recommendationsError = false,
+  recommendationsRetrying = false,
+  onRetryRecommendations,
 }: {
   report: WeeklyReport;
   recommendations?: WeeklyRecommendation;
+  recommendationsError?: boolean;
+  recommendationsRetrying?: boolean;
+  onRetryRecommendations?: () => void;
 }) {
   const includedNutrition = report.dailyNutrition.filter((day) => day.dataIncluded);
   const overviewCards = [
@@ -314,6 +328,13 @@ function WeeklyReportContent({
                 </div>
               </>
             )
+          ) : recommendationsError ? (
+            <ErrorState
+              title="Không thể tải khuyến nghị"
+              message="Báo cáo tuần vẫn dùng được. Bạn có thể thử tải lại khuyến nghị."
+              onRetry={onRetryRecommendations}
+              retrying={recommendationsRetrying}
+            />
           ) : (
             <div className="space-y-3" role="status" aria-label="Đang tải khuyến nghị"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-16 w-full rounded-xl" /><Skeleton className="h-16 w-full rounded-xl" /></div>
           )}

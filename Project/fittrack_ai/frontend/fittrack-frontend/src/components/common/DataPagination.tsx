@@ -34,7 +34,7 @@ export default function DataPagination({
         <label className="flex items-center gap-2">
           Số dòng
           <select
-            className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-slate-900 outline-none focus:border-emerald-500"
+            className="h-9 rounded-xl border border-slate-200 bg-white px-2 text-slate-900 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
             value={pageSize}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
           >

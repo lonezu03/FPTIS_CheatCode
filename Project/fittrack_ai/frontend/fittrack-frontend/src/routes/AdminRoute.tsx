@@ -6,7 +6,7 @@ export default function AdminRoute() {
   const location = useLocation();
 
   if (user?.role !== "ADMIN") {
-    return <Navigate to="/lunch" replace state={{ from: location, reason: "admin-only" }} />;
+    return <Navigate to="/dashboard" replace state={{ from: location, reason: "admin-only" }} />;
   }
 
   return <Outlet />;

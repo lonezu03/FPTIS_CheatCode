@@ -264,7 +264,7 @@ function ExercisesWorkspace() {
           <div className="grid gap-3 sm:grid-cols-2"><FormField label="Lọc nhóm cơ"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={muscleFilter} onChange={event => { setMuscleFilter(event.target.value); exercisePager.resetPage(); }}><option value="">Tất cả nhóm cơ</option>{(facets.data?.muscleGroups ?? []).map(value => <option key={value} value={value}>{value}</option>)}</select></FormField><FormField label="Lọc dụng cụ"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={equipmentFilter} onChange={event => { setEquipmentFilter(event.target.value); exercisePager.resetPage(); }}><option value="">Tất cả dụng cụ</option>{(facets.data?.equipment ?? []).map(value => <option key={value} value={value}>{value}</option>)}</select></FormField></div>
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="flex min-w-0 flex-1 gap-2">
-              <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm bài tập..." />
+              <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm bài tập..." aria-label="Tìm bài tập" />
 
               <Button onClick={() => { exercisePager.resetPage(); setSearchKeyword(keyword); }}>Tìm kiếm</Button>
             </div>
@@ -412,24 +412,28 @@ function ExercisesWorkspace() {
                 value={editingExercise.name}
                 onChange={(event) => setEditingExercise({ ...editingExercise, name: event.target.value })}
                 placeholder="Tên bài tập"
+                aria-label="Tên bài tập"
               />
 
               <Input
                 value={editingExercise.muscleGroup}
                 onChange={(event) => setEditingExercise({ ...editingExercise, muscleGroup: event.target.value })}
                 placeholder="Nhóm cơ"
+                aria-label="Nhóm cơ"
               />
 
               <Input
                 value={editingExercise.equipment}
                 onChange={(event) => setEditingExercise({ ...editingExercise, equipment: event.target.value })}
                 placeholder="Dụng cụ"
+                aria-label="Dụng cụ"
               />
 
               <textarea rows={4} maxLength={2000} className="w-full rounded-xl border bg-background p-3 text-sm"
                 value={editingExercise.description}
                 onChange={(event) => setEditingExercise({ ...editingExercise, description: event.target.value })}
                 placeholder="Mô tả"
+                aria-label="Mô tả bài tập"
               />
 
               <ExerciseImageField
@@ -521,8 +525,9 @@ function ExerciseImageField({ value, onChange, onPreview }: ExerciseImageFieldPr
           value={isUploadedFile ? "" : value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={isUploadedFile ? "Image selected from your device" : "https://example.com/exercise.jpg"}
+          aria-label="Đường dẫn ảnh bài tập"
         />
-        <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" onChange={handleFileChange} />
+        <Input type="file" aria-label="Tải ảnh bài tập lên" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" onChange={handleFileChange} />
       </div>
 
       {value && (

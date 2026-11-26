@@ -21,7 +21,9 @@ import {
   makeExercise,
   readWorkoutDraft,
   seedFromAppointment,
+  missingExerciseCount,
   seedFromLatestSession,
+  seedFromPastSession,
   seedFromPlanDay,
   seedFromSession,
   type WorkoutSeed,
@@ -92,6 +94,18 @@ export default function WorkoutWorkspace({ owner }: { owner: string }) {
   const reuseLatest = async () => {
     if (!(await confirmReplaceDraft("Dùng lại buổi gần đây?"))) return;
     setLiveSeed(seedFromLatestSession(sessions[0], exercises));
+  };
+
+  const repeatSession = async (session: WorkoutSession) => {
+    if (!(await confirmReplaceDraft("Lặp lại buổi này?"))) return;
+    const seed = seedFromPastSession(session, exercises);
+    if (!seed.exercises.length) {
+      toast.error("Các bài của buổi này không còn trong kho bài tập");
+      return;
+    }
+    const missing = missingExerciseCount(session, exercises);
+    if (missing) toast.info(`Đã bỏ ${missing} bài không còn trong kho bài tập`);
+    setLiveSeed(seed);
   };
 
   const editSession = async (session: WorkoutSession) => {
@@ -175,6 +189,7 @@ export default function WorkoutWorkspace({ owner }: { owner: string }) {
         onPageChange={workoutPager.setPage}
         onPageSizeChange={workoutPager.setPageSize}
         onEdit={editSession}
+        onRepeat={repeatSession}
         onDelete={deleteSession}
       />
 

@@ -1,15 +1,29 @@
-import { Plus } from "lucide-react";
+import { useState } from "react";
+import { Download, Plus } from "lucide-react";
+import { toast } from "sonner";
 
-import type { FinanceAccount, FinanceCategory, FinanceTransaction, PageResponse } from "@/api/finance.api";
+import { getFinanceTransactions, type FinanceAccount, type FinanceCategory, type FinanceTransaction, type PageResponse } from "@/api/finance.api";
 import { useConfirm } from "@/components/common/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { collectPages, downloadCsv } from "@/lib/csv";
+import { getApiErrorMessage } from "@/lib/format";
 import { Empty, InlineError, ListSkeleton } from "./FinanceParts";
+import TransactionDialog from "./TransactionDialog";
 import TransactionRow from "./TransactionRow";
+import {
+  TRANSACTION_EXPORT_MAX_PAGES,
+  TRANSACTION_EXPORT_PAGE_SIZE,
+  endOfMonth,
+  monthDate,
+  recentCategoryIdsOf,
+  transactionCsvColumns,
+} from "./finance-utils";
+import { useFinanceRefresh } from "./useFinanceQueries";
 import type { FinanceViewState } from "./useFinanceView";
 
-/** "Giao dịch" tab: filters, paged history, edit and void. */
+/** "Giao dịch" tab: filters, paged history, edit, copy, void and CSV export of the filtered month. */
 export default function TransactionsTab({ view, transactions, accounts, categories, canCreate, onNew, onEdit, onVoid }: {
   view: FinanceViewState;
   transactions: { data?: PageResponse<FinanceTransaction>; isLoading: boolean; isError: boolean; error: unknown };
@@ -21,8 +35,41 @@ export default function TransactionsTab({ view, transactions, accounts, categori
   onVoid: (id: string) => void;
 }) {
   const confirm = useConfirm();
+  const refresh = useFinanceRefresh();
   const { page, search, typeFilter, accountFilter, categoryFilter } = view;
   const totalPages = transactions.data?.totalPages ?? 0;
+  const [copySource, setCopySource] = useState<FinanceTransaction | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const { items, truncated } = await collectPages(
+        (pageIndex) => getFinanceTransactions({
+          from: monthDate(view.month),
+          to: endOfMonth(view.month),
+          page: pageIndex,
+          size: TRANSACTION_EXPORT_PAGE_SIZE,
+          q: search || undefined,
+          type: typeFilter || undefined,
+          accountId: accountFilter || undefined,
+          categoryId: categoryFilter || undefined,
+        }),
+        { maxPages: TRANSACTION_EXPORT_MAX_PAGES },
+      );
+      if (!items.length) {
+        toast.info("Không có giao dịch để xuất.");
+        return;
+      }
+      downloadCsv(`giao-dich-${view.month}`, items, transactionCsvColumns);
+      if (truncated) toast.warning(`Chỉ xuất ${items.length} giao dịch đầu tiên. Hãy lọc hẹp hơn để xuất phần còn lại.`);
+      else toast.success(`Đã xuất ${items.length} giao dịch.`);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Không xuất được giao dịch."));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <Card>
@@ -30,13 +77,19 @@ export default function TransactionsTab({ view, transactions, accounts, categori
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Lịch sử giao dịch</CardTitle>
-            <Button onClick={onNew} disabled={!canCreate}>
-              <Plus className="size-4" /> Ghi giao dịch
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => void exportCsv()} disabled={exporting || !transactions.data?.content.length} title="Xuất các giao dịch của tháng theo bộ lọc hiện tại">
+                <Download className="size-4" /> {exporting ? "Đang xuất..." : "Xuất CSV"}
+              </Button>
+              <Button onClick={onNew} disabled={!canCreate}>
+                <Plus className="size-4" /> Ghi giao dịch
+              </Button>
+            </div>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <Input
               placeholder="Tìm nơi chi, ghi chú..."
+              aria-label="Tìm giao dịch"
               value={search}
               onChange={(event) => view.changeSearch(event.target.value)}
             />
@@ -89,6 +142,7 @@ export default function TransactionsTab({ view, transactions, accounts, categori
                 key={transaction.id}
                 transaction={transaction}
                 onEdit={() => onEdit(transaction)}
+                onCopy={canCreate ? () => setCopySource(transaction) : undefined}
                 onVoid={async () => {
                   const ok = await confirm({
                     title: "Hủy giao dịch?",
@@ -117,6 +171,19 @@ export default function TransactionsTab({ view, transactions, accounts, categori
           </div>
         )}
       </CardContent>
+      {copySource && (
+        <TransactionDialog
+          key={copySource.id}
+          initial={null}
+          copyFrom={copySource}
+          accounts={accounts}
+          categories={categories}
+          recentCategoryIds={recentCategoryIdsOf(transactions.data?.content ?? [])}
+          templates={[]}
+          onOpenChange={(open) => { if (!open) setCopySource(null); }}
+          onSaved={refresh}
+        />
+      )}
     </Card>
   );
 }

@@ -1,3 +1,4 @@
+import { csvDate, csvMoney, csvTime, type CsvColumn } from "@/lib/csv";
 import type {
   ExpenseNature,
   FinanceAccount,
@@ -278,3 +279,22 @@ export function endOfMonth(value: string) {
 
 /** Month shown when nothing else is chosen (computed once, like the original page). */
 export const monthNow = localDate().slice(0, 7);
+
+/** Up to 50 pages × 100 rows are exported; the rest is reported as cut off. */
+export const TRANSACTION_EXPORT_PAGE_SIZE = 100;
+export const TRANSACTION_EXPORT_MAX_PAGES = 50;
+
+/** CSV columns for the transaction export (amount is always positive; the type gives the sign). */
+export const transactionCsvColumns: CsvColumn<FinanceTransaction>[] = [
+  { header: "Ngày", value: (row) => csvDate(row.occurredAt) },
+  { header: "Giờ", value: (row) => csvTime(row.occurredAt) },
+  { header: "Loại", value: (row) => transactionTypeLabel(row.type) },
+  { header: "Danh mục", value: (row) => row.categoryName },
+  { header: "Tài khoản", value: (row) => row.accountName },
+  { header: "Tài khoản nhận", value: (row) => row.destinationAccountName },
+  { header: "Số tiền (VND)", value: (row) => csvMoney(row.amount) },
+  { header: "Tính chất chi", value: (row) => (row.expenseNature ? natureLabels[row.expenseNature] : "") },
+  { header: "Nơi chi / nguồn thu", value: (row) => row.merchant },
+  { header: "Ghi chú", value: (row) => row.note },
+  { header: "Trạng thái", value: (row) => (row.status === "VOID" ? "Đã hủy" : "Đã ghi") },
+];

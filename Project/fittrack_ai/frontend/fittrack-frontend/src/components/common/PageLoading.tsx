@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PageLoading() {
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6" role="status" aria-label="Đang tải trang" aria-busy="true">
       <div className="space-y-1 md:space-y-2">
         <Skeleton className="h-6 w-40 md:h-8 md:w-48" />
         <Skeleton className="h-4 w-80 max-w-full" />

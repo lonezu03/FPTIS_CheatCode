@@ -360,7 +360,7 @@ export default function FoodsPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <div className="flex flex-1 gap-2">
-              <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm thực phẩm..." />
+              <Input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Tìm thực phẩm..." aria-label="Tìm thực phẩm" />
 
               <Button onClick={() => { foodPager.resetPage(); setSearchKeyword(keyword); }}>Tìm kiếm</Button>
             </div>
@@ -624,8 +624,9 @@ function FoodImageField({ value, onChange, onPreview }: FoodImageFieldProps) {
           value={isUploadedFile ? "" : value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={isUploadedFile ? "Đã chọn ảnh từ thiết bị" : "https://example.com/food.jpg"}
+          aria-label="Đường dẫn ảnh thực phẩm"
         />
-        <Input type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" onChange={handleFileChange} />
+        <Input type="file" aria-label="Tải ảnh thực phẩm lên" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" onChange={handleFileChange} />
       </div>
 
       {value && (

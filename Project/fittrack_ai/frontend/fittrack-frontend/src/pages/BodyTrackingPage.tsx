@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useConfirm } from "@/components/common/ConfirmDialog";
 import axios from "axios";
-import { createBodyMeasurement, deleteBodyMeasurement, getBodyMeasurementsPage, updateBodyMeasurement } from "../api/body.api";
+import { createBodyMeasurement, deleteBodyMeasurement, getBodyMeasurementsPage, updateBodyMeasurement, type BodyMeasurement } from "../api/body.api";
+import { collectPages, csvDate, csvFileDate, downloadCsv, type CsvColumn } from "@/lib/csv";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toLocalDateInput } from "../lib/format";
+import { getApiErrorMessage, toLocalDateInput } from "../lib/format";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +22,18 @@ import DataPagination from "../components/common/DataPagination";
 import { useServerPagination } from "../hooks/useServerPagination";
 import FormField from "../components/common/FormField";
 import { createProgressPhoto, deleteProgressPhoto, getProgressPhotos } from "../api/progress-photo.api";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, Download, Trash2 } from "lucide-react";
+
+/** Export reads at most 50 pages × 100 measurements. */
+const BODY_EXPORT_MAX_PAGES = 50;
+const bodyCsvColumns: CsvColumn<BodyMeasurement>[] = [
+  { header: "Ngày", value: (row) => csvDate(row.recordDate) },
+  { header: "Cân nặng (kg)", value: (row) => row.weight },
+  { header: "Vòng eo (cm)", value: (row) => row.waist },
+  { header: "Vòng ngực (cm)", value: (row) => row.chest },
+  { header: "Vòng tay (cm)", value: (row) => row.arm },
+  { header: "Vòng đùi (cm)", value: (row) => row.thigh },
+];
 
 export default function BodyTrackingPage() {
   const confirm = useConfirm();
@@ -46,6 +58,22 @@ export default function BodyTrackingPage() {
     recordDate: string;
   } | null>(null);
   const measurementPager = useServerPagination(20);
+  const [exporting, setExporting] = useState(false);
+  const exportMeasurements = async () => {
+    setExporting(true);
+    try {
+      const { items: all, truncated } = await collectPages((page) => getBodyMeasurementsPage(page, 100), { maxPages: BODY_EXPORT_MAX_PAGES });
+      if (!all.length) { toast.info("Chưa có chỉ số để xuất."); return; }
+      const rows = [...all].sort((a, b) => a.recordDate.localeCompare(b.recordDate) || a.createdAt.localeCompare(b.createdAt));
+      downloadCsv(`chi-so-co-the-${csvFileDate()}`, rows, bodyCsvColumns);
+      if (truncated) toast.warning(`Chỉ xuất ${rows.length} lần đo gần nhất.`);
+      else toast.success(`Đã xuất ${rows.length} lần đo.`);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Không xuất được chỉ số cơ thể."));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const measurementsQuery = useQuery({
     queryKey: ["body-measurements", measurementPager.page, measurementPager.pageSize],
@@ -230,12 +258,15 @@ export default function BodyTrackingPage() {
 
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Camera className="size-5 text-emerald-700" /> Ảnh tiến độ</CardTitle></CardHeader>
-        <CardContent className="space-y-4"><p className="text-sm text-muted-foreground">Chụp cùng góc và ánh sáng để dễ so sánh. Chỉ bạn xem được ảnh.</p><div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]"><Input type="file" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.target.files?.[0]; if (file) setPhotoData(await fileToDataUri(file)); }} /><select className="h-10 rounded-md border bg-background px-3 text-sm" value={photoPose} onChange={event => setPhotoPose(event.target.value)}><option value="FRONT">Chính diện</option><option value="SIDE">Nghiêng</option><option value="BACK">Phía sau</option><option value="OTHER">Góc khác</option></select><Button disabled={!photoData || photoMutation.isPending} onClick={() => photoMutation.mutate()}>{photoMutation.isPending ? "Đang tải..." : "Lưu ảnh"}</Button></div>{photosQuery.isLoading ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="status" aria-label="Đang tải ảnh tiến độ">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />)}</div> : photosQuery.isError ? <ErrorState title="Không tải được ảnh tiến độ" message="Vui lòng thử lại." onRetry={() => void photosQuery.refetch()} retrying={photosQuery.isFetching} /> : photosQuery.data && photosQuery.data.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{photosQuery.data.map(photo => <div key={photo.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20"><img className="aspect-[3/4] w-full object-cover" src={photo.imageUrl} alt={`Tiến độ ${photo.takenDate}`} /><div className="flex items-center justify-between p-3"><div><p className="text-sm font-semibold">{photo.takenDate}</p><p className="text-xs text-muted-foreground">{photo.weight ? `${photo.weight} kg · ` : ""}{photo.pose}</p></div><Button size="icon" variant="ghost" disabled={deletePhotoMutation.isPending} onClick={async () => { if (await confirm({ title: "Xóa ảnh tiến độ?", description: `Ảnh ngày ${photo.takenDate} sẽ bị xóa vĩnh viễn.`, confirmText: "Xóa", destructive: true })) deletePhotoMutation.mutate(photo.id); }}><Trash2 className="size-4 text-red-600" /></Button></div></div>)}</div> : <EmptyState kind="progress" title="Chưa có ảnh tiến độ" description="Thêm ảnh đầu tiên để theo dõi thay đổi cơ thể theo thời gian." />}</CardContent>
+        <CardContent className="space-y-4"><p className="text-sm text-muted-foreground">Chụp cùng góc và ánh sáng để dễ so sánh. Chỉ bạn xem được ảnh.</p><div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]"><Input type="file" aria-label="Chọn ảnh tiến độ" accept="image/png,image/jpeg,image/webp" onChange={async event => { const file = event.target.files?.[0]; if (file) setPhotoData(await fileToDataUri(file)); }} /><select className="h-10 rounded-md border bg-background px-3 text-sm" aria-label="Góc chụp" value={photoPose} onChange={event => setPhotoPose(event.target.value)}><option value="FRONT">Chính diện</option><option value="SIDE">Nghiêng</option><option value="BACK">Phía sau</option><option value="OTHER">Góc khác</option></select><Button disabled={!photoData || photoMutation.isPending} onClick={() => photoMutation.mutate()}>{photoMutation.isPending ? "Đang tải..." : "Lưu ảnh"}</Button></div>{photosQuery.isLoading ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="status" aria-label="Đang tải ảnh tiến độ">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="aspect-[3/4] rounded-2xl" />)}</div> : photosQuery.isError ? <ErrorState title="Không tải được ảnh tiến độ" message="Vui lòng thử lại." onRetry={() => void photosQuery.refetch()} retrying={photosQuery.isFetching} /> : photosQuery.data && photosQuery.data.length > 0 ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{photosQuery.data.map(photo => <div key={photo.id} className="group relative overflow-hidden rounded-2xl border bg-muted/20"><img className="aspect-[3/4] w-full object-cover" src={photo.imageUrl} alt={`Tiến độ ${photo.takenDate}`} /><div className="flex items-center justify-between p-3"><div><p className="text-sm font-semibold">{photo.takenDate}</p><p className="text-xs text-muted-foreground">{photo.weight ? `${photo.weight} kg · ` : ""}{photo.pose}</p></div><Button size="icon" variant="ghost" aria-label={`Xóa ảnh tiến độ ngày ${photo.takenDate}`} disabled={deletePhotoMutation.isPending} onClick={async () => { if (await confirm({ title: "Xóa ảnh tiến độ?", description: `Ảnh ngày ${photo.takenDate} sẽ bị xóa vĩnh viễn.`, confirmText: "Xóa", destructive: true })) deletePhotoMutation.mutate(photo.id); }}><Trash2 className="size-4 text-red-600" /></Button></div></div>)}</div> : <EmptyState kind="progress" title="Chưa có ảnh tiến độ" description="Thêm ảnh đầu tiên để theo dõi thay đổi cơ thể theo thời gian." />}</CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <CardTitle>Lịch sử chỉ số</CardTitle>
+          <Button variant="outline" size="sm" disabled={exporting || items.length === 0} onClick={() => void exportMeasurements()}>
+            <Download className="size-4" /> {exporting ? "Đang xuất..." : "Xuất CSV"}
+          </Button>
         </CardHeader>
 
         <CardContent>

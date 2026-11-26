@@ -162,6 +162,7 @@ export default function AdminUsersPage() {
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="Tìm theo tên hoặc email"
+                aria-label="Tìm người dùng theo tên hoặc email"
               />
               <Button type="submit" variant="outline">
                 <Search />

@@ -1,5 +1,22 @@
 # FitTrack Current Project State
 
+## Latest handoff: web "không tìm thấy chức năng" fixes (2026-11-26)
+
+- `searchNav`/new `searchAll` in `src/lib/navigation.ts`: normalization strips accents,
+  đ/Đ, punctuation, extra spaces; tiers = exact words → without filler words
+  ("xem", "mở trang", "quản lý"…) → typo tolerance (edit distance 1–2) → partial match
+  for long queries; word-prefix and joined words ("datcom"). Keywords rewritten
+  (most characteristic first; order breaks ties).
+- `navCommands` (Đăng xuất, Đổi mật khẩu → /change-password, Hướng dẫn sử dụng,
+  Thông báo qua email → /profile) appear in the menu panel search and Ctrl+K
+  (`CommandPalette` prop `onCommand`, wired in AppLayout). ChangePasswordPage now
+  has a voluntary mode (title "Đổi mật khẩu", "Quay lại hồ sơ").
+- Unknown URLs inside the app render `pages/NotFoundPage.tsx` (keeps the menu,
+  suggests pages from the URL, search box) instead of silently redirecting.
+  AdminRoute sends non-admins to /dashboard (was /lunch).
+- Tests: `src/lib/navigation-search-cases.ts` (137 queries) + route registration
+  tests in `navigation.test.ts` (reads AppRoutes.tsx `?raw`).
+
 ## Branch integration handoff (2026-11-19)
 
 Fetched origin and fast-forwarded local main from 030c28fd to 7b4e8ede, including

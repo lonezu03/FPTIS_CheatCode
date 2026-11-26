@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ShieldCheck } from "lucide-react";
 import { changePasswordApi } from "../api/auth.api";
@@ -16,6 +16,8 @@ export default function ChangePasswordPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  // Opened voluntarily (menu search "đổi mật khẩu") rather than forced after a temporary password.
+  const required = useAuthStore((state) => state.user?.passwordChangeRequired ?? false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -48,9 +50,11 @@ export default function ChangePasswordPage() {
           <div className="mb-3 grid size-12 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
             <ShieldCheck className="size-6" />
           </div>
-          <CardTitle className="text-2xl">Đổi mật khẩu để tiếp tục</CardTitle>
+          <CardTitle className="text-2xl">{required ? "Đổi mật khẩu để tiếp tục" : "Đổi mật khẩu"}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Tài khoản đang dùng mật khẩu tạm hoặc mật khẩu cũ. Hãy đặt mật khẩu riêng trước khi sử dụng hệ thống.
+            {required
+              ? "Tài khoản đang dùng mật khẩu tạm hoặc mật khẩu cũ. Hãy đặt mật khẩu riêng trước khi sử dụng hệ thống."
+              : "Nhập mật khẩu hiện tại và mật khẩu mới cho tài khoản của bạn."}
           </p>
         </CardHeader>
         <CardContent>
@@ -68,6 +72,11 @@ export default function ChangePasswordPage() {
             <Button className="w-full" disabled={submitting}>
               {submitting ? "Đang cập nhật..." : "Đổi mật khẩu"}
             </Button>
+            {!required && (
+              <Button asChild type="button" variant="outline" className="w-full">
+                <Link to="/profile">Quay lại hồ sơ</Link>
+              </Button>
+            )}
           </form>
         </CardContent>
       </Card>
