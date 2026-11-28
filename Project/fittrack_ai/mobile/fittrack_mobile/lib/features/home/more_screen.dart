@@ -44,6 +44,26 @@ class MoreScreen extends StatefulWidget {
   State<MoreScreen> createState() => _MoreScreenState();
 }
 
+/// Everyday words people type for a page whose title says it differently
+/// (accents are stripped before matching, so either spelling works).
+const _searchAliases = <String, String>{
+  'Âm nhạc': 'guitar ghita ghi ta đàn sáo trúc flute luyện ngón hợp âm đếm nhịp metronome lên dây tuner',
+  'Đặt cơm': 'cơm trưa menu trưa ăn trưa',
+  'Luyện tập': 'tập gym buổi tập workout',
+  'Sức khỏe': 'cân nặng chỉ số cơ thể huyết áp',
+  'Lịch & việc': 'việc cần làm todo deadline lịch hẹn nhắc việc',
+  'Câu nói': 'trích dẫn quote',
+  'Tài chính': 'chi tiêu thu chi tiền giao dịch ngân sách',
+  'Nhật ký': 'nhật kí viết cảm xúc',
+  'AnCai PT': 'trợ lý chatbot hỏi đáp',
+  'Giáo án': 'kế hoạch tập lịch tập',
+  'Nhật ký ăn uống': 'calo calories bữa ăn dinh dưỡng',
+  'Mục tiêu tiết kiệm': 'tiết kiệm để dành',
+  'Chi tiêu chung': 'chia tiền góp tiền',
+  'Giấc ngủ & phục hồi': 'ngủ nghỉ ngơi',
+  'Thói quen': 'habit',
+};
+
 class _MoreScreenState extends State<MoreScreen> {
   AuthUser get user => widget.user;
   MobileMenuController get menu => widget.menu;
@@ -84,8 +104,10 @@ class _MoreScreenState extends State<MoreScreen> {
         .where((word) => word.isNotEmpty);
     final results = modules.whereType<ListTile>().where((tile) {
       final label = tile.title;
-      return label is Text &&
-          words.every(_normalized(label.data ?? '').contains);
+      if (label is! Text) return false;
+      final title = label.data ?? '';
+      final haystack = _normalized('$title ${_searchAliases[title] ?? ''}');
+      return words.every(haystack.contains);
     }).toList();
     return RefreshIndicator(
       onRefresh: menu.load,

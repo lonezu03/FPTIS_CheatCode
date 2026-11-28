@@ -87,6 +87,13 @@ void main() {
       await tester.enterText(search, 'am nhac');
       await tester.pump();
       expect(find.text('Âm nhạc'), findsOneWidget);
+      // Everyday words reach the page even when its title says it differently.
+      await tester.enterText(search, 'dan guitar');
+      await tester.pump();
+      expect(find.text('Âm nhạc'), findsOneWidget);
+      await tester.enterText(search, 'deadline');
+      await tester.pump();
+      expect(find.text('Lịch & việc'), findsOneWidget);
       await tester.enterText(search, 'kho thuc pham');
       await tester.pump();
       expect(find.text('Kho thực phẩm'), findsNothing);

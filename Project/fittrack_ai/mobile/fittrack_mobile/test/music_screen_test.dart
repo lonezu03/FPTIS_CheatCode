@@ -42,6 +42,12 @@ class _MusicApi extends ApiClient {
 }
 
 void main() {
+  test('summary days show the Vietnamese weekday', () {
+    expect(musicDayLabel('2026-11-28'), 'T7 28/11');
+    expect(musicDayLabel('2026-11-29'), 'CN 29/11');
+    expect(musicDayLabel('không phải ngày'), 'không phải ngày');
+  });
+
   test('music CSV escapes formulas, multiline notes and quotes', () {
     final csv = encodeMusicCsv([
       {

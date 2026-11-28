@@ -11,9 +11,11 @@ class MainActivity : FlutterFragmentActivity() {
         musicAudio = MusicAudio(this, flutterEngine.dartExecutor.binaryMessenger)
     }
 
-    override fun onPause() {
+    // onStop (not onPause): a notification shade or permission dialog pauses the
+    // activity without hiding it, and Flutter only stops the tuner once hidden.
+    override fun onStop() {
         musicAudio?.stop()
-        super.onPause()
+        super.onStop()
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {

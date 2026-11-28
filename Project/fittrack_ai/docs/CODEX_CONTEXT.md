@@ -1,5 +1,20 @@
 # FitTrack Current Project State
 
+## Android music review fixes (2026-11-28, not yet built)
+
+- Native audio now stops in `MainActivity.onStop` instead of `onPause`; a
+  notification shade or call overlay no longer kills the tuner while Dart still
+  shows "Đang nghe". The Dart pitch subscription also resets on `onDone`.
+- Long-tone measurement tolerates a 400 ms waver before resetting the held time.
+  The BPM slider restarts the metronome on release only. The practice timer
+  dialog is not dismissible by tapping outside and vibrates/alerts at zero.
+  Summary rows show weekday labels (`musicDayLabel`).
+- More search matches everyday aliases (e.g. "dan guitar" → Âm nhạc,
+  "deadline" → Lịch & việc) without exposing hidden modules.
+- Written on a workstation without Flutter: run `flutter analyze` and
+  `flutter test` (new cases in `mobile_menu_test.dart`, `music_screen_test.dart`)
+  and rebuild the APK on the Flutter workstation before release.
+
 ## Android 1.3.0+12: Music and recent web interaction updates (2026-11-28)
 
 - More → Âm nhạc opens the new Flutter module for authenticated accounts. It

@@ -82,6 +82,8 @@ class _MusicToolsScreenState extends State<MusicToolsScreen>
   Timer? _metronome, _challenge;
   final _metroClock = Stopwatch();
   final _heldNote = Stopwatch();
+  final _offTune = Stopwatch();
+  static const _longToneGraceMs = 400;
   StreamSubscription<dynamic>? _samples;
   int _audioGeneration = 0;
   int _consecutiveMisses = 0;
@@ -199,6 +201,9 @@ class _MusicToolsScreenState extends State<MusicToolsScreen>
     _samples = null;
     if (samples != null) unawaited(samples.cancel());
     _heldNote.stop();
+    _offTune
+      ..stop()
+      ..reset();
     _micActive = false;
     _longTone = false;
     _heard = null;
@@ -240,6 +245,12 @@ class _MusicToolsScreenState extends State<MusicToolsScreen>
             _error = 'Không đọc được micrô. Kiểm tra quyền rồi thử lại.';
           });
         },
+        // The native side may close the stream (app hidden, mic taken by a call):
+        // never leave the screen claiming it is still listening.
+        onDone: () {
+          if (!mounted || generation != _audioGeneration) return;
+          setState(_stopMic);
+        },
       );
     } on PlatformException {
       if (mounted) setState(() => _error = 'Không thể bắt đầu đo cao độ.');
@@ -268,11 +279,20 @@ class _MusicToolsScreenState extends State<MusicToolsScreen>
         final inTune =
             hz != null && musicPitchCents(hz, _fluteTarget).abs() <= 35;
         if (inTune) {
+          _offTune.stop();
+          _offTune.reset();
           _heldNote.start();
           _longSeconds = math.max(_longSeconds, _heldNote.elapsed.inSeconds);
         } else if (_heldNote.isRunning) {
-          _heldNote.stop();
-          _heldNote.reset();
+          // A beginner's tone wavers for a frame or two; only a break longer
+          // than the grace period ends the held note.
+          _offTune.start();
+          if (_offTune.elapsedMilliseconds > _longToneGraceMs) {
+            _heldNote.stop();
+            _heldNote.reset();
+            _offTune.stop();
+            _offTune.reset();
+          }
         }
       }
     });
@@ -718,8 +738,10 @@ class _MusicToolsScreenState extends State<MusicToolsScreen>
           min: 30,
           max: 240,
           divisions: 210,
-          onChanged: (value) {
-            setState(() => _bpm = value.round());
+          onChanged: (value) => setState(() => _bpm = value.round()),
+          // Restart once the thumb is released, not on every drag frame, so the
+          // beat does not stutter back to 1 while the tempo is being chosen.
+          onChangeEnd: (_) {
             if (running) {
               _stopMetronome();
               _toggleMetronome(strumming: strumming);

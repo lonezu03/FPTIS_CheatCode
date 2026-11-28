@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -41,6 +42,15 @@ String _exerciseLabel(Object? key) {
       return 'Đổi hợp âm 1 phút: ${chords.join(' ↔ ').toUpperCase()}';
   }
   return _exercises[text] ?? text;
+}
+
+/// "2026-11-28" → "T7 28/11" (same weekday labels as the web summary).
+String musicDayLabel(Object? value) {
+  final text = value?.toString() ?? '';
+  final date = DateTime.tryParse(text);
+  if (date == null) return text;
+  const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+  return '${weekdays[date.weekday - 1]} ${DateFormat('dd/MM').format(date)}';
 }
 
 String encodeMusicCsv(List<Map<String, dynamic>> rows) {
@@ -320,6 +330,8 @@ class _MusicScreenState extends State<MusicScreen> {
                     onPressed: () async {
                       final finished = await showDialog<bool>(
                         context: context,
+                        // A stray tap outside must not throw away a running timer.
+                        barrierDismissible: false,
                         builder: (_) => _PracticeTimer(step: step),
                       );
                       if (finished == true && mounted)
@@ -529,7 +541,9 @@ class _MusicScreenState extends State<MusicScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text('${row['date']} · ${minutes(row)} phút'),
+                      child: Text(
+                        '${musicDayLabel(row['date'])} · ${minutes(row)} phút',
+                      ),
                     ),
                     Expanded(
                       child: LinearProgressIndicator(
@@ -650,6 +664,9 @@ class _PracticeTimerState extends State<_PracticeTimer> {
         if (seconds == 0) {
           stopwatch.stop();
           ticker?.cancel();
+          // Eyes are on the instrument, not the screen: signal the end.
+          unawaited(HapticFeedback.heavyImpact());
+          unawaited(SystemSound.play(SystemSoundType.alert));
         }
         if (mounted) setState(() {});
       });
