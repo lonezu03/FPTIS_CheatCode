@@ -32,12 +32,38 @@ import '../finance/shared_expenses_screen.dart';
 import '../fitness/training_comparison_screen.dart';
 import '../planner/focus_screen.dart';
 import '../personal_tracking/monthly_report_screen.dart';
+import '../music/music_screen.dart';
 
-class MoreScreen extends StatelessWidget {
+class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key, required this.user, required this.menu});
 
   final AuthUser user;
   final MobileMenuController menu;
+
+  @override
+  State<MoreScreen> createState() => _MoreScreenState();
+}
+
+class _MoreScreenState extends State<MoreScreen> {
+  AuthUser get user => widget.user;
+  MobileMenuController get menu => widget.menu;
+  String query = '';
+
+  String _normalized(String value) {
+    var result = value.toLowerCase().trim().replaceAll('đ', 'd');
+    const accents = {
+      'a': '[àáảãạăằắẳẵặâầấẩẫậ]',
+      'e': '[èéẻẽẹêềếểễệ]',
+      'i': '[ìíỉĩị]',
+      'o': '[òóỏõọôồốổỗộơờớởỡợ]',
+      'u': '[ùúủũụưừứửữự]',
+      'y': '[ỳýỷỹỵ]',
+    };
+    for (final entry in accents.entries) {
+      result = result.replaceAll(RegExp(entry.value), entry.key);
+    }
+    return result;
+  }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -49,16 +75,34 @@ class MoreScreen extends StatelessWidget {
     final user = context.watch<AuthSession>().user ?? this.user;
     final notifications = context.watch<NotificationCenter>();
     final permissionGranted = notifications.permissionGranted == true;
+    final modules = [
+      ..._moduleTiles(context, user),
+      ..._extensionTiles(context, user),
+    ];
+    final words = _normalized(query)
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty);
+    final results = modules.whereType<ListTile>().where((tile) {
+      final label = tile.title;
+      return label is Text &&
+          words.every(_normalized(label.data ?? '').contains);
+    }).toList();
     return RefreshIndicator(
       onRefresh: menu.load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(18),
         children: [
-          const PageIntro(
-            title: 'Thêm',
-          ),
+          const PageIntro(title: 'Thêm'),
           const SizedBox(height: 16),
+          TextField(
+            decoration: const InputDecoration(
+              labelText: 'Tìm chức năng',
+              prefixIcon: Icon(Icons.search),
+            ),
+            onChanged: (value) => setState(() => query = value),
+          ),
+          const SizedBox(height: 12),
           if (menu.loading) const LinearProgressIndicator(),
           if (menu.error != null)
             Card(
@@ -72,101 +116,113 @@ class MoreScreen extends StatelessWidget {
                 ),
               ),
             ),
-          Card(
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.notifications_outlined),
+          if (words.isNotEmpty)
+            Card(
+              child: Column(
+                children: results.isEmpty
+                    ? [
+                        const ListTile(
+                          title: Text('Không tìm thấy chức năng phù hợp.'),
+                        ),
+                      ]
+                    : results,
+              ),
+            ),
+          if (words.isEmpty)
+            Card(
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const CircleAvatar(
+                      child: Icon(Icons.notifications_outlined),
+                    ),
+                    title: const Text('Thông báo'),
+                    subtitle: Text(
+                      notifications.unreadCount == 0
+                          ? 'Không có thông báo chưa đọc'
+                          : '${notifications.unreadCount} thông báo chưa đọc',
+                    ),
+                    trailing: notifications.unreadCount > 0
+                        ? Badge(
+                            label: Text(
+                              notifications.unreadCount > 99
+                                  ? '99+'
+                                  : notifications.unreadCount.toString(),
+                            ),
+                          )
+                        : const Icon(Icons.chevron_right),
+                    onTap: () => _open(
+                      context,
+                      title: 'Thông báo',
+                      page: const NotificationsScreen(),
+                    ),
                   ),
-                  title: const Text('Thông báo'),
-                  subtitle: Text(
-                    notifications.unreadCount == 0
-                        ? 'Không có thông báo chưa đọc'
-                        : '${notifications.unreadCount} thông báo chưa đọc',
-                  ),
-                  trailing: notifications.unreadCount > 0
-                      ? Badge(
-                          label: Text(
-                            notifications.unreadCount > 99
-                                ? '99+'
-                                : notifications.unreadCount.toString(),
-                          ),
-                        )
-                      : const Icon(Icons.chevron_right),
-                  onTap: () => _open(
-                    context,
-                    title: 'Thông báo',
-                    page: const NotificationsScreen(),
-                  ),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.help_outline_rounded),
-                  ),
-                  title: const Text('Hướng dẫn sử dụng'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    final session = context.read<AuthSession>();
-                    try {
-                      await session.refreshProfile();
-                    } catch (_) {
-                      // Dùng quyền gần nhất đã lưu nếu đang mất mạng.
-                    }
-                    if (!context.mounted || session.user == null) return;
-                    await showUserGuideSheet(context, session.user!);
-                  },
-                ),
-                ..._moduleTiles(context, user),
-                ..._extensionTiles(context, user),
-                if (user.isAdmin) ...[
                   const Divider(height: 1),
                   ListTile(
                     leading: const CircleAvatar(
-                      child: Icon(Icons.dashboard_customize_outlined),
+                      child: Icon(Icons.help_outline_rounded),
                     ),
-                    title: const Text('Sắp xếp menu app'),
-                    subtitle: const Text('Áp dụng cho mọi tài khoản'),
+                    title: const Text('Hướng dẫn sử dụng'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (_) => MobileMenuSettingsScreen(menu: menu),
+                    onTap: () async {
+                      final session = context.read<AuthSession>();
+                      try {
+                        await session.refreshProfile();
+                      } catch (_) {
+                        // Dùng quyền gần nhất đã lưu nếu đang mất mạng.
+                      }
+                      if (!context.mounted || session.user == null) return;
+                      await showUserGuideSheet(context, session.user!);
+                    },
+                  ),
+                  ...modules,
+                  if (user.isAdmin) ...[
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.dashboard_customize_outlined),
+                      ),
+                      title: const Text('Sắp xếp menu app'),
+                      subtitle: const Text('Áp dụng cho mọi tài khoản'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => MobileMenuSettingsScreen(menu: menu),
+                        ),
                       ),
                     ),
-                  ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const CircleAvatar(
+                        child: Icon(Icons.admin_panel_settings_outlined),
+                      ),
+                      title: const Text('Quản trị'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _open(
+                        context,
+                        title: 'Quản trị',
+                        page: const AdminScreen(),
+                      ),
+                    ),
+                  ],
                   const Divider(height: 1),
                   ListTile(
                     leading: const CircleAvatar(
-                      child: Icon(Icons.admin_panel_settings_outlined),
+                      child: Icon(Icons.person_outline),
                     ),
-                    title: const Text('Quản trị'),
+                    title: const Text('Cá nhân'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _open(
                       context,
-                      title: 'Quản trị',
-                      page: const AdminScreen(),
+                      title: 'Cá nhân',
+                      page: const ProfileScreen(),
                     ),
                   ),
                 ],
-                const Divider(height: 1),
-                ListTile(
-                  leading: const CircleAvatar(
-                    child: Icon(Icons.person_outline),
-                  ),
-                  title: const Text('Cá nhân'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _open(
-                    context,
-                    title: 'Cá nhân',
-                    page: const ProfileScreen(),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
           const SizedBox(height: 14),
           Card(
             child: Padding(
@@ -191,11 +247,7 @@ class MoreScreen extends StatelessWidget {
                           : Theme.of(context).colorScheme.error,
                     ),
                     title: const Text('Thông báo'),
-                    subtitle: Text(
-                      permissionGranted
-                          ? 'Đã bật'
-                          : 'Chưa bật',
-                    ),
+                    subtitle: Text(permissionGranted ? 'Đã bật' : 'Chưa bật'),
                     trailing: TextButton(
                       onPressed: () async {
                         if (permissionGranted) {
@@ -216,9 +268,7 @@ class MoreScreen extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(Icons.folder_open_outlined),
                     title: Text('Tệp trên thiết bị'),
-                    subtitle: Text(
-                      'Chỉ đọc tệp bạn tự chọn.',
-                    ),
+                    subtitle: Text('Chỉ đọc tệp bạn tự chọn.'),
                   ),
                 ],
               ),
@@ -309,6 +359,7 @@ class MoreScreen extends StatelessWidget {
 
   List<Widget> _extensionTiles(BuildContext context, AuthUser user) {
     final entries = <(String, String, IconData, Widget)>[
+      ('', 'Âm nhạc', Icons.music_note_outlined, const MusicScreen()),
       if (menu.allows('fitness', user))
         (
           'fitness',
@@ -443,8 +494,9 @@ class MoreScreen extends StatelessWidget {
           child: AnimatedBuilder(
             animation: menu,
             builder: (c, _) {
-              final current = c.watch<AuthSession>().user ?? user;
+              final current = c.watch<AuthSession>().user;
               final visible =
+                  current != null &&
                   (moduleKey == null || menu.allows(moduleKey, current)) &&
                   (additionalAccess?.call(current) ?? true);
               if (visible &&
@@ -455,7 +507,8 @@ class MoreScreen extends StatelessWidget {
                       page is PurchasePricesScreen ||
                       page is SavingsGoalsScreen ||
                       page is SharedExpensesScreen ||
-                      page is TemplateSharingScreen)) {
+                      page is TemplateSharingScreen ||
+                      page is MusicScreen)) {
                 // These destinations own their Scaffold and AppBar. Wrapping
                 // them creates a second title bar and back button.
                 return page;

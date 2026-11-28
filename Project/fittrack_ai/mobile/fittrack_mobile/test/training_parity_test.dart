@@ -107,12 +107,24 @@ void main() {
               ],
             };
           }
+          if (options.path == '/exercises') {
+            data = [
+              {'id': 'active', 'name': 'Active exercise'},
+            ];
+          }
           if (options.path.contains('/intelligence')) {
             data = <String, dynamic>{};
           }
           if (options.path.endsWith('/alternatives')) {
             data = [
-              {'exercise': {'id': 'replacement', 'name': 'Máy thay thế', 'equipment': 'Máy'}, 'preference': 'NORMAL'},
+              {
+                'exercise': {
+                  'id': 'replacement',
+                  'name': 'Máy thay thế',
+                  'equipment': 'Máy',
+                },
+                'preference': 'NORMAL',
+              },
             ];
           }
           if (options.method == 'PUT' || options.method == 'POST') {
@@ -129,7 +141,44 @@ void main() {
 
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
-  testWidgets('đổi bài giữ hiệp đã hoàn thành và lưu nguồn thay thế', (tester) async {
+  testWidgets('repeat workout drops inactive exercises and starts unchecked', (
+    tester,
+  ) async {
+    final writes = <RequestOptions>[];
+    await mount(
+      tester,
+      mockApi(writes),
+      const LiveWorkoutSheet(
+        repeatSession: {
+          'id': 'old-session',
+          'note': 'Buổi cũ',
+          'sessionDate': '2025-02-01',
+          'sets': [
+            {
+              'exerciseId': 'active',
+              'reps': 8,
+              'weight': 20,
+              'completed': true,
+            },
+            {
+              'exerciseId': 'archived',
+              'exerciseName': 'Old exercise',
+              'completed': true,
+            },
+          ],
+        },
+      ),
+    );
+    expect(find.text('Active exercise'), findsWidgets);
+    expect(find.text('Old exercise'), findsNothing);
+    expect(find.byType(Checkbox), findsOneWidget);
+    expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, false);
+    expect(writes, isEmpty);
+  });
+
+  testWidgets('đổi bài giữ hiệp đã hoàn thành và lưu nguồn thay thế', (
+    tester,
+  ) async {
     // Give the workout editor enough vertical space for its fixed footer;
     // the separate 360px test below covers the compact layout.
     tester.view.physicalSize = const Size(800, 1400);
@@ -137,13 +186,24 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final writes = <RequestOptions>[];
-    await mount(tester, mockApi(writes), const LiveWorkoutSheet(planDay: {
-      'name': 'Ngày tập',
-      'exercises': [{
-        'exerciseId': 'plan-ex', 'exerciseName': 'Bài ban đầu',
-        'targetSets': 2, 'targetReps': 10, 'targetWeight': 25.0,
-      }],
-    }));
+    await mount(
+      tester,
+      mockApi(writes),
+      const LiveWorkoutSheet(
+        planDay: {
+          'name': 'Ngày tập',
+          'exercises': [
+            {
+              'exerciseId': 'plan-ex',
+              'exerciseName': 'Bài ban đầu',
+              'targetSets': 2,
+              'targetReps': 10,
+              'targetWeight': 25.0,
+            },
+          ],
+        },
+      ),
+    );
     final first = find.byType(Checkbox).first;
     await tester.ensureVisible(first);
     await tester.pump(const Duration(milliseconds: 300));

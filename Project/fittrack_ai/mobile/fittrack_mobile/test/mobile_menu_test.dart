@@ -59,6 +59,46 @@ AuthUser _user(String role, {bool fitness = true, bool health = true}) =>
     );
 
 void main() {
+  testWidgets(
+    'More searches accentless names without exposing hidden modules',
+    (tester) async {
+      final api = _MenuApi();
+      final session = AuthSession(api)..user = _user('USER', health: false);
+      final menu = MobileMenuController(api)
+        ..accept({'version': 0, 'modules': api.rows});
+      final notifications = NotificationCenter(api);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ApiClient>.value(value: api),
+            ChangeNotifierProvider<AuthSession>.value(value: session),
+            ChangeNotifierProvider<NotificationCenter>.value(
+              value: notifications,
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: MoreScreen(user: session.user!, menu: menu),
+            ),
+          ),
+        ),
+      );
+      final search = find.byType(TextField).first;
+      await tester.enterText(search, 'am nhac');
+      await tester.pump();
+      expect(find.text('Âm nhạc'), findsOneWidget);
+      await tester.enterText(search, 'kho thuc pham');
+      await tester.pump();
+      expect(find.text('Kho thực phẩm'), findsNothing);
+      expect(find.text('Không tìm thấy chức năng phù hợp.'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      notifications.dispose();
+      menu.dispose();
+      session.dispose();
+      api.activity.dispose();
+    },
+  );
+
   for (final label in [
     'So sánh luyện tập',
     'Thói quen',

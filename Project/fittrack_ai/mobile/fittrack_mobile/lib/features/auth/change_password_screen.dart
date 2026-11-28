@@ -5,7 +5,9 @@ import '../../core/widgets/common_widgets.dart';
 import 'auth_session.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
-  const ChangePasswordScreen({super.key});
+  const ChangePasswordScreen({super.key, this.voluntary = false});
+
+  final bool voluntary;
   @override
   State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
 }
@@ -40,6 +42,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       );
       if (mounted) {
         showMessage(context, 'Đã đổi mật khẩu và tạo phiên đăng nhập mới.');
+        if (widget.voluntary) Navigator.of(context).pop();
       }
     } catch (error) {
       if (mounted) showMessage(context, displayError(error), error: true);
@@ -50,14 +53,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Đổi mật khẩu lần đầu')),
+    appBar: AppBar(
+      title: Text(widget.voluntary ? 'Đổi mật khẩu' : 'Đổi mật khẩu lần đầu'),
+    ),
     body: ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const PageIntro(
-          title: 'Bảo vệ tài khoản',
-          subtitle: 'Đổi mật khẩu tạm để tiếp tục.',
-        ),
+        if (!widget.voluntary)
+          const PageIntro(
+            title: 'Bảo vệ tài khoản',
+            subtitle: 'Đổi mật khẩu tạm để tiếp tục.',
+          ),
         const SizedBox(height: 24),
         TextField(
           controller: _current,
@@ -85,8 +91,16 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           child: Text(_busy ? 'Đang đổi...' : 'Đổi mật khẩu'),
         ),
         TextButton(
-          onPressed: _busy ? null : () => context.read<AuthSession>().logout(),
-          child: const Text('Đăng xuất'),
+          onPressed: _busy
+              ? null
+              : () {
+                  if (widget.voluntary) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.read<AuthSession>().logout();
+                  }
+                },
+          child: Text(widget.voluntary ? 'Quay lại hồ sơ' : 'Đăng xuất'),
         ),
       ],
     ),

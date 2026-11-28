@@ -101,6 +101,8 @@ void main() {
         250,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.ensureVisible(name);
+      await tester.pumpAndSettle();
       await tester.tap(name);
       await tester.pumpAndSettle();
       expect(find.text('Khẩu phần gốc: 1 chén'), findsOneWidget);

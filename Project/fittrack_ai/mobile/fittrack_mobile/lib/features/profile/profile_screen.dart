@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/network/api_client.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../auth/auth_session.dart';
+import '../auth/change_password_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -80,10 +81,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const PageIntro(
-          title: 'Hồ sơ cá nhân',
-        ),
+        const PageIntro(title: 'Hồ sơ cá nhân'),
         const SizedBox(height: 20),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const ChangePasswordScreen(voluntary: true),
+            ),
+          ),
+          icon: const Icon(Icons.lock_outline),
+          label: const Text('Đổi mật khẩu'),
+        ),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -199,9 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onChanged: updatingEmailPreference ? null : _setEmailNotifications,
             secondary: const Icon(Icons.email_outlined),
             title: const Text('Nhận email notification'),
-            subtitle: const Text(
-              'Menu, thông báo chung và lời nhắc.',
-            ),
+            subtitle: const Text('Menu, thông báo chung và lời nhắc.'),
           ),
         ),
         const SizedBox(height: 20),

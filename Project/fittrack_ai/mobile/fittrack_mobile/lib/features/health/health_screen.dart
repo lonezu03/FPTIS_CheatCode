@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
 
 import '../../core/network/api_client.dart';
+import '../../core/storage/csv_export.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../../core/health/health_connect_service.dart';
 
@@ -102,9 +103,7 @@ class _HealthScreenState extends State<HealthScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const PageIntro(
-                title: 'Sức khỏe toàn diện',
-              ),
+              const PageIntro(title: 'Sức khỏe toàn diện'),
               const SizedBox(height: 14),
               TabBar(
                 controller: tabs,
@@ -547,6 +546,41 @@ class _BodyTab extends StatelessWidget {
           icon: const Icon(Icons.add),
           label: const Text('Thêm chỉ số cơ thể'),
         ),
+        if (items.isNotEmpty)
+          OutlinedButton.icon(
+            onPressed: () async {
+              try {
+                final saved = await exportCsv(
+                  filename: 'chi-so-co-the.csv',
+                  headers: const [
+                    'Ngày',
+                    'Cân nặng (kg)',
+                    'Eo (cm)',
+                    'Ngực (cm)',
+                    'Tay (cm)',
+                    'Đùi (cm)',
+                  ],
+                  rows: items.map(
+                    (item) => [
+                      item['recordDate'],
+                      item['weight'],
+                      item['waist'],
+                      item['chest'],
+                      item['arm'],
+                      item['thigh'],
+                    ],
+                  ),
+                );
+                if (context.mounted && saved != null)
+                  showMessage(context, 'Đã lưu CSV.');
+              } catch (error) {
+                if (context.mounted)
+                  showMessage(context, displayError(error), error: true);
+              }
+            },
+            icon: const Icon(Icons.download_outlined),
+            label: const Text('Xuất chỉ số CSV'),
+          ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () async {

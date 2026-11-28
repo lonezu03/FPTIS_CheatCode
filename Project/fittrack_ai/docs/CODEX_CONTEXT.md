@@ -1,5 +1,31 @@
 # FitTrack Current Project State
 
+## Android 1.3.0+12: Music and recent web interaction updates (2026-11-28)
+
+- More → Âm nhạc opens the new Flutter module for authenticated accounts. It
+  shares `/api/music` (V47) with web and keeps the existing 13-key server menu
+  contract. Includes guitar/C5 flute routines, step timers, practice logging,
+  summaries, filtered history, deletion and CSV export. Android native audio
+  provides metronome/reference notes and on-device pitch detection with explicit
+  microphone permission. No microphone audio is sent to the API.
+- More searches available modules without requiring Vietnamese accents. Profile
+  supports voluntary password change. Repeating a financial transaction, a
+  workout or a previous-day meal opens a new form for review before writing.
+  CSV is also available for currently displayed transactions, the selected
+  diary day and body measurements. Browser PWA, web-only quick-add and the
+  independent web Today sections were not ported in this batch.
+- Backend and migrations are unchanged. Deploy the backend containing V47 for
+  live music history/summary. Smoke on Android: mic grant/deny and backgrounding,
+  tuner and metronome, create/delete practice entry, and CSV save dialog.
+- Flutter verification passed 82 tests across the full run and a focused rerun
+  of `training_parity_test.dart` after fixing its Finder. On this workstation the
+  stale Vulkan test bundle was regenerated with `--no-enable-impeller`.
+  `flutter analyze --no-pub --no-fatal-infos` passed with informational lints.
+- Release APK built locally at `mobile/fittrack_mobile/build/app/outputs/flutter-apk/app-release.apk`
+  (73,571,589 bytes). APK metadata confirms AnCai 1.3.0, versionCode 12, and
+  RECORD_AUDIO. The build script verified the notification drawable. Native
+  mic/audio and install-upgrade were not tested on a physical device.
+
 ## Latest handoff: web "không tìm thấy chức năng" fixes (2026-11-26)
 
 - `searchNav`/new `searchAll` in `src/lib/navigation.ts`: normalization strips accents,

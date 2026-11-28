@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 
 import '../../core/network/api_client.dart';
+import '../../core/storage/csv_export.dart';
 import '../../core/widgets/common_widgets.dart';
 import 'nutrition_contract.dart';
 import 'food_search_sheet.dart';
@@ -28,6 +29,7 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
   Map<String, dynamic> convenience = const {};
   Object? error;
   bool loading = true;
+  bool findingPrevious = false;
 
   String get dateValue => DateFormat('yyyy-MM-dd').format(date);
 
@@ -86,6 +88,117 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
     }
   }
 
+  Future<void> _repeatPreviousMeal() async {
+    if (findingPrevious) return;
+    final destination = dateValue;
+    final previous = DateFormat('yyyy-MM-dd')
+        .format(DateTime(date.year, date.month, date.day - 1));
+    setState(() => findingPrevious = true);
+    try {
+      final data = _map(
+        await context.read<ApiClient>().get(
+          '/nutrition/diary',
+          queryParameters: {'date': previous},
+        ),
+      );
+      if (!mounted || destination != dateValue) return;
+      final meals = _list(data['meals'])
+          .where(
+            (meal) =>
+                _list(meal['items']).isNotEmpty &&
+                const [
+                  'BREAKFAST',
+                  'LUNCH',
+                  'DINNER',
+                  'SNACK',
+                ].contains(meal['mealType']),
+          )
+          .toList();
+      if (meals.isEmpty) {
+        showMessage(context, 'Ngày $previous chưa có bữa ăn để sao chép.');
+        return;
+      }
+      final selected = await showModalBottomSheet<Map<String, dynamic>>(
+        context: context,
+        isScrollControlled: true,
+        builder: (sheetContext) => SafeArea(
+          child: FractionallySizedBox(
+            heightFactor: .65,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Text('Chọn bữa từ ngày $previous'),
+                for (final meal in meals)
+                  ListTile(
+                    title: Text(_mealLabel(meal['mealType'].toString())),
+                    subtitle: Text(
+                      _list(meal['items'])
+                          .map((item) => item['foodName'] ?? 'Món ăn')
+                          .join(', '),
+                    ),
+                    onTap: () => Navigator.pop(sheetContext, meal),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (!mounted || selected == null || destination != dateValue) return;
+      final saved = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => _MealLoggerSheet(
+          date: destination,
+          mealType: selected['mealType'].toString(),
+          foods: foods,
+          initialMeal: selected,
+          copy: true,
+        ),
+      );
+      if (saved == true && mounted) await _load();
+    } catch (e) {
+      if (mounted) showMessage(context, displayError(e), error: true);
+    } finally {
+      if (mounted) setState(() => findingPrevious = false);
+    }
+  }
+
+  Future<void> _exportDiary(List<Map<String, dynamic>> meals) async {
+    try {
+      await exportCsv(
+        filename: 'nhat-ky-an-uong-$dateValue.csv',
+        headers: const [
+          'Ngày',
+          'Bữa',
+          'Thực phẩm',
+          'Lượng',
+          'Đơn vị',
+          'Năng lượng (kcal)',
+          'Chất đạm (g)',
+          'Tinh bột (g)',
+          'Chất béo (g)',
+        ],
+        rows: [
+          for (final meal in meals)
+            for (final item in _list(meal['items']))
+              [
+                dateValue,
+                _mealLabel(meal['mealType'].toString()),
+                item['foodName'],
+                item['servingAmount'] ?? item['quantity'],
+                _unit(item['servingUnit']),
+                item['calories'],
+                item['protein'],
+                item['carbs'],
+                item['fat'],
+              ],
+        ],
+      );
+    } catch (e) {
+      if (mounted) showMessage(context, displayError(e), error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) return const LoadingView();
@@ -131,6 +244,26 @@ class _NutritionDiaryTabState extends State<NutritionDiaryTab> {
           ),
           const SizedBox(height: 10),
           _StatusBanner(status: status),
+          Wrap(
+            spacing: 8,
+            children: [
+              TextButton.icon(
+                onPressed: findingPrevious ? null : _repeatPreviousMeal,
+                icon: const Icon(Icons.copy_outlined),
+                label: Text(
+                  findingPrevious
+                      ? 'Đang tìm bữa…'
+                      : 'Sao chép bữa từ hôm trước',
+                ),
+              ),
+              if (meals.isNotEmpty)
+                TextButton.icon(
+                  onPressed: () => _exportDiary(meals),
+                  icon: const Icon(Icons.download_outlined),
+                  label: const Text('Xuất CSV ngày này'),
+                ),
+            ],
+          ),
           const SizedBox(height: 12),
           _ConvenienceCard(data: convenience, date: dateValue, onReload: _load),
           const SizedBox(height: 12),
@@ -646,9 +779,7 @@ class _MealGroup extends StatelessWidget {
                                   item['foodName']?.toString() ?? 'Món ăn',
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
-                                const Text(
-                                  'Số liệu tại thời điểm ghi bữa.',
-                                ),
+                                const Text('Số liệu tại thời điểm ghi bữa.'),
                                 Text(
                                   'Khẩu phần gốc: ${item['foodUnit'] ?? 'Chưa có dữ liệu lịch sử'}',
                                 ),
@@ -1058,9 +1189,7 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Chọn món tương ứng trong kho.',
-                    ),
+                    const Text('Chọn món tương ứng trong kho.'),
                     const SizedBox(height: 10),
                     for (final match in matches) ...[
                       Text(
@@ -1104,9 +1233,7 @@ class _MealLoggerSheetState extends State<_MealLoggerSheet> {
                       'Ước tính chỉ để tham khảo; chưa lưu vào nhật ký.',
                       style: TextStyle(fontSize: 12, color: Colors.black54),
                     ),
-                    const Text(
-                      'Bạn kiểm tra lại khẩu phần trước khi lưu nhé.',
-                    ),
+                    const Text('Bạn kiểm tra lại khẩu phần trước khi lưu nhé.'),
                   ],
                 ),
               ),

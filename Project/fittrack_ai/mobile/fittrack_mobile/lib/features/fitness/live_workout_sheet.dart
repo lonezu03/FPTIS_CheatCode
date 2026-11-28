@@ -18,10 +18,12 @@ class LiveWorkoutSheet extends StatefulWidget {
     super.key,
     this.planDay,
     this.initialSession,
+    this.repeatSession,
     this.appointmentId,
   });
   final Map<String, dynamic>? planDay;
   final Map<String, dynamic>? initialSession;
+  final Map<String, dynamic>? repeatSession;
   final String? appointmentId;
 
   @override
@@ -48,7 +50,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
   Timer? restTimer;
   String owner = '';
   String get draftSlot =>
-      'workout-live:${widget.appointmentId ?? widget.initialSession?['id'] ?? 'new'}';
+      'workout-live:${widget.appointmentId ?? widget.initialSession?['id'] ?? (widget.repeatSession == null ? 'new' : 'repeat:${widget.repeatSession!['id']}')}';
   final duration = TextEditingController();
   String sessionDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
@@ -80,7 +82,10 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       owner = context.read<AuthSession>().user?.id ?? '';
       final api = context.read<ApiClient>();
       final values = await Future.wait([
-        api.get('/exercises/page', queryParameters: {'page': 0, 'size': 1}),
+        if (widget.repeatSession == null)
+          api.get('/exercises/page', queryParameters: {'page': 0, 'size': 1})
+        else
+          api.get('/exercises'),
         api.get('/workout-plans'),
       ]);
       exercises = _list(values[0]);
@@ -109,6 +114,9 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       }
       if (widget.initialSession != null) {
         _restoreSession(widget.initialSession!);
+      }
+      if (widget.repeatSession != null && mounted) {
+        _restoreSession(widget.repeatSession!, repeat: true);
       }
       final saved = await ModuleDraftStore.read(owner, draftSlot);
       if (saved != null && mounted) {
@@ -264,22 +272,23 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
     }
   }
 
-  void _restoreSession(Map<String, dynamic> value) {
+  void _restoreSession(Map<String, dynamic> value, {bool repeat = false}) {
     title.text = value['note']?.toString() ?? 'Buổi tập';
     note.clear();
-    duration.text = '${value['durationMinutes'] ?? 0}';
-    if (widget.initialSession == null) {
+    duration.text = repeat ? '' : '${value['durationMinutes'] ?? 0}';
+    if (widget.initialSession == null && !repeat) {
       resumedSeconds =
           (value['elapsedSeconds'] as num?)?.toInt() ??
           ((value['durationMinutes'] as num?)?.toInt() ?? 0) * 60;
       elapsedSeconds = resumedSeconds;
     }
-    sessionDate = value['sessionDate']?.toString() ?? sessionDate;
+    if (!repeat) sessionDate = value['sessionDate']?.toString() ?? sessionDate;
     final groups = <String, _DraftExercise>{};
     for (final set in trainingList(value['sets'])) {
       final id = set['exerciseId'].toString();
       final key = '${set['exerciseOrder'] ?? 1}:$id';
       if (!exercises.any((e) => e['id'].toString() == id)) {
+        if (repeat) continue;
         exercises.add({
           'id': id,
           'name': set['exerciseName'] ?? 'Bài tập lịch sử',
@@ -290,8 +299,10 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
         () => _DraftExercise(
           id,
           sets: [],
-          originalExerciseId: set['originalExerciseId']?.toString(),
-          replacementKind: set['replacementKind']?.toString(),
+          originalExerciseId: repeat
+              ? null
+              : set['originalExerciseId']?.toString(),
+          replacementKind: repeat ? null : set['replacementKind']?.toString(),
           rest: (set['restSeconds'] as num?)?.toInt() ?? 90,
           grouping: trainingGroup(set),
         ),
@@ -304,10 +315,18 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
             restSeconds: (set['restSeconds'] as num?)?.toInt() ?? 90,
           )
           ..setType = set['setType']?.toString() ?? 'NORMAL'
-          ..completed = set['completed'] == true,
+          ..completed = !repeat && set['completed'] == true,
       );
     }
     draft = groups.values.toList();
+    if (repeat &&
+        draft.fold<int>(0, (total, item) => total + item.sets.length) <
+            trainingList(value['sets']).length) {
+      showMessage(
+        context,
+        'Một số bài không còn hoạt động đã được bỏ qua. Hãy kiểm tra buổi tập mới.',
+      );
+    }
   }
 
   Future<void> _addExercises() async {
@@ -468,9 +487,7 @@ class _LiveWorkoutSheetState extends State<LiveWorkoutSheet> {
       context: context,
       builder: (c) => AlertDialog(
         title: const Text('Đổi bài tập?'),
-        content: const Text(
-          'Hiệp đã xong được giữ; bạn nhớ nhập lại mức tạ.',
-        ),
+        content: const Text('Hiệp đã xong được giữ; bạn nhớ nhập lại mức tạ.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(c, false),

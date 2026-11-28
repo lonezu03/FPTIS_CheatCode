@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/storage/csv_export.dart';
 import '../../core/widgets/common_widgets.dart';
 
 class FinanceScreen extends StatefulWidget {
@@ -118,20 +119,35 @@ class _FinanceScreenState extends State<FinanceScreen>
     }
   }
 
-  Future<void> _transactionDialog([Map<String, dynamic>? current]) async {
-    var type = current?['type']?.toString() ?? 'EXPENSE';
-    String? accountId = current?['accountId']?.toString() ?? _firstId(accounts);
-    String? destinationId = current?['destinationAccountId']?.toString();
-    String? categoryId = current?['categoryId']?.toString();
+  Future<void> _transactionDialog([
+    Map<String, dynamic>? source,
+    bool copy = false,
+  ]) async {
+    final current = copy ? null : source;
+    final availableAccounts = accounts
+        .where((a) => !copy || a['active'] == true)
+        .toList();
+    final availableCategories = categories
+        .where((c) => !copy || c['active'] == true)
+        .toList();
+    String? validId(Object? id, List<Map<String, dynamic>> entries) =>
+        entries.any((entry) => entry['id'] == id) ? id?.toString() : null;
+    var type = source?['type']?.toString() ?? 'EXPENSE';
+    String? accountId = source == null
+        ? _firstId(availableAccounts)
+        : validId(source['accountId'], availableAccounts);
+    String? destinationId = validId(
+      source?['destinationAccountId'],
+      availableAccounts,
+    );
+    String? categoryId = validId(source?['categoryId'], availableCategories);
     final amount = TextEditingController(
-      text: current?['amount']?.toString() ?? '',
+      text: source?['amount']?.toString() ?? '',
     );
     final merchant = TextEditingController(
-      text: current?['merchant']?.toString() ?? '',
+      text: source?['merchant']?.toString() ?? '',
     );
-    final note = TextEditingController(
-      text: current?['note']?.toString() ?? '',
-    );
+    final note = TextEditingController(text: source?['note']?.toString() ?? '');
     final savedDate = current?['occurredAt']?.toString().replaceFirst('T', ' ');
     final occurredAt = TextEditingController(
       text: savedDate != null && savedDate.length >= 16
@@ -146,12 +162,22 @@ class _FinanceScreenState extends State<FinanceScreen>
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setLocal) => AlertDialog(
-          title: Text(current == null ? 'Thêm giao dịch' : 'Sửa giao dịch'),
+          title: Text(
+            copy
+                ? 'Lặp lại giao dịch'
+                : current == null
+                ? 'Thêm giao dịch'
+                : 'Sửa giao dịch',
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (current == null) ...[
+                if (copy)
+                  const Text(
+                    'Kiểm tra số tiền, ngày và tài khoản trước khi tạo giao dịch mới.',
+                  ),
+                if (source == null) ...[
                   OutlinedButton.icon(
                     onPressed: analyzingReceipt
                         ? null
@@ -331,14 +357,17 @@ class _FinanceScreenState extends State<FinanceScreen>
                   ],
                   onChanged: receiptDraft
                       ? null
-                      : (v) => setLocal(() => type = v!),
+                      : (v) => setLocal(() {
+                          type = v!;
+                          categoryId = null;
+                        }),
                 ),
                 const SizedBox(height: 10),
                 KeyedSubtree(
                   key: ValueKey('account-$receiptDraft'),
                   child: _mapDropdown(
                     'Tài khoản',
-                    accounts,
+                    availableAccounts,
                     accountId,
                     (v) => setLocal(() => accountId = v),
                   ),
@@ -347,7 +376,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                   const SizedBox(height: 10),
                   _mapDropdown(
                     'Tài khoản nhận',
-                    accounts,
+                    availableAccounts,
                     destinationId,
                     (v) => setLocal(() => destinationId = v),
                   ),
@@ -358,7 +387,7 @@ class _FinanceScreenState extends State<FinanceScreen>
                     key: ValueKey('category-$type-$receiptDraft'),
                     child: _mapDropdown(
                       'Danh mục',
-                      categories
+                      availableCategories
                           .where((c) => c['transactionKind'] == type)
                           .toList(),
                       categoryId,
@@ -405,10 +434,13 @@ class _FinanceScreenState extends State<FinanceScreen>
                   ? null
                   : () {
                       if (accountId == null ||
+                          (type == 'TRANSFER' &&
+                              (destinationId == null ||
+                                  destinationId == accountId)) ||
                           (receiptDraft && categoryId == null)) {
                         showMessage(
                           dialogContext,
-                          'Hãy chọn tài khoản và danh mục trước khi lưu.',
+                          'Hãy kiểm tra tài khoản, tài khoản nhận hoặc danh mục trước khi lưu.',
                           error: true,
                         );
                         return;
@@ -445,7 +477,7 @@ class _FinanceScreenState extends State<FinanceScreen>
       ),
     );
     dialogOpen = false;
-    if (accepted != true) return;
+    if (accepted != true || !mounted) return;
     if (accountId == null || (receiptDraft && categoryId == null)) {
       if (mounted) {
         showMessage(
@@ -480,7 +512,9 @@ class _FinanceScreenState extends State<FinanceScreen>
       'accountId': accountId,
       'destinationAccountId': type == 'TRANSFER' ? destinationId : null,
       'categoryId': type == 'TRANSFER' ? null : categoryId,
-      'expenseNature': current?['expenseNature'],
+      'expenseNature': type == 'EXPENSE' && categoryId == source?['categoryId']
+          ? (source?['expenseNature'])
+          : null,
       'occurredAt': parsedDate.toIso8601String(),
       'merchant': merchant.text.trim(),
       'note': note.text.trim(),
@@ -882,6 +916,12 @@ class _FinanceScreenState extends State<FinanceScreen>
           icon: const Icon(Icons.add),
           label: const Text('Thêm giao dịch'),
         ),
+        if (transactions.isNotEmpty)
+          OutlinedButton.icon(
+            onPressed: _exportTransactions,
+            icon: const Icon(Icons.download_outlined),
+            label: const Text('Xuất CSV giao dịch đang hiển thị'),
+          ),
         const SizedBox(height: 10),
         if (transactions.isEmpty)
           const EmptyView(
@@ -909,12 +949,20 @@ class _FinanceScreenState extends State<FinanceScreen>
               subtitle: Text(
                 '${t['accountName'] ?? '-'} · ${t['occurredAt']?.toString().split('T').first ?? ''}${t['status'] == 'VOID' ? ' · ĐÃ HỦY' : ''}',
               ),
-              trailing: Text(
-                _money(t['amount']),
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: t['type'] == 'INCOME' ? Colors.green : null,
-                ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _money(t['amount']),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  if (t['status'] != 'VOID')
+                    IconButton(
+                      tooltip: 'Lặp lại giao dịch',
+                      onPressed: () => _transactionDialog(t, true),
+                      icon: const Icon(Icons.copy_outlined),
+                    ),
+                ],
               ),
               onTap: t['status'] == 'VOID' ? null : () => _transactionDialog(t),
               onLongPress: t['status'] == 'VOID'
@@ -931,6 +979,42 @@ class _FinanceScreenState extends State<FinanceScreen>
       ],
     ),
   );
+
+  Future<void> _exportTransactions() async {
+    try {
+      await exportCsv(
+        filename: 'giao-dich-$monthValue.csv',
+        headers: const [
+          'Ngày giờ',
+          'Loại',
+          'Số tiền',
+          'Tiền tệ',
+          'Tài khoản',
+          'Danh mục',
+          'Nội dung',
+          'Ghi chú',
+          'Trạng thái',
+        ],
+        rows: transactions.map(
+          (t) => [
+            t['occurredAt'],
+            _typeLabel(t['type']),
+            t['amount'],
+            accounts
+                .where((a) => a['id'] == t['accountId'])
+                .firstOrNull?['currencyCode'],
+            t['accountName'],
+            t['categoryName'],
+            t['merchant'],
+            t['note'],
+            t['status'],
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) showMessage(context, displayError(e), error: true);
+    }
+  }
 
   Widget _setup() => RefreshIndicator(
     onRefresh: _load,
@@ -1068,9 +1152,7 @@ class _FinanceScreenState extends State<FinanceScreen>
         if (recurring.isEmpty)
           const Padding(
             padding: EdgeInsets.all(18),
-            child: Text(
-              'Chưa có khoản định kỳ.',
-            ),
+            child: Text('Chưa có khoản định kỳ.'),
           ),
         ...recurring.map(
           (r) => Card(

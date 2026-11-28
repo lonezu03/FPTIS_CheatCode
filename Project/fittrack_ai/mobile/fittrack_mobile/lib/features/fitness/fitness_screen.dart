@@ -113,9 +113,7 @@ class _FitnessScreenState extends State<FitnessScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const PageIntro(
-                title: 'Luyện tập & dinh dưỡng',
-              ),
+              const PageIntro(title: 'Luyện tập & dinh dưỡng'),
               const SizedBox(height: 14),
               if (widget.showNutrition)
                 TabBar(
@@ -394,17 +392,34 @@ class _WorkoutList extends StatelessWidget {
                         subtitle: Text(
                           '${item['durationMinutes'] ?? 0} phút • ${sets.length} hiệp',
                         ),
-                        children: sets.map((raw) {
-                          final set = raw as Map;
-                          return ListTile(
-                            title: Text(
-                              set['exerciseName']?.toString() ?? 'Bài tập',
+                        children: [
+                          if (sets.isNotEmpty)
+                            ListTile(
+                              leading: const Icon(Icons.copy_outlined),
+                              title: const Text('Tập lại buổi này'),
+                              onTap: () async {
+                                final changed =
+                                    await showModalBottomSheet<bool>(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      builder: (_) =>
+                                          LiveWorkoutSheet(repeatSession: item),
+                                    );
+                                if (changed == true) onReload();
+                              },
                             ),
-                            subtitle: Text(
-                              'Hiệp ${set['setNumber'] ?? '-'} • ${set['weight'] ?? 0} kg × ${set['reps'] ?? 0} lần • RIR ${set['rir'] ?? 0}',
-                            ),
-                          );
-                        }).toList(),
+                          ...sets.map((raw) {
+                            final set = raw as Map;
+                            return ListTile(
+                              title: Text(
+                                set['exerciseName']?.toString() ?? 'Bài tập',
+                              ),
+                              subtitle: Text(
+                                'Hiệp ${set['setNumber'] ?? '-'} • ${set['weight'] ?? 0} kg × ${set['reps'] ?? 0} lần • RIR ${set['rir'] ?? 0}',
+                              ),
+                            );
+                          }),
+                        ],
                       );
                     }).toList(),
                   ),
@@ -703,9 +718,7 @@ class _AddWorkoutSheetState extends State<_AddWorkoutSheet> {
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: exerciseId,
-            decoration: const InputDecoration(
-              labelText: 'Bài tập',
-            ),
+            decoration: const InputDecoration(labelText: 'Bài tập'),
             items: exercises
                 .map(
                   (e) => DropdownMenuItem(
@@ -868,9 +881,7 @@ class _AddMealSheetState extends State<_AddMealSheet> {
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: foodId,
-            decoration: const InputDecoration(
-              labelText: 'Thực phẩm',
-            ),
+            decoration: const InputDecoration(labelText: 'Thực phẩm'),
             items: foods
                 .map(
                   (e) => DropdownMenuItem(
